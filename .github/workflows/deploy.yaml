@@ -17,13 +17,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: install gcc-aarch64-linux-gnu
         run: sudo apt install -y gcc-aarch64-linux-gnu
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_KEY }}
-      - name: ssh-keyscan
+
+      - name: Setup SSH key
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan wlsd.lightandsound.design > ~/.ssh/known_hosts
+          mkdir ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.ROOT_SSH_PRIVKEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan beta.lightandsound.design > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+
       - name: deploy
-        run: scripts/deploy.sh ec2-user@wlsd.lightandsound.design
+        run: scripts/deploy.sh ec2-user@beta.lightandsound.design

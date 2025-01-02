@@ -1,4 +1,4 @@
-# WLSD
+# lightandsound.design
 
 Coming to you live.
 
@@ -13,8 +13,8 @@ rustc --version
 
 Clone the repo:
 ```sh
-git clone https://github.com/foltik/wlsd
-cd wlsd
+git clone https://github.com/foltik/lsd
+cd lsd
 ```
 
 To automatically recompile and rerun when you make changes, use `cargo-watch`:
@@ -32,4 +32,4 @@ mailtutan
 ## Workflow
 
 * Make commits in a separate branch, and open a PR against `main`
-* When new commits land in `main`, a github action will automatically deploy the app to https://wlsd.foltz.io
+* When new commits land in `main`, a github action will automatically deploy the app to https://beta.lightandsound.design

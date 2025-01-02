@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
 
     // Load the server config
-    let file = std::env::args().nth(1).context("usage: wlsd <config.toml>")?;
+    let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
     let config = Config::load(&file).await?;
 
     let app = app::build(config.clone()).await?.into_make_service();
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
             tokio::spawn(async move {
                 loop {
                     match acme.next().await.unwrap() {
-                        Ok(ok) => tracing::info!("acme: {:?}", ok),
+                        Ok(ok) => tracing::debug!("acme: {:?}", ok),
                         Err(err) => tracing::error!("acme: {}", err),
                     }
                 }

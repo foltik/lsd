@@ -26,25 +26,33 @@ pub struct AppConfig {
     pub db: PathBuf,
 }
 
+/// Networking configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct NetConfig {
+    /// HTTP server bind address.
     pub http_addr: SocketAddr,
+    /// HTTS server bind address.
     pub https_addr: SocketAddr,
 }
 
 /// LetsEncrypt ACME TLS certificate configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct AcmeConfig {
+    /// Domain to request a cert for.
     pub domain: String,
+    /// Contact email.
     pub email: String,
-    /// Directory where certificates and credentials are stored.
+    /// Directory to store certs and credentials in.
     pub dir: String,
     /// Whether to use the production or staging ACME server.
     pub prod: bool,
 }
 
+/// Email configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct EmailConfig {
-    pub addr: String,
+    /// SMTP address, starting with `smtp://`.
+    pub smtp_addr: String,
+    /// Mailbox to send email from.
     pub from: Mailbox,
 }

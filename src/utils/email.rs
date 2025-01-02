@@ -16,7 +16,7 @@ impl Email {
     pub async fn connect(config: EmailConfig) -> Result<Self> {
         // we need this for smtps
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
-        Ok(Self { addr: config.addr, from: config.from })
+        Ok(Self { addr: config.smtp_addr, from: config.from })
     }
 
     pub fn builder(&self) -> MessageBuilder {

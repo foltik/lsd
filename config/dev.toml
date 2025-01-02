@@ -7,5 +7,5 @@ http_addr = "[::]:8080"
 https_addr = "[::]:4433"
 
 [email]
-addr = "smtp://localhost:1025"
-from = "WLSD <wlsd@foltz.io>"
+smtp_addr = "smtp://localhost:1025"
+from = "WLSD <studio@lightandsound.design>"

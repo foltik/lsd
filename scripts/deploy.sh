@@ -9,8 +9,8 @@ cargo build --profile prod --target aarch64-unknown-linux-gnu
 
 ls -l target/aarch64-unknown-linux-gnu/
 ls -l target/aarch64-unknown-linux-gnu/*
-rsync --rsync-path="sudo rsync" -Pavzr --delete assets templates config target/aarch64-unknown-linux-gnu/prod/wlsd $1:/home/wlsd/
+rsync --rsync-path="sudo rsync" -Pavzr --delete assets templates config target/aarch64-unknown-linux-gnu/prod/lsd $1:/home/lsd/
 ssh $1 <<'EOS'
-sudo setcap 'cap_net_bind_service=+ep' /home/wlsd/wlsd
-sudo systemctl restart wlsd
+sudo setcap 'cap_net_bind_service=+ep' /home/lsd/lsd
+sudo systemctl restart lsd
 EOS

@@ -1,5 +1,5 @@
 [app]
-url = "https://wlsd.lightandsound.design"
+url = "https://beta.lightandsound.design"
 db = "db.sqlite"
 
 [net]
@@ -7,11 +7,11 @@ http_addr = "[::]:80"
 https_addr = "[::]:443"
 
 [acme]
-domain = "wlsd.lightandsound.design"
+domain = "beta.lightandsound.design"
 email = "studio249@foltz.io"
 dir = "acme"
 prod = true
 
 [email]
-addr = "smtp://localhost:1080"
-from = "WLSD <wlsd@foltz.io>"
+smtp_addr = "smtp://localhost:1025"
+from = "WLSD <studio@lightandsoun.design>"
