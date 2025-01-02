@@ -31,9 +31,3 @@ opt-level = 1
 # And since they don't get recompiled often, fully optimize dependencies
 [profile.dev.package."*"]
 opt-level = 3
-
-# Production build with more intense optimization
-[profile.prod]
-inherits = "release"
-lto = true
-codegen-units = 1
