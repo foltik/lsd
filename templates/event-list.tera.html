@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WLSD</title>
+    </head>
+    <body>
+        <style>
+            body {
+                background-color: #000;
+                color: #fff;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+            }
+            .event-card a {
+                padding: 5px 10px;
+                text-decoration: none;
+                color: inherit;
+                font-size: 18px;
+            }
+            .event-card a:hover {
+                color: #a7a5a1;
+                /* border-color: #a7a5a1; */
+            }
+        </style>
+        <h1>Upcoming Events:</h1>
+        {% for event in events %}
+        <div key="event-{{event.id}}" class="event-card">
+            <a href="/event/{{event.id}}">{{event.start_date | format_datetime(format="%d.%m.%Y")}} | {{ event.title }}</a>
+        </div>
+        {% endfor %}
+    </body>
+</html>

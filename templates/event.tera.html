@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WLSD</title>
+    </head>
+    <body>
+        <style>
+            body {
+                background-color: #000;
+                color: #fff;
+                font-family: Arial, sans-serif;
+                margin: 15px;
+                padding: 0;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+            }
+        </style>
+        {% if event %}
+        <h1>Update Event: {{ event.title }}</h1>
+        <form action="/event/{{ event.id }}/update" method="post">
+            <label for="title">Event Title</label>
+            <input type="text" name="title" value="{{ event.title }}" />
+
+            <label for="artist">Artist Name</label>
+            <input type="text" name="artist" value="{{ event.artist }}" />
+
+            <label for="description">Event Description</label>
+            <textarea name="description" value="{{ event.description }}">What can people expect...</textarea>
+
+            <label for="start_date">Event Date</label>
+            <input type="datetime-local" name="start_date" value="{{ event.start_date }}" />
+
+            <!-- <label for="cover_image">Event Cover Image</label>
+            <input type="file" name="cover_image" /> -->
+
+            <button type="submit">Update</button>
+        </form>
+        <form action="/event/{{ event.id }}/delete" method="post">
+            <button type="submit">Delete</button>
+        </form>
+        {% else %}
+        <h1>Event does not exist...</h1>
+        {% endif %}
+    </body>
+</html>

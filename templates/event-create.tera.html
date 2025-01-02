@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="/assets/favicon.ico" rel="icon" type="image/x-icon" />
+        <title>WLSD</title>
+    </head>
+    <body>
+        <style>
+            body {
+                background-color: #000;
+                color: #fff;
+                font-family: Arial, sans-serif;
+                margin: 15px;
+                padding: 0;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+            }
+        </style>
+        <main>
+            <h1>Let's Create an Event</h1>
+            <form action="/event/create" method="post">
+                <label for="title">Event Title</label>
+                <input type="text" name="title" />
+
+                <label for="artist">Artist Name</label>
+                <input type="text" name="artist" />
+
+                <label for="description">Event Description</label>
+                <textarea name="description">What can people expect...</textarea>
+
+                <label for="start_date">Event Date</label>
+                <input type="datetime-local" name="start_date" />
+
+                <label for="cover_image">Event Cover Image</label>
+                <input type="file" name="cover_image" />
+
+                <button type="submit">Create</button>
+            </form>
+        </main>
+    </body>
+</html>

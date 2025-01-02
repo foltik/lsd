@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use lettre::message::Mailbox;
 use rand::{rngs::OsRng, Rng as _};
-use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
+use sqlx::{migrate::MigrateDatabase, sqlite::SqliteQueryResult, Error, Sqlite, SqlitePool};
 
 #[derive(Clone)]
 pub struct Db {
@@ -17,6 +17,17 @@ pub struct User {
     pub last_name: String,
     pub email: String,
     pub created_at: String,
+}
+
+#[derive(sqlx::FromRow, serde::Serialize)]
+pub struct Event {
+    pub id: i64,
+    pub title: String,
+    pub artist: String,
+    pub description: String,
+    pub start_date: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 impl Db {
@@ -63,6 +74,20 @@ impl Db {
                 token TEXT NOT NULL, \
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
                 FOREIGN KEY (user_id) REFERENCES users(id) \
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS events ( \
+                id INTEGER PRIMARY KEY NOT NULL, \
+                title TEXT NOT NULL, \
+                artist TEXT NOT NULL, \
+                description TEXT NOT NULL, \
+                start_date TIMESTAMP NOT NULL, \
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
             )",
         )
         .execute(&self.pool)
@@ -140,5 +165,79 @@ impl Db {
             .fetch_optional(&self.pool)
             .await?;
         Ok(row.map(|r| r.0))
+    }
+    // Lookup Event by id
+    pub async fn lookup_event_by_event_id(&self, id: &i64) -> Result<Option<Event>> {
+        let event = sqlx::query_as::<_, Event>(
+            "SELECT e.* \
+            FROM events e \
+            WHERE id = ?",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(event)
+    }
+    // Get all Events
+    pub async fn get_all_events(&self, date: String, past: bool) -> Result<Vec<Event>, Error> {
+        let events = if !past {
+            sqlx::query_as::<_, Event>("SELECT e.* FROM events e WHERE start_date >= ?")
+                .bind(date)
+                .fetch_all(&self.pool)
+                .await?
+        } else {
+            sqlx::query_as::<_, Event>("SELECT e.* FROM events e WHERE start_date < ?")
+                .bind(date)
+                .fetch_all(&self.pool)
+                .await?
+        };
+        Ok(events)
+    }
+    // Create Event
+    pub async fn create_event(
+        &self,
+        title: &str,
+        artist: &str,
+        description: &str,
+        start_date: &str,
+    ) -> Result<i64> {
+        let row =
+            sqlx::query("INSERT INTO events (title, artist, description, start_date) VALUES (?, ?, ?, ?)")
+                .bind(title)
+                .bind(artist)
+                .bind(description)
+                .bind(start_date)
+                .execute(&self.pool)
+                .await?;
+        Ok(row.last_insert_rowid())
+    }
+    // Update Event
+    pub async fn update_event(
+        &self,
+        id: i64,
+        title: &str,
+        artist: &str,
+        description: &str,
+        start_date: &str,
+    ) -> Result<SqliteQueryResult, Error> {
+        sqlx::query(
+            "UPDATE events
+            SET title = ?, artist = ?, description = ?, start_date = ?
+            WHERE id = ?",
+        )
+        .bind(title)
+        .bind(artist)
+        .bind(description)
+        .bind(start_date.to_string())
+        .bind(id)
+        .execute(&self.pool)
+        .await
+    }
+    // Remove Event
+    pub async fn delete_event(&self, id: i64) -> Result<SqliteQueryResult, Error> {
+        sqlx::query("DELETE FROM events WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
     }
 }

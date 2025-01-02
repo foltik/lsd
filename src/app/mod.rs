@@ -1,11 +1,13 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::utils::{config::*, db::Db, email::Email};
-use tera::Tera;
+use chrono::{DateTime, Local, NaiveDateTime, Utc};
+use serde::Deserialize;
+use tera::{Tera, Value};
 
 use anyhow::Result;
 use axum::{
-    extract::{MatchedPath, Query, Request, State},
+    extract::{MatchedPath, Path, Query, Request, State},
     http::{header, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -25,10 +27,33 @@ struct AppState {
     mail: Email,
 }
 
+fn format_datetime(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
+    // Extract the input string from the value
+    let input = value.as_str().ok_or_else(|| tera::Error::msg("Value must be a string"))?;
+
+    // Parse the input string as a NaiveDateTime
+    let naive_datetime = NaiveDateTime::parse_from_str(input, "%Y-%m-%dT%H:%M")
+        .map_err(|_| tera::Error::msg("Failed to parse date"))?;
+
+    // Convert NaiveDateTime to DateTime<Utc>
+    let datetime: DateTime<Utc> = DateTime::from_naive_utc_and_offset(naive_datetime, Utc);
+
+    // Check for a custom format in arguments, or use a default
+    let format = args.get("format").and_then(Value::as_str).unwrap_or("%m.%d.%Y");
+
+    // Format the date-time
+    let formatted = datetime.format(format).to_string();
+    Ok(Value::String(formatted))
+}
+
 pub async fn build(config: Config) -> Result<Router> {
+    let mut tera_templates = Tera::new("templates/*")?;
+    // Register fiters to use while templating
+    tera_templates.register_filter("format_datetime", format_datetime);
+
     let state = AppState {
         config: config.clone(),
-        templates: Tera::new("templates/*")?,
+        templates: tera_templates,
         db: Db::connect(&config.app.db).await?,
         mail: Email::connect(config.email).await?,
     };
@@ -39,6 +64,12 @@ pub async fn build(config: Config) -> Result<Router> {
         .route("/login", get(login))
         .route("/register", get(register))
         .route("/register", post(register_form))
+        .route("/event/create", get(event_create))
+        .route("/event/create", post(create_event_form))
+        .route("/events", get(event_list))
+        .route("/event/:event_id", get(event_update))
+        .route("/event/:event_id/update", post(update_event_form))
+        .route("/event/:event_id/delete", post(deleting_event))
         .nest_service("/assets", ServeDir::new("assets"))
         .layer(
             TraceLayer::new_for_http()
@@ -151,6 +182,100 @@ async fn register_form(
         Redirect::to(&state.config.app.url),
     );
     Ok(headers.into_response())
+}
+
+#[derive(Deserialize)]
+struct EventsParam {
+    #[serde(default = "default_to_false")]
+    past: bool,
+}
+fn default_to_false() -> bool {
+    false
+}
+async fn event_list(
+    State(state): State<Arc<AppState>>,
+    Query(param): Query<EventsParam>,
+) -> AppResult<Response> {
+    let mut ctx = tera::Context::new();
+
+    let events = state
+        .db
+        .get_all_events(Local::now().format("fmt").to_string(), param.past)
+        .await?;
+    ctx.insert("events", &events);
+    let html = state.templates.render("event-list.tera.html", &ctx).unwrap();
+    Ok(Html(html).into_response())
+}
+
+async fn event_create(State(state): State<Arc<AppState>>) -> AppResult<Response> {
+    let ctx = tera::Context::new();
+    let html = state.templates.render("event-create.tera.html", &ctx).unwrap();
+    Ok(Html(html).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct EventCreateForm {
+    title: String,
+    artist: String,
+    description: String,
+    start_date: String,
+}
+async fn create_event_form(
+    State(state): State<Arc<AppState>>,
+    Form(form): Form<EventCreateForm>,
+) -> AppResult<impl IntoResponse> {
+    let _event_id = state
+        .db
+        .create_event(&form.title, &form.artist, &form.description, &form.start_date)
+        .await?;
+    Ok("Event created.")
+}
+
+async fn event_update(
+    State(state): State<Arc<AppState>>,
+    Path(event_id): Path<String>,
+) -> AppResult<Response> {
+    let mut ctx = tera::Context::new();
+    let Some(event) = state.db.lookup_event_by_event_id(&event_id.parse().unwrap()).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    ctx.insert("event", &event);
+
+    let html = state.templates.render("event.tera.html", &ctx).unwrap();
+    Ok(Html(html).into_response())
+}
+
+#[derive(serde::Deserialize)]
+struct EventUpdateForm {
+    title: String,
+    artist: String,
+    description: String,
+    start_date: String,
+}
+async fn update_event_form(
+    State(state): State<Arc<AppState>>,
+    Path(event_id): Path<String>,
+    Form(form): Form<EventUpdateForm>,
+) -> AppResult<impl IntoResponse> {
+    state
+        .db
+        .update_event(
+            event_id.parse().unwrap(),
+            &form.title,
+            &form.artist,
+            &form.description,
+            &form.start_date,
+        )
+        .await?;
+    Ok("Event updated.")
+}
+
+async fn deleting_event(
+    State(state): State<Arc<AppState>>,
+    Path(event_id): Path<String>,
+) -> AppResult<impl IntoResponse> {
+    state.db.delete_event(event_id.parse().unwrap()).await?;
+    Ok("Event deleted.")
 }
 
 struct AppError(anyhow::Error);
