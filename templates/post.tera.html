@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ post.title }}</title>
+    </head>
+    <body>
+        <style>
+            body {
+                background-color: #000;
+                color: #fff;
+                font-family: Arial, sans-serif;
+                margin: 15px;
+                padding: 0;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+            }
+        </style>
+        <h1>{{ post.title }}</h1>
+        <h2>By: {{ post.author }}</h2>
+        <h3>Date: {{ post.created_at }}</h3>
+        <h3>Updated: {{ post.updated_at }}</h3>
+
+        <main>{{ post.body | safe }}</main>
+    </body>
+</html>

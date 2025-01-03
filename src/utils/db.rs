@@ -1,16 +1,22 @@
 use std::path::Path;
 
 use anyhow::Result;
+use chrono::{DateTime, Local};
 use lettre::message::Mailbox;
 use rand::{rngs::OsRng, Rng as _};
 use sqlx::{migrate::MigrateDatabase, sqlite::SqliteQueryResult, Error, Sqlite, SqlitePool};
 
+// +--------------------------------------------------------------------------------+
+// | TODO: Separate the individual types into a `models/` module to reduce clutter. |
+// +--------------------------------------------------------------------------------+
+
+/// Database client.
 #[derive(Clone)]
 pub struct Db {
     pool: SqlitePool,
 }
 
-#[derive(sqlx::FromRow, serde::Serialize)]
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct User {
     pub id: i64,
     pub first_name: String,
@@ -19,15 +25,26 @@ pub struct User {
     pub created_at: String,
 }
 
-#[derive(sqlx::FromRow, serde::Serialize)]
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Event {
     pub id: i64,
     pub title: String,
     pub artist: String,
     pub description: String,
-    pub start_date: String,
-    pub created_at: String,
-    pub updated_at: String,
+    pub start_date: DateTime<Local>,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
+}
+
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+pub struct Post {
+    pub id: i64,
+    pub title: String,
+    pub slug: String,
+    pub author: String,
+    pub body: String,
+    pub created_at: DateTime<Local>,
+    pub updated_at: DateTime<Local>,
 }
 
 impl Db {
@@ -86,6 +103,20 @@ impl Db {
                 artist TEXT NOT NULL, \
                 description TEXT NOT NULL, \
                 start_date TIMESTAMP NOT NULL, \
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS posts ( \
+                id INTEGER PRIMARY KEY NOT NULL, \
+                title TEXT NOT NULL, \
+                slug TEXT NOT NULL, \
+                author TEXT NOT NULL, \
+                body TEXT NOT NULL, \
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
             )",
@@ -179,7 +210,7 @@ impl Db {
         Ok(event)
     }
     // Get all Events
-    pub async fn get_all_events(&self, date: String, past: bool) -> Result<Vec<Event>, Error> {
+    pub async fn get_all_events(&self, date: DateTime<Local>, past: bool) -> Result<Vec<Event>, Error> {
         let events = if !past {
             sqlx::query_as::<_, Event>("SELECT e.* FROM events e WHERE start_date >= ?")
                 .bind(date)
@@ -239,5 +270,23 @@ impl Db {
             .bind(id)
             .execute(&self.pool)
             .await
+    }
+
+    pub async fn create_post(&self, title: &str, slug: &str, author: &str, body: &str) -> Result<i64> {
+        let row = sqlx::query("INSERT INTO posts (title, slug, author, body) VALUES (?, ?, ?, ?)")
+            .bind(title)
+            .bind(slug)
+            .bind(author)
+            .bind(body)
+            .execute(&self.pool)
+            .await?;
+        Ok(row.last_insert_rowid())
+    }
+    pub async fn lookup_post_by_slug(&self, slug: &str) -> Result<Option<Post>> {
+        let row = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE slug = ?")
+            .bind(slug)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row)
     }
 }

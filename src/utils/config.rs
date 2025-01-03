@@ -3,6 +3,7 @@ use lettre::message::Mailbox;
 use std::{net::SocketAddr, path::PathBuf};
 
 impl Config {
+    /// Load a `.toml` file from disk and parse it as a [`Config`].
     pub async fn load(file: &str) -> Result<Config> {
         async fn load_inner(file: &str) -> Result<Config> {
             let contents = tokio::fs::read_to_string(file).await?;
@@ -12,6 +13,7 @@ impl Config {
     }
 }
 
+/// Bag of configuration values, parsed from a TOML file with serde.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
     pub app: AppConfig,
@@ -20,6 +22,7 @@ pub struct Config {
     pub email: EmailConfig,
 }
 
+/// Webapp configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct AppConfig {
     pub url: String,

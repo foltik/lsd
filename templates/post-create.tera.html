@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="/assets/favicon.ico" rel="icon" type="image/x-icon" />
+        <title>WLSD</title>
+    </head>
+    <body>
+        <style>
+            body {
+                background-color: #000;
+                color: #fff;
+                font-family: Arial, sans-serif;
+                margin: 15px;
+                padding: 0;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+            }
+        </style>
+        <main>
+            <h1>Let's Create a Post</h1>
+            <form action="/post" method="post">
+                <label for="title">Title</label>
+                <input type="text" name="title" />
+
+                <label for="author">Slug</label>
+                <input type="text" name="slug" />
+
+                <label for="author">Author</label>
+                <input type="text" name="author" />
+
+                <label for="body">Body</label>
+                <textarea name="description"></textarea>
+
+                <button type="submit">Create</button>
+            </form>
+        </main>
+    </body>
+</html>

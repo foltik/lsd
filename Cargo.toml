@@ -10,7 +10,7 @@ axum-server = { version = "0.7", features = ["tls-rustls"] }
 axum-extra = { version = "0.9", features = ["cookie"] }
 tower-http = { version = "0.6", features = ["fs", "trace"] }
 tera = "1"
-sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
 lettre = { version = "0.11", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1", "tokio1-rustls-tls", "serde"] }
 tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "macros"] }
 rustls = "0.23"
@@ -23,7 +23,7 @@ futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 rand = "0.8"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 
 # Add a little optimization to debug builds
 [profile.dev]
