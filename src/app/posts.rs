@@ -5,7 +5,7 @@ use axum::{
     routing::get,
     Form,
 };
-use chrono::Local;
+use chrono::Utc;
 
 use crate::db::post::{Post, UpdatePost};
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
@@ -42,8 +42,8 @@ async fn create_post_page(State(state): State<SharedAppState>) -> AppResult<Resp
             url: "".into(),
             author: "".into(),
             content: "".into(),
-            created_at: Local::now(),
-            updated_at: Local::now(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
         },
     );
 

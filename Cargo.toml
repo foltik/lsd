@@ -24,6 +24,7 @@ serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 rand = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = { version = "0.10", features = ["serde"] }
 
 # Add a little optimization to debug builds
 [profile.dev]

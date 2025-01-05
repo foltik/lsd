@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use rand::{rngs::OsRng, Rng};
 
 use super::Db;
@@ -10,7 +10,7 @@ pub struct SessionToken {
     pub id: i64,
     pub user_id: i64,
     pub token: String,
-    pub created_at: DateTime<Local>,
+    pub created_at: DateTime<Utc>,
 }
 
 /// A token which can be used to login or register.
@@ -19,7 +19,7 @@ pub struct LoginToken {
     pub id: i64,
     pub email: String,
     pub token: String,
-    pub created_at: DateTime<Local>,
+    pub created_at: DateTime<Utc>,
 }
 
 impl SessionToken {

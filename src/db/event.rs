@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 
 use super::Db;
 
@@ -11,11 +11,11 @@ pub struct Event {
     pub title: String,
     pub artist: String,
     pub description: String,
-    pub start_date: DateTime<Local>,
+    pub start_date: DateTime<Utc>,
     // TODO: Add an end. Maybe rename to just `start` and `end`.
-    // pub end_date: DateTime<Local>,
-    pub created_at: DateTime<Local>,
-    pub updated_at: DateTime<Local>,
+    // pub end_date: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(serde::Deserialize)]
@@ -23,7 +23,7 @@ pub struct UpdateEvent {
     pub title: String,
     pub artist: String,
     pub description: String,
-    pub start_date: DateTime<Local>,
+    pub start_date: DateTime<Utc>,
 }
 
 impl Event {
