@@ -4,7 +4,8 @@ use std::sync::Arc;
 use tera::Tera;
 use tower_http::services::ServeDir;
 
-use crate::utils::{self, config::*, db::Db, email::Email};
+use crate::db::Db;
+use crate::utils::{self, config::*, email::Email};
 
 mod auth;
 mod events;
@@ -24,7 +25,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let state = AppState {
         config: config.clone(),
         templates: utils::tera::templates()?,
-        db: Db::connect(&config.app.db).await?,
+        db: crate::db::init(&config.app.db).await?,
         mail: Email::connect(config.email).await?,
     };
 
