@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 
 use super::Db;
 
@@ -10,8 +10,8 @@ pub struct Post {
     pub url: String,
     pub author: String,
     pub content: String,
-    pub created_at: DateTime<Local>,
-    pub updated_at: DateTime<Local>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(serde::Deserialize)]

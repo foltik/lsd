@@ -5,7 +5,7 @@ use axum::{
     routing::get,
     Form,
 };
-use chrono::Local;
+use chrono::Utc;
 
 use crate::db::event::{Event, UpdateEvent};
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
@@ -27,7 +27,7 @@ async fn list_events_page(
     State(state): State<SharedAppState>,
     Query(query): Query<ListEventsQuery>,
 ) -> AppResult<Response> {
-    let now = Local::now();
+    let now = Utc::now();
     let past = query.past.unwrap_or(false);
 
     let events = Event::list(&state.db)

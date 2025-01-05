@@ -1,6 +1,9 @@
 [app]
 url = "https://localhost:4433"
-db = "db.sqlite"
+tz = "America/New_York"
+
+[db]
+file = "db.sqlite"
 
 [net]
 http_addr = "[::]:8080"
