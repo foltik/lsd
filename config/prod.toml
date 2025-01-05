@@ -1,7 +1,9 @@
 [app]
 url = "https://beta.lightandsound.design"
 tz = "America/New_York"
-db = "db.sqlite"
+
+[db]
+file = "db.sqlite"
 
 [net]
 http_addr = "[::]:80"
