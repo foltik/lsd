@@ -1,0 +1,160 @@
+{% import "page.tera.html" as page %}
+{{ page::start(title="Edit post - " ~ post.title) }}
+<script src="/assets/markdown.js"></script>
+<style>
+    .container {
+        display: flex;
+        flex: 1;
+        height: calc(100vh - 80px);
+    }
+    .editor {
+        flex: 1;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--color-border);
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+            textarea {
+                flex-grow: 1;
+            }
+        }
+        .field.content {
+            flex-grow: 1;
+        }
+        .url {
+            display: inline-flex;
+            align-items: center;
+
+            width: 100%;
+            padding: 0.5rem;
+            background-color: var(--color-bg-alt);
+            border: 1px solid var(--color-border);
+
+            span {
+                color: var(--color-text-muted);
+                white-space: nowrap;
+                font-family: monospace;
+            }
+            input[type="text"] {
+                border: none;
+                padding: 0;
+                background: transparent;
+            }
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            justify-content: flex-start;
+
+            button[type="submit"] {
+                margin-left: auto;
+            }
+        }
+    }
+    .preview {
+        flex: 1;
+        overflow-y: auto;
+    }
+</style>
+<div class="container">
+    <form class="editor" method="POST" action="/p/{{ post.url }}/edit">
+        {% if post.id != 0 %}
+        <input type="hidden" name="id" value="{{ post.id }}">
+        {% endif %}
+        <div class="field">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{ post.title }}" oninput="updatePreview()">
+        </div>
+        <div class="field">
+            <label for="url">URL</label>
+            <div class="url">
+                <span>https://lightandsound.design/p/</span>
+                <input type="text" id="url" name="url" value="{{ post.url }}">
+            </div>
+        </div>
+        <div class="field">
+            <label for="author">Author</label>
+            <input type="text" id="author" name="author" value="{{ post.author }}">
+        </div>
+        <div class="field content">
+            <label for="content">Content</label>
+            <textarea id="content" name="content" oninput="updatePreview()">{{ post.content }}</textarea>
+        </div>
+        <div class="toolbar">
+            <button type="button" onclick="insertMarkdown('link')">Link</button>
+            <button type="button" onclick="insertMarkdown('image')">Image</button>
+            <button type="button" onclick="insertMarkdown('quote')">Quote</button>
+            <button type="submit">Submit Changes</button>
+        </div>
+    </form>
+    <div class="preview">
+        <article>
+            <h1 class="title" id="preview-title">{{ post.title }}</h1>
+            <time class="date" datetime="{{ post.created_at }}">{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time>
+        </div>
+    </div>
+</div>
+<script>
+    // Populate the first part of the url input with the page's base URL
+    document.querySelector('.url span').innerHTML = window.location.origin + '/p/';
+
+    // Re-render markdown to HTML when the content changes
+    function updatePreview() {
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+
+        const titleEl = document.querySelector('.title');
+        const dateEl = document.querySelector('.date');
+
+        document.querySelector('title').textContent = `Edit post - ${title}`;
+        titleEl.textContent = document.getElementById('title').value;
+        while (dateEl.nextSibling) {
+            dateEl.nextSibling.remove();
+        }
+        // markdownToHtml is defined in assets/markdown.js
+        dateEl.insertAdjacentHTML('afterend', markdownToHtml(content));
+    }
+    updatePreview();
+
+    // Helpers for inserting markdown
+    function insertMarkdown(type) {
+        let insert = '';
+        switch(type) {
+          case 'link':
+              insert = '[link text](https://link-url)';
+              break;
+            case 'image':
+                insert = '\n![alt text](https://image-url)\n';
+                break;
+            case 'quote':
+                insert = '\n> Quote\n';
+                break;
+        }
+
+        const content = document.getElementById('content');
+        const pos = content.selectionStart;
+        content.value = content.value.substring(0, pos) + insert + content.value.substring(pos);
+        updatePreview();
+    }
+
+    // Warn before leaving the page if there are unsaved changes
+    let modified = false;
+    document.querySelectorAll('input, textarea')
+      .forEach(e => e.addEventListener('input', () => modified = true));
+    document.getElementById('post-form')
+      .addEventListener('submit', () => modified = false);
+    window.addEventListener('beforeunload', (e) => {
+        if (modified) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+</script>
+{{ page::end() }}
