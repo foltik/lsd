@@ -40,9 +40,9 @@ pub struct Event {
 pub struct Post {
     pub id: i64,
     pub title: String,
-    pub slug: String,
+    pub url: String,
     pub author: String,
-    pub body: String,
+    pub content: String,
     pub created_at: DateTime<Local>,
     pub updated_at: DateTime<Local>,
 }
@@ -114,9 +114,9 @@ impl Db {
             "CREATE TABLE IF NOT EXISTS posts ( \
                 id INTEGER PRIMARY KEY NOT NULL, \
                 title TEXT NOT NULL, \
-                slug TEXT NOT NULL, \
+                url TEXT NOT NULL, \
                 author TEXT NOT NULL, \
-                body TEXT NOT NULL, \
+                content TEXT NOT NULL, \
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
             )",
@@ -272,21 +272,47 @@ impl Db {
             .await
     }
 
-    pub async fn create_post(&self, title: &str, slug: &str, author: &str, body: &str) -> Result<i64> {
-        let row = sqlx::query("INSERT INTO posts (title, slug, author, body) VALUES (?, ?, ?, ?)")
+    pub async fn create_post(&self, title: &str, url: &str, author: &str, content: &str) -> Result<i64> {
+        let row = sqlx::query("INSERT INTO posts (title, url, author, content) VALUES (?, ?, ?, ?)")
             .bind(title)
-            .bind(slug)
+            .bind(url)
             .bind(author)
-            .bind(body)
+            .bind(content)
             .execute(&self.pool)
             .await?;
         Ok(row.last_insert_rowid())
     }
-    pub async fn lookup_post_by_slug(&self, slug: &str) -> Result<Option<Post>> {
-        let row = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE slug = ?")
-            .bind(slug)
+    pub async fn lookup_post_by_url(&self, url: &str) -> Result<Option<Post>> {
+        let row = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE url = ?")
+            .bind(url)
             .fetch_optional(&self.pool)
             .await?;
         Ok(row)
+    }
+
+    pub async fn update_post(
+        &self,
+        id: &str,
+        title: &str,
+        url: &str,
+        author: &str,
+        content: &str,
+    ) -> Result<SqliteQueryResult, Error> {
+        sqlx::query(
+            "UPDATE posts
+             SET title = ?,
+                 url = ?,
+                 author = ?,
+                 content = ?,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?",
+        )
+        .bind(title)
+        .bind(url)
+        .bind(author)
+        .bind(content)
+        .bind(id)
+        .execute(&self.pool)
+        .await
     }
 }

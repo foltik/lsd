@@ -1,5 +1,5 @@
 use anyhow::Result;
-use axum::Router;
+use axum::{response::Redirect, routing::get, Router};
 use std::sync::Arc;
 use tera::Tera;
 use tower_http::services::ServeDir;
@@ -34,7 +34,11 @@ pub async fn build(config: Config) -> Result<Router> {
     let r = posts::register_routes(r);
     let r = events::register_routes(r);
 
-    let r = r.nest_service("/assets", ServeDir::new("assets"));
+    let r = r
+        .nest_service("/assets", ServeDir::new("assets"))
+        // For non-HTML pages without a <link rel="icon">, this is where the browser looks
+        .route("/favicon.ico", get(|| async { Redirect::to("/assets/favicon.ico") }));
+
     let r = utils::tracing::register(r);
 
     let r = r.with_state(Arc::new(state));
