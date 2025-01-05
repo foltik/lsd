@@ -8,6 +8,7 @@ fi
 ssh $1 <<'EOS'
 # update
 sudo yum update -y
+sudo timedatectl set-timezone America/New_York
 
 # create a user
 if ! id lsd &>/dev/null; then
