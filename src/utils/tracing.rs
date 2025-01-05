@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use axum::{extract::MatchedPath, http::Request, response::Response};
+use axum::{http::Request, response::Response};
 use tower_http::trace::TraceLayer;
 use tracing::Span;
 
@@ -13,12 +13,13 @@ pub fn register(router: AppRouter) -> AppRouter {
         TraceLayer::new_for_http()
             // Start a `tracing::span` for each request.
             .make_span_with(|req: &Request<_>| {
-                let path = match req.extensions().get::<MatchedPath>() {
-                    Some(path) => path.as_str(),
-                    None => req.uri().path(),
-                };
                 // Fields populated later must be initialized as `tracing::field::Empty`.
-                tracing::info_span!("request", method = ?req.method(), path, status = tracing::field::Empty)
+                tracing::info_span!(
+                    "request",
+                    method = ?req.method(),
+                    path = req.uri().path(),
+                    status = tracing::field::Empty
+                )
             })
             // Add some extra fields once the response is generated.
             .on_response(|res: &Response, latency: Duration, span: &Span| {
