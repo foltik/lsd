@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 
 use super::Db;
 
@@ -9,7 +9,7 @@ pub struct User {
     pub first_name: String,
     pub last_name: String,
     pub email: String,
-    pub created_at: DateTime<Local>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, serde::Deserialize)]

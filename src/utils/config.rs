@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use chrono_tz::Tz;
 use lettre::message::Mailbox;
 use std::{net::SocketAddr, path::PathBuf};
 
@@ -13,10 +14,11 @@ impl Config {
     }
 }
 
-/// Bag of configuration values, parsed from a TOML file with serde.
+/// Bag of app configuration values, parsed from a TOML file with serde.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Config {
     pub app: AppConfig,
+    pub db: DbConfig,
     pub net: NetConfig,
     pub acme: Option<AcmeConfig>,
     pub email: EmailConfig,
@@ -25,8 +27,17 @@ pub struct Config {
 /// Webapp configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct AppConfig {
+    /// Public facing URL, e.g. `https://site.com`.
     pub url: String,
-    pub db: PathBuf,
+    /// Local timezone.
+    pub tz: Tz,
+}
+
+/// Database configuration.
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct DbConfig {
+    /// Path to sqlite3 database file.
+    pub file: PathBuf,
 }
 
 /// Networking configuration.

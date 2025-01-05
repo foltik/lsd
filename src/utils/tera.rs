@@ -1,29 +1,38 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use tera::{Tera, Value};
 
+use crate::Config;
+
 /// Initialize the [`Tera`] template engine, including our custom filter functions.
-pub fn templates() -> Result<Tera> {
+pub fn templates(config: &Config) -> Result<Tera> {
     let mut tera = Tera::new("templates/*")?;
-    register_filter(&mut tera, "format_datetime", format_datetime);
+
+    // Format a datetime with a [`strftime`] format string.
+    // Also converts from UTC to the app's local timezone.
+    //
+    // Usage: `{{ date | format_datetime(format="%m.%d.%Y") }}`
+    //
+    // [`strftime`]: https://devhints.io/strftime
+    let tz = config.app.tz;
+    register_filter(
+        &mut tera,
+        "format_datetime",
+        move |date: &Value, args: &HashMap<String, Value>| {
+            let format = args.get("format").context("missing arg=`format`")?;
+            let format = format.as_str().context("arg=`format` must be a string")?;
+
+            let date: &str = date.as_str().with_context(|| format!("value={date:?} must be a string"))?;
+            let date: DateTime<Utc> = date.parse().context("parsing date")?;
+            let local = date.with_timezone(&tz);
+
+            let formatted = local.format(format).to_string();
+            Ok(Value::String(formatted))
+        },
+    );
+
     Ok(tera)
-}
-
-/// Format a datetime with a [`strftime`] format string.
-///
-/// Usage: `{{ date | format_datetime(format="%m.%d.%Y") }}`
-///
-/// [`strftime`]: https://devhints.io/strftime
-fn format_datetime(date: &Value, args: &HashMap<String, Value>) -> Result<Value> {
-    let format = args.get("format").context("missing arg=`format`")?;
-    let format = format.as_str().context("arg=`format` must be a string")?;
-
-    let date: &str = date.as_str().with_context(|| format!("value={date:?} must be a string"))?;
-    let date: DateTime<Local> = date.parse().context("parsing date")?;
-
-    let formatted = date.format(format).to_string();
-    Ok(Value::String(formatted))
 }
 
 /// Register a tera filter function.

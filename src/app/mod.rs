@@ -24,8 +24,8 @@ pub struct AppState {
 pub async fn build(config: Config) -> Result<Router> {
     let state = AppState {
         config: config.clone(),
-        templates: utils::tera::templates()?,
-        db: crate::db::init(&config.app.db).await?,
+        templates: utils::tera::templates(&config)?,
+        db: crate::db::init(&config.db.file).await?,
         mail: Email::connect(config.email).await?,
     };
 
