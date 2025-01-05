@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 
 mod app;
+mod db;
 mod utils;
 
 use axum::{handler::HandlerWithoutStateExt, response::Redirect};

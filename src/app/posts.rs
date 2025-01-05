@@ -7,10 +7,8 @@ use axum::{
 };
 use chrono::Local;
 
-use crate::utils::{
-    db::Post,
-    types::{AppResult, AppRouter, SharedAppState},
-};
+use crate::db::post::{Post, UpdatePost};
+use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 
 /// Add all `post` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
@@ -21,11 +19,8 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display a single post.
-async fn view_post_page(
-    State(state): State<SharedAppState>,
-    Path(post): Path<String>,
-) -> AppResult<Response> {
-    let Some(post) = state.db.lookup_post_by_url(&post).await? else {
+async fn view_post_page(State(state): State<SharedAppState>, Path(url): Path<String>) -> AppResult<Response> {
+    let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
@@ -57,11 +52,8 @@ async fn create_post_page(State(state): State<SharedAppState>) -> AppResult<Resp
 }
 
 /// Display the form to create a new post.
-async fn edit_post_page(
-    State(state): State<SharedAppState>,
-    Path(post): Path<String>,
-) -> AppResult<Response> {
-    let Some(post) = state.db.lookup_post_by_url(&post).await? else {
+async fn edit_post_page(State(state): State<SharedAppState>, Path(url): Path<String>) -> AppResult<Response> {
+    let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
@@ -78,26 +70,16 @@ async fn edit_post_form(
     Form(form): Form<EditPost>,
 ) -> AppResult<impl IntoResponse> {
     match form.id {
+        Some(id) => Post::update(&state.db, id, &form.post).await?,
         None => {
-            state
-                .db
-                .create_post(&form.title, &form.url, &form.author, &form.content)
-                .await?;
-        }
-        Some(id) => {
-            state
-                .db
-                .update_post(&id, &form.title, &form.url, &form.author, &form.content)
-                .await?;
+            Post::create(&state.db, &form.post).await?;
         }
     }
-    Ok(Redirect::to(&format!("{}/p/{}", state.config.app.url, &form.url)))
+    Ok(Redirect::to(&format!("{}/p/{}", state.config.app.url, &form.post.url)))
 }
 #[derive(serde::Deserialize)]
 struct EditPost {
-    id: Option<String>,
-    title: String,
-    url: String,
-    author: String,
-    content: String,
+    id: Option<i64>,
+    #[serde(flatten)]
+    post: UpdatePost,
 }

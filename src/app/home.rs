@@ -6,6 +6,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 
+use crate::db::user::User;
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 
 /// Add all `home` routes to the router.
@@ -19,7 +20,7 @@ async fn home_page(State(state): State<SharedAppState>, cookies: CookieJar) -> A
     ctx.insert("message", "Hello, world!");
 
     if let Some(session_token) = cookies.get("session") {
-        let Some(user) = state.db.lookup_user_from_session_token(session_token.value()).await? else {
+        let Some(user) = User::lookup_by_session_token(&state.db, session_token.value()).await? else {
             return Ok(StatusCode::FORBIDDEN.into_response());
         };
         ctx.insert("user", &user);
