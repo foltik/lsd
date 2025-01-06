@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 
 use super::Db;
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+#[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
 pub struct User {
     pub id: i64,
     pub first_name: String,
