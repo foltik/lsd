@@ -14,8 +14,8 @@ use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 pub fn register_routes(router: AppRouter) -> AppRouter {
     router
         .route("/p/new", get(create_post_page))
-        .route("/p/:post", get(view_post_page))
-        .route("/p/:post/edit", get(edit_post_page).post(edit_post_form))
+        .route("/p/{url}", get(view_post_page))
+        .route("/p/{url}/edit", get(edit_post_page).post(edit_post_form))
 }
 
 /// Display a single post.
