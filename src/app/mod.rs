@@ -22,27 +22,26 @@ pub struct AppState {
 }
 
 pub async fn build(config: Config) -> Result<Router> {
-    let state = AppState {
+    let state = Arc::new(AppState {
         config: config.clone(),
         templates: utils::tera::templates(&config)?,
         db: crate::db::init(&config.db.file).await?,
         mail: Email::connect(config.email).await?,
-    };
+    });
 
-    let r = Router::new();
-    let r = home::register_routes(r);
-    let r = auth::register_routes(r);
-    let r = posts::register_routes(r);
-    let r = events::register_routes(r);
-
-    let r = r
+    let r = Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
         // For non-HTML pages without a <link rel="icon">, this is where the browser looks
         .route("/favicon.ico", get(|| async { Redirect::to("/assets/favicon.ico") }));
 
-    let r = utils::tracing::register(r);
+    let r = home::register_routes(r);
+    let r = posts::register_routes(r);
+    let r = events::register_routes(r);
 
-    let r = r.with_state(Arc::new(state));
+    let r = auth::register(r, Arc::clone(&state));
+
+    let r = utils::tracing::register(r);
+    let r = r.with_state(state);
 
     Ok(r)
 }

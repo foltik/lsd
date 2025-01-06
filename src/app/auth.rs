@@ -15,23 +15,54 @@
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
 use axum::{
-    extract::{Query, State},
-    http::{header, StatusCode},
+    extract::{OptionalFromRequestParts, Query, Request, State},
+    http::{header, request::Parts, StatusCode},
+    middleware::Next,
     response::{Html, IntoResponse, Redirect, Response},
     routing::post,
     Form,
 };
+use axum_extra::extract::CookieJar;
 use lettre::message::Mailbox;
+use std::convert::Infallible;
 
 use crate::db::token::{LoginToken, SessionToken};
 use crate::db::user::{UpdateUser, User};
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 
 /// Add all auth routes to the router.
-pub fn register_routes(router: AppRouter) -> AppRouter {
+pub fn register(router: AppRouter, state: SharedAppState) -> AppRouter {
     router
+        .layer(axum::middleware::from_fn_with_state(state, auth_middleware))
         .route("/login", post(login_form).get(login_link))
         .route("/register", post(register_form).get(register_link))
+}
+
+/// Middleware to lookup add a `User` to the request if a session token is present.
+pub async fn auth_middleware(
+    State(state): State<SharedAppState>,
+    mut cookies: CookieJar,
+    mut request: Request,
+    next: Next,
+) -> AppResult<(CookieJar, Response)> {
+    if let Some(token) = cookies.get("session") {
+        match User::lookup_by_session_token(&state.db, token.value()).await? {
+            Some(user) => {
+                request.extensions_mut().insert(user);
+            }
+            None => cookies = cookies.remove("session"),
+        }
+    }
+    let response = next.run(request).await;
+    Ok((cookies, response))
+}
+
+/// Enable extracting an `Option<User>` in a handler.
+impl<S: Send + Sync> OptionalFromRequestParts<S> for User {
+    type Rejection = Infallible;
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Option<Self>, Self::Rejection> {
+        Ok(parts.extensions.get::<User>().cloned())
+    }
 }
 
 /// Process a login form and send either a login or registration link via email.
@@ -40,18 +71,26 @@ async fn login_form(
     Form(form): Form<LoginForm>,
 ) -> AppResult<impl IntoResponse> {
     let email = form.email.email.to_string();
-
     let login_token = LoginToken::create(&state.db, &email).await?;
 
-    let url = &state.config.app.url;
-    let url = match User::lookup_by_email(&state.db, &email).await? {
-        Some(_) => format!("{url}/login?token={login_token}"),
-        None => format!("{url}/register?token={login_token}"),
+    let domain = &state.config.app.domain;
+    let base_url = &state.config.app.url;
+    let msg = state.mail.builder().to(form.email);
+
+    let msg = match User::lookup_by_email(&state.db, &email).await? {
+        Some(_) => {
+            let url = format!("{base_url}/login?token={login_token}");
+            msg.subject(format!("Login to {domain}"))
+                .body(format!("Click here to login: {url}"))?
+        }
+        None => {
+            let url = format!("{base_url}/register?token={login_token}");
+            msg.subject(format!("Register at {domain}"))
+                .body(format!("Click here to complete your registration: {url}"))?
+        }
     };
 
-    let msg = state.mail.builder().to(form.email).body(url)?;
     state.mail.send(msg).await?;
-
     Ok("Check your email!")
 }
 #[derive(serde::Deserialize)]
