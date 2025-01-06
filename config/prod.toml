@@ -1,4 +1,5 @@
 [app]
+domain = "beta.lightandsound.design"
 url = "https://beta.lightandsound.design"
 tz = "America/New_York"
 
@@ -11,10 +12,12 @@ https_addr = "[::]:443"
 
 [acme]
 domain = "beta.lightandsound.design"
-email = "studio249@foltz.io"
+email = "studio@beta.lightandsound.design"
 dir = "acme"
 prod = true
 
 [email]
-smtp_addr = "smtp://localhost:1025"
-from = "WLSD <studio@lightandsoun.design>"
+smtp_addr = "smtp://email-smtp.us-east-1.amazonaws.com?tls=required"
+smtp_username = "$SMTP_USERNAME"
+smtp_password = "$SMTP_PASSWORD"
+from = "Light and Sound Design <studio@beta.lightandsound.design>"

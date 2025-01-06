@@ -9,6 +9,8 @@ cargo build --release --target aarch64-unknown-linux-gnu
 
 ls -l target/aarch64-unknown-linux-gnu/
 ls -l target/aarch64-unknown-linux-gnu/*
+envsubst < config/prod.toml > config/prod.toml.subst
+mv config/prod.toml.subst config/prod.toml
 rsync --rsync-path="sudo rsync" -Pavzr --delete assets templates config target/aarch64-unknown-linux-gnu/release/lsd $1:/home/lsd/
 ssh $1 <<'EOS'
 sudo setcap 'cap_net_bind_service=+ep' /home/lsd/lsd

@@ -1,4 +1,5 @@
 [app]
+domain = "localhost"
 url = "https://localhost:4433"
 tz = "America/New_York"
 
@@ -11,4 +12,4 @@ https_addr = "[::]:4433"
 
 [email]
 smtp_addr = "smtp://localhost:1025"
-from = "WLSD <studio@lightandsound.design>"
+from = "Light and Sound Design <studio@beta.lightandsound.design>"

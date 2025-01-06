@@ -27,6 +27,8 @@ pub struct Config {
 /// Webapp configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct AppConfig {
+    /// Public facing domain, e.g. `site.com`.
+    pub domain: String,
     /// Public facing URL, e.g. `https://site.com`.
     pub url: String,
     /// Local timezone.
@@ -67,6 +69,10 @@ pub struct AcmeConfig {
 pub struct EmailConfig {
     /// SMTP address, starting with `smtp://`.
     pub smtp_addr: String,
+    /// SMTP username.
+    pub smtp_username: Option<String>,
+    /// SMTP password.
+    pub smtp_password: Option<String>,
     /// Mailbox to send email from.
     pub from: Mailbox,
 }

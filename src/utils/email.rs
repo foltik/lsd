@@ -1,6 +1,7 @@
 use anyhow::Result;
 use lettre::{
     message::{header::ContentType, Mailbox, MessageBuilder},
+    transport::smtp::authentication::Credentials,
     Message, SmtpTransport, Transport,
 };
 
@@ -20,7 +21,11 @@ impl Email {
         // `lettre` requires a default provider to be installed to use SMTPS.
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-        let transport = SmtpTransport::from_url(&config.smtp_addr)?.build();
+        let mut transport = SmtpTransport::from_url(&config.smtp_addr)?;
+        if let (Some(username), Some(password)) = (config.smtp_username, config.smtp_password) {
+            transport = transport.credentials(Credentials::new(username, password));
+        }
+        let transport = transport.build();
 
         Ok(Self { transport, from: config.from })
     }
