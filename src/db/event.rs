@@ -6,7 +6,7 @@ use super::Db;
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Event {
     pub id: i64,
-    // TODO: Add a pretty url field, for `https://site/e/:url`.
+    // TODO: Add a pretty url field, for `https://site/e/{url}`.
     // pub url: String,
     pub title: String,
     pub artist: String,

@@ -16,8 +16,8 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
         .route("/events", get(list_events_page))
         .route("/e/new", get(create_event_page).post(create_event_form))
         .route(
-            "/e/:event_id",
-            // TODO: Move to a separate `/e/:event_id/edit` route, and add a `/e/:event_id` to just view the event.
+            "/e/{id}",
+            // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
             get(update_event_page).post(update_event_form).delete(delete_event),
         )
 }
