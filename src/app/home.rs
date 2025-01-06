@@ -1,10 +1,8 @@
 use axum::{
     extract::State,
-    http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
 };
-use axum_extra::extract::CookieJar;
 
 use crate::db::user::User;
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
@@ -15,14 +13,10 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display the front page.
-async fn home_page(State(state): State<SharedAppState>, cookies: CookieJar) -> AppResult<Response> {
+async fn home_page(State(state): State<SharedAppState>, user: Option<User>) -> AppResult<Response> {
     let mut ctx = tera::Context::new();
     ctx.insert("message", "Hello, world!");
-
-    if let Some(session_token) = cookies.get("session") {
-        let Some(user) = User::lookup_by_session_token(&state.db, session_token.value()).await? else {
-            return Ok(StatusCode::FORBIDDEN.into_response());
-        };
+    if let Some(user) = user {
         ctx.insert("user", &user);
     }
 
