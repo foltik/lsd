@@ -29,3 +29,6 @@ jobs:
 
       - name: deploy
         run: scripts/deploy.sh ec2-user@beta.lightandsound.design
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
