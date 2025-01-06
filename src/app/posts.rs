@@ -42,6 +42,7 @@ async fn create_post_page(State(state): State<SharedAppState>) -> AppResult<Resp
             url: "".into(),
             author: "".into(),
             content: "".into(),
+            content_rendered: "".into(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         },

@@ -87,6 +87,7 @@
             <label for="content">Content</label>
             <textarea id="content" name="content" oninput="updatePreview()">{{ post.content }}</textarea>
         </div>
+        <input type="hidden" id="content_rendered" name="content_rendered" value="">
         <div class="toolbar">
             <button type="button" onclick="insertMarkdown('link')">Link</button>
             <button type="button" onclick="insertMarkdown('image')">Image</button>
@@ -114,12 +115,15 @@
         const dateEl = document.querySelector('.date');
 
         document.querySelector('title').textContent = `Edit post - ${title}`;
+        document.getElement
         titleEl.textContent = document.getElementById('title').value;
         while (dateEl.nextSibling) {
             dateEl.nextSibling.remove();
         }
         // markdownToHtml is defined in assets/markdown.js
-        dateEl.insertAdjacentHTML('afterend', markdownToHtml(content));
+        let content_rendered = markdownToHtml(content);
+        dateEl.insertAdjacentHTML('afterend', content_rendered);
+        document.getElementById('content_rendered').value = content_rendered;
     }
     updatePreview();
 

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
-use super::Db;
+use super::{migration::Migration, Db};
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Post {
@@ -10,6 +10,7 @@ pub struct Post {
     pub url: String,
     pub author: String,
     pub content: String,
+    pub content_rendered: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -20,6 +21,7 @@ pub struct UpdatePost {
     pub url: String,
     pub author: String,
     pub content: String,
+    pub content_rendered: String,
 }
 
 impl Post {
@@ -32,24 +34,39 @@ impl Post {
                 url TEXT NOT NULL, \
                 author TEXT NOT NULL, \
                 content TEXT NOT NULL, \
+                content_rendered TEXT NOT NULL, \
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
             )",
         )
         .execute(db)
         .await?;
+
+        Migration::run(db, "posts: add content_rendered", async {
+            sqlx::query("ALTER TABLE posts ADD COLUMN content_rendered TEXT NOT NULL DEFAULT ''")
+                .execute(db)
+                .await?;
+            Ok(())
+        })
+        .await?;
+
         Ok(())
     }
 
     /// Create a new post.
     pub async fn create(db: &Db, post: &UpdatePost) -> Result<i64> {
-        let row = sqlx::query("INSERT INTO posts (title, url, author, content) VALUES (?, ?, ?, ?)")
-            .bind(&post.title)
-            .bind(&post.url)
-            .bind(&post.author)
-            .bind(&post.content)
-            .execute(db)
-            .await?;
+        let row = sqlx::query(
+            "INSERT INTO posts \
+                (title, url, author, content, content_rendered) \
+                VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(&post.title)
+        .bind(&post.url)
+        .bind(&post.author)
+        .bind(&post.content)
+        .bind(&post.content_rendered)
+        .execute(db)
+        .await?;
         Ok(row.last_insert_rowid())
     }
 
@@ -61,6 +78,7 @@ impl Post {
                  url = ?,
                  author = ?,
                  content = ?,
+                 content_rendered = ?,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
         )
@@ -68,6 +86,7 @@ impl Post {
         .bind(&post.url)
         .bind(&post.author)
         .bind(&post.content)
+        .bind(&post.content_rendered)
         .bind(id)
         .execute(db)
         .await?;
