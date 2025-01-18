@@ -3,6 +3,7 @@
 
 mod app;
 mod db;
+mod jobs;
 mod prelude;
 mod utils;
 
@@ -48,8 +49,12 @@ async fn main() -> anyhow::Result<()> {
     // Make it visible to our HTML templates
     utils::templates::CONFIG.set(config.clone()).unwrap();
 
-    let app = app::build(config.clone()).await?.into_make_service();
+    let (router, state) = app::build(config.clone()).await?;
+    let app = router.into_make_service();
     tracing::info!("Live at {}", &config.app.url);
+
+    // Spawn periodic jobs
+    jobs::init(state, config.clone()).await;
 
     // Spawn an auxillary HTTP server which just redirects to HTTPS
     tokio::spawn(async move {

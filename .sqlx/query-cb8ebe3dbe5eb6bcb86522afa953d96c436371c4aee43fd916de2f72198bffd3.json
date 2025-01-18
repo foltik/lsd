@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvp_sessions\n             SET stripe_client_secret = ?, updated_at = CURRENT_TIMESTAMP\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "cb8ebe3dbe5eb6bcb86522afa953d96c436371c4aee43fd916de2f72198bffd3"
+}
