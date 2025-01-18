@@ -10,7 +10,7 @@ pub type SharedAppState = Arc<AppState>;
 pub type AppRouter = axum::Router<SharedAppState>;
 
 /// App-wide result type which automatically handles conversion to an HTTP response.
-pub struct AppError(anyhow::Error);
+pub struct AppError(pub anyhow::Error);
 pub type AppResult<T> = Result<T, AppError>;
 
 /// Convert an [`AppError`] into an HTTP response.
