@@ -5,6 +5,7 @@ use std::path::Path;
 pub type Db = SqlitePool;
 
 pub mod event;
+pub mod list;
 pub mod migration;
 pub mod post;
 pub mod token;
@@ -24,6 +25,7 @@ pub async fn init(file: &Path) -> Result<Db> {
     token::LoginToken::migrate(&db).await?;
     post::Post::migrate(&db).await?;
     event::Event::migrate(&db).await?;
+    list::List::migrate(&db).await?;
 
     Ok(db)
 }

@@ -10,6 +10,7 @@ use crate::utils::{self, config::*, email::Email};
 mod auth;
 mod events;
 mod home;
+mod lists;
 mod posts;
 
 #[derive(Clone)]
@@ -37,6 +38,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let r = home::register_routes(r);
     let r = posts::register_routes(r);
     let r = events::register_routes(r);
+    let r = lists::register_routes(r);
 
     let r = auth::register(r, Arc::clone(&state));
 

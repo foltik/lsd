@@ -9,20 +9,12 @@
     }
     .editor {
         flex: 1;
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
         border-right: 1px solid var(--color-border);
 
-        .field {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 1rem;
-            textarea {
-                flex-grow: 1;
-            }
+        textarea {
+            flex-grow: 1;
         }
-        .field.content {
+        .content {
             flex-grow: 1;
         }
         .url {
@@ -64,26 +56,26 @@
     }
 </style>
 <div class="container">
-    <form class="editor" method="POST" action="/p/{{ post.url }}/edit">
+    <form class="editor form" method="POST" action="/p/{{ post.url }}/edit">
         {% if post.id != 0 %}
         <input type="hidden" name="id" value="{{ post.id }}">
         {% endif %}
-        <div class="field">
+        <div class="form-field">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" value="{{ post.title }}" oninput="updatePreview()">
         </div>
-        <div class="field">
+        <div class="form-field">
             <label for="url">URL</label>
             <div class="url">
                 <span>https://lightandsound.design/p/</span>
                 <input type="text" id="url" name="url" value="{{ post.url }}">
             </div>
         </div>
-        <div class="field">
+        <div class="form-field">
             <label for="author">Author</label>
             <input type="text" id="author" name="author" value="{{ post.author }}">
         </div>
-        <div class="field content">
+        <div class="form-field content">
             <label for="content">Content</label>
             <textarea id="content" name="content" oninput="updatePreview()">{{ post.content }}</textarea>
         </div>
@@ -92,7 +84,7 @@
             <button type="button" onclick="insertMarkdown('link')">Link</button>
             <button type="button" onclick="insertMarkdown('image')">Image</button>
             <button type="button" onclick="insertMarkdown('quote')">Quote</button>
-            <button type="submit">Submit Changes</button>
+            <button type="submit">Save</button>
         </div>
     </form>
     <div class="preview">
@@ -108,14 +100,13 @@
 
     // Re-render markdown to HTML when the content changes
     function updatePreview() {
-        const title = document.getElementById('title').value;
-        const content = document.getElementById('content').value;
+        const title = document.querySelector('#title').value;
+        const content = document.querySelector('#content').value;
 
         const titleEl = document.querySelector('.title');
         const dateEl = document.querySelector('.date');
 
-        document.querySelector('title').textContent = `Edit post - ${title}`;
-        document.getElement
+        document.title = `Edit post - ${title}`;
         titleEl.textContent = document.getElementById('title').value;
         while (dateEl.nextSibling) {
             dateEl.nextSibling.remove();
