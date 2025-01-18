@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rsvp_sessions\n             WHERE status = 'pending'\n             AND updated_at < datetime('now', ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ffc7993c5e7353d71b73f5ff405d8664dcef73868948b811f2b6d3a76727f655"
+}

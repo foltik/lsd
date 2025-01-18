@@ -23,7 +23,7 @@ pub struct AppState {
     pub webhooks: Webhooks,
 }
 
-pub async fn build(config: Config) -> Result<axum::Router<()>> {
+pub async fn build(config: Config) -> Result<(axum::Router<()>, SharedAppState)> {
     let state = Arc::new(AppState {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
@@ -64,7 +64,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let r = crate::utils::tracing::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
     let r = r.layer(CompressionLayer::new());
-    let r = r.with_state(state);
+    let r = r.with_state(Arc::clone(&state));
 
-    Ok(r)
+    Ok((r, state))
 }

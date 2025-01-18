@@ -347,7 +347,6 @@ mod rsvp {
                 && other_session.status == RsvpSession::PENDING
             {
                 other_session.delete(&state.db).await?;
-                Rsvp::delete_for_session(&state.db, other_session.id).await?;
             }
             if let Some(status) =
                 Rsvp::lookup_conflicts(&state.db, session.event_id, session.id, email).await?
@@ -507,7 +506,6 @@ mod rsvp {
             && other_session.status == RsvpSession::PENDING
         {
             other_session.delete(&state.db).await?;
-            Rsvp::delete_for_session(&state.db, other_session.id).await?;
         }
         // Handle Rsvp conflicts.
         for ParsedAttendee { email, .. } in &attendees {
