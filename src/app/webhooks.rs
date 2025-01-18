@@ -129,15 +129,23 @@ pub mod stripe {
     ) -> AppResult<()> {
         // unwrap(): we assume Stripe won't send us bogus data. RsvpSessions are never deleted.
         let session_id: i64 = event.client_reference_id.parse().unwrap();
-        let session = RsvpSession::lookup_by_id(&state.db, session_id).await?.unwrap();
+        let Some(session) = RsvpSession::lookup_by_id(&state.db, session_id).await? else {
+            tracing::error!("Stripe[checkout.session.completed]: unknown rsvp_session={session_id}");
+            return Ok(());
+        };
 
         match event.payment_status.as_str() {
             "paid" => {
-                tracing::info!("STRIPE PAID: session={session:?} intent={:?}", event.payment_intent);
+                tracing::info!(
+                    "Stripe[checkout.session.completed]: session={session:?} intent={:?}",
+                    event.payment_intent
+                );
                 session.set_paid(&state.db, Some(&event.payment_intent)).await?
             }
             status => {
-                tracing::error!("Stripe: unknown payment_status={status} for rsvp_session={session_id}")
+                tracing::error!(
+                    "Stripe[checkout.session.completed]: unknown payment_status={status} for rsvp_session={session_id}"
+                )
             }
         }
 

@@ -31,6 +31,8 @@ impl RsvpSession {
     pub const PENDING: &str = "pending";
     pub const PAID: &str = "paid";
 
+    pub const EXPIRY_SQL: &str = "-1 minutes";
+
     pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE id = ?"#, id)
             .fetch_optional(db)
@@ -115,7 +117,8 @@ impl RsvpSession {
             "UPDATE rsvp_sessions
              SET first_name = ?,
                  last_name = ?,
-                 email = ?
+                 email = ?,
+                 updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
             first_name,
             last_name,
@@ -133,8 +136,7 @@ impl RsvpSession {
     pub async fn set_paid(&self, db: &Db, payment_intent_id: Option<&str>) -> AppResult<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
-             SET status = ?,
-                 stripe_payment_intent_id = ?
+             SET status = ?, stripe_payment_intent_id = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
             Self::PAID,
             payment_intent_id,
@@ -143,18 +145,38 @@ impl RsvpSession {
         .execute(db)
         .await?;
 
-        sqlx::query!("UPDATE rsvps SET status = ? WHERE session_id = ?", Self::PAID, self.id)
-            .execute(db)
-            .await?;
+        sqlx::query!(
+            "UPDATE rsvps
+             SET status = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE session_id = ?",
+            Self::PAID,
+            self.id
+        )
+        .execute(db)
+        .await?;
 
         Ok(())
     }
 
     pub async fn set_stripe_client_secret(db: &Db, id: i64, stripe_client_secret: &str) -> AppResult<()> {
         sqlx::query!(
-            "UPDATE rsvp_sessions SET stripe_client_secret = ? WHERE id = ?",
+            "UPDATE rsvp_sessions
+             SET stripe_client_secret = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?",
             stripe_client_secret,
             id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete_expired(db: &Db) -> AppResult<()> {
+        sqlx::query!(
+            "DELETE FROM rsvp_sessions
+             WHERE status = 'pending'
+             AND updated_at < datetime('now', ?)",
+            Self::EXPIRY_SQL,
         )
         .execute(db)
         .await?;

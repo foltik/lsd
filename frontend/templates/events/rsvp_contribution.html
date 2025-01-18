@@ -124,6 +124,15 @@
         e.preventDefault();
         if (!ui.form.reportValidity()) return;
 
+        const res = await fetch(
+          `/e/{{ slug }}/rsvp/status?session={{ session.token }}`,
+        );
+        if (res.status != 200) {
+          alert("Session expired");
+          localStorage.removeItem(`rsvps/{{ session.event_id }}`);
+          window.location = `/e/{{ slug }}`;
+        }
+
         res = await checkout.confirm();
         if (res?.type === "error") {
           alert(res.error.message);
