@@ -5,6 +5,7 @@ use tera::Tera;
 use tower_http::services::ServeDir;
 
 use crate::db::Db;
+use crate::utils::types::SharedAppState;
 use crate::utils::{self, config::*, email::Email};
 
 mod auth;
@@ -21,7 +22,7 @@ pub struct AppState {
     mail: Email,
 }
 
-pub async fn build(config: Config) -> Result<Router> {
+pub async fn build(config: Config) -> Result<(Router, SharedAppState)> {
     let state = Arc::new(AppState {
         config: config.clone(),
         templates: utils::tera::templates(&config)?,
@@ -41,7 +42,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let r = auth::register(r, Arc::clone(&state));
 
     let r = utils::tracing::register(r);
-    let r = r.with_state(state);
+    let r = r.with_state(Arc::clone(&state));
 
-    Ok(r)
+    Ok((r, state))
 }

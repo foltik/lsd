@@ -13,6 +13,7 @@ tera = "1"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
 lettre = { version = "0.11", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1", "tokio1-rustls-tls", "serde"] }
 tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "macros"] }
+tokio_schedule = "0.3"
 rustls = "0.23"
 rustls-acme = { version = "0.12", features = ["axum"] }
 

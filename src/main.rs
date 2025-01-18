@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 
 mod app;
 mod db;
+mod jobs;
 mod utils;
 
 use axum::{handler::HandlerWithoutStateExt, response::Redirect};
@@ -17,8 +18,12 @@ async fn main() -> Result<()> {
     let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
     let config = Config::load(&file).await?;
 
-    let app = app::build(config.clone()).await?.into_make_service();
+    let (router, state) = app::build(config.clone()).await?;
+    let app = router.into_make_service();
     tracing::info!("Live at {}", &config.app.url);
+
+    // Spawn periodic jobs
+    jobs::init(state, config.clone()).await;
 
     // Spawn an auxillary HTTP server which just redirects to HTTPS
     tokio::spawn(async move {
