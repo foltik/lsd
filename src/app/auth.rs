@@ -1,5 +1,9 @@
 //! A simple passwordless authentication flow using one-time links sent via email.
 //!
+//! TODO: Switch to one-time codes (123-456) instead of links:
+//! * More robust against clients and intermediaries that auto-open URLs
+//! * Easier to transfer across devices than a magic link
+//!
 //! We choose this scheme instead of one with usernames/passwords to reduce
 //! friction and simplify onboarding.
 //!
@@ -23,11 +27,14 @@ use axum::{
     Form,
 };
 use axum_extra::extract::CookieJar;
-use lettre::message::Mailbox;
+use lettre::message::{header::ContentType, Mailbox};
 use std::convert::Infallible;
 
-use crate::db::token::{LoginToken, SessionToken};
 use crate::db::user::{UpdateUser, User};
+use crate::db::{
+    email::Email,
+    token::{LoginToken, SessionToken},
+};
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 
 /// Add all auth routes to the router.
@@ -64,6 +71,16 @@ impl<S: Send + Sync> OptionalFromRequestParts<S> for User {
         Ok(parts.extensions.get::<User>().cloned())
     }
 }
+/// Enable extracting a `User` in a handler, returning UNAUTHORIZED if not logged in.
+impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
+    type Rejection = StatusCode;
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let Some(user) = parts.extensions.get::<User>().cloned() else {
+            return Err(StatusCode::UNAUTHORIZED);
+        };
+        Ok(user)
+    }
+}
 
 /// Process a login form and send either a login or registration link via email.
 async fn login_form(
@@ -73,9 +90,11 @@ async fn login_form(
     let email = form.email.email.to_string();
     let login_token = LoginToken::create(&state.db, &email).await?;
 
+    let email_id = Email::create(&state.db, Email::LOGIN, &email).await?;
+
     let domain = &state.config.app.domain;
     let base_url = &state.config.app.url;
-    let msg = state.mail.builder().to(form.email);
+    let msg = state.mailer.builder().header(ContentType::TEXT_PLAIN).to(form.email);
 
     let msg = match User::lookup_by_email(&state.db, &email).await? {
         Some(_) => {
@@ -90,8 +109,16 @@ async fn login_form(
         }
     };
 
-    state.mail.send(msg).await?;
-    Ok("Check your email!")
+    match state.mailer.send(msg).await {
+        Ok(_) => {
+            Email::mark_sent(&state.db, email_id).await?;
+            Ok("Check your email!")
+        }
+        Err(e) => {
+            Email::mark_error(&state.db, email_id, &e.to_string()).await?;
+            Err(e.into())
+        }
+    }
 }
 #[derive(serde::Deserialize)]
 struct LoginForm {

@@ -4,6 +4,7 @@ use std::path::Path;
 
 pub type Db = SqlitePool;
 
+pub mod email;
 pub mod event;
 pub mod list;
 pub mod migration;
@@ -26,6 +27,7 @@ pub async fn init(file: &Path) -> Result<Db> {
     post::Post::migrate(&db).await?;
     event::Event::migrate(&db).await?;
     list::List::migrate(&db).await?;
+    email::Email::migrate(&db).await?;
 
     Ok(db)
 }

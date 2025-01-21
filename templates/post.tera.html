@@ -3,11 +3,6 @@
 <article>
     <h1 class="title">{{ post.title }}</h1>
     <time class="date" datetime="{{ post.created_at }}">{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time>
+    {{ post.content_rendered | safe }}
 </article>
-<script src="/assets/markdown.js"></script>
-<script>
-  // markdownToHtml is defined in assets/markdown.js
-  const html = markdownToHtml(`{{ post.content | safe }}`);
-  document.querySelector('article').insertAdjacentHTML('beforeend', html);
-</script>
 {{ page::end() }}
