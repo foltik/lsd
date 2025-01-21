@@ -1,5 +1,5 @@
 {% macro start(title) %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
@@ -146,13 +146,18 @@
                 color: var(--color-text);
                 border: 1px solid var(--color-border);
             }
+            select {
+                color: var(--color-text);
+                background: var(--color-bg-alt);
+                border: 1px solid var(--color-border);
+            }
 
-            .form {
+            form {
                 padding: 2rem;
                 display: flex;
                 flex-direction: column;
 
-                .form-field {
+                .field {
                     display: flex;
                     flex-direction: column;
                     margin-bottom: 1rem;

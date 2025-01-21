@@ -15,29 +15,29 @@
     {% if list.id != 0 %}
     <input type="hidden" name="id" value="{{ list.id }}">
     {% endif %}
-    <div class="form-field">
+    <div class="field">
         <label for="name">Name</label>
         <input type="text" id="name" name="name" value="{{ list.name }}" oninput="document.title = `Edit list - ${this.value}`">
     </div>
-    <div class="form-field">
+    <div class="field">
         <label for="description">Description</label>
         <input type="text" name="description" value="{{ list.description }}">
     </div>
     {% if list.id != 0 %}
-    <div class="form-field">
+    <div class="field">
         <label>Members</label>
         <ul>
         {% for member in members %}
-            <li id="member-{{ member.email }}">
+            <li id="member-{{ loop.index }}">
                 <button class="remove" type="button"
-                    onclick="fetch(`/lists/{{ list.id }}/{{ member.email }}`, {method: 'DELETE'}).then(res => res.ok && document.querySelector(`#member-{{ member.email }}`).remove())">Remove</button>
+                    onclick="fetch(`/lists/{{ list.id }}/{{ member.email }}`, {method: 'DELETE'}).then(res => res.ok && document.querySelector(`#member-{{ loop.index }}`).remove())">Remove</button>
                 {{ member.email }} {% if member.first_name %}({{ member.first_name }} {{ member.last_name }}){% endif %}
             </li>
         {% endfor %}
         </ul>
     </div>
     {% endif %}
-    <div class="form-field">
+    <div class="field">
         <label for="emails">Add members</label>
         <textarea class="emails" name="emails" placeholder="Enter email addresses, one per line..."></textarea>
     </div>

@@ -12,6 +12,8 @@ pub struct User {
     pub created_at: DateTime<Utc>,
 }
 
+impl User {}
+
 #[derive(Debug, serde::Deserialize)]
 pub struct UpdateUser {
     pub first_name: String,
@@ -20,6 +22,11 @@ pub struct UpdateUser {
 }
 
 impl User {
+    /// Full access to everything.
+    pub const ADMIN: &'static str = "admin";
+    /// Can manage posts.
+    pub const WRITER: &'static str = "writer";
+
     /// Create the `users` table.
     pub async fn migrate(db: &Db) -> Result<()> {
         sqlx::query(
@@ -33,6 +40,18 @@ impl User {
         )
         .execute(db)
         .await?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS user_roles ( \
+                user_id INTEGER NOT NULL, \
+                role TEXT NOT NULL, \
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
+                PRIMARY KEY (user_id, role) \
+            )",
+        )
+        .execute(db)
+        .await?;
+
         Ok(())
     }
 
@@ -84,5 +103,14 @@ impl User {
         .fetch_optional(db)
         .await?;
         Ok(user)
+    }
+
+    pub async fn has_role(&self, db: &Db, role: &str) -> Result<bool> {
+        let row = sqlx::query("SELECT 1 FROM user_roles WHERE user_id = ? AND role = ?")
+            .bind(self.id)
+            .bind(role)
+            .fetch_optional(db)
+            .await?;
+        Ok(row.is_some())
     }
 }
