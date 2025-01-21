@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::Response,
+    response::{IntoResponse, Response},
     routing::get,
 };
 
@@ -27,16 +27,13 @@ async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) 
     Ok(pixel)
 }
 
-async fn email_unsubscribed(
-    Path(id): Path<i64>,
-    State(state): State<SharedAppState>,
-) -> AppResult<StatusCode> {
+async fn email_unsubscribed(Path(id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
     if let Some(email) = Email::lookup(&state.db, id).await? {
         if let Some(list_id) = email.list_id {
             List::remove_member(&state.db, list_id, &email.address).await?;
         }
     }
-    Ok(StatusCode::OK)
+    Ok("You have been unsubscribed.".into_response())
 }
 
 /// A 1x1 transparent GIF.
