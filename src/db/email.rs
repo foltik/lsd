@@ -52,6 +52,20 @@ impl Email {
         Ok(res)
     }
 
+    /// Lookup an email by address, post, and list.
+    pub async fn lookup_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<Option<Email>> {
+        let res = sqlx::query_as::<_, Email>(
+            "SELECT * FROM emails \
+             WHERE address = ? AND post_id = ? AND list_id = ?",
+        )
+        .bind(address)
+        .bind(post_id)
+        .bind(list_id)
+        .fetch_optional(db)
+        .await?;
+        Ok(res)
+    }
+
     /// Create a new email record.
     pub async fn create_login(db: &Db, address: &str) -> Result<i64> {
         let res = sqlx::query("INSERT INTO emails (kind, address) VALUES (?, ?)")

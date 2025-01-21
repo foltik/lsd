@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use axum::{
     extract::{Path, State},
@@ -9,6 +9,7 @@ use axum::{
 };
 use chrono::Utc;
 use lettre::message::header::ContentType;
+use tokio::time::sleep;
 
 use crate::db::{
     email::Email,
@@ -155,40 +156,50 @@ async fn send_post_form(
     ctx.insert("post_url", &format!("{}/p/{}", &state.config.app.url, &post.url));
 
     let mut num_sent = 0;
+    let mut num_skipped = 0;
     let mut errors = HashMap::new();
-    for ListMember { email, .. } in &members {
-        let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
-
-        ctx.insert("opened_url", &format!("{}/emails/{email_id}/footer.gif", &state.config.app.url));
-        ctx.insert("unsub_url", &format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url));
-        let html = state.templates.render("post-email.tera.html", &ctx).unwrap();
-
-        let msg = state
-            .mailer
-            .builder()
-            .to(email.parse().unwrap())
-            .subject(&post.title)
-            .header(ContentType::TEXT_HTML)
-            .body(html)
-            .unwrap();
-
-        match state.mailer.send(msg).await {
-            Ok(_) => {
-                Email::mark_sent(&state.db, email_id).await?;
-                num_sent += 1;
+    let batch_size = state.config.email.ratelimit.unwrap_or(members.len());
+    for members in members.chunks(batch_size) {
+        for ListMember { email, .. } in members {
+            // If this post was already sent to this address in this list, skip sending it again.
+            if Email::lookup_post(&state.db, email, post.id, list.id).await?.is_some() {
+                num_skipped += 1;
+                continue;
             }
-            Err(e) => {
-                let e = e.to_string();
-                Email::mark_error(&state.db, email_id, &e).await?;
-                errors.insert(email.clone(), e);
+            let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
+
+            ctx.insert("opened_url", &format!("{}/emails/{email_id}/footer.gif", &state.config.app.url));
+            ctx.insert("unsub_url", &format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url));
+            let html = state.templates.render("post-email.tera.html", &ctx).unwrap();
+
+            let msg = state
+                .mailer
+                .builder()
+                .to(email.parse().unwrap())
+                .subject(&post.title)
+                .header(ContentType::TEXT_HTML)
+                .body(html)
+                .unwrap();
+
+            match state.mailer.send(msg).await {
+                Ok(_) => {
+                    Email::mark_sent(&state.db, email_id).await?;
+                    num_sent += 1;
+                }
+                Err(e) => {
+                    let e = e.to_string();
+                    Email::mark_error(&state.db, email_id, &e).await?;
+                    errors.insert(email.clone(), e);
+                }
             }
         }
+        sleep(Duration::from_secs(1)).await;
     }
 
     let mut ctx = tera::Context::new();
     ctx.insert("post", &post);
     ctx.insert("list", &list);
-    ctx.insert("stats", &Stats { num_sent, errors });
+    ctx.insert("stats", &Stats { num_sent, num_skipped, errors });
 
     let html = state.templates.render("post-sent.tera.html", &ctx).unwrap();
     Ok(Html(html).into_response())
@@ -200,5 +211,6 @@ struct SendPost {
 #[derive(serde::Serialize)]
 struct Stats {
     pub num_sent: usize,
+    pub num_skipped: usize,
     pub errors: HashMap<String, String>,
 }

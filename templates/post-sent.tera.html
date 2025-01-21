@@ -13,7 +13,11 @@
     <ul>
         <li>Sent {{ stats.num_sent }} emails to list "{{ list.name }}"</li>
 
-        {%if stats.errors | length > 0 %}
+        {% if stats.num_skipped > 0 %}
+        <li>Skipped sending {{ stats.num_skipped }} emails which were already delivered</li>
+        {% endif %}
+
+        {% if stats.errors | length > 0 %}
         <li>
             Failed to send {{ stats.errors | length }} emails
             <ul>
