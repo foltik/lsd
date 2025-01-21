@@ -5,7 +5,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     steps:
@@ -16,7 +16,7 @@ jobs:
 
   rustfmt:
     name: Format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     steps:
@@ -26,7 +26,7 @@ jobs:
 
   clippy:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     steps:
@@ -37,7 +37,7 @@ jobs:
 
   cross:
     name: Cross-compile
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     steps:
