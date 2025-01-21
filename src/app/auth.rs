@@ -130,21 +130,30 @@ async fn login_link(
     State(state): State<SharedAppState>,
     Query(query): Query<LoginQuery>,
 ) -> AppResult<Response> {
-    let Some(user) = User::lookup_by_login_token(&state.db, &query.token).await? else {
-        return Ok(StatusCode::FORBIDDEN.into_response());
-    };
+    match query.token {
+        Some(token) => {
+            let Some(user) = User::lookup_by_login_token(&state.db, &token).await? else {
+                return Ok(StatusCode::FORBIDDEN.into_response());
+            };
 
-    let token = SessionToken::create(&state.db, user.id).await?;
-    let headers = (
-        // TODO: expiration date
-        [(header::SET_COOKIE, format!("session={token}; Secure; Secure"))],
-        Redirect::to(&state.config.app.url),
-    );
-    Ok(headers.into_response())
+            let token = SessionToken::create(&state.db, user.id).await?;
+            let headers = (
+                // TODO: expiration date
+                [(header::SET_COOKIE, format!("session={token}; Secure; Secure"))],
+                Redirect::to(&state.config.app.url),
+            );
+            Ok(headers.into_response())
+        }
+        None => {
+            let ctx = tera::Context::new();
+            let html = state.templates.render("login.tera.html", &ctx).unwrap();
+            Ok(Html(html).into_response())
+        }
+    }
 }
 #[derive(serde::Deserialize)]
 struct LoginQuery {
-    token: String,
+    token: Option<String>,
 }
 
 /// Display the registration page.
