@@ -27,7 +27,7 @@
                 letter-spacing: 1.05px;
             }
 
-            nav {
+            div.nav {
                 max-width: 768px;
                 margin: 0 auto;
                 padding: 0 1rem;
@@ -92,7 +92,7 @@
                     max-width: 500px;
                 }
             }
-            img.pixel {
+            img.opened {
                 margin: 0;
             }
 
@@ -110,24 +110,25 @@
     </head>
     <body style="background-color: #000;"><!-- Fix gmail ignoring non-inline body styles -->
         <header>
-            <nav>
+            <div class="nav">
                 <a class="home" href="https://lightandsound.design">lightandsound.design</a>
-            </nav>
+            </div>
         </header>
         <main>
             <article>
                 <h1 class="title">{{ post.title }}</h1>
                 <time class="date" datetime="{{ post.created_at }}">{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time>
                 {{ post.content_rendered | safe }}
+                <img class="opened" src="{{ opened_url }}"></img>
             </article>
         </main>
         <footer>
-            <nav>
+            <!-- Gmail deletes the nav element for some reason, use a div instead -->
+            <div class="nav">
                 <p>
-                    <a href="{{ post_url | safe }}">View this post on the web</a> or <a href="{{ unsub_url | safe }}">unsubscribe</a>
-                    <img class="pixel" src="{{ opened_url | safe }}"></img>
+                    <a href="{{ post_url }}">View this post on the web</a> or <a href="{{ unsub_url }}">unsubscribe</a>
                 </p>
-            </nav>
+            </div>
         </footer>
     </body>
 </html>
