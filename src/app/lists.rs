@@ -7,11 +7,15 @@ use axum::{
     Form,
 };
 use chrono::Utc;
+use lettre::message::Mailbox;
 
-use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 use crate::{
     db::list::{List, UpdateList},
     utils::types::AppError,
+};
+use crate::{
+    db::user::User,
+    utils::types::{AppResult, AppRouter, SharedAppState},
 };
 
 /// Add all `lists` routes to the router.
@@ -24,7 +28,11 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display a list of all lists
-async fn list_lists_page(State(state): State<SharedAppState>) -> AppResult<Response> {
+async fn list_lists_page(State(state): State<SharedAppState>, user: User) -> AppResult<Response> {
+    if !user.has_role(&state.db, User::ADMIN).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
     let lists = List::list(&state.db).await?;
 
     let mut ctx = tera::Context::new();
@@ -35,7 +43,15 @@ async fn list_lists_page(State(state): State<SharedAppState>) -> AppResult<Respo
 }
 
 /// Display the form to view and edit a list.
-async fn edit_list_page(State(state): State<SharedAppState>, Path(id): Path<i64>) -> AppResult<Response> {
+async fn edit_list_page(
+    State(state): State<SharedAppState>,
+    user: User,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if !user.has_role(&state.db, User::ADMIN).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
     let Some(list) = List::lookup_by_id(&state.db, id).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
@@ -50,7 +66,11 @@ async fn edit_list_page(State(state): State<SharedAppState>, Path(id): Path<i64>
 }
 
 /// Display the form to create a new list.
-async fn create_list_page(State(state): State<SharedAppState>) -> AppResult<Response> {
+async fn create_list_page(State(state): State<SharedAppState>, user: User) -> AppResult<Response> {
+    if !user.has_role(&state.db, User::ADMIN).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
     let mut ctx = tera::Context::new();
     ctx.insert(
         "list",
@@ -71,8 +91,13 @@ async fn create_list_page(State(state): State<SharedAppState>) -> AppResult<Resp
 /// Process the form and create or edit a list.
 async fn edit_list_form(
     State(state): State<SharedAppState>,
+    user: User,
     Form(form): Form<UpdateList>,
-) -> AppResult<impl IntoResponse> {
+) -> AppResult<Response> {
+    if !user.has_role(&state.db, User::ADMIN).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
     let id = match form.id {
         Some(id) => {
             List::update(&state.db, id, &form).await?;
@@ -83,21 +108,26 @@ async fn edit_list_form(
 
     let emails = form.emails.split_whitespace().collect::<Vec<_>>();
     for email in &emails {
-        if !email.contains('@') && !email.contains('.') {
-            return Err(AppError(anyhow!("email {email:?} is not in the format \"mailbox@domain.tld\"")));
+        if let Err(e) = email.parse::<Mailbox>() {
+            return Err(AppError(anyhow!("email {email:?} is invalid: {e}")));
         }
     }
     if !emails.is_empty() {
         List::add_members(&state.db, id, &emails).await?;
     }
 
-    Ok(Redirect::to(&format!("{}/lists/{}", state.config.app.url, id)))
+    Ok(Redirect::to(&format!("{}/lists/{}", state.config.app.url, id)).into_response())
 }
 
 async fn remove_list_member(
     State(state): State<SharedAppState>,
+    user: User,
     Path((id, email)): Path<(i64, String)>,
-) -> AppResult<impl IntoResponse> {
+) -> AppResult<StatusCode> {
+    if !user.has_role(&state.db, User::ADMIN).await? {
+        return Ok(StatusCode::FORBIDDEN);
+    }
+
     List::remove_member(&state.db, id, &email).await?;
     Ok(StatusCode::OK)
 }

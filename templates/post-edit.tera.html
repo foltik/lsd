@@ -60,22 +60,22 @@
         {% if post.id != 0 %}
         <input type="hidden" name="id" value="{{ post.id }}">
         {% endif %}
-        <div class="form-field">
+        <div class="field">
             <label for="title">Title</label>
             <input type="text" id="title" name="title" value="{{ post.title }}" oninput="updatePreview()">
         </div>
-        <div class="form-field">
+        <div class="field">
             <label for="url">URL</label>
             <div class="url">
                 <span>https://lightandsound.design/p/</span>
                 <input type="text" id="url" name="url" value="{{ post.url }}">
             </div>
         </div>
-        <div class="form-field">
+        <div class="field">
             <label for="author">Author</label>
             <input type="text" id="author" name="author" value="{{ post.author }}">
         </div>
-        <div class="form-field content">
+        <div class="field content">
             <label for="content">Content</label>
             <textarea id="content" name="content" oninput="updatePreview()">{{ post.content }}</textarea>
         </div>

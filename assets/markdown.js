@@ -46,6 +46,11 @@ function markdownToHtml(md) {
       if (/^(<h\d|<ul|<pre|<blockquote)/.test(p)) {
         return p;
       }
+      // If it's an image, wrap with text-align.
+      // Hack since `display: block; margin: auto;` doesn't work in the iOS email client
+      if (/^<img/.test(p)) {
+        return `<p style="text-align: center;">${p}</p>`;
+      }
 
       // Replace single newlines with <br>, then wrap in <p>
       const withBreaks = p.replace(/\n/g, "<br>");

@@ -5,9 +5,10 @@ use tera::Tera;
 use tower_http::services::ServeDir;
 
 use crate::db::Db;
-use crate::utils::{self, config::*, email::Email};
+use crate::utils::{self, config::*, emailer::Emailer};
 
 mod auth;
+mod emails;
 mod events;
 mod home;
 mod lists;
@@ -19,7 +20,7 @@ pub struct AppState {
     config: Config,
     templates: Tera,
     db: Db,
-    mail: Email,
+    mailer: Emailer,
 }
 
 pub async fn build(config: Config) -> Result<Router> {
@@ -27,7 +28,7 @@ pub async fn build(config: Config) -> Result<Router> {
         config: config.clone(),
         templates: utils::tera::templates(&config)?,
         db: crate::db::init(&config.db.file).await?,
-        mail: Email::connect(config.email).await?,
+        mailer: Emailer::connect(config.email).await?,
     });
 
     let r = Router::new()
@@ -39,6 +40,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let r = posts::register_routes(r);
     let r = events::register_routes(r);
     let r = lists::register_routes(r);
+    let r = emails::register_routes(r);
 
     let r = auth::register(r, Arc::clone(&state));
 

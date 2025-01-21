@@ -1,6 +1,6 @@
 use anyhow::Result;
 use lettre::{
-    message::{header::ContentType, Mailbox, MessageBuilder},
+    message::{Mailbox, MessageBuilder},
     transport::smtp::authentication::Credentials,
     Message, SmtpTransport, Transport,
 };
@@ -9,14 +9,14 @@ use crate::EmailConfig;
 
 /// Email client.
 #[derive(Clone)]
-pub struct Email {
+pub struct Emailer {
     /// Mailbox to send email from.
     from: Mailbox,
     /// Underlying SMTPS transport.
     transport: SmtpTransport,
 }
 
-impl Email {
+impl Emailer {
     pub async fn connect(config: EmailConfig) -> Result<Self> {
         // `lettre` requires a default provider to be installed to use SMTPS.
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
@@ -31,7 +31,7 @@ impl Email {
     }
 
     pub fn builder(&self) -> MessageBuilder {
-        Message::builder().from(self.from.clone()).header(ContentType::TEXT_PLAIN)
+        Message::builder().from(self.from.clone())
     }
 
     pub async fn send(&self, message: Message) -> Result<()> {
