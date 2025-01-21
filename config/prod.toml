@@ -21,3 +21,4 @@ smtp_addr = "smtp://email-smtp.us-east-1.amazonaws.com?tls=required"
 smtp_username = "$SMTP_USERNAME"
 smtp_password = "$SMTP_PASSWORD"
 from = "Light and Sound Design <studio@beta.lightandsound.design>"
+ratelimit = 10

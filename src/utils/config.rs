@@ -75,4 +75,6 @@ pub struct EmailConfig {
     pub smtp_password: Option<String>,
     /// Mailbox to send email from.
     pub from: Mailbox,
+    /// Maximum number of emails to send per second.
+    pub ratelimit: Option<usize>,
 }
