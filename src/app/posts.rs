@@ -159,7 +159,7 @@ async fn send_post_form(
     for ListMember { email, .. } in &members {
         let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
 
-        ctx.insert("opened_url", &format!("{}/emails/{email_id}/opened.gif", &state.config.app.url));
+        ctx.insert("opened_url", &format!("{}/emails/{email_id}/footer.gif", &state.config.app.url));
         ctx.insert("unsub_url", &format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url));
         let html = state.templates.render("post-email.tera.html", &ctx).unwrap();
 
