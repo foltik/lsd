@@ -7,9 +7,10 @@ use super::Db;
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Email {
     pub id: i64,
-    pub reference_id: Option<i64>,
     pub kind: String,
     pub address: String,
+    pub post_id: Option<i64>,
+    pub list_id: Option<i64>,
     pub error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub sent_at: Option<DateTime<Utc>>,
@@ -27,9 +28,10 @@ impl Email {
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS emails ( \
                 id INTEGER PRIMARY KEY NOT NULL, \
-                reference_id INTEGER, \
                 kind TEXT NOT NULL, \
                 address TEXT NOT NULL, \
+                post_id INTEGER, \
+                list_id INTEGER, \
                 error TEXT, \
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
                 sent_at TIMESTAMP, \
@@ -41,23 +43,19 @@ impl Email {
         Ok(())
     }
 
-    /// Lookup an email referencing another database entry.
-    pub async fn lookup_ref(db: &Db, kind: &str, reference_id: i64, address: &str) -> Result<Option<Email>> {
-        let res = sqlx::query_as::<_, Email>(
-            "SELECT * FROM emails WHERE kind = ? AND reference_id = ? AND address = ?",
-        )
-        .bind(kind)
-        .bind(reference_id)
-        .bind(address)
-        .fetch_optional(db)
-        .await?;
+    /// Lookup an email by id.
+    pub async fn lookup(db: &Db, id: i64) -> Result<Option<Email>> {
+        let res = sqlx::query_as::<_, Email>("SELECT * FROM emails WHERE id = ?")
+            .bind(id)
+            .fetch_optional(db)
+            .await?;
         Ok(res)
     }
 
     /// Create a new email record.
-    pub async fn create(db: &Db, kind: &str, address: &str) -> Result<i64> {
+    pub async fn create_login(db: &Db, address: &str) -> Result<i64> {
         let res = sqlx::query("INSERT INTO emails (kind, address) VALUES (?, ?)")
-            .bind(kind)
+            .bind(Email::LOGIN)
             .bind(address)
             .execute(db)
             .await?;
@@ -65,11 +63,12 @@ impl Email {
     }
 
     /// Create a new email record referencing another database entry.
-    pub async fn create_ref(db: &Db, kind: &str, reference_id: i64, address: &str) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO emails (kind, reference_id, address) VALUES (?, ?, ?)")
-            .bind(kind)
-            .bind(reference_id)
+    pub async fn create_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO emails (kind, address, post_id, list_id) VALUES (?, ?, ?, ?)")
+            .bind(Email::POST)
             .bind(address)
+            .bind(post_id)
+            .bind(list_id)
             .execute(db)
             .await?;
         Ok(res.last_insert_rowid())

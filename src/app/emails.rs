@@ -6,13 +6,15 @@ use axum::{
 };
 
 use crate::{
-    db::email::Email,
+    db::{email::Email, list::List},
     utils::types::{AppResult, AppRouter, SharedAppState},
 };
 
 /// Add all `email` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
-    router.route("/emails/{id}/opened.gif", get(email_opened))
+    router
+        .route("/emails/{id}/opened.gif", get(email_opened))
+        .route("/emails/{id}/unsubscribe", get(email_unsubscribed))
 }
 
 async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
@@ -23,6 +25,18 @@ async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) 
         .body(PIXEL.into())
         .unwrap();
     Ok(pixel)
+}
+
+async fn email_unsubscribed(
+    Path(id): Path<i64>,
+    State(state): State<SharedAppState>,
+) -> AppResult<StatusCode> {
+    if let Some(email) = Email::lookup(&state.db, id).await? {
+        if let Some(list_id) = email.list_id {
+            List::remove_member(&state.db, list_id, &email.address).await?;
+        }
+    }
+    Ok(StatusCode::OK)
 }
 
 /// A 1x1 transparent GIF.

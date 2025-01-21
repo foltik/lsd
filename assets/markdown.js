@@ -32,10 +32,18 @@ function markdownToHtml(md) {
     .replace(/^### (.*)$/gm, "<h4>$1</h4>")
     .replace(/^#### (.*)$/gm, "<h5>$1</h5>")
     .replace(/^##### (.*)$/gm, "<h6>$1</h6>")
-    // Images: ![alt](url)
-    .replace(/\!\[(.+)\]\((.*)\)/g, '<img alt="$1" src="$2" />')
-    // Links: [text](url)
-    .replace(/\[(.+)\]\((.*)\)/g, '<a href="$2">$1</a>');
+    // Images with a link: ![alt](image_url)(link_url)
+    .replace(
+      /\!\[(.+?)\]\((.*?)\)\((.*?)\)/g,
+      '<a style="display: block; text-align: center;" href="$3"><img alt="$1" src="$2"/></a>',
+    )
+    // Images: ![alt](image_url)
+    .replace(
+      /\!\[(.+?)\]\((.*?)\)/g,
+      '<div style="text-align: center;"><img alt="$1" src="$2"/></div>',
+    )
+    // Links: [text](link_url)
+    .replace(/\[(.+?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
 
   // Step 2: Split the text into paragraphs and wrap in <p>
   const paragraphs = html.trim().split(/\n\s*\n/);
@@ -43,13 +51,8 @@ function markdownToHtml(md) {
     .map((p) => p.trim())
     .map((p) => {
       // If it's already a block-level element, ignore
-      if (/^(<h\d|<ul|<pre|<blockquote)/.test(p)) {
+      if (/^(<h\d|<ul|<blockquote)/.test(p)) {
         return p;
-      }
-      // If it's an image, wrap with text-align.
-      // Hack since `display: block; margin: auto;` doesn't work in the iOS email client
-      if (/^<img/.test(p)) {
-        return `<p style="text-align: center;">${p}</p>`;
       }
 
       // Replace single newlines with <br>, then wrap in <p>

@@ -152,20 +152,15 @@ async fn send_post_form(
 
     let mut ctx = tera::Context::new();
     ctx.insert("post", &post);
+    ctx.insert("post_url", &format!("{}/p/{}", &state.config.app.url, &post.url));
 
     let mut num_sent = 0;
-    let mut num_skipped = 0;
     let mut errors = HashMap::new();
     for ListMember { email, .. } in &members {
-        // If the post was already sent to this user, skip them.
-        if Email::lookup_ref(&state.db, Email::POST, post.id, email).await?.is_some() {
-            num_skipped += 1;
-            continue;
-        }
-        // Otherwise, create a new email record.
-        let email_id = Email::create_ref(&state.db, Email::POST, post.id, email).await?;
+        let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
 
         ctx.insert("opened_url", &format!("{}/emails/{email_id}/opened.gif", &state.config.app.url));
+        ctx.insert("unsub_url", &format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url));
         let html = state.templates.render("post-email.tera.html", &ctx).unwrap();
 
         let msg = state
@@ -193,7 +188,7 @@ async fn send_post_form(
     let mut ctx = tera::Context::new();
     ctx.insert("post", &post);
     ctx.insert("list", &list);
-    ctx.insert("stats", &Stats { num_sent, num_skipped, errors });
+    ctx.insert("stats", &Stats { num_sent, errors });
 
     let html = state.templates.render("post-sent.tera.html", &ctx).unwrap();
     Ok(Html(html).into_response())
@@ -205,6 +200,5 @@ struct SendPost {
 #[derive(serde::Serialize)]
 struct Stats {
     pub num_sent: usize,
-    pub num_skipped: usize,
     pub errors: HashMap<String, String>,
 }

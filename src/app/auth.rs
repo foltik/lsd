@@ -90,7 +90,7 @@ async fn login_form(
     let email = form.email.email.to_string();
     let login_token = LoginToken::create(&state.db, &email).await?;
 
-    let email_id = Email::create(&state.db, Email::LOGIN, &email).await?;
+    let email_id = Email::create_login(&state.db, &email).await?;
 
     let domain = &state.config.app.domain;
     let base_url = &state.config.app.url;

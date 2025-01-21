@@ -126,7 +126,7 @@
               insert = '[link text](https://link-url)';
               break;
             case 'image':
-                insert = '\n![alt text](https://image-url)\n';
+                insert = '\n![alt text](https://image-url)(https://link-url)\n';
                 break;
             case 'quote':
                 insert = '\n> Quote\n';
@@ -143,7 +143,7 @@
     let modified = false;
     document.querySelectorAll('input, textarea')
       .forEach(e => e.addEventListener('input', () => modified = true));
-    document.getElementById('post-form')
+    document.querySelector('form')
       .addEventListener('submit', () => modified = false);
     window.addEventListener('beforeunload', (e) => {
         if (modified) {
