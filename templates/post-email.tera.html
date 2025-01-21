@@ -15,6 +15,33 @@
                 line-height: 1.6;
             }
 
+            header {
+                padding: 1rem;
+                border-bottom: 1px solid #333;
+            }
+            header a {
+                text-decoration: none;
+            }
+            header a.home {
+                font-weight: bold;
+                letter-spacing: 1.05px;
+            }
+
+            nav {
+                max-width: 768px;
+                margin: 0 auto;
+                padding: 0 1rem;
+            }
+
+            footer {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                padding: 1rem 0;
+                border-top: 1px solid #333;
+                color: #aaa;
+            }
+
             article {
                 max-width: 768px;
                 margin: 0 auto;
@@ -65,6 +92,9 @@
                     max-width: 500px;
                 }
             }
+            img.pixel {
+                margin: 0;
+            }
 
             a {
                 color: #f2f2f2 !important; /* Fix gmail overriding link colors with !important */
@@ -79,13 +109,25 @@
         </style>
     </head>
     <body style="background-color: #000;"><!-- Fix gmail ignoring non-inline body styles -->
+        <header>
+            <nav>
+                <a class="home" href="https://lightandsound.design">lightandsound.design</a>
+            </nav>
+        </header>
         <main>
             <article>
                 <h1 class="title">{{ post.title }}</h1>
                 <time class="date" datetime="{{ post.created_at }}">{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time>
                 {{ post.content_rendered | safe }}
-                <img src="{{ opened_url | safe }}"></img>
             </article>
         </main>
+        <footer>
+            <nav>
+                <p>
+                    <a href="{{ post_url | safe }}">View this post on the web</a> or <a href="{{ unsub_url | safe }}">unsubscribe</a>
+                    <img class="pixel" src="{{ opened_url | safe }}"></img>
+                </p>
+            </nav>
+        </footer>
     </body>
 </html>
