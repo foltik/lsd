@@ -13,7 +13,7 @@ use crate::{
 /// Add all `email` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
     router
-        .route("/emails/{id}/opened.gif", get(email_opened))
+        .route("/emails/{id}/footer.gif", get(email_opened))
         .route("/emails/{id}/unsubscribe", get(email_unsubscribed))
 }
 

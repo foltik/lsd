@@ -92,9 +92,6 @@
                     max-width: 500px;
                 }
             }
-            img.opened {
-                margin: 0;
-            }
 
             a {
                 color: #f2f2f2 !important; /* Fix gmail overriding link colors with !important */
@@ -119,7 +116,7 @@
                 <h1 class="title">{{ post.title }}</h1>
                 <time class="date" datetime="{{ post.created_at }}">{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time>
                 {{ post.content_rendered | safe }}
-                <img class="opened" src="{{ opened_url }}"></img>
+                <img alt="footer" src="{{ opened_url }}">
             </article>
         </main>
         <footer>
