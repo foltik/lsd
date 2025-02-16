@@ -30,7 +30,7 @@ async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) 
 async fn email_unsubscribed(Path(id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
     if let Some(email) = Email::lookup(&state.db, id).await? {
         if let Some(list_id) = email.list_id {
-            List::remove_member(&state.db, list_id, &email.address).await?;
+            List::remove_member(&state.db, list_id, email.user_id).await?;
         }
     }
     Ok("You have been unsubscribed.".into_response())

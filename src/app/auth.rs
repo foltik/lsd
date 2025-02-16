@@ -90,22 +90,28 @@ async fn login_form(
     let email = form.email.email.to_string();
     let login_token = LoginToken::create(&state.db, &email).await?;
 
-    let email_id = Email::create_login(&state.db, &email).await?;
-
     let domain = &state.config.app.domain;
     let base_url = &state.config.app.url;
     let msg = state.mailer.builder().header(ContentType::TEXT_PLAIN).to(form.email);
 
-    let msg = match User::lookup_by_email(&state.db, &email).await? {
-        Some(_) => {
+    let (msg, email_id) = match User::lookup_by_email(&state.db, &email).await? {
+        Some(user) => {
+            let email_id = Email::create_login(&state.db, &email, user.id).await?;
+
             let url = format!("{base_url}/login?token={login_token}");
-            msg.subject(format!("Login to {domain}"))
-                .body(format!("Click here to login: {url}"))?
+            let msg = msg.subject(format!("Login to {domain}"))
+                .body(format!("Click here to login: {url}"))?;
+
+            (msg, email_id)
         }
         None => {
+            let email_id = Email::create_register(&state.db, &email).await?;
+
             let url = format!("{base_url}/register?token={login_token}");
-            msg.subject(format!("Register at {domain}"))
-                .body(format!("Click here to complete your registration: {url}"))?
+            let msg = msg.subject(format!("Register at {domain}"))
+                .body(format!("Click here to complete your registration: {url}"))?;
+
+            (msg, email_id)
         }
     };
 
@@ -123,6 +129,8 @@ async fn login_form(
 #[derive(serde::Deserialize)]
 struct LoginForm {
     email: Mailbox,
+    first_name: String,
+    last_name: String,
 }
 
 /// Login from a link containing a token, creating a new sesssion.

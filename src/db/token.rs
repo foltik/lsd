@@ -22,6 +22,15 @@ pub struct LoginToken {
     pub created_at: DateTime<Utc>,
 }
 
+pub struct RegisterToken {
+    pub id: i64,
+    pub email: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub token: String,
+    pub created_at: DateTime<Utc>,
+}
+
 impl SessionToken {
     /// Create the `session_tokens` table.
     pub async fn migrate(db: &Db) -> Result<()> {
@@ -89,5 +98,37 @@ impl LoginToken {
             .fetch_optional(db)
             .await?;
         Ok(row.map(|r| r.0))
+    }
+}
+
+impl RegisterToken {
+    /// Create the `register_tokens` table.
+    pub async fn migrate(db: &Db) -> Result<()> {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS register_tokens ( \
+                id INTEGER PRIMARY KEY NOT NULL, \
+                email TEXT NOT NULL, \
+                first_name TEXT NOT NULL, \
+                last_name TEXT NOT NULL, \
+                token TEXT NOT NULL, \
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
+            )",
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    /// Create a new register token for an email address.
+    pub async fn create(db: &Db, email: &str) -> Result<String> {
+        let token = format!("{:08x}", OsRng.gen::<u64>());
+
+        sqlx::query("INSERT INTO register_tokens (email, first_name, last_name, token) VALUES (?, ?, ?, ?)")
+            .bind(email)
+            .bind(&token)
+            .execute(db)
+            .await?;
+
+        Ok(token)
     }
 }

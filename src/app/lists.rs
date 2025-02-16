@@ -10,7 +10,7 @@ use chrono::Utc;
 use lettre::message::Mailbox;
 
 use crate::{
-    db::list::{List, UpdateList},
+    db::list::{CreateList, List, UpdateList},
     utils::types::AppError,
 };
 use crate::{
@@ -79,7 +79,7 @@ async fn create_list_page(State(state): State<SharedAppState>, user: User) -> Ap
             name: "".into(),
             description: "".into(),
             created_at: Utc::now(),
-            updated_at: Utc::now(),
+            updated_at: None,
         },
     );
     ctx.insert::<[String], _>("members", &[]);
@@ -100,20 +100,34 @@ async fn edit_list_form(
 
     let id = match form.id {
         Some(id) => {
-            List::update(&state.db, id, &form).await?;
+            let Some(list) = List::lookup(&state.db, id).await? else {
+                return Ok(StatusCode::NOT_FOUND.into_response());
+            };
+            list.update(&state.db, &form.name, &form.description).await?;
             id
         }
-        None => List::create(&state.db, &form).await?,
+        None => {
+            let create = CreateList {
+                name: form.name.clone(),
+                description: form.description.clone(),
+            };
+            List::create(&state.db, &create).await?
+        }
     };
 
     let emails = form.emails.split_whitespace().collect::<Vec<_>>();
+    let mut user_ids = Vec::new();
     for email in &emails {
         if let Err(e) = email.parse::<Mailbox>() {
             return Err(AppError(anyhow!("email {email:?} is invalid: {e}")));
         }
+        let Some(user) = User::lookup_by_email(&state.db, email).await? else {
+            return Err(AppError(anyhow!("user with email {email:?} not found")));
+        };
+        user_ids.push(user.id);
     }
-    if !emails.is_empty() {
-        List::add_members(&state.db, id, &emails).await?;
+    if !user_ids.is_empty() {
+        List::add_members(&state.db, id, &user_ids).await?;
     }
 
     Ok(Redirect::to(&format!("{}/lists/{}", state.config.app.url, id)).into_response())
@@ -128,6 +142,9 @@ async fn remove_list_member(
         return Ok(StatusCode::FORBIDDEN);
     }
 
-    List::remove_member(&state.db, id, &email).await?;
+    let Some(member) = User::lookup_by_email(&state.db, &email).await? else {
+        return Ok(StatusCode::NOT_FOUND);
+    };
+    List::remove_member(&state.db, id, member.id).await?;
     Ok(StatusCode::OK)
 }

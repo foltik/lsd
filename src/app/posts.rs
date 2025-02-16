@@ -13,7 +13,7 @@ use tokio::time::sleep;
 
 use crate::db::{
     email::Email,
-    list::{List, ListMember},
+    list::List,
     post::{Post, UpdatePost},
     user::User,
 };
@@ -160,13 +160,17 @@ async fn send_post_form(
     let mut errors = HashMap::new();
     let batch_size = state.config.email.ratelimit.unwrap_or(members.len());
     for members in members.chunks(batch_size) {
-        for ListMember { email, .. } in members {
+        for member in members {
+            let Some(user) = User::lookup(&state.db, member.user_id).await? else {
+                continue;
+            };
+
             // If this post was already sent to this address in this list, skip sending it again.
-            if Email::lookup_post(&state.db, email, post.id, list.id).await?.is_some() {
+            if Email::lookup_post(&state.db, user.id, post.id, list.id).await?.is_some() {
                 num_skipped += 1;
                 continue;
             }
-            let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
+            let email_id = Email::create_post(&state.db, &user.email, user.id, post.id, list.id).await?;
 
             ctx.insert("opened_url", &format!("{}/emails/{email_id}/footer.gif", &state.config.app.url));
             ctx.insert("unsub_url", &format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url));
@@ -175,7 +179,7 @@ async fn send_post_form(
             let msg = state
                 .mailer
                 .builder()
-                .to(email.parse().unwrap())
+                .to(user.email.parse().unwrap())
                 .subject(&post.title)
                 .header(ContentType::TEXT_HTML)
                 .body(html)
@@ -189,7 +193,7 @@ async fn send_post_form(
                 Err(e) => {
                     let e = e.to_string();
                     Email::mark_error(&state.db, email_id, &e).await?;
-                    errors.insert(email.clone(), e);
+                    errors.insert(user.email.clone(), e);
                 }
             }
         }

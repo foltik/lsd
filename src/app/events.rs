@@ -34,10 +34,8 @@ async fn list_events_page(
         .await?
         .into_iter()
         .filter(|e| match past {
-            true => e.start_date < now,
-            // TODO: Don't filter out in-progress events until they're over.
-            // Need to add an `end_date` field.
-            false => e.start_date >= now,
+            true => e.date < now.to_string(),
+            false => e.date >= now.to_string(),
         })
         .collect::<Vec<_>>();
 
@@ -47,6 +45,7 @@ async fn list_events_page(
     let html = state.templates.render("event-list.tera.html", &ctx).unwrap();
     Ok(Html(html).into_response())
 }
+
 #[derive(serde::Deserialize)]
 struct ListEventsQuery {
     past: Option<bool>,
@@ -64,9 +63,8 @@ async fn create_event_form(
     State(state): State<SharedAppState>,
     Form(form): Form<UpdateEvent>,
 ) -> AppResult<impl IntoResponse> {
-    let _ = Event::create(&state.db, &form).await?;
-    // TODO: Redirect to event page.
-    Ok("Event created.")
+    let id = Event::create(&state.db, &form).await?;
+    Ok(Redirect::to(&format!("/e/{}", id)))
 }
 
 /// Display the form to update an event.
@@ -89,8 +87,7 @@ async fn update_event_form(
     Form(form): Form<UpdateEvent>,
 ) -> AppResult<impl IntoResponse> {
     Event::update(&state.db, id, &form).await?;
-    // TODO: Redirect to event page.
-    Ok("Event updated.")
+    Ok(Redirect::to(&format!("/e/{}", id)))
 }
 
 /// Delete an event.

@@ -105,6 +105,15 @@ impl User {
         Ok(user)
     }
 
+    /// Lookup a user by id.
+    pub async fn lookup(db: &Db, id: i64) -> Result<Option<User>> {
+        let row = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ?")
+            .bind(id)
+            .fetch_optional(db)
+            .await?;
+        Ok(row)
+    }
+
     pub async fn has_role(&self, db: &Db, role: &str) -> Result<bool> {
         let row = sqlx::query("SELECT 1 FROM user_roles WHERE user_id = ? AND role = ?")
             .bind(self.id)

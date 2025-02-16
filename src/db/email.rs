@@ -8,9 +8,10 @@ use super::Db;
 pub struct Email {
     pub id: i64,
     pub kind: String,
-    pub address: String,
+    pub user_id: i64,
     pub post_id: Option<i64>,
     pub list_id: Option<i64>,
+    pub event_id: Option<i64>,
     pub error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub sent_at: Option<DateTime<Utc>>,
@@ -20,6 +21,8 @@ pub struct Email {
 impl Email {
     /// A login email.
     pub const LOGIN: &'static str = "login";
+    /// A registration email.
+    pub const REGISTER: &'static str = "register";
     /// An email containing a post.
     pub const POST: &'static str = "post";
 
@@ -29,9 +32,11 @@ impl Email {
             "CREATE TABLE IF NOT EXISTS emails ( \
                 id INTEGER PRIMARY KEY NOT NULL, \
                 kind TEXT NOT NULL, \
-                address TEXT NOT NULL, \
+                email TEXT NOT NULL, \
+                user_id INTEGER NOT NULL, \
                 post_id INTEGER, \
                 list_id INTEGER, \
+                event_id INTEGER, \
                 error TEXT, \
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
                 sent_at TIMESTAMP, \
@@ -53,12 +58,12 @@ impl Email {
     }
 
     /// Lookup an email by address, post, and list.
-    pub async fn lookup_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<Option<Email>> {
+    pub async fn lookup_post(db: &Db, user_id: i64, post_id: i64, list_id: i64) -> Result<Option<Email>> {
         let res = sqlx::query_as::<_, Email>(
             "SELECT * FROM emails \
-             WHERE address = ? AND post_id = ? AND list_id = ?",
+             WHERE user_id = ? AND post_id = ? AND list_id = ?",
         )
-        .bind(address)
+        .bind(user_id)
         .bind(post_id)
         .bind(list_id)
         .fetch_optional(db)
@@ -67,20 +72,31 @@ impl Email {
     }
 
     /// Create a new email record.
-    pub async fn create_login(db: &Db, address: &str) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO emails (kind, address) VALUES (?, ?)")
+    pub async fn create_login(db: &Db, email: &str, user_id: i64) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO emails (kind, email, user_id) VALUES (?, ?, ?)")
             .bind(Email::LOGIN)
-            .bind(address)
+            .bind(email)
+            .bind(user_id)
+            .execute(db)
+            .await?;
+        Ok(res.last_insert_rowid())
+    }
+
+    pub async fn create_register(db: &Db, email: &str) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO emails (kind, email) VALUES (?, ?)")
+            .bind(Email::REGISTER)
+            .bind(email)
             .execute(db)
             .await?;
         Ok(res.last_insert_rowid())
     }
 
     /// Create a new email record referencing another database entry.
-    pub async fn create_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO emails (kind, address, post_id, list_id) VALUES (?, ?, ?, ?)")
+    pub async fn create_post(db: &Db, email: &str, user_id: i64, post_id: i64, list_id: i64) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO emails (kind, email, user_id, post_id, list_id) VALUES (?, ?, ?, ?, ?)")
             .bind(Email::POST)
-            .bind(address)
+            .bind(email)
+            .bind(user_id)
             .bind(post_id)
             .bind(list_id)
             .execute(db)
