@@ -42,14 +42,6 @@ impl Post {
         .execute(db)
         .await?;
 
-        Migration::run(db, "posts: add content_rendered", async {
-            sqlx::query("ALTER TABLE posts ADD COLUMN content_rendered TEXT NOT NULL DEFAULT ''")
-                .execute(db)
-                .await?;
-            Ok(())
-        })
-        .await?;
-
         Ok(())
     }
 

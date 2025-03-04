@@ -23,6 +23,7 @@ impl Migration {
         Ok(())
     }
 
+    #[allow(unused)]
     pub async fn run(db: &Db, name: &str, func: impl Future<Output = Result<()>>) -> Result<()> {
         let id = sqlx::query("SELECT id FROM migrations WHERE name = ?")
             .bind(name)
