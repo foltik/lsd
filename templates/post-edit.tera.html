@@ -144,7 +144,15 @@
     document.querySelectorAll('input, textarea')
       .forEach(e => e.addEventListener('input', () => modified = true));
     document.querySelector('form')
-      .addEventListener('submit', () => modified = false);
+      .addEventListener('submit', e => {
+        for (const field of ['title', 'url', 'author']) {
+            if (!document.getElementById(field).value) {
+              alert(`Missing ${field}.`);
+              return e.preventDefault();
+            }
+        }
+        modified = false;
+      });
     window.addEventListener('beforeunload', (e) => {
         if (modified) {
             e.preventDefault();
