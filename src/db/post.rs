@@ -45,6 +45,14 @@ impl Post {
         Ok(())
     }
 
+    // List all posts.
+    pub async fn list(db: &Db) -> Result<Vec<Post>> {
+        let posts = sqlx::query_as::<_, Post>("SELECT * FROM posts ORDER BY updated_at DESC")
+            .fetch_all(db)
+            .await?;
+        Ok(posts)
+    }
+
     /// Create a new post.
     pub async fn create(db: &Db, post: &UpdatePost) -> Result<i64> {
         let row = sqlx::query(
@@ -82,6 +90,12 @@ impl Post {
         .bind(id)
         .execute(db)
         .await?;
+        Ok(())
+    }
+
+    /// Delete a post.
+    pub async fn delete(db: &Db, id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM posts WHERE id = ?").bind(id).execute(db).await?;
         Ok(())
     }
 

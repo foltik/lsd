@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
-    routing::get,
+    routing::{get, post},
     Form,
 };
 use chrono::Utc;
@@ -22,10 +22,23 @@ use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 /// Add all `post` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
     router
+        .route("/posts", get(list_posts_page))
         .route("/p/new", get(create_post_page))
         .route("/p/{url}", get(view_post_page))
         .route("/p/{url}/edit", get(edit_post_page).post(edit_post_form))
         .route("/p/{url}/send", get(send_post_page).post(send_post_form))
+        .route("/p/{url}/delete", post(delete_post_form))
+}
+
+/// Display a list of posts.
+async fn list_posts_page(State(state): State<SharedAppState>) -> AppResult<Response> {
+    let posts = Post::list(&state.db).await?;
+
+    let mut ctx = tera::Context::new();
+    ctx.insert("posts", &posts);
+
+    let html = state.templates.render("post-list.tera.html", &ctx).unwrap();
+    Ok(Html(html).into_response())
 }
 
 /// Display a single post.
@@ -213,4 +226,23 @@ struct Stats {
     pub num_sent: usize,
     pub num_skipped: usize,
     pub errors: HashMap<String, String>,
+}
+
+/// Process the form and create or edit a post.
+async fn delete_post_form(
+    State(state): State<SharedAppState>,
+    user: User,
+    Path(url): Path<String>,
+) -> AppResult<Response> {
+    if !user.has_role(&state.db, User::WRITER).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+    let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+
+    Post::delete(&state.db, post.id).await?;
+
+    // Redirect to the list page.
+    Ok(Redirect::to("/posts").into_response())
 }
