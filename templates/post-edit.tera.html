@@ -53,6 +53,7 @@
     .preview {
         flex: 1;
         overflow-y: auto;
+        transition: flex 250ms;
     }
     .preview.hidden {
         flex: 0;
@@ -85,9 +86,11 @@
         </div>
         <input type="hidden" id="content_rendered" name="content_rendered" value="">
         <div class="toolbar">
-            <button type="button" onclick="insertMarkdown('link')">Link</button>
-            <button type="button" onclick="insertMarkdown('image')">Image</button>
-            <button type="button" onclick="insertMarkdown('quote')">Quote</button>
+            <button type="button" onclick="markdownTool('bold')">Bold</button>
+            <button type="button" onclick="markdownTool('italic')">Italic</button>
+            <button type="button" onclick="markdownTool('quote')">Quote</button>
+            <button type="button" onclick="markdownTool('link')">Link</button>
+            <button type="button" onclick="markdownTool('image')">Image</button>
             <button type="button" onclick="togglePreview()">Toggle Preview</button>
             <button type="submit">Save</button>
         </div>
@@ -100,17 +103,19 @@
     </div>
 </div>
 <script>
+    updatePreview();
+
     // Populate the first part of the url input with the app's origin URL
     document.querySelector('.url .origin').innerHTML = window.location.origin + '/p/';
 
     // Toggleable preview with preference saved in localstorage
     const preview = document.querySelector('.preview');
-    let hidden = localStorage.getItem('preview') == 'false';
-    hidden && preview.classList.add('hidden');
+    let showPreview = localStorage.getItem('preview') == 'true';
+    !showPreview && preview.classList.add('hidden');
     function togglePreview() {
-        hidden = !hidden;
+        showPreview = !showPreview;
         preview.classList.toggle('hidden');
-        localStorage.setItem('preview', !hidden);
+        localStorage.setItem('preview', showPreview);
     }
 
     // Re-render markdown to HTML when the content changes
@@ -132,24 +137,72 @@
         document.getElementById('content_rendered').value = content_rendered;
     }
 
-    // Helpers for inserting markdown
-    function insertMarkdown(type) {
-        let insert = '';
-        switch(type) {
-            case 'link':
-                insert = '[link text](https://link-url)';
-                break;
-            case 'image':
-                insert = '\n![alt text](https://image-url)(https://link-url)\n';
-                break;
-            case 'quote':
-                insert = '\n> Quote\n';
-                break;
-        }
+    // Markdown tools
+    async function markdownTool(type) {
+        const tools = {
+            link: (sel, clipboard) => {
+                const url = clipboard.startsWith('http') ? clipboard : 'https://link-url';
+                if (sel.length) {
+                    return sel.match(/^!\[/)
+                      ? `${sel}(^^${url}$$)`   // use special url addon syntax for images
+                      : `[${sel.trimEnd()}](^^${url}$$)` // otherwise, wrap selection
+                } else {
+                    return `[^^link text$$](${url})\n`;
+                }
+            },
+            image: (sel, clipboard) => {
+                const url = clipboard.startsWith('http') ? clipboard : 'https://image-url';
+                return sel.length
+                  ? `\n![${sel.trimEnd()}](^^${url}$$)\n`
+                  : `\n![^^alt text$$](${url})\n`;
+            },
+            quote: (sel, clipboard) => {
+                const lines = sel.split('\n');
+                return sel.length
+                  ? '\n' + lines.map(line => `> ${line}`).join('\n') + '\n^^'
+                  : '\n> Quote^^\n';
+            },
+            italic: (sel, _) => {
+                return sel.length
+                  ? `*${sel}*^^`
+                  : '*^^italic text$$*';
+            },
+            bold: (sel, _) => {
+              return sel.length
+                ? `**${sel}**^^`
+                : '**^^bold text$$**';
+            },
+        };
 
         const content = document.getElementById('content');
-        const pos = content.selectionStart;
-        content.value = content.value.substring(0, pos) + insert + content.value.substring(pos);
+        const i = content.selectionStart;
+        const j = content.selectionEnd;
+        const selection = content.value.substring(i, j);
+
+        let clipboard = '';
+        try {
+          clipboard = await navigator.clipboard.readText();
+        } catch (e) {}
+
+        let insert = tools[type](selection, clipboard);
+
+        // Parse out cursor position markers
+        const cursorI = insert.indexOf('^^');
+        insert = insert.replace('^^', '');
+        const cursorJ = insert.indexOf('$$');
+        insert = insert.replace('$$', '');
+
+        // Update content, undo stack, and selection
+        content.focus();
+        document.execCommand('insertText', false, insert);
+        if (cursorI != -1 && cursorJ != -1) {
+            content.setSelectionRange(i + cursorI, i + cursorJ);
+        } else if (cursorI != -1) {
+            content.setSelectionRange(i + cursorI, i + cursorI);
+        } else {
+            content.setSelectionRange(i + insert.length, i + insert.length)
+        }
+
         updatePreview();
     }
 
