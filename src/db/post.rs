@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
-use super::{migration::Migration, Db};
+use super::Db;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Post {
