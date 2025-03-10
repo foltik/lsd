@@ -51,13 +51,6 @@
                 margin: 0 auto;
                 padding: 1rem;
 
-                h1 {
-                    margin-bottom: 0.5rem;
-                    font-size: 1.9rem;
-                    font-weight: 900;
-                    line-height: 2.2rem;
-                }
-
                 time {
                     display: block;
                     margin-bottom: 2rem;
@@ -102,22 +95,37 @@
                 color: var(--color-text-muted);
             } */
 
+            h1 {
+                margin-bottom: 0.5rem;
+                font-size: 1.9rem;
+                font-weight: 900;
+                line-height: 2.2rem;
+            }
+            h2 {
+                margin-bottom: 0.3rem;
+                font-size: 1.2rem;
+                font-weight: 700;
+            }
             a {
                 color: var(--color-text);
                 text-decoration: underline;
+                line-height: normal;
             }
             a:hover {
                 color: var(--color-text-muted);
             }
-            button {
+            button, .button {
+                font-size: 1rem;
+                display: block;
                 padding: 0.5rem 1rem;
                 cursor: pointer;
                 background: var(--color-button);
                 color: var(--color-text);
                 border: none;
                 border-radius: 4px;
+                text-decoration: none;
             }
-            button:hover {
+            button:hover, .button:hover {
                 background: var(--color-button-hover);
             }
             ul {
