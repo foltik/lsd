@@ -44,9 +44,16 @@
             margin-bottom: 1rem;
             padding: 0.5rem 0;
             justify-content: flex-start;
+            align-items: center;
 
-            button[type="submit"] {
+            #status {
                 margin-left: auto;
+                color: var(--color-text-muted);
+                font-size: 0.9rem;
+            }
+            #status::before {
+              content: "•";
+              margin-right: 6px;
             }
         }
     }
@@ -91,8 +98,9 @@
             <button type="button" onclick="markdownTool('quote')">Quote</button>
             <button type="button" onclick="markdownTool('link')">Link</button>
             <button type="button" onclick="markdownTool('image')">Image</button>
-            <button type="button" onclick="togglePreview()">Toggle Preview</button>
-            <button type="submit">Save</button>
+            <span id="status">No changes</span>
+            <button type="button" onclick="savePost()">Save</button>
+            <button type="button" onclick="togglePreview()">Preview</button>
         </div>
     </form>
     <div class="preview">
@@ -206,20 +214,55 @@
         updatePreview();
     }
 
-    // Warn before leaving the page if there are unsaved changes
-    let modified = false;
-    document.querySelectorAll('input, textarea')
-      .forEach(e => e.addEventListener('input', () => modified = true));
-    document.querySelector('form')
-      .addEventListener('submit', e => {
+    // Save post via AJAX
+    async function savePost() {
+        const status = document.getElementById('status');
+        const form = document.querySelector('form');
+
         for (const field of ['title', 'url', 'author']) {
             if (!document.getElementById(field).value) {
-              alert(`Missing ${field}.`);
-              return e.preventDefault();
+                alert(`Missing ${field}.`);
+                return;
             }
         }
-        modified = false;
-      });
+
+        try {
+            const response = await fetch(form.getAttribute('action'), {
+              method: 'POST',
+              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+              body: new URLSearchParams(new FormData(form))
+            });
+
+            if (response.ok) {
+                status.textContent = 'Changes saved';
+                modified = false;
+
+                // If URL changed, update the URL without reloading the page
+                const newUrl = document.getElementById('url').value;
+                const currentUrl = window.location.pathname.split('/')[2];
+                if (newUrl !== currentUrl) {
+                    history.pushState({}, '', `/p/${newUrl}/edit`);
+                    form.action = `/p/${newUrl}/edit`;
+                }
+            } else {
+                status.textContent = 'Error saving';
+                console.error(response.statusText);
+            }
+        } catch (error) {
+            status.textContent = 'Error saving';
+            console.error(error);
+        }
+    }
+
+    // Track unsaved changes
+    let modified = false;
+    document.querySelectorAll('input, textarea')
+      .forEach(e => e.addEventListener('input', () => {
+        modified = true;
+        document.getElementById('status').textContent = 'Changes unsaved';
+      }));
+
+    // Warn before leaving if there are unsaved changes
     window.addEventListener('beforeunload', (e) => {
         if (modified) {
             e.preventDefault();
