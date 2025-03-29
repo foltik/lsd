@@ -31,7 +31,11 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display a list of posts.
-async fn list_posts_page(State(state): State<SharedAppState>) -> AppResult<Response> {
+async fn list_posts_page(State(state): State<SharedAppState>, user: User) -> AppResult<Response> {
+    if !user.has_role(&state.db, User::WRITER).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
     let posts = Post::list(&state.db).await?;
 
     let mut ctx = tera::Context::new();

@@ -166,7 +166,7 @@
 
       async function setSaved() {
         modified = false;
-        status.textContent = 'Changes unsaved';
+        status.textContent = 'Changes saved';
         status.classList.remove('unsaved');
         status.classList.remove('error');
       }
@@ -194,12 +194,13 @@
         }
 
         try {
-          let form = new FormData(document.querySelector('form'));
+          const formEl = document.querySelector('form');
+          let form = new FormData(formEl);
 
           const content = document.querySelector('.pell-content').innerHTML;
           form.append('content', content);
 
-          const response = await fetch(form.getAttribute('action'), {
+          const response = await fetch(formEl.getAttribute('action'), {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams(form),
@@ -213,7 +214,7 @@
             const currentUrl = window.location.pathname.split('/')[2];
             if (newUrl !== currentUrl) {
               history.pushState({}, '', `/p/${newUrl}/edit`);
-              form.action = `/p/${newUrl}/edit`;
+              formEl.action = `/p/${newUrl}/edit`;
             }
           } else {
             setError();
