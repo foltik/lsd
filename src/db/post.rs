@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
-use super::Db;
+use super::{migration::Migration, Db};
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Post {
@@ -10,7 +10,6 @@ pub struct Post {
     pub url: String,
     pub author: String,
     pub content: String,
-    pub content_rendered: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -21,7 +20,6 @@ pub struct UpdatePost {
     pub url: String,
     pub author: String,
     pub content: String,
-    pub content_rendered: String,
 }
 
 impl Post {
@@ -42,6 +40,15 @@ impl Post {
         .execute(db)
         .await?;
 
+        Migration::run(db, "posts: remove content_rendered", async {
+            sqlx::query("UPDATE posts SET content = content_rendered").execute(db).await?;
+            sqlx::query("ALTER TABLE posts DROP COLUMN content_rendered")
+                .execute(db)
+                .await?;
+            Ok(())
+        })
+        .await?;
+
         Ok(())
     }
 
@@ -57,14 +64,13 @@ impl Post {
     pub async fn create(db: &Db, post: &UpdatePost) -> Result<i64> {
         let row = sqlx::query(
             "INSERT INTO posts \
-                (title, url, author, content, content_rendered) \
+                (title, url, author, content) \
                 VALUES (?, ?, ?, ?, ?)",
         )
         .bind(&post.title)
         .bind(&post.url)
         .bind(&post.author)
         .bind(&post.content)
-        .bind(&post.content_rendered)
         .execute(db)
         .await?;
         Ok(row.last_insert_rowid())
@@ -78,7 +84,6 @@ impl Post {
                  url = ?,
                  author = ?,
                  content = ?,
-                 content_rendered = ?,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
         )
@@ -86,7 +91,6 @@ impl Post {
         .bind(&post.url)
         .bind(&post.author)
         .bind(&post.content)
-        .bind(&post.content_rendered)
         .bind(id)
         .execute(db)
         .await?;
