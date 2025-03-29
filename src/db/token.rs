@@ -27,9 +27,7 @@ impl SessionToken {
     pub async fn create(db: &Db, user_id: i64) -> Result<String> {
         let token = format!("{:08x}", OsRng.gen::<u64>());
 
-        sqlx::query("INSERT INTO session_tokens (user_id, token) VALUES (?, ?)")
-            .bind(user_id)
-            .bind(&token)
+        sqlx::query!("INSERT INTO session_tokens (user_id, token) VALUES (?, ?)", user_id, token)
             .execute(db)
             .await?;
 
@@ -42,9 +40,7 @@ impl LoginToken {
     pub async fn create(db: &Db, email: &str) -> Result<String> {
         let token = format!("{:08x}", OsRng.gen::<u64>());
 
-        sqlx::query("INSERT INTO login_tokens (email, token) VALUES (?, ?)")
-            .bind(email)
-            .bind(&token)
+        sqlx::query!("INSERT INTO login_tokens (email, token) VALUES (?, ?)", email, token)
             .execute(db)
             .await?;
 
@@ -53,10 +49,9 @@ impl LoginToken {
 
     /// Lookup the email address for the given login token, if it's valid.
     pub async fn lookup_email(db: &Db, token: &str) -> Result<Option<String>> {
-        let row = sqlx::query_as::<_, (String,)>("SELECT email FROM login_tokens WHERE token = ?")
-            .bind(token)
+        let row = sqlx::query_scalar!("SELECT email FROM login_tokens WHERE token = ?", token)
             .fetch_optional(db)
             .await?;
-        Ok(row.map(|r| r.0))
+        Ok(row)
     }
 }
