@@ -78,8 +78,8 @@ async fn create_list_page(State(state): State<SharedAppState>, user: User) -> Ap
             id: 0,
             name: "".into(),
             description: "".into(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
         },
     );
     ctx.insert::<[String], _>("members", &[]);

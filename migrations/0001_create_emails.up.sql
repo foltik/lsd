@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS emails (
     post_id INTEGER,
     list_id INTEGER,
     error TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     sent_at TIMESTAMP,
     opened_at TIMESTAMP
 );

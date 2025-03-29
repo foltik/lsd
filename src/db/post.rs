@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 
 use super::Db;
 
@@ -10,8 +10,8 @@ pub struct Post {
     pub url: String,
     pub author: String,
     pub content: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(serde::Deserialize)]
@@ -25,7 +25,7 @@ pub struct UpdatePost {
 impl Post {
     // List all posts.
     pub async fn list(db: &Db) -> Result<Vec<Post>> {
-        let posts = sqlx::query_as::<_, Post>("SELECT * FROM posts ORDER BY updated_at DESC")
+        let posts = sqlx::query_as!(Self, "SELECT * FROM posts ORDER BY updated_at DESC")
             .fetch_all(db)
             .await?;
         Ok(posts)
@@ -33,15 +33,15 @@ impl Post {
 
     /// Create a new post.
     pub async fn create(db: &Db, post: &UpdatePost) -> Result<i64> {
-        let row = sqlx::query(
-            "INSERT INTO posts \
-                (title, url, author, content) \
-                VALUES (?, ?, ?, ?, ?)",
+        let row = sqlx::query!(
+            r#"INSERT INTO posts
+               (title, url, author, content)
+               VALUES (?, ?, ?, ?)"#,
+            post.title,
+            post.url,
+            post.author,
+            post.content,
         )
-        .bind(&post.title)
-        .bind(&post.url)
-        .bind(&post.author)
-        .bind(&post.content)
         .execute(db)
         .await?;
         Ok(row.last_insert_rowid())
@@ -49,20 +49,20 @@ impl Post {
 
     /// Update an existing post.
     pub async fn update(db: &Db, id: i64, post: &UpdatePost) -> Result<()> {
-        sqlx::query(
-            "UPDATE posts
-             SET title = ?,
+        sqlx::query!(
+            r#"UPDATE posts
+               SET title = ?,
                  url = ?,
                  author = ?,
                  content = ?,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?",
+               WHERE id = ?"#,
+            post.title,
+            post.url,
+            post.author,
+            post.content,
+            id
         )
-        .bind(&post.title)
-        .bind(&post.url)
-        .bind(&post.author)
-        .bind(&post.content)
-        .bind(id)
         .execute(db)
         .await?;
         Ok(())
@@ -70,14 +70,13 @@ impl Post {
 
     /// Delete a post.
     pub async fn delete(db: &Db, id: i64) -> Result<()> {
-        sqlx::query("DELETE FROM posts WHERE id = ?").bind(id).execute(db).await?;
+        sqlx::query!("DELETE FROM posts WHERE id = ?", id).execute(db).await?;
         Ok(())
     }
 
     /// Lookup a post by URL, if one exists.
     pub async fn lookup_by_url(db: &Db, url: &str) -> Result<Option<Post>> {
-        let row = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE url = ?")
-            .bind(url)
+        let row = sqlx::query_as!(Self, "SELECT * FROM posts WHERE url = ?", url)
             .fetch_optional(db)
             .await?;
         Ok(row)

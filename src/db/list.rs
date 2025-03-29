@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use sqlx::QueryBuilder;
 
 use super::Db;
@@ -9,8 +9,8 @@ pub struct List {
     pub id: i64,
     pub name: String,
     pub description: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
@@ -31,19 +31,19 @@ pub struct UpdateList {
 impl List {
     /// List all lists.
     pub async fn list(db: &Db) -> Result<Vec<List>> {
-        let events = sqlx::query_as::<_, List>("SELECT * FROM lists").fetch_all(db).await?;
+        let events = sqlx::query_as!(Self, "SELECT * FROM lists").fetch_all(db).await?;
         Ok(events)
     }
 
     /// Create a list.
     pub async fn create(db: &Db, event: &UpdateList) -> Result<i64> {
-        let row = sqlx::query(
-            "INSERT INTO lists \
-                (name, description) \
-                VALUES (?, ?)",
+        let row = sqlx::query!(
+            r#"INSERT INTO lists
+               (name, description)
+               VALUES (?, ?)"#,
+            event.name,
+            event.description
         )
-        .bind(&event.name)
-        .bind(&event.description)
         .execute(db)
         .await?;
         Ok(row.last_insert_rowid())
@@ -51,14 +51,14 @@ impl List {
 
     /// Update a list.
     pub async fn update(db: &Db, id: i64, event: &UpdateList) -> Result<()> {
-        sqlx::query(
-            "UPDATE lists \
-             SET name = ?, description = ? \
-             WHERE id = ?",
+        sqlx::query!(
+            r#"UPDATE lists
+               SET name = ?, description = ?
+               WHERE id = ?"#,
+            event.name,
+            event.description,
+            id
         )
-        .bind(&event.name)
-        .bind(&event.description)
-        .bind(id)
         .execute(db)
         .await?;
         Ok(())
@@ -66,12 +66,13 @@ impl List {
 
     /// Lookup a list by id, if one exists.
     pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<List>> {
-        let event = sqlx::query_as::<_, List>(
-            "SELECT * \
-             FROM lists \
-             WHERE id = ?",
+        let event = sqlx::query_as!(
+            Self,
+            r#"SELECT *
+               FROM lists
+               WHERE id = ?"#,
+            id
         )
-        .bind(id)
         .fetch_optional(db)
         .await?;
         Ok(event)
@@ -79,14 +80,15 @@ impl List {
 
     /// Lookup the members of a list.
     pub async fn list_members(db: &Db, list_id: i64) -> Result<Vec<ListMember>> {
-        let members = sqlx::query_as::<_, ListMember>(
-            "SELECT e.email, u.first_name, u.last_name
-             FROM list_members e \
-             LEFT JOIN users u ON u.email = e.email \
-             WHERE e.list_id = ?
-             ORDER BY e.created_at",
+        let members = sqlx::query_as!(
+            ListMember,
+            r#"SELECT e.email, u.first_name, u.last_name
+               FROM list_members e
+               JOIN users u ON u.email = e.email
+               WHERE e.list_id = ?
+               ORDER BY e.created_at"#,
+            list_id
         )
-        .bind(list_id)
         .fetch_all(db)
         .await?;
         Ok(members)
@@ -106,12 +108,12 @@ impl List {
     }
 
     pub async fn remove_member(db: &Db, list_id: i64, email: &str) -> Result<()> {
-        sqlx::query(
-            "DELETE FROM list_members \
-             WHERE list_id = ? AND email = ?",
+        sqlx::query!(
+            r#"DELETE FROM list_members
+               WHERE list_id = ? AND email = ?"#,
+            list_id,
+            email
         )
-        .bind(list_id)
-        .bind(email)
         .execute(db)
         .await?;
         Ok(())
