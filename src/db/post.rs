@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
-use super::{migration::Migration, Db};
+use super::Db;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Post {
@@ -23,35 +23,6 @@ pub struct UpdatePost {
 }
 
 impl Post {
-    /// Create the `posts` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS posts ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                title TEXT NOT NULL, \
-                url TEXT NOT NULL, \
-                author TEXT NOT NULL, \
-                content TEXT NOT NULL, \
-                content_rendered TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-
-        Migration::run(db, "posts: remove content_rendered", async {
-            sqlx::query("UPDATE posts SET content = content_rendered").execute(db).await?;
-            sqlx::query("ALTER TABLE posts DROP COLUMN content_rendered")
-                .execute(db)
-                .await?;
-            Ok(())
-        })
-        .await?;
-
-        Ok(())
-    }
-
     // List all posts.
     pub async fn list(db: &Db) -> Result<Vec<Post>> {
         let posts = sqlx::query_as::<_, Post>("SELECT * FROM posts ORDER BY updated_at DESC")
