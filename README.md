@@ -22,6 +22,8 @@ Initialize dev database:
 cargo sqlx database create
 ```
 
+Create a .env file with `DATABASE_URL=sqlite://lsd.sqlite`
+
 To automatically recompile and rerun when you make changes, use `cargo-watch`:
 ```sh
 cargo install cargo-watch
