@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    author TEXT NOT NULL,
+    content TEXT NOT NULL,
+    content_rendered TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

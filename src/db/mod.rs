@@ -7,7 +7,6 @@ pub type Db = SqlitePool;
 pub mod email;
 pub mod event;
 pub mod list;
-pub mod migration;
 pub mod post;
 pub mod token;
 pub mod user;
@@ -20,14 +19,7 @@ pub async fn init(file: &Path) -> Result<Db> {
     }
     let db = SqlitePool::connect(&url).await?;
 
-    migration::Migration::migrate(&db).await?;
-    user::User::migrate(&db).await?;
-    token::SessionToken::migrate(&db).await?;
-    token::LoginToken::migrate(&db).await?;
-    post::Post::migrate(&db).await?;
-    event::Event::migrate(&db).await?;
-    list::List::migrate(&db).await?;
-    email::Email::migrate(&db).await?;
+    sqlx::migrate!("./migrations");
 
     Ok(db)
 }

@@ -23,26 +23,6 @@ impl Email {
     /// An email containing a post.
     pub const POST: &'static str = "post";
 
-    /// Create the `emails` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS emails ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                kind TEXT NOT NULL, \
-                address TEXT NOT NULL, \
-                post_id INTEGER, \
-                list_id INTEGER, \
-                error TEXT, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                sent_at TIMESTAMP, \
-                opened_at TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
     /// Lookup an email by id.
     pub async fn lookup(db: &Db, id: i64) -> Result<Option<Email>> {
         let res = sqlx::query_as::<_, Email>("SELECT * FROM emails WHERE id = ?")

@@ -27,34 +27,6 @@ impl User {
     /// Can manage posts.
     pub const WRITER: &'static str = "writer";
 
-    /// Create the `users` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS users ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                first_name TEXT NOT NULL, \
-                last_name TEXT NOT NULL, \
-                email TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS user_roles ( \
-                user_id INTEGER NOT NULL, \
-                role TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                PRIMARY KEY (user_id, role) \
-            )",
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-
     /// Create a new user.
     pub async fn create(db: &Db, user: &UpdateUser) -> Result<i64> {
         let row = sqlx::query(

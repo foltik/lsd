@@ -23,22 +23,6 @@ pub struct LoginToken {
 }
 
 impl SessionToken {
-    /// Create the `session_tokens` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS session_tokens ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                user_id INTEGER NOT NULL, \
-                token TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                FOREIGN KEY (user_id) REFERENCES users(id) \
-            )",
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
     /// Create a new session token for a user.
     pub async fn create(db: &Db, user_id: i64) -> Result<String> {
         let token = format!("{:08x}", OsRng.gen::<u64>());
@@ -54,21 +38,6 @@ impl SessionToken {
 }
 
 impl LoginToken {
-    /// Create the `login_tokens` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS login_tokens ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                email TEXT NOT NULL, \
-                token TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
     /// Create a new login token for an email address.
     pub async fn create(db: &Db, email: &str) -> Result<String> {
         let token = format!("{:08x}", OsRng.gen::<u64>());

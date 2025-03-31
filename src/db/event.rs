@@ -27,24 +27,6 @@ pub struct UpdateEvent {
 }
 
 impl Event {
-    /// Create the `events` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS events ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                title TEXT NOT NULL, \
-                artist TEXT NOT NULL, \
-                description TEXT NOT NULL, \
-                start_date TIMESTAMP NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
     // List all events.
     pub async fn list(db: &Db) -> Result<Vec<Event>> {
         let events = sqlx::query_as::<_, Event>("SELECT * FROM events").fetch_all(db).await?;
