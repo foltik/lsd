@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE lists\n               SET name = ?, description = ?\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "964a241138128189d33b7eae8984d60777cf278c40214dcb62b6e9c1bb016675"
+}

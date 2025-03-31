@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE emails SET sent_at = CURRENT_TIMESTAMP, error = ?\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "40f493f5a0f47f170c97e2f60b972a5ea03360acc445bbc9889a30500802da8a"
+}
