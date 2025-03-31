@@ -17,6 +17,11 @@ git clone https://github.com/foltik/lsd
 cd lsd
 ```
 
+Initialize dev database:
+```sh
+cargo sqlx database create
+```
+
 To automatically recompile and rerun when you make changes, use `cargo-watch`:
 ```sh
 cargo install cargo-watch
