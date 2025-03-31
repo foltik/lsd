@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT e.email, u.first_name, u.last_name\n               FROM list_members e\n               JOIN users u ON u.email = e.email\n               WHERE e.list_id = ?\n               ORDER BY e.created_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "email",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7ca407a30cccec2dab26603e1bc8cd1f5ecf3177db672bc6fd96ff91e17af3d0"
+}

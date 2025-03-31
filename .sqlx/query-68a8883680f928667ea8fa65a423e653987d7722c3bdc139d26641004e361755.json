@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE events\n               SET title = ?, artist = ?, description = ?, start_date = ?\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "68a8883680f928667ea8fa65a423e653987d7722c3bdc139d26641004e361755"
+}
