@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use std::collections::HashMap;
 use tera::{Tera, Value};
 
@@ -24,8 +24,9 @@ pub fn templates(config: &Config) -> Result<Tera> {
             let format = format.as_str().context("arg=`format` must be a string")?;
 
             let date: &str = date.as_str().with_context(|| format!("value={date:?} must be a string"))?;
-            let date: DateTime<Utc> = date.parse().context("parsing date")?;
-            let local = date.with_timezone(&tz);
+            let date: NaiveDateTime = date.parse().context("parsing date")?;
+            let utc = date.and_utc();
+            let local = utc.with_timezone(&tz);
 
             let formatted = local.format(format).to_string();
             Ok(Value::String(formatted))
