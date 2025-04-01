@@ -2,3 +2,5 @@
 Cargo.lock
 *.sqlite
 *.sqlite-*
+.DS_Store
+.env

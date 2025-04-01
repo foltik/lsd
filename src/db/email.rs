@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 
 use super::Db;
 
@@ -12,9 +12,9 @@ pub struct Email {
     pub post_id: Option<i64>,
     pub list_id: Option<i64>,
     pub error: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub sent_at: Option<DateTime<Utc>>,
-    pub opened_at: Option<DateTime<Utc>>,
+    pub created_at: NaiveDateTime,
+    pub sent_at: Option<NaiveDateTime>,
+    pub opened_at: Option<NaiveDateTime>,
 }
 
 impl Email {
@@ -23,30 +23,9 @@ impl Email {
     /// An email containing a post.
     pub const POST: &'static str = "post";
 
-    /// Create the `emails` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS emails ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                kind TEXT NOT NULL, \
-                address TEXT NOT NULL, \
-                post_id INTEGER, \
-                list_id INTEGER, \
-                error TEXT, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                sent_at TIMESTAMP, \
-                opened_at TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
     /// Lookup an email by id.
     pub async fn lookup(db: &Db, id: i64) -> Result<Option<Email>> {
-        let res = sqlx::query_as::<_, Email>("SELECT * FROM emails WHERE id = ?")
-            .bind(id)
+        let res = sqlx::query_as!(Self, r#"SELECT * FROM emails WHERE id = ?"#, id)
             .fetch_optional(db)
             .await?;
         Ok(res)
@@ -54,13 +33,14 @@ impl Email {
 
     /// Lookup an email by address, post, and list.
     pub async fn lookup_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<Option<Email>> {
-        let res = sqlx::query_as::<_, Email>(
-            "SELECT * FROM emails \
-             WHERE address = ? AND post_id = ? AND list_id = ?",
+        let res = sqlx::query_as!(
+            Self,
+            r#"SELECT * FROM emails
+               WHERE address = ? AND post_id = ? AND list_id = ?"#,
+            address,
+            post_id,
+            list_id
         )
-        .bind(address)
-        .bind(post_id)
-        .bind(list_id)
         .fetch_optional(db)
         .await?;
         Ok(res)
@@ -68,9 +48,7 @@ impl Email {
 
     /// Create a new email record.
     pub async fn create_login(db: &Db, address: &str) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO emails (kind, address) VALUES (?, ?)")
-            .bind(Email::LOGIN)
-            .bind(address)
+        let res = sqlx::query!("INSERT INTO emails (kind, address) VALUES (?, ?)", Email::LOGIN, address)
             .execute(db)
             .await?;
         Ok(res.last_insert_rowid())
@@ -78,23 +56,25 @@ impl Email {
 
     /// Create a new email record referencing another database entry.
     pub async fn create_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO emails (kind, address, post_id, list_id) VALUES (?, ?, ?, ?)")
-            .bind(Email::POST)
-            .bind(address)
-            .bind(post_id)
-            .bind(list_id)
-            .execute(db)
-            .await?;
+        let res = sqlx::query!(
+            r#"INSERT INTO emails (kind, address, post_id, list_id) VALUES (?, ?, ?, ?)"#,
+            Email::POST,
+            address,
+            post_id,
+            list_id
+        )
+        .execute(db)
+        .await?;
         Ok(res.last_insert_rowid())
     }
 
     /// Mark an email as sent.
     pub async fn mark_sent(db: &Db, id: i64) -> Result<()> {
-        sqlx::query(
-            "UPDATE emails SET sent_at = CURRENT_TIMESTAMP \
-             WHERE id = ?",
+        sqlx::query!(
+            r#"UPDATE emails SET sent_at = CURRENT_TIMESTAMP
+               WHERE id = ?"#,
+            id
         )
-        .bind(id)
         .execute(db)
         .await?;
         Ok(())
@@ -102,12 +82,12 @@ impl Email {
 
     /// Mark an email as sent.
     pub async fn mark_error(db: &Db, id: i64, error: &str) -> Result<()> {
-        sqlx::query(
-            "UPDATE emails SET sent_at = CURRENT_TIMESTAMP, error = ? \
-             WHERE id = ?",
+        sqlx::query!(
+            r#"UPDATE emails SET sent_at = CURRENT_TIMESTAMP, error = ?
+               WHERE id = ?"#,
+            error,
+            id
         )
-        .bind(error)
-        .bind(id)
         .execute(db)
         .await?;
         Ok(())
@@ -115,11 +95,11 @@ impl Email {
 
     /// Mark an email as opened.
     pub async fn mark_opened(db: &Db, id: i64) -> Result<()> {
-        sqlx::query(
-            "UPDATE emails SET opened_at = CURRENT_TIMESTAMP \
-             WHERE id = ? AND opened_at IS NULL",
+        sqlx::query!(
+            r#"UPDATE emails SET opened_at = CURRENT_TIMESTAMP
+               WHERE id = ? AND opened_at IS NULL"#,
+            id
         )
-        .bind(id)
         .execute(db)
         .await?;
         Ok(())

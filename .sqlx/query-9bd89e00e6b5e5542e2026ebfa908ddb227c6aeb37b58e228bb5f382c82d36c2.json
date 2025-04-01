@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT u.*\n               FROM session_tokens t\n               JOIN users u on u.id = t.user_id\n               WHERE token = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9bd89e00e6b5e5542e2026ebfa908ddb227c6aeb37b58e228bb5f382c82d36c2"
+}

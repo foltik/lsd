@@ -27,7 +27,7 @@ async fn list_events_page(
     State(state): State<SharedAppState>,
     Query(query): Query<ListEventsQuery>,
 ) -> AppResult<Response> {
-    let now = Utc::now();
+    let now = Utc::now().naive_utc();
     let past = query.past.unwrap_or(false);
 
     let events = Event::list(&state.db)

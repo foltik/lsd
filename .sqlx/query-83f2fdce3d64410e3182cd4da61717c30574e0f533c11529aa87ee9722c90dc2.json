@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE emails SET opened_at = CURRENT_TIMESTAMP\n               WHERE id = ? AND opened_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "83f2fdce3d64410e3182cd4da61717c30574e0f533c11529aa87ee9722c90dc2"
+}

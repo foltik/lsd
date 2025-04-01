@@ -73,8 +73,8 @@ async fn create_post_page(State(state): State<SharedAppState>, user: User) -> Ap
             url: "".into(),
             author: "".into(),
             content: "".into(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
         },
     );
 

@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT u.id as \"id!\", u.first_name as \"first_name!\", u.last_name as \"last_name!\", u.email as \"email!\", u.created_at as \"created_at!\"\n               FROM login_tokens t\n               JOIN users u on u.email = t.email\n               WHERE token = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "first_name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "email!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9df006c4a5af40d057a1d1617c552f2b897888afe7efc321913db83752287e5d"
+}

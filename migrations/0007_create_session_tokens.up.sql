@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS session_tokens (
+    id INTEGER PRIMARY KEY NOT NULL,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM emails WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "address",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "post_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "list_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "sent_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "opened_at",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "78d415f6740101e25b90d73b877e1e110d9509ca4686ab431edaa36e5cd5266f"
+}
