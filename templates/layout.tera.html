@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock title %}</title>
+    {% block head %}
+    <link rel="stylesheet" href="/assets/dist.css" />
+    {% endblock head %}
+  </head>
+  <body>
+    <main class="w-full max-w-4xl">
+      {% block content %}{% endblock content %}
+    </main>
+  </body>
+</html>
