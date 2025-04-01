@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 
 use super::Db;
 
@@ -9,7 +9,7 @@ pub struct User {
     pub first_name: String,
     pub last_name: String,
     pub email: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
 }
 
 impl User {}
@@ -27,44 +27,16 @@ impl User {
     /// Can manage posts.
     pub const WRITER: &'static str = "writer";
 
-    /// Create the `users` table.
-    pub async fn migrate(db: &Db) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS users ( \
-                id INTEGER PRIMARY KEY NOT NULL, \
-                first_name TEXT NOT NULL, \
-                last_name TEXT NOT NULL, \
-                email TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP \
-            )",
-        )
-        .execute(db)
-        .await?;
-
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS user_roles ( \
-                user_id INTEGER NOT NULL, \
-                role TEXT NOT NULL, \
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, \
-                PRIMARY KEY (user_id, role) \
-            )",
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-
     /// Create a new user.
     pub async fn create(db: &Db, user: &UpdateUser) -> Result<i64> {
-        let row = sqlx::query(
-            "INSERT INTO users \
-                (first_name, last_name, email) \
-                VALUES (?, ?, ?)",
+        let row = sqlx::query!(
+            r#"INSERT INTO users
+               (first_name, last_name, email)
+               VALUES (?, ?, ?)"#,
+            user.first_name,
+            user.last_name,
+            user.email
         )
-        .bind(&user.first_name)
-        .bind(&user.last_name)
-        .bind(&user.email)
         .execute(db)
         .await?;
         Ok(row.last_insert_rowid())
@@ -72,43 +44,46 @@ impl User {
 
     /// Lookup a user by email address, if one exists.
     pub async fn lookup_by_email(db: &Db, email: &str) -> Result<Option<User>> {
-        let row = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = ?")
-            .bind(email)
+        let row = sqlx::query_as!(Self, "SELECT * FROM users WHERE email = ?", email)
             .fetch_optional(db)
             .await?;
         Ok(row)
     }
     /// Lookup a user by a login token, if it's valid.
     pub async fn lookup_by_login_token(db: &Db, token: &str) -> Result<Option<User>> {
-        let row = sqlx::query_as::<_, User>(
-            "SELECT u.* \
-             FROM login_tokens t \
-             LEFT JOIN users u on u.email = t.email \
-             WHERE t.token = ?",
+        // Weird workaround for sqlx incorrectly inferring nullability for joins
+        // not sure why this is needed here and not below
+        // use the "!" syntax to force the column to be interpreted as non-null
+        // https://github.com/launchbadge/sqlx/issues/2127
+        let row = sqlx::query_as!(
+            User,
+            r#"SELECT u.id as "id!", u.first_name as "first_name!", u.last_name as "last_name!", u.email as "email!", u.created_at as "created_at!"
+               FROM login_tokens t
+               JOIN users u on u.email = t.email
+               WHERE token = ?"#,
+            token
         )
-        .bind(token)
         .fetch_optional(db)
         .await?;
         Ok(row)
     }
     /// Lookup a user by a session token, if it's valid.
     pub async fn lookup_by_session_token(db: &Db, token: &str) -> Result<Option<User>> {
-        let user = sqlx::query_as::<_, User>(
-            "SELECT u.* \
-             FROM session_tokens t \
-             JOIN users u on u.id = t.user_id \
-             WHERE token = ?",
+        let user = sqlx::query_as!(
+            Self,
+            r#"SELECT u.*
+               FROM session_tokens t
+               JOIN users u on u.id = t.user_id
+               WHERE token = ?"#,
+            token
         )
-        .bind(token)
         .fetch_optional(db)
         .await?;
         Ok(user)
     }
 
     pub async fn has_role(&self, db: &Db, role: &str) -> Result<bool> {
-        let row = sqlx::query("SELECT 1 FROM user_roles WHERE user_id = ? AND role = ?")
-            .bind(self.id)
-            .bind(role)
+        let row = sqlx::query!("SELECT * FROM user_roles WHERE user_id = ? AND role = ?", self.id, role)
             .fetch_optional(db)
             .await?;
         Ok(row.is_some())
