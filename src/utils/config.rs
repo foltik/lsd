@@ -40,6 +40,7 @@ pub struct AppConfig {
 pub struct DbConfig {
     /// Path to sqlite3 database file.
     pub file: PathBuf,
+    pub seed_data: Option<PathBuf>,
 }
 
 /// Networking configuration.
