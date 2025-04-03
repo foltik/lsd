@@ -2,14 +2,20 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}{% endblock title %}</title>
+    <title>{% block title %}light and sound design{% endblock title %}</title>
     {% block head %}
     <link rel="stylesheet" href="/assets/dist.css" />
     {% endblock head %}
   </head>
   <body>
+    <header>
+      <nav>
+        <!-- TODO: Link to "/" when the homepage is finished -->
+        <a class="home" href="https://lightandsound.design">lightandsound.design</a>
+      </nav>
+    </header>
     <main class="w-full max-w-4xl">
       {% block content %}{% endblock content %}
-    </main>
+   </main>
   </body>
 </html>
