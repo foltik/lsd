@@ -26,7 +26,7 @@ Initialize dev database:
 ```sh
 cargo install sqlx-cli --no-default-features --features sqlite
 cargo sqlx database create
-cargo sql migrate run
+cargo sqlx database setup
 ```
 
 To automatically recompile and rerun when you make changes, use `cargo-watch`:
