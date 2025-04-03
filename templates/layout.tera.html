@@ -3,17 +3,20 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}light and sound design{% endblock title %}</title>
-    {% block head %}
+    <link href="/assets/favicon.ico" rel="icon" type="image/x-icon" />
     <link rel="stylesheet" href="/assets/dist.css" />
-    {% endblock head %}
+    {% block styles %}
+    {% endblock styles %}
   </head>
   <body>
-    <header>
+    {% block header %}
+    <header class="p-4 border-b border-neutral-800">
       <nav>
         <!-- TODO: Link to "/" when the homepage is finished -->
-        <a class="home" href="https://lightandsound.design">lightandsound.design</a>
+        <a class="font-bold" href="https://lightandsound.design">lightandsound.design</a>
       </nav>
     </header>
+    {% endblock header %}
     <main class="w-full max-w-4xl">
       {% block content %}{% endblock content %}
    </main>
