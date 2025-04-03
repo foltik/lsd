@@ -1,0 +1,12 @@
+[[users]]
+email = "test@test.com"
+first_name = "Test"
+last_name = "Testington"
+
+[[user_roles]]
+user_id = 1
+role = "admin"
+
+[[user_roles]]
+user_id = 1
+role = "writer"
