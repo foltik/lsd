@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -19,6 +21,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -29,6 +33,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -40,6 +46,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
