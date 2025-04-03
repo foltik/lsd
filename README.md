@@ -25,7 +25,6 @@ Initialize dev database:
 
 ```sh
 cargo install sqlx-cli --no-default-features --features sqlite
-cargo sqlx database create
 cargo sqlx database setup
 ```
 
