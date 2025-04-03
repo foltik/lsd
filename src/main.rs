@@ -7,11 +7,23 @@ mod utils;
 use axum::{handler::HandlerWithoutStateExt, response::Redirect};
 use axum_server::tls_rustls::RustlsConfig;
 use futures::StreamExt;
+use tracing::{level_filters::LevelFilter, Level};
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 use utils::config::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt().init();
+    let log_filter = tracing_subscriber::filter::Targets::default()
+        .with_target("h2", LevelFilter::OFF)
+        .with_default(Level::DEBUG);
+
+    tracing_subscriber::fmt()
+        .with_target(true)
+        .with_line_number(true)
+        .with_max_level(Level::DEBUG)
+        .finish()
+        .with(log_filter)
+        .try_init()?;
 
     // Load the server config
     let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
