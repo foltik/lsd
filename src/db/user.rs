@@ -1,9 +1,10 @@
 use anyhow::Result;
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 
 use super::Db;
 
-#[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
     pub first_name: String,
@@ -13,6 +14,13 @@ pub struct User {
 }
 
 impl User {}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UserRole {
+    pub user_id: i64,
+    pub role: String,
+    pub created_at: NaiveDateTime,
+}
 
 #[derive(Debug, serde::Deserialize)]
 pub struct UpdateUser {
@@ -40,6 +48,13 @@ impl User {
         .execute(db)
         .await?;
         Ok(row.last_insert_rowid())
+    }
+
+    pub async fn add_role(db: &Db, user_id: i64, role: &str) -> Result<()> {
+        sqlx::query!(r#"INSERT INTO user_roles (user_id, role) VALUES (?, ?)"#, user_id, role)
+            .execute(db)
+            .await?;
+        Ok(())
     }
 
     /// Lookup a user by email address, if one exists.
