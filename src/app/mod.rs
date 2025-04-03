@@ -27,7 +27,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let state = Arc::new(AppState {
         config: config.clone(),
         templates: utils::tera::templates(&config)?,
-        db: crate::db::init(&config.db.file, config.db.seed_data.as_deref()).await?,
+        db: crate::db::init(&config.db).await?,
         mailer: Emailer::connect(config.email).await?,
     });
 

@@ -4,6 +4,8 @@ use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
 use std::path::Path;
 use user::User;
 
+use crate::utils::config::DbConfig;
+
 pub type Db = SqlitePool;
 
 pub mod email;
@@ -14,8 +16,8 @@ pub mod token;
 pub mod user;
 
 /// Create a new db connection pool, initializing and running migrations if necessary.
-pub async fn init(file: &Path, seed_data: Option<&Path>) -> Result<Db> {
-    let url = format!("sqlite://{}", file.display());
+pub async fn init(db_config: &DbConfig) -> Result<Db> {
+    let url = format!("sqlite://{}", db_config.file.display());
     if !Sqlite::database_exists(&url).await? {
         Sqlite::create_database(&url).await?;
     }
@@ -23,7 +25,7 @@ pub async fn init(file: &Path, seed_data: Option<&Path>) -> Result<Db> {
 
     sqlx::migrate!("./migrations");
 
-    if let Some(seed_data) = seed_data {
+    if let Some(seed_data) = &db_config.seed_data {
         seed_db(&db, seed_data).await?;
     }
 
