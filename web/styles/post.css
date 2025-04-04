@@ -1,0 +1,24 @@
+#post {
+  @apply w-full max-w-4xl px-6 py-8 flex flex-col;
+}
+
+#post article {
+  @apply w-full;
+}
+
+#post article header {
+  @apply mb-6 pb-6 border-b border-b-pink-400;
+  h1 {
+    @apply text-4xl font-black;
+  }
+  time {
+    @apply text-sm;
+  }
+}
+
+#post article section {
+  @apply text-lg;
+  p {
+    @apply mb-4;
+  }
+}
