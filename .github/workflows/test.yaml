@@ -37,7 +37,7 @@ jobs:
         with:
           deno-version: v2.x
       - run:
-          deno install npm:prettier
+          deno install --global npm:prettier
           deno run -A npm:prettier templates styles --check
         working-directory: ./frontend
 
