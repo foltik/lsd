@@ -1,0 +1,24 @@
+[tools]
+node = "latest"
+rust = "latest"
+
+## Styles
+
+[tasks."build:styles"]
+run = "npm run build:styles"
+sources = ["web/**/*.css"]
+
+[tasks."watch:all"]
+run = "npm run watch"
+sources = ["web/**/*.css"]
+
+## App
+
+[tasks."build:app"]
+run = "cargo build"
+
+[tasks."run:app"]
+run = "cargo run config/dev.toml"
+depends = ["build:app"]
+sources = ["Cargo.toml", "src/**/*.rs", "templates/**/*.tera.html"]
+alias = "dev"
