@@ -1,62 +1,55 @@
-{% import "page.tera.html" as page %}
-{{ page::start(title="light and sound") }}
+{% extends "layout.tera.html" %}
+
+{% block title %}light and sound{% endblock title %}
+
+{% block styles %}
+
+{{ super() }}
+
 <style>
-    main {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        height: 200px;
-        position: relative;
+  .black {
+    color: #000;
+    -webkit-text-stroke: 1px #fff;
+  }
+  .white {
+    color: #fff;
+    animation: wave 4s ease-in-out infinite;
+  }
+  @keyframes wave {
+    0%,
+    100% {
+      clip-path: polygon(
+        0% 45%,
+        16% 44%,
+        33% 50%,
+        54% 60%,
+        70% 61%,
+        84% 59%,
+        100% 52%,
+        100% 100%,
+        0% 100%
+      );
     }
-    h1 {
-        position: absolute;
-        margin: 0;
-        font-size: 50px;
+    50% {
+      clip-path: polygon(
+        0% 60%,
+        15% 65%,
+        34% 66%,
+        51% 62%,
+        67% 50%,
+        84% 45%,
+        100% 46%,
+        100% 100%,
+        0% 100%
+      );
     }
-    @media (min-width: 1200px) {
-        h1 {
-            font-size: 150px;
-        }
-    }
-    .black {
-        color: #000;
-        -webkit-text-stroke: 1px #fff;
-    }
-    .white {
-        color: #fff;
-        animation: wave 4s ease-in-out infinite;
-    }
-    @keyframes wave {
-        0%,
-        100% {
-            clip-path: polygon(
-                0% 45%,
-                16% 44%,
-                33% 50%,
-                54% 60%,
-                70% 61%,
-                84% 59%,
-                100% 52%,
-                100% 100%,
-                0% 100%
-            );
-        }
-        50% {
-            clip-path: polygon(
-                0% 60%,
-                15% 65%,
-                34% 66%,
-                51% 62%,
-                67% 50%,
-                84% 45%,
-                100% 46%,
-                100% 100%,
-                0% 100%
-            );
-        }
-    }
+  }
 </style>
-<h1 class="black">Coming Soon...</h1>
-<h1 class="white">Coming Soon...</h1>
-{{ page::end() }}
+{% endblock styles %}
+
+{% block content %}
+<div>
+  <h1 class="black font-black text-5xl lg:text-9xl absolute">Coming Soon...</h1>
+  <h1 class="white font-black text-5xl lg:text-9xl absolute">Coming Soon...</h1>
+</div>
+{% endblock content %}
