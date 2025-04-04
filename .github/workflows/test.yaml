@@ -39,6 +39,7 @@ jobs:
         with:
           deno-version: v2.x
       - run:
+          deno install npm:prettier
           deno run -A npm:prettier frontend/templates frontend/styles --check
 
   clippy:
