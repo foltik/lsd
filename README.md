@@ -32,7 +32,18 @@ To automatically recompile and rerun when you make changes, use `cargo-watch`:
 
 ```sh
 cargo install cargo-watch
-cargo watch -x 'run config/dev.toml'
+cargo watch -x 'run config/dev.toml' --ignore "web/*"
+```
+
+Run Tailwind CLI to compile styles via `npm`.
+You can optionally install the [livereload][https://www.npmjs.com/package/livereload] extension to reload the page on style changes.
+
+```sh
+npm install
+# Watch for changes to ./web/styles/main.css, start livereload server
+npm run watch
+# Build styles minified
+npm run build:styles.min
 ```
 
 Use [mailtutan](https://github.com/mailtutan/mailtutan) for local testing of email functionality:
