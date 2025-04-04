@@ -1,8 +1,10 @@
 {% import "page.tera.html" as page %}
 {{ page::start(title=post.title) }}
 <article>
-    <h1 class="title">{{ post.title }}</h1>
-    <time class="date" datetime="{{ post.created_at }}">{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time>
-    {{ post.content | safe }}
+  <h1 class="title">{{ post.title }}</h1>
+  <time class="date" datetime="{{ post.created_at }}">
+    {{ post.created_at | format_datetime(format="%b %d, %Y") }}
+  </time>
+  {{ post.content | safe }}
 </article>
 {{ page::end() }}

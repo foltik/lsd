@@ -13,15 +13,17 @@
   </head>
   <body>
     {% block header %}
-    <header class="p-4 border-b border-neutral-800">
-      <nav>
-        <!-- TODO: Link to "/" when the homepage is finished -->
-        <a class="font-bold" href="https://lightandsound.design">lightandsound.design</a>
-      </nav>
-    </header>
+      <header class="border-b border-neutral-800 p-4">
+        <nav>
+          <!-- TODO: Link to "/" when the homepage is finished -->
+          <a class="font-bold" href="https://lightandsound.design">
+            lightandsound.design
+          </a>
+        </nav>
+      </header>
     {% endblock header %}
     <main class="w-full max-w-4xl">
       {% block content %}{% endblock content %}
-   </main>
+    </main>
   </body>
 </html>
