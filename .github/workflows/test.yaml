@@ -31,15 +31,15 @@ jobs:
   prettier:
     name: Format frontend
     runs-on: ubuntu-22.04
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
       - run:
-          deno task format:check
+          deno install npm:prettier
+          deno run -A npm:prettier templates styles --check
+        working-directory: ./frontend
 
   clippy:
     name: Lint
