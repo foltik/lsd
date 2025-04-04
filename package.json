@@ -3,7 +3,8 @@
     "watch": "npm-run-all --parallel watch:styles reload:assets",
     "reload:assets": "npx livereload assets",
     "watch:styles": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css --watch",
-    "build:styles": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css --minify"
+    "build:styles": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css",
+    "build:styles.min": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css --minify"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.17",
