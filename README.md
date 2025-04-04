@@ -42,6 +42,17 @@ cargo install mailtutan
 mailtutan
 ```
 
+Run Tailwind CLI to compile styles via `npm`.
+You can optionally install the [livereload][https://www.npmjs.com/package/livereload] extension to reload the page on style changes.
+
+```sh
+npm install
+# Watch for changes to ./web/styles/main.css, start livereload server
+npm run watch
+# Build minified output
+npm run build:styles
+```
+
 ## Workflow
 
 - Make commits in a separate branch, and open a PR against `main`

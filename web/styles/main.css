@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
+/*
+ * TODO: Refactor styles into Tailwind utility classes
+ */
+
 :root {
-  --color-bg: #000;
   --color-bg-alt: #080808;
   --color-border: #333;
 
@@ -14,85 +17,43 @@
   --color-button-hover: #444;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 html,
 body {
   @apply w-full h-full text-white bg-black;
 }
 
 header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-border);
-
-  a {
-    text-decoration: none;
-  }
-  a.home {
-    font-weight: bold;
-    letter-spacing: 1.05px;
-  }
+  @apply p-4 border-b border-neutral-700;
 }
 
 article {
-  max-width: 768px;
-  margin: 0 auto;
-  padding: 1rem;
+  @apply max-w-3xl mx-auto p-4;
 
   time {
-    display: block;
-    margin-bottom: 2rem;
-    font-size: 0.8rem;
-    letter-spacing: 0.2px;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
+    @apply block mb-8 text-sm uppercase;
   }
 
   p {
-    margin-bottom: 1.2rem;
-  }
-  p:last-child {
-    margin-bottom: 0;
+    @apply mb-5 last:mb-0;
   }
 
   blockquote {
-    font-style: italic;
-    margin: 2rem 0;
-    padding: 1.5rem 2rem;
-    background: var(--color-bg-alt);
-    border-left: 4px solid var(--color-border);
+    @apply italic my-4 py-6 px-8 border-l-[4px];
   }
 
   img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 2rem auto;
-  }
-  @media (min-width: 550px) {
-    img {
-      max-width: 500px;
-    }
+    @apply max-w-full h-auto block my-8;
   }
 }
 
 h2 {
-  margin-bottom: 0.3rem;
-  font-size: 1.2rem;
-  font-weight: 700;
+  @apply mb-1 text-xl font-bold;
 }
+
 a {
-  color: var(--color-text);
-  text-decoration: underline;
-  line-height: normal;
+  @apply underline;
 }
-a:hover {
-  color: var(--color-text-muted);
-}
+
 button,
 .button {
   font-size: 1rem;
@@ -105,13 +66,16 @@ button,
   border-radius: 4px;
   text-decoration: none;
 }
+
 button:hover,
 .button:hover {
   background: var(--color-button-hover);
 }
+
 ul {
   list-style-position: inside;
 }
+
 label {
   display: block;
   margin-bottom: 0.5rem;
@@ -125,6 +89,7 @@ input[type="text"] {
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
 }
+
 textarea {
   flex: 1;
   resize: vertical;
@@ -137,6 +102,7 @@ textarea {
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
+
 select {
   color: var(--color-text);
   background: var(--color-bg-alt);
@@ -151,6 +117,6 @@ form {
   .field {
     display: flex;
     flex-direction: column;
-    margin-bottom: 1rem;
+    @apply mb-4 pb-4;
   }
 }
