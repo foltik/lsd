@@ -3,3 +3,4 @@ Cargo.lock
 *.sqlite
 *.sqlite-*
 .DS_Store
+node_modules
