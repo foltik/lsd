@@ -2,20 +2,8 @@
 
 /*
  * TODO: Refactor styles into Tailwind utility classes
+ *       Below styles are from page.tera.html
  */
-
-:root {
-  --color-bg-alt: #080808;
-  --color-border: #333;
-
-  --color-text: #f2f2f2;
-  --color-text-muted: #aaa;
-  --color-text-warn: #d79f39;
-  --color-text-error: #ac4650;
-
-  --color-button: #181818;
-  --color-button-hover: #444;
-}
 
 html,
 body {
@@ -56,67 +44,35 @@ a {
 
 button,
 .button {
-  font-size: 1rem;
-  display: block;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  background: var(--color-button);
-  color: var(--color-text);
-  border: none;
-  border-radius: 4px;
-  text-decoration: none;
-}
-
-button:hover,
-.button:hover {
-  background: var(--color-button-hover);
+  @apply block px-4 py-2 cursor-pointer bg-neutral-900 hover:bg-neutral-800;
+  @apply rounded-sm;
 }
 
 ul {
-  list-style-position: inside;
+  @apply list-inside;
 }
 
 label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: var(--color-text-muted);
+  @apply block mb-2;
 }
+
 input[type="text"] {
-  width: 100%;
-  padding: 0.5rem;
-  font-size: 1rem;
-  color: var(--color-text);
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-border);
+  @apply w-full p-2 bg-neutral-950 border border-neutral-700;
 }
 
 textarea {
-  flex: 1;
-  resize: vertical;
-  width: 100%;
-  height: 50vh;
-  padding: 0.5rem;
-  background: #111;
-  font-family: monospace;
-  font-size: 0.9rem;
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  @apply flex-1 resize-y w-full h-[50vh] p-2 bg-neutral-900;
+  @apply text-sm font-mono border border-neutral-700;
 }
 
 select {
-  color: var(--color-text);
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-border);
+  @apply bg-neutral-950 border border-neutral-600;
 }
 
 form {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
+  @apply p-8 flex flex-col;
 
   .field {
-    display: flex;
-    flex-direction: column;
-    @apply mb-4 pb-4;
+    @apply mb-4 pb-4 flex flex-col;
   }
 }
