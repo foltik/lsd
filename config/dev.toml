@@ -5,7 +5,7 @@ tz = "America/New_York"
 
 [db]
 file = "db.sqlite"
-seed_data = "config/seed_data.json"
+seed_data = "config/seed_data.toml"
 
 [net]
 http_addr = "[::]:8080"
