@@ -1,10 +1,10 @@
 {
   "scripts": {
-    "watch": "npm-run-all --parallel watch:styles reload:assets",
-    "reload:assets": "npx livereload assets",
-    "watch:styles": "npx tailwindcss -i ./web/styles/main.css -o ./assets/dist.css --watch",
-    "build:styles": "npx tailwindcss -i ./web/styles/main.css -o ./assets/dist.css",
-    "build:styles.min": "npx tailwindcss -i ./web/styles/main.css -o ./assets/dist.css --minify"
+    "watch": "npm-run-all --parallel watch:styles reload:static",
+    "reload:static": "npx livereload static",
+    "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --watch",
+    "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css",
+    "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify"
   },
   "devDependencies": {
     "livereload": "^0.9.3",

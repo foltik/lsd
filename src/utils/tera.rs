@@ -7,7 +7,7 @@ use crate::Config;
 
 /// Initialize the [`Tera`] template engine, including our custom filter functions.
 pub fn templates(config: &Config) -> Result<Tera> {
-    let mut tera = Tera::new("templates/*")?;
+    let mut tera = Tera::new("frontend/templates/*")?;
 
     // Format a datetime with a [`strftime`] format string.
     // Also converts from UTC to the app's local timezone.
