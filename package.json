@@ -1,7 +1,7 @@
 {
   "scripts": {
     "watch": "npm-run-all --parallel watch:styles reload:static",
-    "reload:static": "npx livereload static",
+    "reload:static": "npx livereload ./frontend/static",
     "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --watch",
     "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css",
     "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify",
