@@ -1,0 +1,27 @@
+#post {
+  @apply flex w-full max-w-4xl flex-col px-6 py-8;
+}
+
+#post article {
+  @apply w-full;
+}
+
+#post article header {
+  @apply mb-6 border-b border-b-pink-400 pb-6;
+  h1 {
+    @apply font-display text-3xl font-bold;
+  }
+  time {
+    @apply text-sm;
+  }
+}
+
+#post article section {
+  @apply text-lg;
+  p {
+    @apply mt-4 first:mt-0;
+  }
+  blockquote {
+    @apply mt-4 border-l-[4px] border-neutral-800 pl-4;
+  }
+}

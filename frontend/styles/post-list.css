@@ -1,0 +1,30 @@
+#post-list {
+  @apply flex w-full max-w-3xl flex-col p-6;
+}
+
+#post-list header {
+  @apply mb-6 flex items-center justify-between border-b border-b-neutral-900 pb-4;
+  h1 {
+    @apply text-3xl;
+  }
+}
+
+#post-list .post {
+  @apply mb-8 border-b-[4px] border-neutral-900 pb-8;
+
+  h2 {
+    @apply mb-1 text-2xl font-bold;
+  }
+
+  h2 a {
+    @apply hover:underline;
+  }
+
+  .details {
+    @apply mb-4 text-neutral-400;
+  }
+
+  .actions {
+    @apply flex gap-x-2;
+  }
+}
