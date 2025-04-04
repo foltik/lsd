@@ -7,18 +7,18 @@
 
 html,
 body {
-  @apply w-full h-full text-white bg-black;
+  @apply h-full w-full bg-black text-white;
 }
 
 header {
-  @apply p-4 border-b border-neutral-700;
+  @apply border-b border-neutral-700 p-4;
 }
 
 article {
-  @apply max-w-3xl mx-auto p-4;
+  @apply mx-auto max-w-3xl p-4;
 
   time {
-    @apply block mb-8 text-sm uppercase;
+    @apply mb-8 block text-sm uppercase;
   }
 
   p {
@@ -26,11 +26,11 @@ article {
   }
 
   blockquote {
-    @apply italic my-4 py-6 px-8 border-l-[4px];
+    @apply my-4 border-l-[4px] px-8 py-6 italic;
   }
 
   img {
-    @apply max-w-full h-auto block my-8;
+    @apply my-8 block h-auto max-w-full;
   }
 }
 
@@ -44,7 +44,7 @@ a {
 
 button,
 .button {
-  @apply block px-4 py-2 cursor-pointer bg-neutral-900 hover:bg-neutral-800;
+  @apply block cursor-pointer bg-neutral-900 px-4 py-2 hover:bg-neutral-800;
   @apply rounded-sm;
 }
 
@@ -53,26 +53,26 @@ ul {
 }
 
 label {
-  @apply block mb-2;
+  @apply mb-2 block;
 }
 
 input[type="text"] {
-  @apply w-full p-2 bg-neutral-950 border border-neutral-700;
+  @apply w-full border border-neutral-700 bg-neutral-950 p-2;
 }
 
 textarea {
-  @apply flex-1 resize-y w-full h-[50vh] p-2 bg-neutral-900;
-  @apply text-sm font-mono border border-neutral-700;
+  @apply h-[50vh] w-full flex-1 resize-y bg-neutral-900 p-2;
+  @apply border border-neutral-700 font-mono text-sm;
 }
 
 select {
-  @apply bg-neutral-950 border border-neutral-600;
+  @apply border border-neutral-600 bg-neutral-950;
 }
 
 form {
-  @apply p-8 flex flex-col;
+  @apply flex flex-col p-8;
 
   .field {
-    @apply mb-4 pb-4 flex flex-col;
+    @apply mb-4 flex flex-col pb-4;
   }
 }

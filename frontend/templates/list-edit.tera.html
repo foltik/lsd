@@ -43,8 +43,10 @@
               Remove
             </button>
             {{ member.email }}
-            {% if member.first_name %}({{ member.first_name }}
-            {{ member.last_name }}){% endif %}
+            {% if member.first_name %}
+              ({{ member.first_name }}
+              {{ member.last_name }})
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

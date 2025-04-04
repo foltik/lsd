@@ -4,7 +4,8 @@
     "reload:static": "npx livereload static",
     "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --watch",
     "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css",
-    "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify"
+    "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify",
+    "format": "npx prettier ./frontend/templates ./frontend/styles --write "
   },
   "devDependencies": {
     "livereload": "^0.9.3",
