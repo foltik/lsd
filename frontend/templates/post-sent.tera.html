@@ -1,0 +1,36 @@
+{% import "page.tera.html" as page %}
+{{ page::start(title="Sent post - " ~ post.title) }}
+<style>
+  h1 {
+    padding-bottom: 1rem;
+  }
+  li {
+    padding-left: 1rem;
+  }
+</style>
+<div style="padding: 2rem;">
+  <h1>{{ post.title }}</h1>
+  <ul>
+    <li>Sent {{ stats.num_sent }} emails to list "{{ list.name }}"</li>
+
+    {% if stats.num_skipped > 0 %}
+      <li>
+        Skipped sending {{ stats.num_skipped }} emails which were already
+        delivered
+      </li>
+    {% endif %}
+
+    {% if stats.errors | length > 0 %}
+      <li>
+        Failed to send {{ stats.errors | length }} emails
+        <ul>
+          {% for email, error in stats.errors %}
+            <li>{{ email }}: {{ error }}</li>
+          {% endfor %}
+          <li>foo@foo.com: test</li>
+        </ul>
+      </li>
+    {% endif %}
+  </ul>
+  {{ page::end() }}
+</div>

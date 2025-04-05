@@ -28,6 +28,19 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo fmt --check
 
+  prettier:
+    name: Format frontend
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run:
+          deno install --global npm:prettier
+          deno run -A npm:prettier templates styles --check
+        working-directory: ./frontend
+
   clippy:
     name: Lint
     runs-on: ubuntu-22.04
