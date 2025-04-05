@@ -15,6 +15,7 @@ use utils::config::*;
 async fn main() -> Result<()> {
     let log_filter = tracing_subscriber::filter::Targets::default()
         .with_target("h2", LevelFilter::OFF)
+        .with_target("globset", LevelFilter::OFF)
         .with_default(Level::DEBUG);
 
     tracing_subscriber::fmt()
