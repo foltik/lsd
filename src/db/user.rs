@@ -13,8 +13,6 @@ pub struct User {
     pub created_at: NaiveDateTime,
 }
 
-impl User {}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UserRole {
     pub user_id: i64,
