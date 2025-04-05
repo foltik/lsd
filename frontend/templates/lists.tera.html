@@ -1,15 +1,15 @@
 {% import "page.tera.html" as page %}
 {{ page::start(title="Guestlists") }}
 <style>
-ul {
+  ul {
     padding: 2rem;
-}
+  }
 </style>
 <ul>
-{% for list in lists %}
+  {% for list in lists %}
     <li>
-        <a href="/lists/{{ list.id }}">{{ list.name }}</a>
+      <a href="/lists/{{ list.id }}">{{ list.name }}</a>
     </li>
-{% endfor %}
+  {% endfor %}
 </ul>
 {{ page::end() }}

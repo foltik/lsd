@@ -40,7 +40,7 @@ You can optionally install the [livereload][https://www.npmjs.com/package/livere
 
 ```sh
 npm install
-# Watch for changes to ./web/styles/main.css, start livereload server
+# Watch for changes to ./frontend/styles/main.css, start livereload server
 npm run watch
 # Build styles minified
 npm run build:styles.min

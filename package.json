@@ -1,14 +1,18 @@
 {
   "scripts": {
-    "watch": "npm-run-all --parallel watch:styles reload:assets",
-    "reload:assets": "npx livereload assets",
-    "watch:styles": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css --watch",
-    "build:styles": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css",
-    "build:styles.min": "npx @tailwindcss/cli -i ./web/styles/main.css -o ./assets/dist.css --minify"
+    "watch": "npm-run-all --parallel watch:styles reload:static",
+    "reload:static": "npx livereload ./frontend/static",
+    "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --watch",
+    "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css",
+    "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify",
+    "format": "npx prettier ./frontend/templates ./frontend/styles --write"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.0.17",
     "livereload": "^0.9.3",
-    "npm-run-all": "^4.1.5"
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.5.3",
+    "prettier-plugin-jinja-template": "^2.0.0",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "@tailwindcss/cli": "^4.1.2"
   }
 }

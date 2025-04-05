@@ -32,9 +32,9 @@ pub async fn build(config: Config) -> Result<Router> {
     });
 
     let r = Router::new()
-        .nest_service("/assets", ServeDir::new("assets"))
+        .nest_service("/static", ServeDir::new("frontend/static"))
         // For non-HTML pages without a <link rel="icon">, this is where the browser looks
-        .route("/favicon.ico", get(|| async { Redirect::to("/assets/favicon.ico") }));
+        .route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }));
 
     let r = home::register_routes(r);
     let r = posts::register_routes(r);
