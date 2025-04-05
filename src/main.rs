@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 mod app;
 mod db;
 mod utils;
+mod views;
 
 use axum::{handler::HandlerWithoutStateExt, response::Redirect};
 use axum_server::tls_rustls::RustlsConfig;

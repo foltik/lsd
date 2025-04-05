@@ -111,18 +111,18 @@
     <!-- Fix gmail ignoring non-inline body styles -->
     <header>
       <div class="nav">
-        <a class="home" href="https://lightandsound.design"
-          >lightandsound.design</a
-        >
+        <a class="home" href="https://lightandsound.design">
+          lightandsound.design
+        </a>
       </div>
     </header>
     <main>
       <article>
         <h1 class="title">{{ post.title }}</h1>
         <time class="date" datetime="{{ post.created_at }}"
-          >{{ post.created_at | format_datetime(format="%b %d, %Y") }}</time
+          >{{ post.created_at }}</time
         >
-        {{ post.content | safe }}
+        {{ post.content|safe }}
         <img alt="footer" src="{{ opened_url }}" />
       </article>
     </main>
@@ -130,7 +130,7 @@
       <!-- Gmail deletes the nav element for some reason, use a div instead -->
       <div class="nav">
         <p>
-          <a href="{{ post_url }}">View this post on the web</a> or
+          <a href="{{ post.url }}">View this post on the web</a> or
           <a href="{{ unsub_url }}">unsubscribe</a>
         </p>
       </div>

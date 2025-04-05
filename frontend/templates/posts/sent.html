@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block title %}Sent post - {{ post_title }}{% endblock title %}
+{% block styles %}
+  <style>
+    h1 {
+      padding-bottom: 1rem;
+    }
+    li {
+      padding-left: 1rem;
+    }
+  </style>
+{% endblock styles %}
+{% block content %}
+  <div style="padding: 2rem;">
+    <h1>{{ post_title }}</h1>
+    <ul>
+      <li>Sent {{ num_sent }} emails to list "{{ list_name }}"</li>
+
+      {% if num_skipped > 0 %}
+        <li>
+          Skipped sending {{ num_skipped }} emails which were already delivered
+        </li>
+      {% endif %}
+
+      {% if !errors.is_empty() %}
+        <li>
+          Failed to send {{ errors.len() }} emails
+          <ul>
+            {% for (email, message) in errors.iter() %}
+              <li>{{ email }}: {{ message }}</li>
+            {% endfor %}
+            <li>foo@foo.com: test</li>
+          </ul>
+        </li>
+      {% endif %}
+    </ul>
+  </div>
+{% endblock content %}
