@@ -36,10 +36,8 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run:
-          deno install --global npm:prettier
-          deno run -A npm:prettier templates styles --check
-        working-directory: ./frontend
+      - run: deno install --allow-scripts
+      - run: deno task format:check
 
   clippy:
     name: Lint
