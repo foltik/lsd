@@ -17,11 +17,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: install gcc-aarch64-linux-gnu
         run: sudo apt install -y gcc-aarch64-linux-gnu
-      - uses: denoland/setup-deno@v2
+
+      - uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
-      - run: deno install --allow-scripts
-      - run: deno task build:styles.min
+          node-version: 23
+      - run: npm ci
+      - run: npm run build:styles.min
 
       - name: Setup SSH key
         run: |
