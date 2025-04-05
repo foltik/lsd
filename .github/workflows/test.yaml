@@ -38,8 +38,7 @@ jobs:
           deno-version: v2.x
       - run:
           deno install --global npm:prettier
-          deno run -A npm:prettier templates styles --check
-        working-directory: ./frontend
+          deno run -A npm:prettier ./frontend/templates ./frontend/styles --check
 
   clippy:
     name: Lint
