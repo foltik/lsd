@@ -4,4 +4,4 @@ Cargo.lock
 *.sqlite-*
 .DS_Store
 node_modules
-static/dist
+frontend/static/dist
