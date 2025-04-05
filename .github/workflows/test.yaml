@@ -33,11 +33,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
-      - run: deno install --allow-scripts
-      - run: deno task format:check
+          node-version: 23
+      - run: npm ci
+      - run: npm run format:check
 
   clippy:
     name: Lint
