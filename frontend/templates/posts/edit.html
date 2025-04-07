@@ -191,7 +191,7 @@
 
       const postKey = "posts/{{ post.id }}";
       const postUpdatedAt = new Date(
-        '{{ post.updated_at | format_datetime(format="%m-%d-%Y %H:%M:%S %Z") }}',
+        '{{ post.updated_at | format_datetime("%m-%d-%Y %H:%M:%S %Z") }}',
       );
       let modified = false;
 
