@@ -121,13 +121,7 @@
   {% endif %}
   <div class="field">
     <label for="title">Title</label>
-    <input
-      type="text"
-      id="title"
-      name="title"
-      value="{{ post.title }}"
-      oninput="updatePreview()"
-    />
+    <input type="text" id="title" name="title" value="{{ post.title }}" />
   </div>
   <div class="field">
     <label for="url">URL</label>
@@ -181,28 +175,52 @@
 
   // AJAX saving with status indicator
   (() => {
-    // Track unsaved changes
-    let modified = false;
+    const editor = document.querySelector(".pell-content");
     const status = document.querySelector("#status");
 
-    async function setSaved() {
-      modified = false;
-      status.textContent = "Changes saved";
-      status.classList.remove("unsaved");
-      status.classList.remove("error");
+    const postKey = "posts/{{ post.id }}";
+    const postUpdatedAt = new Date(
+      '{{ post.updated_at | format_datetime(format="%m-%d-%Y %H:%M:%S %Z") }}',
+    );
+    let modified = false;
+
+    const setStatus = (text, clazz, mod) => {
+      status.textContent = text;
+      status.className = clazz;
+      modified = mod;
+    };
+    const setModified = () =>
+      setStatus("Changes saved locally", "unsaved", true);
+    const setRestored = () => setStatus("Changes restored", "unsaved", true);
+    const setSaved = () => setStatus("Changes saved", "", false);
+    const setError = () => setStatus("Error saving changes", "error", true);
+
+    // Load any saved local changes
+    let saved = postKey in localStorage && JSON.parse(localStorage[postKey]);
+    if (saved) {
+      const updatedAt = new Date(saved.updatedAt);
+      if (postKey == "posts/0" || updatedAt > postUpdatedAt) {
+        editor.innerHTML = saved.content;
+        setRestored();
+      }
     }
-    async function setUnsaved() {
-      modified = true;
-      status.textContent = "Changes unsaved";
-      status.classList.add("unsaved");
-      status.classList.remove("error");
-    }
-    async function setError() {
-      modified = true;
-      status.textContent = "Error saving";
-      status.classList.add("error");
-      status.classList.remove("unsaved");
-    }
+
+    // Save local changes
+    editor.addEventListener("input", (e) => {
+      localStorage[postKey] = JSON.stringify({
+        updatedAt: Date.now(),
+        content: editor.innerHTML,
+      });
+      setModified();
+    });
+
+    // Warn before leaving if modified
+    window.addEventListener("beforeunload", (e) => {
+      if (modified) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
 
     // Save post via AJAX
     window.savePost = async () => {
@@ -237,6 +255,13 @@
             history.pushState({}, "", `/p/${newUrl}/edit`);
             formEl.action = `/p/${newUrl}/edit`;
           }
+
+          if (postKey == "posts/0") {
+            // Clear local changes on the "new post" page
+            localStorage.removeItem(postKey);
+            // Reload the page to pick up the new id
+            window.location.href = `/p/${newUrl}/edit`;
+          }
         } else {
           setError();
           console.error(response.statusText);
@@ -246,19 +271,6 @@
         console.error(error);
       }
     };
-
-    // Update saved status when inputs change
-    document
-      .querySelectorAll("input, .pell-content")
-      .forEach((e) => e.addEventListener("input", setUnsaved));
-
-    // Warn before leaving if there are unsaved changes
-    window.addEventListener("beforeunload", (e) => {
-      if (modified) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    });
   })();
 
   // Resize handles
