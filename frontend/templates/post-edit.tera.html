@@ -291,5 +291,15 @@
       .querySelectorAll(".resize")
       .forEach((e) => e.addEventListener("mousedown", startResize));
   })();
+
+  // Clear formatting when pasting into the editor
+  (() => {
+    const editor = document.querySelector(".pell-content");
+    editor.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData("text/plain");
+      document.execCommand("insertText", false, text);
+    });
+  })();
 </script>
 {{ page::end() }}
