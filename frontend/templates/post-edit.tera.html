@@ -115,7 +115,7 @@
     }
   }
 </style>
-<form class="editor form" method="POST" action="/p/{{ post.url }}/edit">
+<form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
   {% if post.id != 0 %}
     <input type="hidden" name="id" value="{{ post.id }}" />
   {% endif %}
@@ -252,15 +252,15 @@
           const newUrl = document.getElementById("url").value;
           const currentUrl = window.location.pathname.split("/")[2];
           if (newUrl !== currentUrl) {
-            history.pushState({}, "", `/p/${newUrl}/edit`);
-            formEl.action = `/p/${newUrl}/edit`;
+            history.pushState({}, "", `/posts/${newUrl}/edit`);
+            formEl.action = `/posts/${newUrl}/edit`;
           }
 
           if (postKey == "posts/0") {
             // Clear local changes on the "new post" page
             localStorage.removeItem(postKey);
             // Reload the page to pick up the new id
-            window.location.href = `/p/${newUrl}/edit`;
+            window.location.href = `/posts/${newUrl}/edit`;
           }
         } else {
           setError();
