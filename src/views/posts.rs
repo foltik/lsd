@@ -1,3 +1,4 @@
+use crate::views::filters;
 use std::collections::HashMap;
 
 use askama::Template;

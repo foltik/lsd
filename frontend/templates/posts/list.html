@@ -53,7 +53,9 @@
         <h2><a href="/posts/{{ post.url }}">{{ post.title }}</a></h2>
         <div class="info">
           By {{ post.author }} &bull; Updated
-          <time datetime="{{ post.updated_at }}"> {{ post.updated_at }} </time>
+          <time datetime="{{ post.updated_at }}">
+            {{ post.updated_at | format_datetime("%b %d, %Y") }}
+          </time>
         </div>
         <div class="actions">
           <a class="button" href="/posts/{{ post.url }}/edit">Edit</a>

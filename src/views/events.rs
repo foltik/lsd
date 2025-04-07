@@ -1,4 +1,5 @@
 use crate::db::event::Event;
+use crate::views::filters;
 use askama::Template;
 
 #[derive(Template)]
