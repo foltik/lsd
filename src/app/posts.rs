@@ -23,11 +23,12 @@ use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 pub fn register_routes(router: AppRouter) -> AppRouter {
     router
         .route("/posts", get(list_posts_page))
-        .route("/p/new", get(create_post_page))
+        .route("/posts/new", get(create_post_page))
+        .route("/posts/{url}", get(view_post_page))
+        .route("/posts/{url}/edit", get(edit_post_page).post(edit_post_form))
+        .route("/posts/{url}/send", get(send_post_page).post(send_post_form))
+        .route("/posts/{url}/delete", post(delete_post_form))
         .route("/p/{url}", get(view_post_page))
-        .route("/p/{url}/edit", get(edit_post_page).post(edit_post_form))
-        .route("/p/{url}/send", get(send_post_page).post(send_post_form))
-        .route("/p/{url}/delete", post(delete_post_form))
 }
 
 /// Display a list of posts.
@@ -118,7 +119,7 @@ async fn edit_post_form(
             Post::create(&state.db, &form.post).await?;
         }
     }
-    Ok(Redirect::to(&format!("{}/p/{}", state.config.app.url, &form.post.url)).into_response())
+    Ok(().into_response())
 }
 #[derive(serde::Deserialize)]
 struct EditPost {

@@ -43,7 +43,7 @@
 <div class="posts">
   <div class="top">
     <h1 class="title">Posts</h1>
-    <a class="button" href="/p/new">New Post</a>
+    <a class="button" href="/posts/new">New Post</a>
   </div>
   {% for post in posts %}
     <div class="post">
@@ -55,15 +55,15 @@
         </time>
       </div>
       <div class="actions">
-        <a class="button" href="/p/{{ post.url }}/edit">Edit</a>
+        <a class="button" href="/posts/{{ post.url }}/edit">Edit</a>
         <!--
-            <form method="POST" action="/p/{{ post.url }}/duplicate">
+            <form method="POST" action="/posts/{{ post.url }}/duplicate">
                 <button type="submit">Duplicate</button>
             </form>
             -->
         <form
           method="POST"
-          action="/p/{{ post.url }}/delete"
+          action="/posts/{{ post.url }}/delete"
           onsubmit="return confirm('Are you sure you want to delete this post?');"
         >
           <button type="submit">Delete</button>
