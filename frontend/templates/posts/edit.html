@@ -1,0 +1,328 @@
+{% extends "layout.html" %}
+{% block title %}light and sound{% endblock title %}
+{% block styles %}
+  <style>
+    .editor {
+      border-right: 1px solid var(--color-border);
+
+      .url {
+        display: inline-flex;
+        align-items: center;
+
+        width: 100%;
+        padding: 0.5rem;
+        background-color: var(--color-bg-alt);
+        border: 1px solid var(--color-border);
+
+        .origin {
+          color: var(--color-text-muted);
+          white-space: nowrap;
+          font-family: monospace;
+        }
+        input[type="text"] {
+          border: none;
+          padding: 0;
+          background: transparent;
+        }
+      }
+      .content {
+        flex-grow: 1;
+
+        article {
+          position: relative;
+          overflow: auto;
+          resize: horizontal;
+          max-width: 100vw;
+          width: calc(min(100vw, 768px));
+        }
+
+        .pell {
+          flex-grow: 1;
+          overflow: visible;
+
+          display: flex;
+          flex-direction: column;
+          border: 1px solid var(--color-border);
+          padding: 0 16px 16px 16px;
+
+          .pell-actionbar {
+            position: sticky;
+            top: 0;
+            background-color: var(--color-bg);
+            border-bottom: 1px solid var(--color-border);
+            padding: 10px 0 10px 0;
+
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+
+            .pell-button {
+              background-color: var(--color-button);
+              outline: 0;
+              border: 1px solid var(--color-border);
+              width: 40px;
+              height: 30px;
+              padding: 5px 5px;
+            }
+            .pell-button-selected {
+              background-color: var(--color-button-hover);
+            }
+
+            #status {
+              margin-left: auto;
+              color: var(--color-text-muted);
+              font-size: 0.9rem;
+            }
+            #status::before {
+              content: "•";
+              margin-right: 6px;
+            }
+            #status.unsaved {
+              color: var(--color-text-warn);
+            }
+            #status.error {
+              color: var(--color-text-error);
+            }
+          }
+          .pell-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+          }
+          .pell-content:focus {
+            outline: none;
+          }
+        }
+      }
+
+      .resize {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 16px;
+        cursor: ew-resize;
+        z-index: 100;
+        background: transparent;
+      }
+      .resize.left {
+        left: 0;
+      }
+      .resize.right {
+        right: 0;
+      }
+    }
+  </style>
+{% endblock styles %}
+{% block header %}
+  <script src="/static/markdown.js"></script>
+  <script src="https://unpkg.com/pell"></script>
+{% endblock header %}
+{% block content %}
+  <form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
+    {% if post.id != 0 %}
+      <input type="hidden" name="id" value="{{ post.id }}" />
+    {% endif %}
+    <div class="field">
+      <label for="title">Title</label>
+      <input
+        type="text"
+        id="title"
+        name="title"
+        value="{{ post.title }}"
+        oninput="updatePreview()"
+      />
+    </div>
+    <div class="field">
+      <label for="url">URL</label>
+      <div class="url">
+        <span class="origin"></span>
+        <input type="text" id="url" name="url" value="{{ post.url }}" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="author">Author</label>
+      <input type="text" id="author" name="author" value="{{ post.author }}" />
+    </div>
+    <div class="field content">
+      <label for="content">Content</label>
+      <article class="pell">
+        <div class="left resize"></div>
+        <div class="right resize"></div>
+      </article>
+    </div>
+  </form>
+  <script>
+    // Form setup
+    (() => {
+      // Populate the first part of the url input with the app's origin URL
+      document.querySelector(".url .origin").innerHTML =
+        window.location.origin + "/posts/";
+    })();
+
+    // Editor setup
+    (() => {
+      window.pell.init({
+        element: document.querySelector(".pell"),
+        defaultParagraphSeparator: "p",
+        actions: ["bold", "italic", "underline", "quote", "link", "image"],
+        onChange: () => {},
+      });
+
+      // Add the status bar
+      document.querySelector(".pell-actionbar").insertAdjacentHTML(
+        "beforeend",
+        `
+        <span id="status">No changes</span>
+        <button type="button" onclick="savePost()">Save</button>
+      `,
+      );
+
+      // Fill in post content
+      document.querySelector(".pell-content").innerHTML =
+        `{{ post.content|safe }}`;
+    })();
+
+    // AJAX saving with status indicator
+    (() => {
+      const editor = document.querySelector(".pell-content");
+      const status = document.querySelector("#status");
+
+      const postKey = "posts/{{ post.id }}";
+      const postUpdatedAt = new Date(
+        '{{ post.updated_at | format_datetime(format="%m-%d-%Y %H:%M:%S %Z") }}',
+      );
+      let modified = false;
+
+      const setStatus = (text, clazz, mod) => {
+        status.textContent = text;
+        status.className = clazz;
+        modified = mod;
+      };
+      const setModified = () =>
+        setStatus("Changes saved locally", "unsaved", true);
+      const setRestored = () => setStatus("Changes restored", "unsaved", true);
+      const setSaved = () => setStatus("Changes saved", "", false);
+      const setError = () => setStatus("Error saving changes", "error", true);
+
+      // Load any saved local changes
+      let saved = postKey in localStorage && JSON.parse(localStorage[postKey]);
+      if (saved) {
+        const updatedAt = new Date(saved.updatedAt);
+        if (postKey == "posts/0" || updatedAt > postUpdatedAt) {
+          editor.innerHTML = saved.content;
+          setRestored();
+        }
+      }
+
+      // Save local changes
+      editor.addEventListener("input", (e) => {
+        localStorage[postKey] = JSON.stringify({
+          updatedAt: Date.now(),
+          content: editor.innerHTML,
+        });
+        setModified();
+      });
+
+      // Warn before leaving if modified
+      window.addEventListener("beforeunload", (e) => {
+        if (modified) {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      });
+
+      // Save post via AJAX
+      window.savePost = async () => {
+        // Check for missing fields
+        for (const field of ["title", "url", "author"]) {
+          if (!document.getElementById(field).value) {
+            alert(`Missing ${field}.`);
+            return;
+          }
+        }
+
+        try {
+          const formEl = document.querySelector("form");
+          let form = new FormData(formEl);
+
+          const content = document.querySelector(".pell-content").innerHTML;
+          form.append("content", content);
+
+          const response = await fetch(formEl.getAttribute("action"), {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams(form),
+          });
+
+          if (response.ok) {
+            setSaved();
+
+            // If URL changed, update the URL without reloading the page
+            const newUrl = document.getElementById("url").value;
+            const currentUrl = window.location.pathname.split("/")[2];
+            if (newUrl !== currentUrl) {
+              history.pushState({}, "", `/posts/${newUrl}/edit`);
+              formEl.action = `/posts/${newUrl}/edit`;
+            }
+
+            if (postKey == "posts/0") {
+              // Clear local changes on the "new post" page
+              localStorage.removeItem(postKey);
+              // Reload the page to pick up the new id
+              window.location.href = `/posts/${newUrl}/edit`;
+            }
+          } else {
+            setError();
+            console.error(response.statusText);
+          }
+        } catch (error) {
+          setError();
+          console.error(error);
+        }
+      };
+    })();
+
+    // Resize handles
+    (() => {
+      const container = document.querySelector(".content");
+      const article = document.querySelector("article");
+
+      function startResize(e) {
+        e.preventDefault();
+        const x0 = e.clientX;
+        const w0 = article.offsetWidth;
+        const right = e.target.classList.contains("right");
+
+        function doResize(e) {
+          let dx = (e.clientX - x0) * (right ? 1 : -1);
+          const w = w0 + dx * 2;
+          if (w >= 768 && w <= container.clientWidth) {
+            article.style.width = `${w}px`;
+          }
+        }
+
+        function stopResize() {
+          document.removeEventListener("mousemove", doResize);
+          document.removeEventListener("mouseup", stopResize);
+        }
+        document.addEventListener("mousemove", doResize);
+        document.addEventListener("mouseup", stopResize);
+      }
+      document
+        .querySelectorAll(".resize")
+        .forEach((e) => e.addEventListener("mousedown", startResize));
+    })();
+
+    // Clear formatting when pasting into the editor
+    (() => {
+      const editor = document.querySelector(".pell-content");
+      editor.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData("text/plain");
+        document.execCommand("insertText", false, text);
+      });
+    })();
+  </script>
+{% endblock content %}

@@ -32,7 +32,7 @@ pub struct AppConfig {
     /// Public facing URL, e.g. `https://site.com`.
     pub url: String,
     /// Local timezone.
-    pub tz: Tz,
+    pub _tz: Tz,
 }
 
 /// Database configuration.

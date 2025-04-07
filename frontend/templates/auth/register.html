@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block styles %}
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+{% endblock styles %}
+{% block content %}
+  <h1>Register</h1>
+  <form action="/register" method="post">
+    <label for="first_name">First Name</label>
+    <input type="text" name="first_name" />
+
+    <label for="last_name">Last Name</label>
+    <input type="text" name="last_name" />
+
+    <input type="hidden" name="token" value="{{ token }}" />
+    <button type="submit">Register</button>
+  </form>
+{% endblock content %}

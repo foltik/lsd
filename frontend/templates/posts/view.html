@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block title %}light and sound{% endblock title %}
+{% block header %}
+{% endblock header %}
+{% block content %}
+  <article>
+    <h1 class="title">{{ post.title }}</h1>
+    <time class="date" datetime="{{ post.created_at }}">
+      {{ post.created_at }}
+    </time>
+    {{ post.content|safe }}
+  </article>
+{% endblock %}

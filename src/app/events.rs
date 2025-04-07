@@ -1,3 +1,4 @@
+use askama::Template;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -7,16 +8,19 @@ use axum::{
 };
 use chrono::Utc;
 
-use crate::db::event::{Event, UpdateEvent};
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
+use crate::{
+    db::event::{Event, UpdateEvent},
+    views,
+};
 
 /// Add all `events` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
     router
         .route("/events", get(list_events_page))
-        .route("/e/new", get(create_event_page).post(create_event_form))
+        .route("/event/new", get(create_event_page).post(create_event_form))
         .route(
-            "/e/{id}",
+            "/event/{id}",
             // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
             get(update_event_page).post(update_event_form).delete(delete_event),
         )
@@ -41,11 +45,9 @@ async fn list_events_page(
         })
         .collect::<Vec<_>>();
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("events", &events);
+    let list_template = views::events::EventList { events };
 
-    let html = state.templates.render("event-list.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(list_template.render()?).into_response())
 }
 #[derive(serde::Deserialize)]
 struct ListEventsQuery {
@@ -53,10 +55,8 @@ struct ListEventsQuery {
 }
 
 /// Display the form to create a new event.
-async fn create_event_page(State(state): State<SharedAppState>) -> AppResult<Response> {
-    let ctx = tera::Context::new();
-    let html = state.templates.render("event-create.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+async fn create_event_page() -> AppResult<Response> {
+    Ok(Html(views::events::EventCreate.render()?).into_response())
 }
 
 /// Process the form and create a new event.
@@ -75,11 +75,9 @@ async fn update_event_page(State(state): State<SharedAppState>, Path(id): Path<i
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("event", &event);
+    let update_template = views::events::EventView { event: Some(event) };
 
-    let html = state.templates.render("event.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(update_template.render()?).into_response())
 }
 
 /// Process the form and update an event.
