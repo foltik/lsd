@@ -49,7 +49,7 @@ async fn list_posts_page(State(state): State<SharedAppState>, user: User) -> App
 }
 
 /// Display a single post.
-async fn view_post_page(
+pub async fn view_post_page(
     State(state): State<SharedAppState>,
     Path(url): Path<String>,
 ) -> AppResult<impl IntoResponse> {

@@ -136,9 +136,9 @@ async fn login_link(
 ) -> AppResult<Response> {
     match query.token {
         Some(token) => {
-            let Some(user) = User::lookup_by_login_token(&state.db, &token).await? else {
-                return Err(AppError::NotAuthorized);
-            };
+            let user = User::lookup_by_login_token(&state.db, &token)
+                .await?
+                .ok_or(AppError::NotAuthorized)?;
 
             let token = SessionToken::create(&state.db, user.id).await?;
             let headers = (

@@ -34,6 +34,7 @@ pub async fn build(config: Config) -> anyhow::Result<Router> {
         .merge(home::routes())
         .merge(auth::routes())
         .nest("/posts", posts::routes())
+        .route("/p/{url}", get(posts::view_post_page))
         .nest("/events", events::routes())
         .nest("/lists", lists::routes())
         .nest("/emails", emails::routes())
