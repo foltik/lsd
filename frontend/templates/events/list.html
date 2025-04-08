@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - events{% endblock title %}
+
+{% block styles %}
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .event-card a {
+      padding: 5px 10px;
+      text-decoration: none;
+      color: inherit;
+      font-size: 18px;
+    }
+    .event-card a:hover {
+      color: #a7a5a1;
+      /* border-color: #a7a5a1; */
+    }
+  </style>
+{% endblock styles %}
+
+{% block content %}
+  <h1>Upcoming Events:</h1>
+  {% for event in events %}
+    <div key="event-{{ event.id }}" class="event-card">
+      <a href="/events/{{ event.id }}">
+        {{ event.start_date | format_datetime("%b %d, %Y") }} |
+        {{ event.title }}
+      </a>
+    </div>
+  {% endfor %}
+{% endblock content %}

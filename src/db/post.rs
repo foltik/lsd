@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 
 use super::Db;
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+#[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Post {
     pub id: i64,
     pub title: String,

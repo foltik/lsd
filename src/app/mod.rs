@@ -1,7 +1,6 @@
 use anyhow::Result;
 use axum::{response::Redirect, routing::get, Router};
 use std::sync::Arc;
-use tera::Tera;
 use tower_http::services::ServeDir;
 
 use crate::db::Db;
@@ -18,7 +17,6 @@ mod posts;
 #[allow(unused)]
 pub struct AppState {
     config: Config,
-    templates: Tera,
     db: Db,
     mailer: Emailer,
 }
@@ -26,7 +24,6 @@ pub struct AppState {
 pub async fn build(config: Config) -> Result<Router> {
     let state = Arc::new(AppState {
         config: config.clone(),
-        templates: utils::tera::templates(&config)?,
         db: crate::db::init(&config.db).await?,
         mailer: Emailer::connect(config.email).await?,
     });
