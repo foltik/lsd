@@ -13,8 +13,7 @@
     }
   </style>
 {% endblock %}
-{% block header %}
-{% endblock header %}
+
 {% block content %}
   <form class="form" method="POST" action="/lists/{{ list.id }}">
     {% if list.id != 0 %}

@@ -18,9 +18,6 @@
   </style>
 {% endblock styles %}
 
-{% block header %}
-{% endblock header %}
-
 {% block content %}
   <h1>Update Event: {{ event.title }}</h1>
   <form action="/event/{{ event.id }}/update" method="post">

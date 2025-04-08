@@ -115,10 +115,10 @@
     }
   </style>
 {% endblock styles %}
-{% block header %}
+{% block scripts %}
   <script src="/static/markdown.js"></script>
   <script src="https://unpkg.com/pell"></script>
-{% endblock header %}
+{% endblock scripts %}
 {% block content %}
   <form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
     {% if post.id != 0 %}
