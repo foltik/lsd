@@ -168,7 +168,7 @@ async fn send_post_form(
     for members in members.chunks(batch_size) {
         for ListMember { email, .. } in members {
             // If this post was already sent to this address in this list, skip sending it again.
-            if Email::lookup_post(&state.db, &email, post.id, list.id).await?.is_some() {
+            if Email::lookup_post(&state.db, email, post.id, list.id).await?.is_some() {
                 num_skipped += 1;
                 continue;
             }

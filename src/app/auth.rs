@@ -120,7 +120,7 @@ async fn login_form(
         }
         Err(e) => {
             Email::mark_error(&state.db, email_id, &e.to_string()).await?;
-            Err(e.into())
+            Err(e)
         }
     }
 }
