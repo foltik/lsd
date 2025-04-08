@@ -18,7 +18,6 @@
 //!    - `/register`: The user is prompted to enter their first/last name.
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
-use askama::Template;
 use axum::{
     extract::{OptionalFromRequestParts, Query, Request, State},
     http::{header, request::Parts, StatusCode},
@@ -31,15 +30,12 @@ use axum_extra::extract::CookieJar;
 use lettre::message::{header::ContentType, Mailbox};
 use std::convert::Infallible;
 
+use crate::db::user::{UpdateUser, User};
 use crate::db::{
     email::Email,
     token::{LoginToken, SessionToken},
 };
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
-use crate::{
-    db::user::{UpdateUser, User},
-    views,
-};
 
 /// Add all auth routes to the router.
 pub fn register(router: AppRouter, state: SharedAppState) -> AppRouter {
@@ -148,7 +144,11 @@ async fn login_link(
             );
             Ok(headers.into_response())
         }
-        None => Ok(Html(views::auth::Login.render()?).into_response()),
+        None => {
+            let ctx = tera::Context::new();
+            let html = state.templates.render("login.tera.html", &ctx).unwrap();
+            Ok(Html(html).into_response())
+        }
     }
 }
 #[derive(serde::Deserialize)]
@@ -157,10 +157,15 @@ struct LoginQuery {
 }
 
 /// Display the registration page.
-async fn register_link(Query(query): Query<RegisterQuery>) -> AppResult<Response> {
-    let register_template = views::auth::Register { token: query.token.clone() };
+async fn register_link(
+    State(state): State<SharedAppState>,
+    Query(query): Query<RegisterQuery>,
+) -> AppResult<Response> {
+    let mut ctx = tera::Context::new();
+    ctx.insert("token", &query.token);
 
-    Ok(Html(register_template.render()?).into_response())
+    let html = state.templates.render("register.tera.html", &ctx).unwrap();
+    Ok(Html(html).into_response())
 }
 #[derive(serde::Deserialize)]
 struct RegisterQuery {

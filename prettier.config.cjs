@@ -5,7 +5,7 @@ const config = {
   ],
   overrides: [
     {
-      files: ["*.html"],
+      files: ["*.tera.html"],
       options: {
         parser: "jinja-template",
       },

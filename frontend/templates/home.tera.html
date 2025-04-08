@@ -1,8 +1,11 @@
-{% extends "layout.html" %}
+{% extends "layout.tera.html" %}
 
 {% block title %}light and sound{% endblock title %}
 
 {% block styles %}
+
+  {{ super() }}
+
   <style>
     .black {
       color: #000;

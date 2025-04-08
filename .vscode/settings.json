@@ -10,8 +10,6 @@
     },
     "files.associations": {
         "*.css": "tailwindcss",
-        "*.html": "jinja-html"
+        "*.tera.html": "jinja-html"
     },
-    "prettier.configPath": "frontend/prettier.config.cjs",
-    "prettier.requireConfig": true
 }

@@ -3,7 +3,6 @@ use anyhow::{Context, Result};
 mod app;
 mod db;
 mod utils;
-mod views;
 
 use axum::{handler::HandlerWithoutStateExt, response::Redirect};
 use axum_server::tls_rustls::RustlsConfig;
@@ -14,7 +13,6 @@ use utils::config::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // TODO(sam) is it possible to filter the logs from ServeDir?
     let log_filter = tracing_subscriber::filter::Targets::default()
         .with_target("h2", LevelFilter::OFF)
         .with_target("globset", LevelFilter::OFF)
@@ -31,7 +29,6 @@ async fn main() -> Result<()> {
     // Load the server config
     let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
     let config = Config::load(&file).await?;
-    views::filters::set_timezone(config.app.tz);
 
     let app = app::build(config.clone()).await?.into_make_service();
     tracing::info!("Live at {}", &config.app.url);
