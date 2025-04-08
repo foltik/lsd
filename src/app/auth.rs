@@ -116,7 +116,7 @@ async fn login_form(
     match state.mailer.send(msg).await {
         Ok(_) => {
             Email::mark_sent(&state.db, email_id).await?;
-            Ok("Check your email!")
+            Ok(Html(views::auth::LoginEmailSent { user: None, email: &email }.render()?))
         }
         Err(e) => {
             Email::mark_error(&state.db, email_id, &e.to_string()).await?;
@@ -148,7 +148,7 @@ async fn login_link(
             );
             Ok(headers.into_response())
         }
-        None => Ok(Html(views::auth::Login.render()?).into_response()),
+        None => Ok(Html(views::auth::Login { user: None }.render()?).into_response()),
     }
 }
 #[derive(serde::Deserialize)]
@@ -158,7 +158,7 @@ struct LoginQuery {
 
 /// Display the registration page.
 async fn register_link(Query(query): Query<RegisterQuery>) -> AppResult<Response> {
-    let register_template = views::auth::Register { token: query.token.clone() };
+    let register_template = views::auth::Register { user: None, token: query.token.clone() };
 
     Ok(Html(register_template.render()?).into_response())
 }

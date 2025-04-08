@@ -8,10 +8,13 @@ use axum::{
 };
 use chrono::Utc;
 
-use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 use crate::{
     db::event::{Event, UpdateEvent},
     views,
+};
+use crate::{
+    db::user::User,
+    utils::types::{AppResult, AppRouter, SharedAppState},
 };
 
 /// Add all `events` routes to the router.
@@ -30,6 +33,7 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 async fn list_events_page(
     State(state): State<SharedAppState>,
     Query(query): Query<ListEventsQuery>,
+    user: Option<User>,
 ) -> AppResult<Response> {
     let now = Utc::now().naive_utc();
     let past = query.past.unwrap_or(false);
@@ -45,7 +49,7 @@ async fn list_events_page(
         })
         .collect::<Vec<_>>();
 
-    let list_template = views::events::EventList { events };
+    let list_template = views::events::EventList { user, events };
 
     Ok(Html(list_template.render()?).into_response())
 }
@@ -55,8 +59,8 @@ struct ListEventsQuery {
 }
 
 /// Display the form to create a new event.
-async fn create_event_page() -> AppResult<Response> {
-    Ok(Html(views::events::EventCreate.render()?).into_response())
+async fn create_event_page(user: Option<User>) -> AppResult<Response> {
+    Ok(Html(views::events::EventCreate { user }.render()?).into_response())
 }
 
 /// Process the form and create a new event.
@@ -70,12 +74,16 @@ async fn create_event_form(
 }
 
 /// Display the form to update an event.
-async fn update_event_page(State(state): State<SharedAppState>, Path(id): Path<i64>) -> AppResult<Response> {
+async fn update_event_page(
+    State(state): State<SharedAppState>,
+    Path(id): Path<i64>,
+    user: Option<User>,
+) -> AppResult<Response> {
     let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let update_template = views::events::EventView { event };
+    let update_template = views::events::EventView { user, event };
 
     Ok(Html(update_template.render()?).into_response())
 }

@@ -37,7 +37,7 @@ async fn list_lists_page(State(state): State<SharedAppState>, user: User) -> App
 
     let lists = List::list(&state.db).await?;
 
-    let list_template = views::lists::Lists { lists };
+    let list_template = views::lists::Lists { user: Some(user), lists };
 
     Ok(Html(list_template.render()?).into_response())
 }
@@ -57,7 +57,7 @@ async fn edit_list_page(
     };
     let members = List::list_members(&state.db, id).await?;
 
-    let edit_template = views::lists::ListEdit { list, members };
+    let edit_template = views::lists::ListEdit { user: Some(user), list, members };
 
     Ok(Html(edit_template.render()?).into_response())
 }
@@ -69,6 +69,7 @@ async fn create_list_page(State(state): State<SharedAppState>, user: User) -> Ap
     }
 
     let create_template = views::lists::ListEdit {
+        user: Some(user),
         list: List {
             id: 0,
             name: "".into(),

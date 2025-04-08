@@ -193,11 +193,18 @@
   <body>
     {% block header %}
       <header class="border-b border-neutral-800 p-4">
-        <nav>
+        <nav class="right-0 left-0 flex flex-row justify-between">
           <!-- TODO: Link to "/" when the homepage is finished -->
           <a class="font-bold" href="https://lightandsound.design">
             lightandsound.design
           </a>
+          <div id="auth-container">
+            {% if let Some(user) = user %}
+              Hello, {{ user.first_name }} {{ user.last_name }}
+            {% else %}
+              <a href="/login">login</a>
+            {% endif %}
+          </div>
         </nav>
       </header>
     {% endblock header %}

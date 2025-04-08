@@ -43,18 +43,22 @@ async fn list_posts_page(State(state): State<SharedAppState>, user: User) -> App
 
     let posts = Post::list(&state.db).await?;
 
-    let list_template = views::posts::PostList { posts };
+    let list_template = views::posts::PostList { user: Some(user), posts };
 
     Ok(Html(list_template.render()?).into_response())
 }
 
 /// Display a single post.
-async fn view_post_page(State(state): State<SharedAppState>, Path(url): Path<String>) -> AppResult<Response> {
+async fn view_post_page(
+    State(state): State<SharedAppState>,
+    Path(url): Path<String>,
+    user: Option<User>,
+) -> AppResult<Response> {
     let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let view_template = views::posts::PostView { post };
+    let view_template = views::posts::PostView { user, post };
     Ok(Html(view_template.render()?).into_response())
 }
 
@@ -65,6 +69,7 @@ async fn create_post_page(State(state): State<SharedAppState>, user: User) -> Ap
     }
 
     let create_template = views::posts::PostEdit {
+        user: Some(user),
         post: Post {
             id: 0,
             title: "".into(),
@@ -92,7 +97,7 @@ async fn edit_post_page(
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let edit_template = views::posts::PostEdit { post };
+    let edit_template = views::posts::PostEdit { user: Some(user), post };
 
     Ok(Html(edit_template.render()?).into_response())
 }
@@ -136,7 +141,7 @@ async fn send_post_page(
     };
     let lists = List::list(&state.db).await?;
 
-    let send_template = views::posts::PostSend { post, lists };
+    let send_template = views::posts::PostSend { user: Some(user), post, lists };
 
     Ok(Html(send_template.render()?).into_response())
 }
@@ -203,6 +208,7 @@ async fn send_post_form(
     }
 
     let sent_template = views::posts::PostSent {
+        user: Some(user),
         post_title: post.title,
         list_name: list.name,
         num_sent,
