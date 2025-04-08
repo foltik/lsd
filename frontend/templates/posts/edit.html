@@ -1,6 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}Edit post - {{ post.title }}{% endblock title %}
 {% block styles %}
+  {% call super() %}
+
   <style>
     .editor {
       border-right: 1px solid var(--color-border);
