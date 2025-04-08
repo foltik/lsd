@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% block title %}light and sound - Lists{% endblock title %}
 {% block styles %}
   <style>
     ul {
@@ -6,6 +7,8 @@
     }
   </style>
 {% endblock %}
+{% block header %}
+{% endblock header %}
 {% block content %}
   <ul>
     {% for list in lists %}

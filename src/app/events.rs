@@ -75,7 +75,7 @@ async fn update_event_page(State(state): State<SharedAppState>, Path(id): Path<i
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let update_template = views::events::EventView { event: Some(event) };
+    let update_template = views::events::EventView { event };
 
     Ok(Html(update_template.render()?).into_response())
 }

@@ -15,5 +15,5 @@ pub struct EventList {
 #[derive(Template)]
 #[template(path = "events/view.html")]
 pub struct EventView {
-    pub event: Option<Event>,
+    pub event: Event,
 }

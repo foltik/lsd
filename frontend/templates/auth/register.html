@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 
+{% block title %}light and sound - register{% endblock title %}
 {% block styles %}
   <style>
     body {
@@ -11,6 +12,8 @@
     }
   </style>
 {% endblock styles %}
+{% block header %}
+{% endblock header %}
 {% block content %}
   <h1>Register</h1>
   <form action="/register" method="post">

@@ -31,6 +31,7 @@ async fn main() -> Result<()> {
     // Load the server config
     let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
     let config = Config::load(&file).await?;
+    views::filters::set_timezone(config.app.tz);
 
     let app = app::build(config.clone()).await?.into_make_service();
     tracing::info!("Live at {}", &config.app.url);
