@@ -32,7 +32,7 @@ To automatically recompile and rerun when you make changes, use `cargo-watch`:
 
 ```sh
 cargo install cargo-watch
-cargo watch -x 'run config/dev.toml' --ignore "web/*"
+cargo watch -x 'run config/dev.toml'
 ```
 
 Run Tailwind CLI to compile styles via `npm`.

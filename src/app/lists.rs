@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -12,6 +13,7 @@ use lettre::message::Mailbox;
 use crate::{
     db::list::{List, UpdateList},
     utils::types::AppError,
+    views,
 };
 use crate::{
     db::user::User,
@@ -35,11 +37,9 @@ async fn list_lists_page(State(state): State<SharedAppState>, user: User) -> App
 
     let lists = List::list(&state.db).await?;
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("lists", &lists);
+    let list_template = views::lists::Lists { lists };
 
-    let html = state.templates.render("lists.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(list_template.render()?).into_response())
 }
 
 /// Display the form to view and edit a list.
@@ -57,12 +57,9 @@ async fn edit_list_page(
     };
     let members = List::list_members(&state.db, id).await?;
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("list", &list);
-    ctx.insert("members", &members);
+    let edit_template = views::lists::ListEdit { list, members };
 
-    let html = state.templates.render("list-edit.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(edit_template.render()?).into_response())
 }
 
 /// Display the form to create a new list.
@@ -71,21 +68,18 @@ async fn create_list_page(State(state): State<SharedAppState>, user: User) -> Ap
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
-    let mut ctx = tera::Context::new();
-    ctx.insert(
-        "list",
-        &List {
+    let create_template = views::lists::ListEdit {
+        list: List {
             id: 0,
             name: "".into(),
             description: "".into(),
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc(),
         },
-    );
-    ctx.insert::<[String], _>("members", &[]);
+        members: Vec::new(),
+    };
 
-    let html = state.templates.render("list-edit.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(create_template.render()?).into_response())
 }
 
 /// Process the form and create or edit a list.

@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block title %}light and sound - Lists{% endblock title %}
+{% block styles %}
+  <style>
+    ul {
+      padding: 2rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <ul>
+    {% for list in lists %}
+      <li>
+        <a href="/lists/{{ list.id }}">{{ list.name }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
