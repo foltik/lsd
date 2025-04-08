@@ -1,10 +1,12 @@
-use anyhow::Result;
-use axum::{response::Redirect, routing::get, Router};
 use std::sync::Arc;
+
+use axum::{response::Redirect, routing::get, Router};
 use tower_http::services::ServeDir;
 
-use crate::db::Db;
-use crate::utils::{self, config::*, emailer::Emailer};
+use crate::{
+    db::{self, Db},
+    utils::{self, config::*, emailer::Emailer, tracing::WithTracingLayer as _},
+};
 
 mod auth;
 mod emails;
@@ -21,28 +23,27 @@ pub struct AppState {
     mailer: Emailer,
 }
 
-pub async fn build(config: Config) -> Result<Router> {
+pub async fn build(config: Config) -> anyhow::Result<Router> {
     let state = Arc::new(AppState {
         config: config.clone(),
-        db: crate::db::init(&config.db).await?,
+        db: db::init(&config.db).await?,
         mailer: Emailer::connect(config.email).await?,
     });
 
     let r = Router::new()
+        .merge(home::routes())
+        .merge(auth::routes())
+        .nest("/posts", posts::routes())
+        .nest("/events", events::routes())
+        .nest("/lists", lists::routes())
+        .nest("/emails", emails::routes())
         .nest_service("/static", ServeDir::new("frontend/static"))
         // For non-HTML pages without a <link rel="icon">, this is where the browser looks
-        .route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }));
-
-    let r = home::register_routes(r);
-    let r = posts::register_routes(r);
-    let r = events::register_routes(r);
-    let r = lists::register_routes(r);
-    let r = emails::register_routes(r);
-
-    let r = auth::register(r, Arc::clone(&state));
-
-    let r = utils::tracing::register(r);
-    let r = r.with_state(state);
+        .route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }))
+        .fallback(|| async { utils::error::serve_404() })
+        .layer(axum::middleware::from_fn_with_state(Arc::clone(&state), auth::middleware))
+        .with_tracing_layer()
+        .with_state(state);
 
     Ok(r)
 }
