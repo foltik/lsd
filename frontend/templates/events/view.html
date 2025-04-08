@@ -3,6 +3,8 @@
 {% block title %}{{ event.title }}{% endblock title %}
 
 {% block styles %}
+  {% call super() %}
+
   <style>
     body {
       background-color: #000;

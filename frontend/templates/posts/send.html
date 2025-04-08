@@ -1,6 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}Send post - {{ post.title }}{% endblock %}
 {% block styles %}
+  {% call super() %}
+
   <style>
     h1 {
       padding-bottom: 1rem;
