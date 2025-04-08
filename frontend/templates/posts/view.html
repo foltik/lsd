@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block title %}{{ post.title }}{% endblock title %}
+
+{% block content %}
+  <article>
+    <h1 class="title">{{ post.title }}</h1>
+    <time class="date" datetime="{{ post.created_at }}">
+      {{ post.created_at | format_datetime("%b %d, %Y") }}
+    </time>
+    {{ post.content | safe }}
+  </article>
+{% endblock %}

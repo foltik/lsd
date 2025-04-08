@@ -1,11 +1,12 @@
+use askama::Template;
 use axum::{
     extract::State,
     response::{Html, IntoResponse, Response},
     routing::get,
 };
 
-use crate::db::user::User;
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
+use crate::{db::user::User, views};
 
 /// Add all `home` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
@@ -13,13 +14,8 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display the front page.
-async fn home_page(State(state): State<SharedAppState>, user: Option<User>) -> AppResult<Response> {
-    let mut ctx = tera::Context::new();
-    ctx.insert("message", "Hello, world!");
-    if let Some(user) = user {
-        ctx.insert("user", &user);
-    }
+async fn home_page(State(_state): State<SharedAppState>, _user: Option<User>) -> AppResult<Response> {
+    let index_template = views::index::IndexTemplate {};
 
-    let html = state.templates.render("home.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(index_template.render()?).into_response())
 }

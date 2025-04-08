@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -11,13 +12,16 @@ use chrono::Utc;
 use lettre::message::header::ContentType;
 use tokio::time::sleep;
 
-use crate::db::{
-    email::Email,
-    list::{List, ListMember},
-    post::{Post, UpdatePost},
-    user::User,
-};
 use crate::utils::types::{AppResult, AppRouter, SharedAppState};
+use crate::{
+    db::{
+        email::Email,
+        list::{List, ListMember},
+        post::{Post, UpdatePost},
+        user::User,
+    },
+    views,
+};
 
 /// Add all `post` routes to the router.
 pub fn register_routes(router: AppRouter) -> AppRouter {
@@ -39,11 +43,9 @@ async fn list_posts_page(State(state): State<SharedAppState>, user: User) -> App
 
     let posts = Post::list(&state.db).await?;
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("posts", &posts);
+    let list_template = views::posts::PostList { posts };
 
-    let html = state.templates.render("post-list.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(list_template.render()?).into_response())
 }
 
 /// Display a single post.
@@ -52,11 +54,8 @@ async fn view_post_page(State(state): State<SharedAppState>, Path(url): Path<Str
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("post", &post);
-
-    let html = state.templates.render("post.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    let view_template = views::posts::PostView { post };
+    Ok(Html(view_template.render()?).into_response())
 }
 
 /// Display the form to create a new post.
@@ -65,10 +64,8 @@ async fn create_post_page(State(state): State<SharedAppState>, user: User) -> Ap
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
-    let mut ctx = tera::Context::new();
-    ctx.insert(
-        "post",
-        &Post {
+    let create_template = views::posts::PostEdit {
+        post: Post {
             id: 0,
             title: "".into(),
             url: "".into(),
@@ -77,10 +74,9 @@ async fn create_post_page(State(state): State<SharedAppState>, user: User) -> Ap
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc(),
         },
-    );
+    };
 
-    let html = state.templates.render("post-edit.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(create_template.render()?).into_response())
 }
 
 /// Display the form to create a new post.
@@ -96,11 +92,9 @@ async fn edit_post_page(
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("post", &post);
+    let edit_template = views::posts::PostEdit { post };
 
-    let html = state.templates.render("post-edit.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(edit_template.render()?).into_response())
 }
 
 /// Process the form and create or edit a post.
@@ -142,12 +136,9 @@ async fn send_post_page(
     };
     let lists = List::list(&state.db).await?;
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("post", &post);
-    ctx.insert("lists", &lists);
+    let send_template = views::posts::PostSend { post, lists };
 
-    let html = state.templates.render("post-send.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(send_template.render()?).into_response())
 }
 
 /// Process the form and create or edit a post.
@@ -168,9 +159,8 @@ async fn send_post_form(
     };
     let members = List::list_members(&state.db, form.list_id).await?;
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("post", &post);
-    ctx.insert("post_url", &format!("{}/p/{}", &state.config.app.url, &post.url));
+    let mut email_template =
+        views::posts::PostEmail { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
 
     let mut num_sent = 0;
     let mut num_skipped = 0;
@@ -185,9 +175,8 @@ async fn send_post_form(
             }
             let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
 
-            ctx.insert("opened_url", &format!("{}/emails/{email_id}/footer.gif", &state.config.app.url));
-            ctx.insert("unsub_url", &format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url));
-            let html = state.templates.render("post-email.tera.html", &ctx).unwrap();
+            email_template.opened_url = format!("{}/emails/{email_id}/footer.gif", &state.config.app.url);
+            email_template.unsub_url = format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url);
 
             let msg = state
                 .mailer
@@ -195,7 +184,7 @@ async fn send_post_form(
                 .to(email.parse().unwrap())
                 .subject(&post.title)
                 .header(ContentType::TEXT_HTML)
-                .body(html)
+                .body(email_template.render()?)
                 .unwrap();
 
             match state.mailer.send(msg).await {
@@ -213,23 +202,19 @@ async fn send_post_form(
         sleep(Duration::from_secs(1)).await;
     }
 
-    let mut ctx = tera::Context::new();
-    ctx.insert("post", &post);
-    ctx.insert("list", &list);
-    ctx.insert("stats", &Stats { num_sent, num_skipped, errors });
+    let sent_template = views::posts::PostSent {
+        post_title: post.title,
+        list_name: list.name,
+        num_sent,
+        num_skipped,
+        errors,
+    };
 
-    let html = state.templates.render("post-sent.tera.html", &ctx).unwrap();
-    Ok(Html(html).into_response())
+    Ok(Html(sent_template.render()?).into_response())
 }
 #[derive(serde::Deserialize)]
 struct SendPost {
     list_id: i64,
-}
-#[derive(serde::Serialize)]
-struct Stats {
-    pub num_sent: usize,
-    pub num_skipped: usize,
-    pub errors: HashMap<String, String>,
 }
 
 /// Process the form and create or edit a post.

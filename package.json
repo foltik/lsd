@@ -5,8 +5,8 @@
     "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --watch",
     "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css",
     "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify",
-    "format": "npx prettier ./frontend/templates ./frontend/styles --write",
-    "format:check": "npx prettier ./frontend/templates ./frontend/styles --check"
+    "format": "npx prettier ./frontend/templates ./frontend/styles --config frontend/prettier.config.cjs --write",
+    "format:check": "npx prettier ./frontend/templates ./frontend/styles --config frontend/prettier.config.cjs --check"
   },
   "devDependencies": {
     "livereload": "^0.9.3",
