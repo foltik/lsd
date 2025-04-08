@@ -18,9 +18,9 @@ use crate::{
 pub fn register_routes(router: AppRouter) -> AppRouter {
     router
         .route("/events", get(list_events_page))
-        .route("/event/new", get(create_event_page).post(create_event_form))
+        .route("/events/new", get(create_event_page).post(create_event_form))
         .route(
-            "/event/{id}",
+            "/events/{id}",
             // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
             get(update_event_page).post(update_event_form).delete(delete_event),
         )

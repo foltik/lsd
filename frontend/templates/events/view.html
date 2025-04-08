@@ -20,7 +20,7 @@
 
 {% block content %}
   <h1>Update Event: {{ event.title }}</h1>
-  <form action="/event/{{ event.id }}/update" method="post">
+  <form action="/events/{{ event.id }}/update" method="post">
     <label for="title">Event Title</label>
     <input type="text" name="title" value="{{ event.title }}" />
 
@@ -45,7 +45,7 @@
 
     <button type="submit">Update</button>
   </form>
-  <form action="/event/{{ event.id }}/delete" method="post">
+  <form action="/events/{{ event.id }}/delete" method="post">
     <button type="submit">Delete</button>
   </form>
 {% endblock content %}
