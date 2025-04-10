@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound{% endblock title %}
+
+{% block content %}
+  {% if let Some(user) = user %}
+    <form action="/user/edit" method="post">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" name="email" value="{{ user.email }}" />
+      </div>
+      <div class="field">
+        <label for="first_name">First name</label>
+        <input
+          type="first_name"
+          name="first_name"
+          value="{{ user.first_name }}"
+        />
+      </div>
+      <div class="field">
+        <label for="last_name">Last name</label>
+        <input type="last_name" name="last_name" value="{{ user.last_name }}" />
+      </div>
+      <div class="field">
+        <button type="submit">Edit user</button>
+      </div>
+    </form>
+  {% else %}
+    No user found.
+  {% endif %}
+{% endblock content %}

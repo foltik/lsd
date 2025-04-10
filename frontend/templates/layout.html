@@ -200,7 +200,10 @@
           </a>
           <div id="auth-container">
             {% if let Some(user) = user %}
-              Hello, {{ user.first_name }} {{ user.last_name }}
+              Hello,
+              <a href="/user/edit">
+                {{ user.first_name }} {{ user.last_name }}
+              </a>
             {% else %}
               <a href="/login">login</a>
             {% endif %}

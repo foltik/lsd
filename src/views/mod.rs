@@ -4,3 +4,4 @@ pub mod filters;
 pub mod index;
 pub mod lists;
 pub mod posts;
+pub mod user;
