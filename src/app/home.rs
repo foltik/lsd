@@ -14,8 +14,8 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display the front page.
-async fn home_page(State(_state): State<SharedAppState>, _user: Option<User>) -> AppResult<Response> {
-    let index_template = views::index::IndexTemplate {};
+async fn home_page(State(_state): State<SharedAppState>, user: Option<User>) -> AppResult<Response> {
+    let index_template = views::index::IndexTemplate { user };
 
     Ok(Html(index_template.render()?).into_response())
 }

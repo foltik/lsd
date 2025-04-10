@@ -101,4 +101,19 @@ impl User {
             .await?;
         Ok(row.is_some())
     }
+
+    pub async fn update(&self, db: &Db, update: &UpdateUser) -> Result<()> {
+        sqlx::query!(
+            r#"UPDATE users
+               SET first_name = ?, last_name = ?, email = ?
+               WHERE id = ?"#,
+            update.first_name,
+            update.last_name,
+            update.email,
+            self.id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
 }

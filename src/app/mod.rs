@@ -12,6 +12,7 @@ mod events;
 mod home;
 mod lists;
 mod posts;
+mod user;
 
 #[derive(Clone)]
 #[allow(unused)]
@@ -38,6 +39,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let r = events::register_routes(r);
     let r = lists::register_routes(r);
     let r = emails::register_routes(r);
+    let r = user::register_routes(r);
 
     let r = auth::register(r, Arc::clone(&state));
 
