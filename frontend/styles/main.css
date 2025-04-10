@@ -76,3 +76,5 @@ form {
     @apply mb-4 flex flex-col pb-4;
   }
 }
+
+@import "./posts/edit.css";

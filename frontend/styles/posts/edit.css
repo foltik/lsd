@@ -1,0 +1,81 @@
+#posts\/edit {
+  @apply w-full;
+}
+
+#posts\/edit .editor {
+  @apply flex w-full flex-col items-center;
+}
+
+#posts\/edit .editor .details {
+  @apply w-full max-w-3xl;
+}
+
+#posts\/edit .editor .url {
+  @apply inline-flex w-full items-center border border-neutral-700 p-2;
+
+  .origin {
+    @apply font-mono whitespace-nowrap;
+  }
+
+  input[type="text"] {
+    @apply border-0 bg-transparent p-0;
+  }
+}
+
+#posts\/edit .editor .content {
+  @apply w-full grow;
+}
+
+#posts\/edit .editor .content article {
+  @apply relative w-full max-w-screen resize-x overflow-auto;
+  width: calc(min(100vw, 768px));
+}
+
+#posts\/edit .editor .content .pell {
+  @apply flex grow flex-col overflow-visible border border-neutral-700;
+  @apply relative p-4 pt-0;
+
+  .pell-actionbar {
+    @apply sticky top-0 border-b border-neutral-700 py-2.5;
+    @apply mb-2.5 flex items-center gap-2.5;
+
+    .pell-button {
+      @apply h-8 w-10 bg-neutral-900 p-1 hover:bg-neutral-800;
+    }
+
+    .pell-button-selected {
+      @apply bg-neutral-800;
+    }
+
+    #status {
+      @apply ml-auto text-sm;
+      @apply before:mr-1.5 before:content-["•"];
+    }
+
+    #status.unsaved {
+      @apply text-amber-400;
+    }
+
+    #status.error {
+      @apply text-red-500;
+    }
+  }
+
+  .pell-content {
+    @apply grow overflow-y-auto p-2.5 focus:outline-none;
+  }
+}
+
+#posts\/edit .editor .content {
+  .resize {
+    @apply absolute top-0 bottom-0 z-50 w-4 cursor-ew-resize bg-transparent;
+  }
+
+  .resize.left {
+    @apply left-0;
+  }
+
+  .resize.right {
+    @apply right-0;
+  }
+}

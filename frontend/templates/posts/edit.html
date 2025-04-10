@@ -2,159 +2,56 @@
 {% block title %}Edit post - {{ post.title }}{% endblock title %}
 {% block styles %}
   {% call super() %}
-
-  <style>
-    .editor {
-      border-right: 1px solid var(--color-border);
-
-      .url {
-        display: inline-flex;
-        align-items: center;
-
-        width: 100%;
-        padding: 0.5rem;
-        background-color: var(--color-bg-alt);
-        border: 1px solid var(--color-border);
-
-        .origin {
-          color: var(--color-text-muted);
-          white-space: nowrap;
-          font-family: monospace;
-        }
-        input[type="text"] {
-          border: none;
-          padding: 0;
-          background: transparent;
-        }
-      }
-      .content {
-        flex-grow: 1;
-
-        article {
-          position: relative;
-          overflow: auto;
-          resize: horizontal;
-          max-width: 100vw;
-          width: calc(min(100vw, 768px));
-        }
-
-        .pell {
-          flex-grow: 1;
-          overflow: visible;
-
-          display: flex;
-          flex-direction: column;
-          border: 1px solid var(--color-border);
-          padding: 0 16px 16px 16px;
-
-          .pell-actionbar {
-            position: sticky;
-            top: 0;
-            background-color: var(--color-bg);
-            border-bottom: 1px solid var(--color-border);
-            padding: 10px 0 10px 0;
-
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            margin-bottom: 10px;
-            gap: 10px;
-
-            .pell-button {
-              background-color: var(--color-button);
-              outline: 0;
-              border: 1px solid var(--color-border);
-              width: 40px;
-              height: 30px;
-              padding: 5px 5px;
-            }
-            .pell-button-selected {
-              background-color: var(--color-button-hover);
-            }
-
-            #status {
-              margin-left: auto;
-              color: var(--color-text-muted);
-              font-size: 0.9rem;
-            }
-            #status::before {
-              content: "•";
-              margin-right: 6px;
-            }
-            #status.unsaved {
-              color: var(--color-text-warn);
-            }
-            #status.error {
-              color: var(--color-text-error);
-            }
-          }
-          .pell-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
-          }
-          .pell-content:focus {
-            outline: none;
-          }
-        }
-      }
-
-      .resize {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 16px;
-        cursor: ew-resize;
-        z-index: 100;
-        background: transparent;
-      }
-      .resize.left {
-        left: 0;
-      }
-      .resize.right {
-        right: 0;
-      }
-    }
-  </style>
 {% endblock styles %}
+
+{% block content %}
+  <div id="posts/edit">
+    <form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
+      {% if post.id != 0 %}
+        <input type="hidden" name="id" value="{{ post.id }}" />
+      {% endif %}
+      <div class="details">
+        <div class="field">
+          <label for="title">Title</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value="{{ post.title }}"
+            oninput="updatePreview()"
+          />
+        </div>
+        <div class="field">
+          <label for="url">URL</label>
+          <div class="url">
+            <span class="origin"></span>
+            <input type="text" id="url" name="url" value="{{ post.url }}" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="author">Author</label>
+          <input
+            type="text"
+            id="author"
+            name="author"
+            value="{{ post.author }}"
+          />
+        </div>
+        <label for="content">Content</label>
+      </div>
+      <div class="field content">
+        <article class="pell">
+          <div class="left resize"></div>
+          <div class="right resize"></div>
+        </article>
+      </div>
+    </form>
+  </div>
+{% endblock content %}
+
 {% block scripts %}
   <script src="/static/markdown.js"></script>
   <script src="https://unpkg.com/pell"></script>
-{% endblock scripts %}
-{% block content %}
-  <form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
-    {% if post.id != 0 %}
-      <input type="hidden" name="id" value="{{ post.id }}" />
-    {% endif %}
-    <div class="field">
-      <label for="title">Title</label>
-      <input
-        type="text"
-        id="title"
-        name="title"
-        value="{{ post.title }}"
-        oninput="updatePreview()"
-      />
-    </div>
-    <div class="field">
-      <label for="url">URL</label>
-      <div class="url">
-        <span class="origin"></span>
-        <input type="text" id="url" name="url" value="{{ post.url }}" />
-      </div>
-    </div>
-    <div class="field">
-      <label for="author">Author</label>
-      <input type="text" id="author" name="author" value="{{ post.author }}" />
-    </div>
-    <div class="field content">
-      <label for="content">Content</label>
-      <article class="pell">
-        <div class="left resize"></div>
-        <div class="right resize"></div>
-      </article>
-    </div>
-  </form>
   <script>
     // Form setup
     (() => {
@@ -327,4 +224,4 @@
       });
     })();
   </script>
-{% endblock content %}
+{% endblock scripts %}
