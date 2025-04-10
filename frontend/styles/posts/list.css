@@ -1,0 +1,29 @@
+#posts\/list {
+  @apply mx-auto flex max-w-6xl flex-col p-4;
+}
+
+#posts\/list header {
+  @apply flex items-center px-0;
+  .title {
+    @apply mr-4 font-bold;
+  }
+}
+
+#posts\/list .post {
+  @apply border-b border-neutral-700 py-4 last:border-b-0;
+
+  .info {
+    @apply mb-2 text-sm;
+  }
+
+  .actions {
+    @apply flex;
+    a,
+    form {
+      @apply mr-2;
+    }
+    form {
+      @apply p-0;
+    }
+  }
+}
