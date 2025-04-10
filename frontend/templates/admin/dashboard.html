@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - admin{% endblock title %}
+
+{% block styles %}
+  {% call super() %}
+{% endblock styles %}
+
+{% block content %}
+  <div>
+    <h1>Admin View</h1>
+    <div>
+      <div>Monthly New Users: 24</div>
+      <table>
+        <thead>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Email</th>
+        </thead>
+        <tbody>
+          {% for user in users %}
+            <tr>
+              <td>{{ user.first_name }}</td>
+              <td>{{ user.last_name }}</td>
+              <td>{{ user.email }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock content %}

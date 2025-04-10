@@ -6,6 +6,7 @@ use tower_http::services::ServeDir;
 use crate::db::Db;
 use crate::utils::{self, config::*, emailer::Emailer};
 
+mod admin;
 mod auth;
 mod emails;
 mod events;
@@ -38,6 +39,7 @@ pub async fn build(config: Config) -> Result<Router> {
     let r = events::register_routes(r);
     let r = lists::register_routes(r);
     let r = emails::register_routes(r);
+    let r = admin::register_routes(r);
 
     let r = auth::register(r, Arc::clone(&state));
 
