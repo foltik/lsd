@@ -66,16 +66,14 @@
   }
 }
 
-#posts\/edit .editor .content {
-  .resize {
-    @apply absolute top-0 bottom-0 z-50 w-4 cursor-ew-resize bg-transparent;
-  }
+#posts\/edit .editor .content .resize {
+  @apply absolute top-0 bottom-0 z-50 w-4 cursor-ew-resize bg-transparent;
 
-  .resize.left {
+  &.left {
     @apply left-0;
   }
 
-  .resize.right {
+  &.right {
     @apply right-0;
   }
 }
