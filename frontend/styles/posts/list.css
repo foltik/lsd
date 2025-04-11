@@ -3,18 +3,18 @@
 }
 
 #posts\/list header {
-  @apply mb-6 flex items-end justify-between px-0 pb-4;
-  @apply border-b border-neutral-700;
+  @apply mb-8 flex items-end justify-between px-0 pb-4;
+  @apply border-b border-neutral-800;
   .title {
-    @apply text-xl;
+    @apply text-lg uppercase;
   }
 }
 
 #posts\/list .post {
-  @apply mb-8 border-b border-neutral-800 pb-8 last:border-b-0;
+  @apply mb-12 border-l-[4px] border-neutral-800 pl-6;
 
   .title {
-    @apply text-2xl;
+    @apply mb-1 text-2xl font-bold;
     a {
       @apply underline hover:decoration-blue-500;
     }

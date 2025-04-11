@@ -3,7 +3,7 @@
 }
 
 #posts\/edit .editor {
-  @apply flex w-full flex-col items-center;
+  @apply mt-12 flex w-full flex-col items-center;
 }
 
 #posts\/edit .editor .details {
@@ -14,7 +14,7 @@
   @apply inline-flex w-full items-center border border-neutral-700 p-2;
 
   .origin {
-    @apply font-mono whitespace-nowrap;
+    @apply font-mono whitespace-nowrap opacity-70;
   }
 
   input[type="text"] {

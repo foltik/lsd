@@ -27,6 +27,11 @@ body {
 @import "./auth/login.css";
 @import "./auth/register.css";
 
+/* Lists */
+
+@import "./lists/edit.css";
+@import "./lists/view.css";
+
 /* Posts */
 
 @import "./posts/edit.css";

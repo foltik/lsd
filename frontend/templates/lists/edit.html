@@ -1,70 +1,59 @@
 {% extends "layout.html" %}
 {% block title %}Edit list - {{ list.name }}{% endblock %}
 {% block styles %}
-  {% call super() %}
-
-  <style>
-    .emails {
-      min-height: 200px;
-    }
-    li {
-      margin-bottom: 0.5rem;
-    }
-    .remove {
-      padding:;
-    }
-  </style>
 {% endblock %}
 
 {% block content %}
-  <form class="form" method="POST" action="/lists/{{ list.id }}">
-    {% if list.id != 0 %}
-      <input type="hidden" name="id" value="{{ list.id }}" />
-    {% endif %}
-    <div class="field">
-      <label for="name">Name</label>
-      <input
-        type="text"
-        id="name"
-        name="name"
-        value="{{ list.name }}"
-        oninput="document.title = `Edit list - ${this.value}`"
-      />
-    </div>
-    <div class="field">
-      <label for="description">Description</label>
-      <input type="text" name="description" value="{{ list.description }}" />
-    </div>
-    {% if list.id != 0 %}
+  <div id="lists/edit">
+    <form class="ext/form" method="POST" action="/lists/{{ list.id }}">
+      {% if list.id != 0 %}
+        <input type="hidden" name="id" value="{{ list.id }}" />
+      {% endif %}
       <div class="field">
-        <label>Members</label>
-        <ul>
-          {% for member in members %}
-            <li id="member-{{ loop.index }}">
-              <button
-                class="remove"
-                type="button"
-                onclick="fetch(`/lists/{{ list.id }}/{{ member.email }}`,
+        <label for="name">Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value="{{ list.name }}"
+          oninput="document.title = `Edit list - ${this.value}`"
+        />
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <input type="text" name="description" value="{{ list.description }}" />
+      </div>
+      {% if list.id != 0 %}
+        <div class="field">
+          <label>Members</label>
+          <ul>
+            {% for member in members %}
+              <li id="member-{{ loop.index }}">
+                {{ member.email }} ({{ member.first_name }}
+                {{ member.last_name }})
+                <button
+                  class="remove"
+                  type="button"
+                  onclick="fetch(`/lists/{{ list.id }}/{{ member.email }}`,
                 {method: 'DELETE'}
               ).then(res => res.ok && document.querySelector(`#member-{{ loop.index }}`).remove())"
-              >
-                Remove
-              </button>
-              {{ member.email }} ({{ member.first_name }}
-              {{ member.last_name }})
-            </li>
-          {% endfor %}
-        </ul>
+                >
+                  Remove
+                </button>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      <div class="field">
+        <label for="emails">Add members</label>
+        <textarea
+          class="emails"
+          name="emails"
+          placeholder="Enter email addresses, one per line..."
+        ></textarea>
       </div>
-    {% endif %}
-    <div class="field">
-      <label for="emails">Add members</label>
-      <textarea
-        class="emails"
-        name="emails"
-        placeholder="Enter email addresses, one per line..."
-      ></textarea>
-    </div>
-    <button type="submit">Save</button>
-  </form>
+      <button type="submit">Save</button>
+    </form>
+  </div>
 {% endblock %}
