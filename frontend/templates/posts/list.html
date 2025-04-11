@@ -1,15 +1,19 @@
 {% extends "layout.html" %}
 {% block title %}light and sound{% endblock %}
+{% block styles %}
+{% endblock styles %}
 
 {% block content %}
   <div id="posts/list" class="posts">
     <header>
       <h1 class="title">Posts</h1>
-      <a class="button" href="/posts/new">New Post</a>
+      <a class="ext/button" href="/posts/new">New Post</a>
     </header>
     {% for post in posts %}
       <div class="post">
-        <h2><a href="/posts/{{ post.url }}">{{ post.title }}</a></h2>
+        <h2 class="title">
+          <a href="/posts/{{ post.url }}">{{ post.title }}</a>
+        </h2>
         <div class="info">
           By {{ post.author }} &bull; Updated
           <time datetime="{{ post.updated_at }}">
@@ -17,13 +21,14 @@
           </time>
         </div>
         <div class="actions">
-          <a class="button" href="/posts/{{ post.url }}/edit">Edit</a>
+          <a class="ext/button" href="/posts/{{ post.url }}/edit">Edit</a>
           <!--
             <form method="POST" action="/posts/{{ post.url }}/duplicate">
                 <button type="submit">Duplicate</button>
             </form>
             -->
           <form
+            class="ext/form"
             method="POST"
             action="/posts/{{ post.url }}/delete"
             onsubmit="return confirm('Are you sure you want to delete this post?');"

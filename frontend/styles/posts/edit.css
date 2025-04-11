@@ -33,7 +33,7 @@
 
 #posts\/edit .editor .content .pell {
   @apply flex grow flex-col overflow-visible border border-neutral-700;
-  @apply relative p-4 pt-0;
+  @apply relative mx-auto p-4 pt-0;
 
   .pell-actionbar {
     @apply sticky top-0 border-b border-neutral-700 py-2.5;

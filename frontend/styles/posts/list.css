@@ -1,19 +1,27 @@
 #posts\/list {
-  @apply mx-auto flex max-w-6xl flex-col p-4;
+  @apply mx-auto mt-8 flex max-w-4xl flex-col px-6;
 }
 
 #posts\/list header {
-  @apply flex items-center px-0;
+  @apply mb-6 flex items-end justify-between px-0 pb-4;
+  @apply border-b border-neutral-700;
   .title {
-    @apply mr-4 font-bold;
+    @apply text-xl;
   }
 }
 
 #posts\/list .post {
-  @apply border-b border-neutral-700 py-4 last:border-b-0;
+  @apply mb-8 border-b border-neutral-800 pb-8 last:border-b-0;
+
+  .title {
+    @apply text-2xl;
+    a {
+      @apply underline hover:decoration-blue-500;
+    }
+  }
 
   .info {
-    @apply mb-2 text-sm;
+    @apply mb-4 text-sm;
   }
 
   .actions {

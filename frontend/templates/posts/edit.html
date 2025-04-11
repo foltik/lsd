@@ -1,12 +1,15 @@
 {% extends "layout.html" %}
 {% block title %}Edit post - {{ post.title }}{% endblock title %}
 {% block styles %}
-  {% call super() %}
 {% endblock styles %}
 
 {% block content %}
   <div id="posts/edit">
-    <form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
+    <form
+      class="editor ext/form"
+      method="POST"
+      action="/posts/{{ post.url }}/edit"
+    >
       {% if post.id != 0 %}
         <input type="hidden" name="id" value="{{ post.id }}" />
       {% endif %}

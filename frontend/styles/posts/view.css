@@ -1,0 +1,26 @@
+#posts\/view {
+  @apply mt-8 flex flex-col items-center;
+
+  .details {
+    @apply mb-6 border-b border-neutral-700 pb-6;
+
+    .date {
+      @apply opacity-80;
+    }
+  }
+
+  .title {
+    @apply text-4xl;
+  }
+
+  article {
+    @apply w-full max-w-4xl;
+  }
+
+  .content {
+    @apply mb-16 text-lg;
+    p {
+      @apply mt-6 first:mt-0;
+    }
+  }
+}
