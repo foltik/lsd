@@ -6,16 +6,38 @@ edition = "2021"
 
 [dependencies]
 askama = "0.13.0"
-axum = { version = "0.8", default-features = false, features = ["query", "form"] }
+axum = { version = "0.8", default-features = false, features = [
+    "query",
+    "form",
+] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
-lettre = { version = "0.11", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1", "tokio1-rustls-tls", "serde"] }
+lettre = { version = "0.11", default-features = false, features = [
+    "builder",
+    "hostname",
+    "pool",
+    "smtp-transport",
+    "tokio1",
+    "tokio1-rustls-tls",
+    "serde",
+] }
 rustls = "0.23"
 rustls-acme = { version = "0.12", features = ["axum"] }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
-tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "macros"] }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "fs",
+    "net",
+    "sync",
+    "macros",
+] }
 tower = "0.5.2"
-tower-http = { version = "0.6", features = ["fs", "request-id", "trace", "util"] }
+tower-http = { version = "0.6", features = [
+    "fs",
+    "request-id",
+    "trace",
+    "util",
+] }
 
 anyhow = "1"
 chrono-tz = { version = "0.10", features = ["serde"] }
@@ -27,6 +49,8 @@ toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 uuid = { version = "1.16.0", features = ["v7"] }
+askama_web = { version = "0.13.0", features = ["axum-0.8"] }
+thiserror = "2.0.12"
 
 # Add a little optimization to debug builds
 [profile.dev]

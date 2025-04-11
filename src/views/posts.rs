@@ -1,11 +1,14 @@
-use crate::views::filters;
 use std::collections::HashMap;
 
 use askama::Template;
+use askama_web::WebTemplate;
 
-use crate::db::{list::List, post::Post};
+use crate::{
+    db::{list::List, post::Post},
+    views::filters,
+};
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "posts/edit.html")]
 pub struct PostEdit {
     pub post: Post,
@@ -19,20 +22,20 @@ pub struct PostEmail {
     pub unsub_url: String,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "posts/list.html")]
 pub struct PostList {
     pub posts: Vec<Post>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "posts/send.html")]
 pub struct PostSend {
     pub post: Post,
     pub lists: Vec<List>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "posts/sent.html")]
 pub struct PostSent {
     pub post_title: String,
@@ -42,7 +45,7 @@ pub struct PostSent {
     pub errors: HashMap<String, String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "posts/view.html")]
 pub struct PostView {
     pub post: Post,

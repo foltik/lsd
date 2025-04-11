@@ -1,10 +1,9 @@
-use anyhow::{Context, Result};
-
 mod app;
 mod db;
 mod utils;
 mod views;
 
+use anyhow::Context as _;
 use axum::{handler::HandlerWithoutStateExt, response::Redirect};
 use axum_server::tls_rustls::RustlsConfig;
 use futures::StreamExt;
@@ -13,14 +12,16 @@ use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _
 use utils::config::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     // TODO(sam) is it possible to filter the logs from ServeDir?
     let log_filter = tracing_subscriber::filter::Targets::default()
         .with_target("h2", LevelFilter::OFF)
         .with_target("globset", LevelFilter::OFF)
+        .with_target("rustls", LevelFilter::OFF)
         .with_default(Level::DEBUG);
 
     tracing_subscriber::fmt()
+        .pretty()
         .with_target(true)
         .with_line_number(true)
         .with_max_level(Level::DEBUG)

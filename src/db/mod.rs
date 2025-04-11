@@ -1,7 +1,8 @@
-use anyhow::{Context as _, Result};
+use std::path::Path;
+
+use anyhow::Context as _;
 use serde::Deserialize;
 use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
-use std::path::Path;
 use user::User;
 
 use crate::utils::config::DbConfig;
@@ -16,7 +17,7 @@ pub mod token;
 pub mod user;
 
 /// Create a new db connection pool, initializing and running migrations if necessary.
-pub async fn init(db_config: &DbConfig) -> Result<Db> {
+pub async fn init(db_config: &DbConfig) -> anyhow::Result<Db> {
     let url = format!("sqlite://{}", db_config.file.display());
     if !Sqlite::database_exists(&url).await? {
         Sqlite::create_database(&url).await?;
@@ -39,13 +40,13 @@ struct SeedData {
 }
 
 impl SeedData {
-    pub async fn load(file: &Path) -> Result<Self> {
+    pub async fn load(file: &Path) -> anyhow::Result<Self> {
         let contents = tokio::fs::read_to_string(file).await?;
         toml::from_str(&contents).with_context(|| format!("loading config={file:#?}"))
     }
 }
 
-async fn seed_db(db: &Db, seed_data_path: &Path) -> Result<()> {
+async fn seed_db(db: &Db, seed_data_path: &Path) -> anyhow::Result<()> {
     let seed_data = SeedData::load(seed_data_path).await?;
 
     for user in seed_data.users {
