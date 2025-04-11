@@ -1,26 +1,27 @@
-use askama::Template;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect},
     routing::get,
     Form,
 };
 use chrono::Utc;
 
-use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 use crate::{
     db::event::{Event, UpdateEvent},
+    utils::{
+        error::{AppError, AppResult},
+        types::{AppRouter, SharedAppState},
+    },
     views,
 };
 
 /// Add all `events` routes to the router.
-pub fn register_routes(router: AppRouter) -> AppRouter {
-    router
-        .route("/events", get(list_events_page))
-        .route("/events/new", get(create_event_page).post(create_event_form))
+pub fn routes() -> AppRouter {
+    AppRouter::new()
+        .route("/", get(list_events_page))
+        .route("/new", get(create_event_page).post(create_event_form))
         .route(
-            "/events/{id}",
+            "/{id}",
             // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
             get(update_event_page).post(update_event_form).delete(delete_event),
         )
@@ -30,7 +31,7 @@ pub fn register_routes(router: AppRouter) -> AppRouter {
 async fn list_events_page(
     State(state): State<SharedAppState>,
     Query(query): Query<ListEventsQuery>,
-) -> AppResult<Response> {
+) -> AppResult<impl IntoResponse> {
     let now = Utc::now().naive_utc();
     let past = query.past.unwrap_or(false);
 
@@ -45,9 +46,7 @@ async fn list_events_page(
         })
         .collect::<Vec<_>>();
 
-    let list_template = views::events::EventList { events };
-
-    Ok(Html(list_template.render()?).into_response())
+    Ok(views::events::EventList { events })
 }
 #[derive(serde::Deserialize)]
 struct ListEventsQuery {
@@ -55,8 +54,8 @@ struct ListEventsQuery {
 }
 
 /// Display the form to create a new event.
-async fn create_event_page() -> AppResult<Response> {
-    Ok(Html(views::events::EventCreate.render()?).into_response())
+async fn create_event_page() -> impl IntoResponse {
+    views::events::EventCreate
 }
 
 /// Process the form and create a new event.
@@ -70,14 +69,13 @@ async fn create_event_form(
 }
 
 /// Display the form to update an event.
-async fn update_event_page(State(state): State<SharedAppState>, Path(id): Path<i64>) -> AppResult<Response> {
-    let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
-        return Ok(StatusCode::NOT_FOUND.into_response());
-    };
+async fn update_event_page(
+    State(state): State<SharedAppState>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
 
-    let update_template = views::events::EventView { event };
-
-    Ok(Html(update_template.render()?).into_response())
+    Ok(views::events::EventView { event })
 }
 
 /// Process the form and update an event.

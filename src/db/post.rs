@@ -1,7 +1,7 @@
-use anyhow::Result;
 use chrono::NaiveDateTime;
 
 use super::Db;
+use crate::utils::error::AppResult;
 
 #[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Post {
@@ -24,7 +24,7 @@ pub struct UpdatePost {
 
 impl Post {
     // List all posts.
-    pub async fn list(db: &Db) -> Result<Vec<Post>> {
+    pub async fn list(db: &Db) -> AppResult<Vec<Post>> {
         let posts = sqlx::query_as!(Self, "SELECT * FROM posts ORDER BY updated_at DESC")
             .fetch_all(db)
             .await?;
@@ -32,7 +32,7 @@ impl Post {
     }
 
     /// Create a new post.
-    pub async fn create(db: &Db, post: &UpdatePost) -> Result<i64> {
+    pub async fn create(db: &Db, post: &UpdatePost) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO posts
                (title, url, author, content)
@@ -48,7 +48,7 @@ impl Post {
     }
 
     /// Update an existing post.
-    pub async fn update(db: &Db, id: i64, post: &UpdatePost) -> Result<()> {
+    pub async fn update(db: &Db, id: i64, post: &UpdatePost) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE posts
                SET title = ?,
@@ -69,13 +69,13 @@ impl Post {
     }
 
     /// Delete a post.
-    pub async fn delete(db: &Db, id: i64) -> Result<()> {
+    pub async fn delete(db: &Db, id: i64) -> AppResult<()> {
         sqlx::query!("DELETE FROM posts WHERE id = ?", id).execute(db).await?;
         Ok(())
     }
 
     /// Lookup a post by URL, if one exists.
-    pub async fn lookup_by_url(db: &Db, url: &str) -> Result<Option<Post>> {
+    pub async fn lookup_by_url(db: &Db, url: &str) -> AppResult<Option<Post>> {
         let row = sqlx::query_as!(Self, "SELECT * FROM posts WHERE url = ?", url)
             .fetch_optional(db)
             .await?;
