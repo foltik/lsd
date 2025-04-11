@@ -3,8 +3,8 @@
 
 {% block content %}
   <div id="posts/send">
-    <form method="POST" action="/posts/{{ post.url }}/send">
-      <h1 class="pb-4">{{ post.title }}</h1>
+    <form class="ext/form" method="POST" action="/posts/{{ post.url }}/send">
+      <h1 class="title">{{ post.title }}</h1>
       <div class="field">
         <label for="list_id">Send to list</label>
         <select name="list_id">

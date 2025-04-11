@@ -1,5 +1,5 @@
 .ext\/form {
-  @apply flex flex-col p-8;
+  @apply flex flex-col;
 }
 
 .ext\/form input,
@@ -20,7 +20,7 @@
 
 .ext\/form select,
 .ext\/select {
-  @apply border border-neutral-600 bg-neutral-950;
+  @apply border border-neutral-600 bg-neutral-950 px-2 py-1;
 }
 
 .ext\/form .field,

@@ -20,7 +20,14 @@ body {
 
 @import "./extentions/form.css";
 
-/** Posts **/
+/** Modules **/
+
+/* Auth */
+
+@import "./auth/login.css";
+@import "./auth/register.css";
+
+/* Posts */
 
 @import "./posts/edit.css";
 @import "./posts/list.css";

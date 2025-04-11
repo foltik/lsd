@@ -2,23 +2,20 @@
 
 {% block title %}light and sound - login{% endblock title %}
 {% block styles %}
-  {% call super() %}
-
-  <style>
-    form {
-      padding: 2rem;
-      width: 200px;
-    }
-  </style>
 {% endblock styles %}
 {% block content %}
-  <form action="/login" method="post">
-    <div class="field">
-      <label for="email">Email</label>
-      <input type="email" name="email" />
+  <div id="auth/login">
+    <div class="container">
+      <h1>Login</h1>
+      <form class="ext/form" action="/login" method="post">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" name="email" />
+        </div>
+        <div class="field">
+          <button type="submit">Login</button>
+        </div>
+      </form>
     </div>
-    <div class="field">
-      <button type="submit">Login</button>
-    </div>
-  </form>
+  </div>
 {% endblock content %}
