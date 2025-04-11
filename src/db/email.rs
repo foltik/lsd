@@ -1,7 +1,7 @@
-use anyhow::Result;
 use chrono::NaiveDateTime;
 
 use super::Db;
+use crate::utils::error::AppResult;
 
 /// A record of a an email which has been sent.
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
@@ -24,7 +24,7 @@ impl Email {
     pub const POST: &'static str = "post";
 
     /// Lookup an email by id.
-    pub async fn lookup(db: &Db, id: i64) -> Result<Option<Email>> {
+    pub async fn lookup(db: &Db, id: i64) -> AppResult<Option<Email>> {
         let res = sqlx::query_as!(Self, r#"SELECT * FROM emails WHERE id = ?"#, id)
             .fetch_optional(db)
             .await?;
@@ -32,7 +32,7 @@ impl Email {
     }
 
     /// Lookup an email by address, post, and list.
-    pub async fn lookup_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<Option<Email>> {
+    pub async fn lookup_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> AppResult<Option<Email>> {
         let res = sqlx::query_as!(
             Self,
             r#"SELECT * FROM emails
@@ -47,7 +47,7 @@ impl Email {
     }
 
     /// Create a new email record.
-    pub async fn create_login(db: &Db, address: &str) -> Result<i64> {
+    pub async fn create_login(db: &Db, address: &str) -> AppResult<i64> {
         let res = sqlx::query!("INSERT INTO emails (kind, address) VALUES (?, ?)", Email::LOGIN, address)
             .execute(db)
             .await?;
@@ -55,7 +55,7 @@ impl Email {
     }
 
     /// Create a new email record referencing another database entry.
-    pub async fn create_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> Result<i64> {
+    pub async fn create_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> AppResult<i64> {
         let res = sqlx::query!(
             r#"INSERT INTO emails (kind, address, post_id, list_id) VALUES (?, ?, ?, ?)"#,
             Email::POST,
@@ -69,7 +69,7 @@ impl Email {
     }
 
     /// Mark an email as sent.
-    pub async fn mark_sent(db: &Db, id: i64) -> Result<()> {
+    pub async fn mark_sent(db: &Db, id: i64) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE emails SET sent_at = CURRENT_TIMESTAMP
                WHERE id = ?"#,
@@ -81,7 +81,7 @@ impl Email {
     }
 
     /// Mark an email as sent.
-    pub async fn mark_error(db: &Db, id: i64, error: &str) -> Result<()> {
+    pub async fn mark_error(db: &Db, id: i64, error: &str) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE emails SET sent_at = CURRENT_TIMESTAMP, error = ?
                WHERE id = ?"#,
@@ -94,7 +94,7 @@ impl Email {
     }
 
     /// Mark an email as opened.
-    pub async fn mark_opened(db: &Db, id: i64) -> Result<()> {
+    pub async fn mark_opened(db: &Db, id: i64) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE emails SET opened_at = CURRENT_TIMESTAMP
                WHERE id = ? AND opened_at IS NULL"#,

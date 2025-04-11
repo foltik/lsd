@@ -18,39 +18,41 @@
 //!    - `/register`: The user is prompted to enter their first/last name.
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
-use askama::Template;
+use std::convert::Infallible;
+
 use axum::{
     extract::{OptionalFromRequestParts, Query, Request, State},
-    http::{header, request::Parts, StatusCode},
+    http::{header, request::Parts},
     middleware::Next,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::post,
     Form,
 };
 use axum_extra::extract::CookieJar;
 use lettre::message::{header::ContentType, Mailbox};
-use std::convert::Infallible;
 
-use crate::db::{
-    email::Email,
-    token::{LoginToken, SessionToken},
-};
-use crate::utils::types::{AppResult, AppRouter, SharedAppState};
 use crate::{
-    db::user::{UpdateUser, User},
+    db::{
+        email::Email,
+        token::{LoginToken, SessionToken},
+        user::{UpdateUser, User},
+    },
+    utils::{
+        error::{AppError, AppResult},
+        types::{AppRouter, SharedAppState},
+    },
     views,
 };
 
 /// Add all auth routes to the router.
-pub fn register(router: AppRouter, state: SharedAppState) -> AppRouter {
-    router
-        .layer(axum::middleware::from_fn_with_state(state, auth_middleware))
+pub fn routes() -> AppRouter {
+    AppRouter::new()
         .route("/login", post(login_form).get(login_link))
         .route("/register", post(register_form).get(register_link))
 }
 
 /// Middleware to lookup add a `User` to the request if a session token is present.
-pub async fn auth_middleware(
+pub async fn middleware(
     State(state): State<SharedAppState>,
     mut cookies: CookieJar,
     mut request: Request,
@@ -77,11 +79,9 @@ impl<S: Send + Sync> OptionalFromRequestParts<S> for User {
 }
 /// Enable extracting a `User` in a handler, returning UNAUTHORIZED if not logged in.
 impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
-    type Rejection = StatusCode;
+    type Rejection = AppError;
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let Some(user) = parts.extensions.get::<User>().cloned() else {
-            return Err(StatusCode::UNAUTHORIZED);
-        };
+        let user = parts.extensions.get::<User>().cloned().ok_or(AppError::NotAuthorized)?;
         Ok(user)
     }
 }
@@ -120,7 +120,7 @@ async fn login_form(
         }
         Err(e) => {
             Email::mark_error(&state.db, email_id, &e.to_string()).await?;
-            Err(e.into())
+            Err(e)
         }
     }
 }
@@ -136,9 +136,9 @@ async fn login_link(
 ) -> AppResult<Response> {
     match query.token {
         Some(token) => {
-            let Some(user) = User::lookup_by_login_token(&state.db, &token).await? else {
-                return Ok(StatusCode::FORBIDDEN.into_response());
-            };
+            let user = User::lookup_by_login_token(&state.db, &token)
+                .await?
+                .ok_or(AppError::NotAuthorized)?;
 
             let token = SessionToken::create(&state.db, user.id).await?;
             let headers = (
@@ -148,7 +148,7 @@ async fn login_link(
             );
             Ok(headers.into_response())
         }
-        None => Ok(Html(views::auth::Login.render()?).into_response()),
+        None => Ok(views::auth::Login.into_response()),
     }
 }
 #[derive(serde::Deserialize)]
@@ -157,10 +157,8 @@ struct LoginQuery {
 }
 
 /// Display the registration page.
-async fn register_link(Query(query): Query<RegisterQuery>) -> AppResult<Response> {
-    let register_template = views::auth::Register { token: query.token.clone() };
-
-    Ok(Html(register_template.render()?).into_response())
+async fn register_link(Query(query): Query<RegisterQuery>) -> impl IntoResponse {
+    views::auth::Register { token: query.token }
 }
 #[derive(serde::Deserialize)]
 struct RegisterQuery {
@@ -173,7 +171,7 @@ async fn register_form(
     Form(form): Form<RegisterForm>,
 ) -> AppResult<Response> {
     let Some(email) = LoginToken::lookup_email(&state.db, &form.token).await? else {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(AppError::NotAuthorized);
     };
 
     let user_id = User::create(

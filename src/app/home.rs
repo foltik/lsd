@@ -1,21 +1,13 @@
-use askama::Template;
-use axum::{
-    extract::State,
-    response::{Html, IntoResponse, Response},
-    routing::get,
-};
+use axum::{response::IntoResponse, routing::get};
 
-use crate::utils::types::{AppResult, AppRouter, SharedAppState};
-use crate::{db::user::User, views};
+use crate::{utils::types::AppRouter, views};
 
 /// Add all `home` routes to the router.
-pub fn register_routes(router: AppRouter) -> AppRouter {
-    router.route("/", get(home_page))
+pub fn routes() -> AppRouter {
+    AppRouter::new().route("/", get(home_page))
 }
 
 /// Display the front page.
-async fn home_page(State(_state): State<SharedAppState>, _user: Option<User>) -> AppResult<Response> {
-    let index_template = views::index::IndexTemplate {};
-
-    Ok(Html(index_template.render()?).into_response())
+async fn home_page() -> impl IntoResponse {
+    views::index::IndexTemplate
 }
