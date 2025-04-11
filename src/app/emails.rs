@@ -7,14 +7,17 @@ use axum::{
 
 use crate::{
     db::{email::Email, list::List},
-    utils::types::{AppResult, AppRouter, SharedAppState},
+    utils::{
+        error::AppResult,
+        types::{AppRouter, SharedAppState},
+    },
 };
 
 /// Add all `email` routes to the router.
-pub fn register_routes(router: AppRouter) -> AppRouter {
-    router
-        .route("/emails/{id}/footer.gif", get(email_opened))
-        .route("/emails/{id}/unsubscribe", get(email_unsubscribed))
+pub fn routes() -> AppRouter {
+    AppRouter::new()
+        .route("/{id}/footer.gif", get(email_opened))
+        .route("/{id}/unsubscribe", get(email_unsubscribed))
 }
 
 async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {

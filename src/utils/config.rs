@@ -1,12 +1,13 @@
-use anyhow::{Context, Result};
+use std::{net::SocketAddr, path::PathBuf};
+
+use anyhow::Context as _;
 use chrono_tz::Tz;
 use lettre::message::Mailbox;
-use std::{net::SocketAddr, path::PathBuf};
 
 impl Config {
     /// Load a `.toml` file from disk and parse it as a [`Config`].
-    pub async fn load(file: &str) -> Result<Config> {
-        async fn load_inner(file: &str) -> Result<Config> {
+    pub async fn load(file: &str) -> anyhow::Result<Config> {
+        async fn load_inner(file: &str) -> anyhow::Result<Config> {
             let contents = tokio::fs::read_to_string(file).await?;
             Ok(toml::from_str(&contents)?)
         }
