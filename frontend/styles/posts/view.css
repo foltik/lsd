@@ -1,0 +1,30 @@
+#posts\/view {
+  @apply flex flex-col items-center;
+
+  > article {
+    @apply mt-12;
+  }
+
+  .details {
+    @apply mb-4 border-b border-neutral-700 pb-4;
+
+    .title {
+      @apply text-4xl font-bold;
+    }
+
+    .date {
+      @apply opacity-80;
+    }
+  }
+
+  article {
+    @apply w-full max-w-4xl;
+  }
+
+  .content {
+    @apply mb-16 text-lg;
+    p {
+      @apply mt-6 first:mt-0;
+    }
+  }
+}

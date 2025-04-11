@@ -1,0 +1,37 @@
+#posts\/list {
+  @apply mx-auto mt-8 flex max-w-4xl flex-col px-6;
+}
+
+#posts\/list header {
+  @apply mb-8 flex items-end justify-between px-0 pb-4;
+  @apply border-b border-neutral-800;
+  .title {
+    @apply text-lg uppercase;
+  }
+}
+
+#posts\/list .post {
+  @apply mb-12 border-l-[4px] border-neutral-800 pl-6;
+
+  .title {
+    @apply mb-1 text-2xl font-bold;
+    a {
+      @apply underline hover:decoration-blue-500;
+    }
+  }
+
+  .info {
+    @apply mb-4 text-sm;
+  }
+
+  .actions {
+    @apply flex;
+    a,
+    form {
+      @apply mr-2;
+    }
+    form {
+      @apply p-0;
+    }
+  }
+}

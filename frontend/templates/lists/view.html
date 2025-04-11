@@ -1,21 +1,19 @@
 {% extends "layout.html" %}
 {% block title %}light and sound - Lists{% endblock title %}
 {% block styles %}
-  {% call super() %}
-
-  <style>
-    ul {
-      padding: 2rem;
-    }
-  </style>
 {% endblock %}
 
 {% block content %}
-  <ul>
-    {% for list in lists %}
-      <li>
-        <a href="/lists/{{ list.id }}">{{ list.name }}</a>
-      </li>
-    {% endfor %}
-  </ul>
+  <div id="lists/view">
+    <header>
+      <h1 class="title">Lists</h1>
+    </header>
+    <ul class="lists">
+      {% for list in lists %}
+        <li>
+          <a href="/lists/{{ list.id }}">{{ list.name }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
 {% endblock %}
