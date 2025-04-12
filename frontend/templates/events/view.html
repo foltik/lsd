@@ -3,51 +3,45 @@
 {% block title %}{{ event.title }}{% endblock title %}
 
 {% block styles %}
-  {% call super() %}
-
-  <style>
-    body {
-      background-color: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      margin: 15px;
-      padding: 0;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-    }
-  </style>
 {% endblock styles %}
 
 {% block content %}
-  <h1>Update Event: {{ event.title }}</h1>
-  <form action="/events/{{ event.id }}/update" method="post">
-    <label for="title">Event Title</label>
-    <input type="text" name="title" value="{{ event.title }}" />
+  <div id="events/view">
+    <h1>Update Event: {{ event.title }}</h1>
+    <form class="ext/form" action="/events/{{ event.id }}/update" method="post">
+      <div class="field">
+        <label for="title">Event Title</label>
+        <input type="text" name="title" value="{{ event.title }}" />
+      </div>
 
-    <label for="artist">Artist Name</label>
-    <input type="text" name="artist" value="{{ event.artist }}" />
+      <div class="field">
+        <label for="artist">Artist Name</label>
+        <input type="text" name="artist" value="{{ event.artist }}" />
+      </div>
 
-    <label for="description">Event Description</label>
-    <textarea name="description" value="{{ event.description }}">
+      <div class="field">
+        <label for="description">Event Description</label>
+        <textarea name="description" value="{{ event.description }}">
         What can people expect...
-      </textarea
-    >
+      </textarea>
+      </div>
 
-    <label for="start_date">Event Date</label>
-    <input
-      type="datetime-local"
-      name="start_date"
-      value="{{ event.start_date }}"
-    />
+      <div class="field">
+        <label for="start_date">Event Date</label>
+        <input
+          type="datetime-local"
+          name="start_date"
+          value="{{ event.start_date }}"
+        />
+      </div>
 
-    <!-- <label for="cover_image">Event Cover Image</label>
+      <!-- <label for="cover_image">Event Cover Image</label>
             <input type="file" name="cover_image" /> -->
 
-    <button type="submit">Update</button>
-  </form>
-  <form action="/events/{{ event.id }}/delete" method="post">
-    <button type="submit">Delete</button>
-  </form>
+      <button type="submit">Update</button>
+    </form>
+    <form class="ext/form" action="/events/{{ event.id }}/delete" method="post">
+      <button type="submit">Delete</button>
+    </form>
+  </div>
 {% endblock content %}

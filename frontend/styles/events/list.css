@@ -1,0 +1,9 @@
+#events\/list {
+  @apply mx-auto mt-8 flex max-w-4xl flex-col;
+  .title {
+    @apply mb-4 text-2xl;
+  }
+  .event a {
+    @apply hover:underline;
+  }
+}

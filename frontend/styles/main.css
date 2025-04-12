@@ -16,6 +16,19 @@ body {
   @apply h-full w-full bg-black font-sans text-white;
 }
 
+body > header {
+  @apply flex flex-col items-center border-b border-neutral-900 p-6;
+  nav {
+    @apply flex w-full max-w-6xl items-center gap-x-8;
+  }
+  nav .lsd {
+    @apply font-bold;
+  }
+  nav .sep {
+    @apply h-4 border-r border-neutral-700;
+  }
+}
+
 /** Extensions **/
 
 @import "./extentions/form.css";
@@ -26,6 +39,12 @@ body {
 
 @import "./auth/login.css";
 @import "./auth/register.css";
+
+/* Events */
+
+@import "./events/create.css";
+@import "./events/list.css";
+@import "./events/view.css";
 
 /* Lists */
 

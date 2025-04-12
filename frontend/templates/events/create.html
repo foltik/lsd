@@ -3,43 +3,55 @@
 {% block title %}light and sound - new event{% endblock title %}
 
 {% block styles %}
-  {% call super() %}
-
-  <style>
-    body {
-      background-color: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      margin: 15px;
-      padding: 0;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-    }
-  </style>
 {% endblock styles %}
 
 {% block content %}
-  <main>
+  <div id="events/create">
     <h1>Let's Create an Event</h1>
-    <form action="/events/new" method="post">
-      <label for="title">Event Title</label>
-      <input type="text" name="title" />
+    <form
+      class="ext/form"
+      action="/events/new"
+      method="post"
+      onsubmit="normalizeDateTime(event)"
+    >
+      <div class="field">
+        <label for="title">Event Title</label>
+        <input type="text" name="title" />
+      </div>
 
-      <label for="artist">Artist Name</label>
-      <input type="text" name="artist" />
+      <div class="field">
+        <label for="artist">Artist Name</label>
+        <input type="text" name="artist" />
+      </div>
 
-      <label for="description">Event Description</label>
-      <textarea name="description">What can people expect...</textarea>
+      <div class="field">
+        <label for="description">Event Description</label>
+        <textarea name="description">What can people expect...</textarea>
+      </div>
 
-      <label for="start_date">Event Date</label>
-      <input type="datetime-local" name="start_date" />
+      <div class="field">
+        <label for="start_date2">Event Date</label>
+        <input type="datetime-local" name="start_date_select" />
+      </div>
 
-      <label for="cover_image">Event Cover Image</label>
-      <input type="file" name="cover_image" />
+      <input type="hidden" name="start_date" />
+
+      <div class="field">
+        <label for="cover_image">Event Cover Image</label>
+        <input type="file" name="cover_image" />
+      </div>
 
       <button type="submit">Create</button>
     </form>
-  </main>
+  </div>
+  <script>
+    function normalizeDateTime(e) {
+      e.preventDefault();
+      const form = e.target;
+      const inputA = form.querySelector('[name="start_date_select"]');
+      const inputB = form.querySelector('[name="start_date"]');
+      inputB.value = inputA.value + ":00";
+      form.submit();
+    }
+  </script>
 {% endblock content %}

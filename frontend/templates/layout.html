@@ -11,12 +11,19 @@
   </head>
   <body>
     {% block header %}
-      <header class="border-b border-neutral-800 p-4">
+      <header>
         <nav>
           <!-- TODO: Link to "/" when the homepage is finished -->
-          <a class="font-bold" href="https://lightandsound.design">
-            lightandsound.design
+          <a class="lsd" href="https://lightandsound.design">
+            <span class="text-yellow-400">light</span><span>and</span
+            ><span class="text-cyan-400">sound</span>.<span
+              class="text-pink-400"
+              >design</span
+            >
           </a>
+          <div class="sep"></div>
+          <a href="/events">Events</a>
+          <a href="/posts">Posts</a>
         </nav>
       </header>
     {% endblock header %}

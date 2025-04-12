@@ -1,5 +1,5 @@
 #posts\/view {
-  @apply flex flex-col items-center;
+  @apply flex flex-col items-center px-6;
 
   > article {
     @apply mt-12;
