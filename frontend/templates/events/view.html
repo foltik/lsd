@@ -5,7 +5,12 @@
 {% block content %}
   <div id="events/view">
     <h1>Update Event: {{ event.title }}</h1>
-    <form class="ext/form" action="/events/{{ event.id }}/update" method="post">
+    <form
+      class="ext/form"
+      action="/events/{{ event.id }}/update"
+      method="post"
+      onsubmit="normalizeDateTime(event)"
+    >
       <div class="field">
         <label for="title">Event Title</label>
         <input type="text" name="title" value="{{ event.title }}" />
@@ -24,13 +29,15 @@
       </div>
 
       <div class="field">
-        <label for="start_date">Event Date</label>
+        <label for="start_date_select">Event Date</label>
         <input
           type="datetime-local"
-          name="start_date"
+          name="start_date_select"
           value="{{ event.start_date }}"
         />
       </div>
+
+      <input type="hidden" name="start_date" />
 
       <!-- <label for="cover_image">Event Cover Image</label>
             <input type="file" name="cover_image" /> -->
@@ -41,4 +48,14 @@
       <button type="submit">Delete</button>
     </form>
   </div>
+  <script>
+    function normalizeDateTime(e) {
+      e.preventDefault();
+      const form = e.target;
+      const inputA = form.querySelector('[name="start_date_select"]');
+      const inputB = form.querySelector('[name="start_date"]');
+      inputB.value = inputA.value + ":00";
+      form.submit();
+    }
+  </script>
 {% endblock content %}
