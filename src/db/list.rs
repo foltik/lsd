@@ -16,8 +16,8 @@ pub struct List {
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct ListMember {
     pub email: String,
-    pub first_name: String,
-    pub last_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
 }
 
 #[derive(serde::Deserialize)]

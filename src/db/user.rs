@@ -7,8 +7,8 @@ use crate::utils::error::AppResult;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
-    pub first_name: String,
-    pub last_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub email: String,
     pub created_at: NaiveDateTime,
 }
