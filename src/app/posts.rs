@@ -159,13 +159,12 @@ async fn send_post_form(
     };
     let members = List::list_members(&state.db, form.list_id).await?;
 
-    let mut email_template =
-        views::posts::PostEmail { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
-
     // XXX: The `url` field is just a slug, not an absolute URL.
     // We can't yet access `config.app.url` within templates, so we just mutate
     // the URL here and rely on that behavior in the `email.html` template.
     post.url = format!("{}/p/{}", &state.config.app.url, &post.url);
+    let mut email_template =
+        views::posts::PostEmail { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
 
     let mut num_sent = 0;
     let mut num_skipped = 0;
