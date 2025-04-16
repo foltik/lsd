@@ -150,7 +150,8 @@ async fn send_post_form(
     if !user.has_role(&state.db, User::WRITER).await? {
         return Err(AppError::NotAuthorized);
     }
-    let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+
+    let Some(mut post) = Post::lookup_by_url(&state.db, &url).await? else {
         return Err(AppError::NotFound);
     };
     let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
@@ -160,6 +161,11 @@ async fn send_post_form(
 
     let mut email_template =
         views::posts::PostEmail { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
+
+    // XXX: The `url` field is just a slug, not an absolute URL.
+    // We can't yet access `config.app.url` within templates, so we just mutate
+    // the URL here and rely on that behavior in the `email.html` template.
+    post.url = format!("{}/p/{}", &state.config.app.url, &post.url);
 
     let mut num_sent = 0;
     let mut num_skipped = 0;
