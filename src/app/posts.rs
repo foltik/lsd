@@ -171,7 +171,13 @@ async fn send_post_form(
     let mut num_skipped = 0;
     let mut errors = HashMap::new();
     let batch_size = state.config.email.ratelimit.unwrap_or(members.len());
-    for members in members.chunks(batch_size) {
+    for (i, members) in members.chunks(batch_size).enumerate() {
+        tracing::info!(
+            "Sending emails ({}..{} of {})",
+            i * batch_size + 1,
+            (i + 1) * batch_size + 1,
+            members.len()
+        );
         for ListMember { email, .. } in members {
             // If this post was already sent to this address in this list, skip sending it again.
             if Email::lookup_post(&state.db, email, post.id, list.id).await?.is_some() {
@@ -198,6 +204,7 @@ async fn send_post_form(
                     num_sent += 1;
                 }
                 Err(e) => {
+                    tracing::error!("Sending email: {e:#}");
                     let e = e.to_string();
                     Email::mark_error(&state.db, email_id, &e).await?;
                     errors.insert(email.clone(), e);
@@ -206,6 +213,8 @@ async fn send_post_form(
         }
         sleep(Duration::from_secs(1)).await;
     }
+
+    tracing::info!("Successfully sent {} emails", members.len());
 
     let sent_template = views::posts::PostSent {
         post_title: post.title,
