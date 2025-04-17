@@ -4,6 +4,7 @@
 
 @theme {
   --font-sans: DM Sans Variable, sans-serif;
+  --font-display: Poppins, sans-serif;
 }
 
 /*
@@ -26,7 +27,7 @@ body > header {
     @apply flex w-full max-w-6xl items-center gap-x-8;
   }
   nav .lsd {
-    @apply font-black;
+    @apply font-bold font-display;
   }
   nav .sep {
     @apply h-4 border-r border-neutral-700;
