@@ -15,3 +15,9 @@ pub struct ListEdit {
     pub list: list::List,
     pub members: Vec<list::ListMember>,
 }
+
+#[derive(Template, WebTemplate)]
+#[template(path = "lists/signup.html")]
+pub struct Signup {
+    pub list: list::List,
+}
