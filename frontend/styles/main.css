@@ -52,6 +52,7 @@ body > header {
 /* Lists */
 
 @import "./lists/edit.css";
+@import "./lists/signup.css";
 @import "./lists/view.css";
 
 /* Posts */

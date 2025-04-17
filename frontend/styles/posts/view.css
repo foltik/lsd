@@ -24,12 +24,6 @@
 
   .content {
     @apply mb-16 text-lg leading-relaxed;
-    p {
-      @apply mt-6 first:mt-0;
-    }
-    p:has(> br:only-child) {
-      @apply hidden;
-    }
     p a {
       @apply underline decoration-blue-300 hover:text-blue-300;
     }
