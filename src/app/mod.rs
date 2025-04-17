@@ -37,6 +37,7 @@ pub async fn build(config: Config) -> anyhow::Result<Router> {
         .route("/p/{url}", get(posts::view_post_page))
         .nest("/events", events::routes())
         .nest("/lists", lists::routes())
+        .route("/newsletter", get(lists::newsletter_signup_page))
         .nest("/emails", emails::routes())
         .nest_service("/static", ServeDir::new("frontend/static"))
         // For non-HTML pages without a <link rel="icon">, this is where the browser looks
