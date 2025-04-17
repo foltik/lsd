@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT e.email, u.first_name, u.last_name\n               FROM list_members e\n               JOIN users u ON u.email = e.email\n               WHERE e.list_id = ?\n               ORDER BY e.created_at",
+  "query": "SELECT e.email, u.first_name, u.last_name\n               FROM list_members e\n               LEFT JOIN users u ON u.email = e.email\n               WHERE e.list_id = ?\n               ORDER BY e.created_at",
   "describe": {
     "columns": [
       {
@@ -24,9 +24,9 @@
     },
     "nullable": [
       false,
-      false,
-      false
+      true,
+      true
     ]
   },
-  "hash": "7ca407a30cccec2dab26603e1bc8cd1f5ecf3177db672bc6fd96ff91e17af3d0"
+  "hash": "b073958ea1a74ed2980f22790b5b08e10e1eca4bea5beaa2be07ba22c99377e7"
 }
