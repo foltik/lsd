@@ -150,7 +150,8 @@ async fn send_post_form(
     if !user.has_role(&state.db, User::WRITER).await? {
         return Err(AppError::NotAuthorized);
     }
-    let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+
+    let Some(mut post) = Post::lookup_by_url(&state.db, &url).await? else {
         return Err(AppError::NotFound);
     };
     let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
@@ -158,6 +159,10 @@ async fn send_post_form(
     };
     let members = List::list_members(&state.db, form.list_id).await?;
 
+    // XXX: The `url` field is just a slug, not an absolute URL.
+    // We can't yet access `config.app.url` within templates, so we just mutate
+    // the URL here and rely on that behavior in the `email.html` template.
+    post.url = format!("{}/p/{}", &state.config.app.url, &post.url);
     let mut email_template =
         views::posts::PostEmail { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
 
@@ -165,7 +170,13 @@ async fn send_post_form(
     let mut num_skipped = 0;
     let mut errors = HashMap::new();
     let batch_size = state.config.email.ratelimit.unwrap_or(members.len());
-    for members in members.chunks(batch_size) {
+    for (i, members) in members.chunks(batch_size).enumerate() {
+        tracing::info!(
+            "Sending emails ({}..{} of {})",
+            i * batch_size + 1,
+            (i + 1) * batch_size + 1,
+            members.len()
+        );
         for ListMember { email, .. } in members {
             // If this post was already sent to this address in this list, skip sending it again.
             if Email::lookup_post(&state.db, email, post.id, list.id).await?.is_some() {
@@ -192,6 +203,7 @@ async fn send_post_form(
                     num_sent += 1;
                 }
                 Err(e) => {
+                    tracing::error!("Sending email: {e:#}");
                     let e = e.to_string();
                     Email::mark_error(&state.db, email_id, &e).await?;
                     errors.insert(email.clone(), e);
@@ -200,6 +212,8 @@ async fn send_post_form(
         }
         sleep(Duration::from_secs(1)).await;
     }
+
+    tracing::info!("Successfully sent {} emails", members.len());
 
     let sent_template = views::posts::PostSent {
         post_title: post.title,

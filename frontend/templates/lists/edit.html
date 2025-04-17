@@ -29,8 +29,16 @@
           <ul>
             {% for member in members %}
               <li id="member-{{ loop.index }}">
-                {{ member.email }} ({{ member.first_name }}
-                {{ member.last_name }})
+                {% if let Some(first_name) = member.first_name %}
+                  {% if let Some(last_name) = member.last_name %}
+                    {{ member.email }}
+                    ({{ first_name }} {{ last_name }})
+                  {% else %}
+                    {{ member.email }}
+                  {% endif %}
+                {% else %}
+                  {{ member.email }}
+                {% endif %}
                 <button
                   class="remove"
                   type="button"
