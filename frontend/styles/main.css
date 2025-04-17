@@ -27,7 +27,7 @@ body > header {
     @apply flex w-full max-w-6xl items-center gap-x-8;
   }
   nav .lsd {
-    @apply font-bold font-display;
+    @apply font-display font-bold;
   }
   nav .sep {
     @apply h-4 border-r border-neutral-700;
@@ -44,8 +44,6 @@ body > header {
 
 @import "./auth/login.css";
 @import "./auth/register.css";
-
-/* Events */
 
 @import "./events/create.css";
 @import "./events/list.css";
