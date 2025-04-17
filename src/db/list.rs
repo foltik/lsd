@@ -84,7 +84,7 @@ impl List {
             ListMember,
             r#"SELECT e.email, u.first_name, u.last_name
                FROM list_members e
-               JOIN users u ON u.email = e.email
+               LEFT JOIN users u ON u.email = e.email
                WHERE e.list_id = ?
                ORDER BY e.created_at"#,
             list_id
