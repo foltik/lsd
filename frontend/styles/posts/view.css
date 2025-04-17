@@ -2,14 +2,15 @@
   @apply flex flex-col items-center px-6;
 
   > article {
-    @apply mt-12;
+    @apply mt-6 lg:mt-12;
   }
 
   .details {
-    @apply mb-4 border-b border-neutral-700 pb-4;
+    @apply mb-6 border-b border-orange-200/20 pb-6;
 
     .title {
-      @apply text-4xl font-bold;
+      @apply mb-1 text-4xl;
+      font-weight: 1000;
     }
 
     .date {
@@ -18,13 +19,22 @@
   }
 
   article {
-    @apply w-full max-w-4xl;
+    @apply w-full max-w-2xl;
   }
 
   .content {
-    @apply mb-16 text-lg;
+    @apply mb-16 text-lg leading-relaxed;
     p {
       @apply mt-6 first:mt-0;
+    }
+    p:has(> br:only-child) {
+      @apply hidden;
+    }
+    p a {
+      @apply underline decoration-blue-300 hover:text-blue-300;
+    }
+    p img {
+      @apply mx-auto max-w-xl;
     }
   }
 }

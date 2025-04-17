@@ -3,7 +3,7 @@
 @import "./fonts.css";
 
 @theme {
-  --font-sans: Poppins, sans-serif;
+  --font-sans: DM Sans Variable, sans-serif;
 }
 
 /*
@@ -11,18 +11,22 @@
  *       Below styles are from page.tera.html
  */
 
-html,
+:root {
+  @apply h-full w-full bg-black font-sans text-neutral-200;
+}
+
 body {
-  @apply h-full w-full bg-black font-sans text-white;
+  @apply min-h-full bg-orange-950/10;
 }
 
 body > header {
-  @apply flex flex-col items-center border-b border-neutral-900 p-6;
+  @apply flex flex-col items-center border-b border-orange-200/10 px-6 py-4;
+
   nav {
     @apply flex w-full max-w-6xl items-center gap-x-8;
   }
   nav .lsd {
-    @apply font-bold;
+    @apply font-black;
   }
   nav .sep {
     @apply h-4 border-r border-neutral-700;
