@@ -56,7 +56,8 @@ label {
   @apply mb-2 block;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="email"] {
   @apply w-full border border-neutral-700 bg-neutral-950 p-2;
 }
 
