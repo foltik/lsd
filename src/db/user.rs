@@ -29,7 +29,7 @@ pub struct UpdateUser {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct UserView {
-    pub first_name: String, 
+    pub first_name: String,
     pub last_name: String,
     pub email: String,
 }

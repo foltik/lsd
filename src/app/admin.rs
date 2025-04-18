@@ -6,7 +6,7 @@ use axum::{
 
 use crate::utils::{
     error::AppResult,
-    types::{AppRouter, SharedAppState}
+    types::{AppRouter, SharedAppState},
 };
 use crate::{
     db::user::{ListUserQuery, User},
@@ -15,8 +15,7 @@ use crate::{
 
 /// Add all `admins` routes to the router.
 pub fn routes() -> AppRouter {
-    AppRouter::new()
-        .route("/dashboard", get(admin_dashboard))
+    AppRouter::new().route("/dashboard", get(admin_dashboard))
 }
 
 /// Display admin dashboard

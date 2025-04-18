@@ -1,4 +1,4 @@
-use crate::{db::user::{UserView}, views::filters};
+use crate::db::user::UserView;
 use askama::Template;
 use askama_web::WebTemplate;
 
