@@ -4,24 +4,24 @@
 
 #posts\/list header {
   @apply mb-8 flex items-end justify-between px-0 pb-4;
-  @apply border-b border-neutral-800;
+  @apply border-lsd-white/20 border-b;
   .title {
-    @apply text-lg uppercase;
+    @apply text-2xl font-bold;
   }
 }
 
 #posts\/list .post {
-  @apply mb-12 border-l-[4px] border-neutral-800 pl-6;
+  @apply mb-6 flex items-start justify-between pb-6;
 
   .title {
     @apply mb-1 text-2xl font-bold;
     a {
-      @apply underline hover:decoration-blue-500;
+      @apply decoration-lsd-blue hover:text-lsd-blue underline;
     }
   }
 
   .info {
-    @apply mb-4 text-sm;
+    @apply mb-4;
   }
 
   .actions {

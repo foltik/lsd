@@ -8,10 +8,24 @@
       method="POST"
       action="/posts/{{ post.url }}/edit"
     >
-      {% if post.id != 0 %}
-        <input type="hidden" name="id" value="{{ post.id }}" />
-      {% endif %}
+      <div class="navbar">
+        <a href="/posts">&larr; All Posts</a>
+        <div class="save">
+          <span id="status">No changes</span>
+          <button type="button" onclick="savePost()">Save</button>
+        </div>
+        <button class="ext/button :green">Send</button>
+        <button class="ext/button :red">Delete</button>
+      </div>
+      <div class="content">
+        <div class="pell-wrapper">
+          <article class="pell"></article>
+        </div>
+      </div>
       <div class="details">
+        {% if post.id != 0 %}
+          <input type="hidden" name="id" value="{{ post.id }}" />
+        {% endif %}
         <div class="field">
           <label for="title">Title</label>
           <input
@@ -23,11 +37,8 @@
           />
         </div>
         <div class="field">
-          <label for="url">URL</label>
-          <div class="url">
-            <span class="origin"></span>
-            <input type="text" id="url" name="url" value="{{ post.url }}" />
-          </div>
+          <label for="url">Slug</label>
+          <input type="text" id="url" name="url" value="{{ post.url }}" />
         </div>
         <div class="field">
           <label for="author">Author</label>
@@ -38,13 +49,6 @@
             value="{{ post.author }}"
           />
         </div>
-        <label for="content">Content</label>
-      </div>
-      <div class="field content">
-        <article class="pell">
-          <div class="left resize"></div>
-          <div class="right resize"></div>
-        </article>
       </div>
     </form>
   </div>
@@ -54,13 +58,6 @@
   <script src="/static/markdown.js"></script>
   <script src="https://unpkg.com/pell"></script>
   <script>
-    // Form setup
-    (() => {
-      // Populate the first part of the url input with the app's origin URL
-      document.querySelector(".url .origin").innerHTML =
-        window.location.origin + "/posts/";
-    })();
-
     // Editor setup
     (() => {
       window.pell.init({
@@ -71,13 +68,6 @@
       });
 
       // Add the status bar
-      document.querySelector(".pell-actionbar").insertAdjacentHTML(
-        "beforeend",
-        `
-        <span id="status">No changes</span>
-        <button type="button" onclick="savePost()">Save</button>
-      `,
-      );
 
       // Fill in post content
       document.querySelector(".pell-content").innerHTML =
@@ -184,36 +174,36 @@
       };
     })();
 
-    // Resize handles
-    (() => {
-      const container = document.querySelector(".content");
-      const article = document.querySelector("article");
-
-      function startResize(e) {
-        e.preventDefault();
-        const x0 = e.clientX;
-        const w0 = article.offsetWidth;
-        const right = e.target.classList.contains("right");
-
-        function doResize(e) {
-          let dx = (e.clientX - x0) * (right ? 1 : -1);
-          const w = w0 + dx * 2;
-          if (w >= 768 && w <= container.clientWidth) {
-            article.style.width = `${w}px`;
-          }
-        }
-
-        function stopResize() {
-          document.removeEventListener("mousemove", doResize);
-          document.removeEventListener("mouseup", stopResize);
-        }
-        document.addEventListener("mousemove", doResize);
-        document.addEventListener("mouseup", stopResize);
-      }
-      document
-        .querySelectorAll(".resize")
-        .forEach((e) => e.addEventListener("mousedown", startResize));
-    })();
+    // // Resize handles
+    // (() => {
+    //   const container = document.querySelector(".content");
+    //   const article = document.querySelector("article");
+    //
+    //   function startResize(e) {
+    //     e.preventDefault();
+    //     const x0 = e.clientX;
+    //     const w0 = article.offsetWidth;
+    //     const right = e.target.classList.contains("right");
+    //
+    //     function doResize(e) {
+    //       let dx = (e.clientX - x0) * (right ? 1 : -1);
+    //       const w = w0 + dx * 2;
+    //       if (w >= 768 && w <= container.clientWidth) {
+    //         article.style.width = `${w}px`;
+    //       }
+    //     }
+    //
+    //     function stopResize() {
+    //       document.removeEventListener("mousemove", doResize);
+    //       document.removeEventListener("mouseup", stopResize);
+    //     }
+    //     document.addEventListener("mousemove", doResize);
+    //     document.addEventListener("mouseup", stopResize);
+    //   }
+    //   document
+    //     .querySelectorAll(".resize")
+    //     .forEach((e) => e.addEventListener("mousedown", startResize));
+    // })();
 
     // Clear formatting when pasting into the editor
     (() => {

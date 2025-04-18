@@ -4,7 +4,8 @@
 
 .ext\/form input,
 .ext\/input {
-  @apply w-full border border-neutral-700 bg-neutral-950 p-2;
+  @apply border-lsd-white/30 bg-lsd-black w-full rounded-md border px-3 py-2;
+  @apply focus:border-lsd-blue focus:outline-none;
 }
 
 .ext\/form label,
@@ -14,13 +15,13 @@
 
 .ext\/form textarea,
 .ext\/textarea {
-  @apply h-[50vh] w-full flex-1 resize-y bg-neutral-900 p-2;
-  @apply border border-neutral-700 font-mono text-sm;
+  @apply bg-lsd-black h-[50vh] w-full flex-1 resize-y p-2;
+  @apply border-lsd-white/30 border;
 }
 
 .ext\/form select,
 .ext\/select {
-  @apply border border-neutral-600 bg-neutral-950 px-2 py-1;
+  @apply border-lsd-white/40 bg-lsd-black border px-2 py-1;
 }
 
 .ext\/form .field,
@@ -30,6 +31,19 @@
 
 .ext\/form button,
 .ext\/button {
-  @apply block cursor-pointer bg-neutral-900 px-4 py-2 hover:bg-neutral-800;
+  @apply bg-lsd-white/10 hover:bg-lsd-white/15 block cursor-pointer px-4 py-2;
+  @apply border-lsd-white/10 border;
   @apply rounded-sm;
+
+  &.\:icon {
+    @apply px-3;
+  }
+
+  &.\:green {
+    @apply border-lsd-green/30 bg-lsd-green/20 hover:bg-lsd-green/30;
+  }
+
+  &.\:red {
+    @apply border-lsd-red/30 bg-lsd-red/20 hover:bg-lsd-red/30;
+  }
 }

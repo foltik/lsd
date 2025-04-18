@@ -5,6 +5,14 @@
 @theme {
   --font-sans: DM Sans Variable, sans-serif;
   --font-display: Poppins, sans-serif;
+  /* CSS HEX */
+  --color-lsd-black: #080504;
+  --color-lsd-white: #ebe3de;
+  --color-lsd-bright: #fcf3ee;
+  --color-lsd-blue: #8ec6ff;
+  --color-lsd-green: #6fd08c;
+  --color-lsd-red: #c36346;
+  --color-lsd-yellow: #eec643;
 }
 
 /*
@@ -13,21 +21,21 @@
  */
 
 :root {
-  @apply h-full w-full bg-black font-sans text-neutral-200;
+  @apply bg-lsd-black text-lsd-white h-full w-full font-sans;
 }
 
 body {
-  @apply min-h-full bg-orange-950/10;
+  @apply min-h-full;
 }
 
 body > header {
-  @apply flex flex-col items-center border-b border-orange-200/10 px-6 py-4;
+  @apply border-lsd-white/10 flex flex-col items-center border-b px-6 py-4;
 
   nav {
     @apply flex w-full max-w-6xl items-center gap-x-8;
   }
   nav .lsd {
-    @apply font-display font-bold;
+    @apply font-display text-lsd-bright font-bold;
   }
   nav .sep {
     @apply h-4 border-r border-neutral-700;

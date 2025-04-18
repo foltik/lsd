@@ -6,7 +6,7 @@
   }
 
   .details {
-    @apply mb-6 border-b border-orange-200/20 pb-6;
+    @apply border-lsd-white/20 mb-6 border-b pb-6;
 
     .title {
       @apply mb-1 text-4xl;
@@ -14,7 +14,7 @@
     }
 
     .date {
-      @apply opacity-80;
+      @apply text-lsd-red;
     }
   }
 
@@ -25,7 +25,7 @@
   .content {
     @apply mb-16 text-lg leading-relaxed;
     p a {
-      @apply underline decoration-blue-300 hover:text-blue-300;
+      @apply decoration-lsd-blue hover:text-lsd-blue underline;
     }
     p img {
       @apply mx-auto max-w-xl;
