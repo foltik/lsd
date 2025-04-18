@@ -8,6 +8,7 @@ use crate::{
     utils::{self, config::*, emailer::Emailer, tracing::WithTracingLayer as _},
 };
 
+mod admin;
 mod auth;
 mod emails;
 mod events;
@@ -39,6 +40,7 @@ pub async fn build(config: Config) -> anyhow::Result<Router> {
         .nest("/lists", lists::routes())
         .route("/newsletter", get(lists::newsletter_signup_page))
         .nest("/emails", emails::routes())
+        .nest("/admin", admin::routes())
         .nest_service("/static", ServeDir::new("frontend/static"))
         // For non-HTML pages without a <link rel="icon">, this is where the browser looks
         .route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }))
