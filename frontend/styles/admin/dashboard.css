@@ -1,0 +1,30 @@
+#admin\/ {
+    @apply flex flex-row h-full;
+}
+#sidebar {
+    @apply fixed min-h-screen relative z-30 min-w-64 h-auto flex flex-col border-r-1 border-neutral-800 p-2;
+    > a {
+        @apply flex items-center text-lg no-underline m-1 p-2 rounded-sm cursor-pointer text-gray-400 hover:bg-gray-800 hover:text-white;
+        &.active {
+            @apply bg-gray-800 text-white;
+            svg {
+                @apply text-white;
+            }
+        }
+        span {
+            @apply ms-2;
+        }
+        svg {
+            @apply text-gray-500 fill-current
+        }
+        &:hover {
+            svg {
+                @apply text-white;
+            }
+        }
+    }
+
+}
+#admin\/dashboard {
+    @apply p-4 w-full;
+}

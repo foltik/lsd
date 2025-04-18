@@ -1,9 +1,7 @@
-use anyhow::anyhow;
-use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::{delete, get},
     Form,
 };
@@ -11,35 +9,35 @@ use chrono::Utc;
 use lettre::message::Mailbox;
 
 use crate::{
-    db::list::{List, UpdateList},
-    utils::types::AppError,
+    db::{
+        list::{List, UpdateList},
+        user::User,
+    },
+    utils::{
+        error::{AppError, AppResult},
+        types::{AppRouter, SharedAppState},
+    },
     views,
-};
-use crate::{
-    db::user::User,
-    utils::types::{AppResult, AppRouter, SharedAppState},
 };
 
 /// Add all `lists` routes to the router.
-pub fn register_routes(router: AppRouter) -> AppRouter {
-    router
-        .route("/lists", get(list_lists_page))
-        .route("/lists/new", get(create_list_page))
-        .route("/lists/{id}", get(edit_list_page).post(edit_list_form))
-        .route("/lists/{id}/{email}", delete(remove_list_member))
+pub fn routes() -> AppRouter {
+    AppRouter::new()
+        .route("/", get(list_lists_page))
+        .route("/new", get(create_list_page))
+        .route("/{id}", get(edit_list_page).post(edit_list_form))
+        .route("/{id}/{email}", delete(remove_list_member))
 }
 
 /// Display a list of all lists
-async fn list_lists_page(State(state): State<SharedAppState>, user: User) -> AppResult<Response> {
+async fn list_lists_page(State(state): State<SharedAppState>, user: User) -> AppResult<impl IntoResponse> {
     if !user.has_role(&state.db, User::ADMIN).await? {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(AppError::NotAuthorized);
     }
 
     let lists = List::list(&state.db).await?;
 
-    let list_template = views::lists::Lists { lists };
-
-    Ok(Html(list_template.render()?).into_response())
+    Ok(views::lists::Lists { lists })
 }
 
 /// Display the form to view and edit a list.
@@ -47,25 +45,22 @@ async fn edit_list_page(
     State(state): State<SharedAppState>,
     user: User,
     Path(id): Path<i64>,
-) -> AppResult<Response> {
+) -> AppResult<impl IntoResponse> {
     if !user.has_role(&state.db, User::ADMIN).await? {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(AppError::NotAuthorized);
     }
 
-    let Some(list) = List::lookup_by_id(&state.db, id).await? else {
-        return Ok(StatusCode::NOT_FOUND.into_response());
-    };
+    let list = List::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
+
     let members = List::list_members(&state.db, id).await?;
 
-    let edit_template = views::lists::ListEdit { list, members };
-
-    Ok(Html(edit_template.render()?).into_response())
+    Ok(views::lists::ListEdit { list, members })
 }
 
 /// Display the form to create a new list.
-async fn create_list_page(State(state): State<SharedAppState>, user: User) -> AppResult<Response> {
+async fn create_list_page(State(state): State<SharedAppState>, user: User) -> AppResult<impl IntoResponse> {
     if !user.has_role(&state.db, User::ADMIN).await? {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(AppError::NotAuthorized);
     }
 
     let create_template = views::lists::ListEdit {
@@ -79,7 +74,7 @@ async fn create_list_page(State(state): State<SharedAppState>, user: User) -> Ap
         members: Vec::new(),
     };
 
-    Ok(Html(create_template.render()?).into_response())
+    Ok(create_template)
 }
 
 /// Process the form and create or edit a list.
@@ -89,7 +84,7 @@ async fn edit_list_form(
     Form(form): Form<UpdateList>,
 ) -> AppResult<Response> {
     if !user.has_role(&state.db, User::ADMIN).await? {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(AppError::NotAuthorized);
     }
 
     let id = match form.id {
@@ -103,7 +98,8 @@ async fn edit_list_form(
     let emails = form.emails.split_whitespace().collect::<Vec<_>>();
     for email in &emails {
         if let Err(e) = email.parse::<Mailbox>() {
-            return Err(AppError(anyhow!("email {email:?} is invalid: {e}")));
+            tracing::debug!("Invalid email: {e}");
+            return Ok(StatusCode::BAD_REQUEST.into_response());
         }
     }
     if !emails.is_empty() {
@@ -117,11 +113,11 @@ async fn remove_list_member(
     State(state): State<SharedAppState>,
     user: User,
     Path((id, email)): Path<(i64, String)>,
-) -> AppResult<StatusCode> {
+) -> AppResult<()> {
     if !user.has_role(&state.db, User::ADMIN).await? {
-        return Ok(StatusCode::FORBIDDEN);
+        return Err(AppError::NotAuthorized);
     }
 
     List::remove_member(&state.db, id, &email).await?;
-    Ok(StatusCode::OK)
+    Ok(())
 }

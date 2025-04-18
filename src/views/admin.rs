@@ -1,9 +1,9 @@
-use crate::db::user::User;
-// use crate::views::filters;
+use crate::{db::user::{UserView}, views::filters};
 use askama::Template;
+use askama_web::WebTemplate;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/dashboard.html")]
 pub struct AdminDashboard {
-    pub users: Vec<User>,
+    pub users: Vec<UserView>,
 }

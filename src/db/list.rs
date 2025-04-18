@@ -1,8 +1,8 @@
-use anyhow::Result;
 use chrono::NaiveDateTime;
 use sqlx::QueryBuilder;
 
 use super::Db;
+use crate::utils::error::AppResult;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct List {
@@ -16,8 +16,8 @@ pub struct List {
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct ListMember {
     pub email: String,
-    pub first_name: String,
-    pub last_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -30,13 +30,13 @@ pub struct UpdateList {
 
 impl List {
     /// List all lists.
-    pub async fn list(db: &Db) -> Result<Vec<List>> {
+    pub async fn list(db: &Db) -> AppResult<Vec<List>> {
         let events = sqlx::query_as!(Self, "SELECT * FROM lists").fetch_all(db).await?;
         Ok(events)
     }
 
     /// Create a list.
-    pub async fn create(db: &Db, event: &UpdateList) -> Result<i64> {
+    pub async fn create(db: &Db, event: &UpdateList) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO lists
                (name, description)
@@ -50,7 +50,7 @@ impl List {
     }
 
     /// Update a list.
-    pub async fn update(db: &Db, id: i64, event: &UpdateList) -> Result<()> {
+    pub async fn update(db: &Db, id: i64, event: &UpdateList) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE lists
                SET name = ?, description = ?
@@ -65,7 +65,7 @@ impl List {
     }
 
     /// Lookup a list by id, if one exists.
-    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<List>> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<List>> {
         let event = sqlx::query_as!(
             Self,
             r#"SELECT *
@@ -79,7 +79,7 @@ impl List {
     }
 
     /// Lookup the members of a list.
-    pub async fn list_members(db: &Db, list_id: i64) -> Result<Vec<ListMember>> {
+    pub async fn list_members(db: &Db, list_id: i64) -> AppResult<Vec<ListMember>> {
         let members = sqlx::query_as!(
             ListMember,
             r#"SELECT e.email, u.first_name, u.last_name
@@ -95,7 +95,7 @@ impl List {
     }
 
     /// Add members to a guest list.
-    pub async fn add_members(db: &Db, list_id: i64, emails: &[&str]) -> Result<()> {
+    pub async fn add_members(db: &Db, list_id: i64, emails: &[&str]) -> AppResult<()> {
         QueryBuilder::new("INSERT INTO list_members (list_id, email) ")
             .push_values(emails, |mut b, email| {
                 b.push_bind(list_id).push_bind(email);
@@ -107,7 +107,7 @@ impl List {
         Ok(())
     }
 
-    pub async fn remove_member(db: &Db, list_id: i64, email: &str) -> Result<()> {
+    pub async fn remove_member(db: &Db, list_id: i64, email: &str) -> AppResult<()> {
         sqlx::query!(
             r#"DELETE FROM list_members
                WHERE list_id = ? AND email = ?"#,

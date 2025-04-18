@@ -7,18 +7,22 @@ use axum::{
 
 use crate::{
     db::{email::Email, list::List},
-    utils::types::{AppResult, AppRouter, SharedAppState},
+    utils::{
+        error::AppResult,
+        types::{AppRouter, SharedAppState},
+    },
+    views,
 };
 
 /// Add all `email` routes to the router.
-pub fn register_routes(router: AppRouter) -> AppRouter {
-    router
-        .route("/emails/{id}/footer.gif", get(email_opened))
-        .route("/emails/{id}/unsubscribe", get(email_unsubscribed))
+pub fn routes() -> AppRouter {
+    AppRouter::new()
+        .route("/{id}/footer.gif", get(email_opened))
+        .route("/{id}/unsubscribe", get(email_unsubscribe_view).post(email_unsubscribe_form))
 }
 
-async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
-    Email::mark_opened(&state.db, id).await?;
+async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
+    Email::mark_opened(&state.db, email_id).await?;
     let pixel = Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/gif")
@@ -27,8 +31,23 @@ async fn email_opened(Path(id): Path<i64>, State(state): State<SharedAppState>) 
     Ok(pixel)
 }
 
-async fn email_unsubscribed(Path(id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
-    if let Some(email) = Email::lookup(&state.db, id).await? {
+async fn email_unsubscribe_view(
+    Path(email_id): Path<i64>,
+    State(state): State<SharedAppState>,
+) -> AppResult<Response> {
+    // TODO: Better error handling rather than silently eating
+    if let Some(email) = Email::lookup(&state.db, email_id).await? {
+        return Ok(views::emails::Unsubscribe { email_id, email_address: email.address }.into_response());
+    }
+    Ok("You have been unsubscribed.".into_response())
+}
+
+async fn email_unsubscribe_form(
+    Path(email_id): Path<i64>,
+    State(state): State<SharedAppState>,
+) -> AppResult<Response> {
+    // TODO: Better error handling rather than silently eating
+    if let Some(email) = Email::lookup(&state.db, email_id).await? {
         if let Some(list_id) = email.list_id {
             List::remove_member(&state.db, list_id, &email.address).await?;
         }
