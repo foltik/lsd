@@ -14,8 +14,16 @@
           <span id="status">No changes</span>
           <button type="button" onclick="savePost()">Save</button>
         </div>
-        <button class="ext/button :green">Send</button>
-        <button class="ext/button :red">Delete</button>
+        <a class="ext/button :green" href="/posts/{{ post.url }}/send">Send</a>
+        <button
+          class="ext/button :red"
+          hx-post="/posts/{{ post.url }}/delete"
+          hx-swap="none"
+          hx-confirm="Are you sure you want to delete this post?"
+          hx-on::after-request="window.location.href = '/posts'"
+        >
+          Delete
+        </button>
       </div>
       <div class="content">
         <div class="pell-wrapper">
