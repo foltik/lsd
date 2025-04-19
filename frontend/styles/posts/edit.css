@@ -69,7 +69,7 @@ body:has(#posts\/edit) > header {
     @apply bg-lsd-white/5 grow overflow-y-auto p-8 focus:outline-none;
     @apply mt-4;
     a {
-      @apply underline decoration-blue-500;
+      @apply decoration-lsd-blue underline;
     }
   }
 }
