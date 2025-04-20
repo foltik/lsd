@@ -1,0 +1,8 @@
+#admin\/dashboard\/overview {
+  @apply grid h-[94%] w-full grid-cols-3 gap-2;
+  grid-template-rows: 0.5fr 1fr 1fr;
+}
+
+#widget-attendees {
+  @apply col-start-1 col-end-4 row-start-2 row-end-4;
+}

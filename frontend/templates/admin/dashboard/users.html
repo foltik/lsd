@@ -1,0 +1,21 @@
+{% extends "admin/dashboard.html" %}
+{% block title %}{% call super() %} overview{% endblock title %}
+{% block panel %}
+  <table>
+    <thead>
+      <th>First Name</th>
+      <th>Last Name</th>
+      <th>Email</th>
+    </thead>
+    <tbody>
+      {% for user in users %}
+        <tr>
+          <td>{{ user.first_name }}</td>
+          <td>{{ user.last_name }}</td>
+          <td>{{ user.email }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <div></div>
+  </table>
+{% endblock panel %}

@@ -1,0 +1,110 @@
+{% extends "admin/dashboard.html" %}
+{% block title %}{% call super() %} overview{% endblock title %}
+{% block panel %}
+  <h1>Overview</h1>
+  <div id="admin/dashboard/overview">
+    <div class="widget-container" id="widget-users">
+      <a href="dashboard/users">
+        <svg
+          class="h-6 w-6 text-gray-800 dark:text-white"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </a>
+      <div class="widget-content-stat">
+        <h1 class="widget-item">
+          <span class="counter">{{ users_count }}</span>
+        </h1>
+        <h2># of Monthly Users</h2>
+      </div>
+    </div>
+    <div class="widget-container" id="widget-newsletters">
+      <a>
+        <svg
+          class="h-6 w-6 text-gray-800 dark:text-white"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </a>
+      <div class="widget-content-stat">
+        <h1 class="widget-item">
+          <span class="counter">7000</span>
+        </h1>
+        <h2># of Newsletters Opened</h2>
+      </div>
+    </div>
+    <div class="widget-container" id="widget-events">
+      <a>
+        <svg
+          class="h-6 w-6 text-gray-800 dark:text-white"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </a>
+      <div class="widget-content-stat">
+        <h1 class="widget-item">
+          <span class="counter">15</span>
+        </h1>
+        <h2># of Events</h2>
+      </div>
+    </div>
+    <div class="widget-container" id="widget-attendees">
+      <a>
+        <svg
+          class="h-6 w-6 text-gray-800 dark:text-white"
+          aria-hidden="true"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"
+          />
+        </svg>
+      </a>
+      <div class="widget-content"></div>
+    </div>
+  </div>
+{% endblock panel %}

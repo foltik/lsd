@@ -6,7 +6,7 @@
 {% block content %}
   <div id="admin/">
     <aside id="sidebar">
-      <a class="active">
+      <a href="/admin/dashboard/overview">
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -26,7 +26,7 @@
         </svg>
         <span>Overview</span>
       </a>
-      <a>
+      <!-- <a>
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -41,8 +41,8 @@
           />
         </svg>
         <span>Inbox</span>
-      </a>
-      <a>
+      </a> -->
+      <a href="/admin/dashboard/users?page=0&page_size=25">
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -60,7 +60,7 @@
         </svg>
         <span>Users</span>
       </a>
-      <a>
+      <a href="dashboard/events">
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -78,7 +78,7 @@
         </svg>
         <span>Events</span>
       </a>
-      <a>
+      <a href="dashboard/newsletters">
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -98,24 +98,53 @@
       </a>
     </aside>
     <div id="admin/dashboard">
-      <h1>Admin View</h1>
-      <div>Monthly New Users: 24</div>
-      <table>
-        <thead>
-          <th>First Name</th>
-          <th>Last Name</th>
-          <th>Email</th>
-        </thead>
-        <tbody>
-          {% for user in users %}
-            <tr>
-              <td>{{ user.first_name }}</td>
-              <td>{{ user.last_name }}</td>
-              <td>{{ user.email }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {% block panel %}
+      {% endblock panel %}
     </div>
   </div>
+  <script>
+    function createNewCounter(element, start, end, duration) {
+      let startTime = null;
+      const range = end - start;
+
+      function easeInOutCubic(t) {
+        t /= duration / 2;
+        if (t < 1) return (range / 2) * t * t * t + start;
+        t -= 2;
+        return (range / 2) * (t * t * t + 2) + start;
+      }
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = timestamp - startTime;
+        const value = easeInOutCubic(progress);
+        element.textContent = Math.round(value);
+        if (progress < duration) {
+          requestAnimationFrame(step);
+        } else {
+          element.textContent = end;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+    (() => {
+      const counters = document.querySelectorAll(".counter");
+      for (const counter of counters) {
+        createNewCounter(counter, 0, parseInt(counter.innerText), 4500);
+      }
+    })();
+    (() => {
+      function setActive(path) {
+        const navs = document.querySelectorAll("#sidebar>a");
+        for (const nav of navs) {
+          if (nav.href.includes(path)) {
+            nav.classList.add("active");
+          }
+        }
+      }
+
+      const path = window.location.pathname;
+      setActive(path);
+    })();
+  </script>
 {% endblock content %}

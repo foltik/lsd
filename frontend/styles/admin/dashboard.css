@@ -1,12 +1,12 @@
 #admin\/ {
-  @apply flex h-full flex-row;
+  @apply flex max-h-[calc(100vh-58px)] min-h-[calc(100vh-58px)] flex-row;
 }
 #sidebar {
-  @apply fixed relative z-30 flex h-auto min-h-screen min-w-64 flex-col border-r-1 border-neutral-800 p-2;
+  @apply relative z-30 flex min-w-64 flex-col border-r-1 border-neutral-800 p-2;
   > a {
-    @apply m-1 flex cursor-pointer items-center rounded-sm p-2 text-lg text-gray-400 no-underline hover:bg-gray-800 hover:text-white;
+    @apply m-1 flex cursor-pointer items-center rounded-sm border border-transparent p-2 text-sm text-neutral-600 no-underline hover:bg-neutral-800 hover:text-white;
     &.active {
-      @apply bg-gray-800 text-white;
+      @apply border border-neutral-700 bg-neutral-900 text-white hover:bg-neutral-800;
       svg {
         @apply text-white;
       }
@@ -15,7 +15,7 @@
       @apply ms-2;
     }
     svg {
-      @apply fill-current text-gray-500;
+      @apply fill-current text-neutral-600;
     }
     &:hover {
       svg {
@@ -27,3 +27,23 @@
 #admin\/dashboard {
   @apply w-full p-4;
 }
+
+.widget-container {
+  @apply rounded-sm border border-neutral-800 bg-neutral-950 p-4;
+  a {
+    svg {
+      @apply ml-auto h-7 w-7 cursor-pointer rounded-sm p-1 hover:bg-neutral-800;
+    }
+  }
+  .widget-content-stat {
+    @apply flex flex-col items-center;
+    h1 {
+      @apply text-5xl;
+    }
+    h2 {
+      @apply text-xl;
+    }
+  }
+}
+
+@import "./dashboard/overview.css";
