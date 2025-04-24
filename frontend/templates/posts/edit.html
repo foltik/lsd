@@ -16,11 +16,13 @@
         </div>
         <a class="ext/button :green" href="/posts/{{ post.url }}/send">Send</a>
         <button
+          _="on click
+             confirm('Are you sure you want to delete this post?')
+             then fetch '/posts/{{ post.url }}/delete' with method:'POST'
+             then go to url '/posts'
+           "
+          type="button"
           class="ext/button :red"
-          hx-post="/posts/{{ post.url }}/delete"
-          hx-swap="none"
-          hx-confirm="Are you sure you want to delete this post?"
-          hx-on::after-request="window.location.href = '/posts'"
         >
           Delete
         </button>
