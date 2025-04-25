@@ -70,6 +70,22 @@ pub async fn middleware(
     Ok((cookies, response))
 }
 
+// Middleware to be used to require admin role for certain routes (ie Admin dashboard)
+pub async fn require_admin(
+    State(state): State<SharedAppState>,
+    request: Request,
+    next: Next,
+) -> AppResult<impl IntoResponse> {
+    let user = request.extensions().get::<User>().ok_or(AppError::NotAuthorized)?;
+
+    // Check if user has admin role
+    if !user.has_role(&state.db, "admin").await? {
+        return Err(AppError::NotAuthorized);
+    }
+
+    Ok(next.run(request).await)
+}
+
 /// Enable extracting an `Option<User>` in a handler.
 impl<S: Send + Sync> OptionalFromRequestParts<S> for User {
     type Rejection = Infallible;

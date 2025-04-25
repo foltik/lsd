@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{Query, State},
     response::IntoResponse,
@@ -13,11 +15,14 @@ use crate::{
     views,
 };
 
+use super::{auth, AppState};
+
 /// Add all `admins` routes to the router.
-pub fn routes() -> AppRouter {
+pub fn routes(state: &Arc<AppState>) -> AppRouter {
     AppRouter::new()
         .route("/dashboard/overview", get(admin_overview_dashboard))
         .route("/dashboard/users", get(admin_users_dashboard))
+        .layer(axum::middleware::from_fn_with_state(Arc::clone(state), auth::require_admin))
 }
 
 /// Display admin overview dashboard

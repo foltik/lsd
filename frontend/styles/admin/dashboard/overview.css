@@ -1,8 +1,15 @@
 #admin\/dashboard\/overview {
-  @apply grid h-[94%] w-full grid-cols-3 gap-2;
-  grid-template-rows: 0.5fr 1fr 1fr;
+  @apply grid h-full w-full grid-cols-3 gap-2;
+  grid-template-rows: 0.25fr minmax(0, 1fr);
 }
 
 #widget-attendees {
-  @apply col-start-1 col-end-4 row-start-2 row-end-4;
+  @apply col-start-1 col-end-4 row-start-2 row-end-3 flex h-full w-full flex-col;
+  .widget-content {
+    @apply flex-1 overflow-auto;
+    .widget-line-graph {
+      @apply h-full min-w-screen object-contain;
+      display: block;
+    }
+  }
 }

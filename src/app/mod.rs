@@ -39,7 +39,7 @@ pub async fn build(config: Config) -> anyhow::Result<Router> {
         .nest("/events", events::routes())
         .nest("/lists", lists::routes())
         .nest("/emails", emails::routes())
-        .nest("/admin", admin::routes())
+        .nest("/admin", admin::routes(&state))
         .nest_service("/static", ServeDir::new("frontend/static"))
         // For non-HTML pages without a <link rel="icon">, this is where the browser looks
         .route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }))
