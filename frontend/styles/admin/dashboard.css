@@ -1,5 +1,5 @@
 #admin\/ {
-  @apply flex h-[calc(100vh-58px)] max-h-[calc(100vh-58px)] min-h-[calc(100vh-58px)] flex-row;
+  @apply flex h-[calc(100vh-59px)] max-h-[calc(100vh-59px)] min-h-[calc(100vh-59px)] flex-row;
 }
 #sidebar {
   @apply relative z-30 flex min-w-64 flex-col border-r-1 border-neutral-800 p-2;
