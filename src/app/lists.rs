@@ -165,7 +165,7 @@ async fn signup_form(
     };
     List::add_members(&state.db, list.id, &[form.email.email.as_ref()]).await?;
 
-    Ok("You have succesfully signed up!")
+    Ok(views::lists::Confirmation { list, email: state.config.email.from.email.to_string() })
 }
 #[derive(serde::Deserialize)]
 struct NewsletterForm {
