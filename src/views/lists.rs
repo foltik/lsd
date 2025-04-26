@@ -21,3 +21,10 @@ pub struct ListEdit {
 pub struct Signup {
     pub list: list::List,
 }
+
+#[derive(Template, WebTemplate)]
+#[template(path = "lists/confirmation.html")]
+pub struct Confirmation {
+    pub list: list::List,
+    pub email: String,
+}
