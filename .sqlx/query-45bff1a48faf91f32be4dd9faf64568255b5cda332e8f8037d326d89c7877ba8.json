@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM events",
+  "query": "SELECT * FROM rsvps",
   "describe": {
     "columns": [
       {
@@ -9,49 +9,49 @@
         "type_info": "Integer"
       },
       {
-        "name": "title",
+        "name": "user_id",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "description",
+        "name": "event_id",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Integer"
+      },
+      {
+        "name": "ticket_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "transaction_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "promo_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "refund_id",
+        "ordinal": 6,
+        "type_info": "Integer"
       },
       {
         "name": "created_at",
-        "ordinal": 3,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "updated_at",
-        "ordinal": 4,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "slug",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
-        "name": "flyer",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
-        "name": "start",
         "ordinal": 7,
         "type_info": "Datetime"
       },
       {
-        "name": "end",
+        "name": "updated_at",
         "ordinal": 8,
         "type_info": "Datetime"
       },
       {
-        "name": "guest_list_id",
+        "name": "arrived_at",
         "ordinal": 9,
-        "type_info": "Integer"
+        "type_info": "Datetime"
       }
     ],
     "parameters": {
@@ -62,13 +62,13 @@
       false,
       false,
       false,
-      false,
-      false,
+      true,
+      true,
       true,
       false,
-      true,
+      false,
       true
     ]
   },
-  "hash": "0d4d698b039ac95743392f44379bd1b8881297a06d0e0d333b065aec5d9da24e"
+  "hash": "45bff1a48faf91f32be4dd9faf64568255b5cda332e8f8037d326d89c7877ba8"
 }

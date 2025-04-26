@@ -13,7 +13,10 @@ pub type Db = SqlitePool;
 pub mod email;
 pub mod event;
 pub mod list;
+pub mod notification;
 pub mod post;
+pub mod rsvp;
+pub mod ticket;
 pub mod token;
 pub mod user;
 
