@@ -1,0 +1,34 @@
+#posts\/view {
+  @apply flex flex-col items-center px-6;
+
+  > article {
+    @apply mt-6 lg:mt-12;
+  }
+
+  .details {
+    @apply border-lsd-white/20 mb-6 border-b pb-6;
+
+    .title {
+      @apply mb-1 text-4xl;
+      font-weight: 1000;
+    }
+
+    .date {
+      @apply text-lsd-red;
+    }
+  }
+
+  article {
+    @apply w-full max-w-2xl;
+  }
+
+  .content {
+    @apply mb-16 text-lg leading-relaxed;
+    p a {
+      @apply decoration-lsd-blue hover:text-lsd-blue underline;
+    }
+    p img {
+      @apply mx-auto max-w-xl;
+    }
+  }
+}

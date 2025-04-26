@@ -14,7 +14,7 @@ pub struct PostEdit {
     pub post: Post,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, WebTemplate)]
 #[template(path = "posts/email.html")]
 pub struct PostEmail {
     pub post: Post,

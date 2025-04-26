@@ -1,0 +1,9 @@
+#posts\/send {
+  @apply flex flex-col items-center;
+  .title {
+    @apply mb-4 text-lg;
+  }
+  form {
+    @apply w-full max-w-2xl;
+  }
+}

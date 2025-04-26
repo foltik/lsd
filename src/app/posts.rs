@@ -31,6 +31,7 @@ pub fn routes() -> AppRouter {
         .route("/", get(list_posts_page))
         .route("/new", get(create_post_page))
         .route("/{url}", get(view_post_page))
+        .route("/{url}/preview", get(preview_post_page))
         .route("/{url}/edit", get(edit_post_page).post(edit_post_form))
         .route("/{url}/send", get(send_post_page).post(send_post_form))
         .route("/{url}/delete", post(delete_post_form))
@@ -58,6 +59,18 @@ pub async fn view_post_page(
     };
 
     Ok(views::posts::PostView { post })
+}
+
+/// Display a preview of a post as it would appear in an email.
+pub async fn preview_post_page(
+    State(state): State<SharedAppState>,
+    Path(url): Path<String>,
+) -> AppResult<impl IntoResponse> {
+    let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        return Err(AppError::NotFound);
+    };
+
+    Ok(views::posts::PostEmail { post, opened_url: "".into(), unsub_url: "".into() })
 }
 
 /// Display the form to create a new post.
