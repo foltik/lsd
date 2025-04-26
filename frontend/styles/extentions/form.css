@@ -21,7 +21,15 @@
 
 .ext\/form select,
 .ext\/select {
-  @apply border-lsd-white/40 bg-lsd-black border px-2 py-1;
+  @apply border-lsd-white/40 bg-lsd-black rounded-md border px-3 py-2;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>')
+    no-repeat right 0.5rem center;
+
+  background-size: 1.5rem 1.5rem;
 }
 
 .ext\/form .field,
