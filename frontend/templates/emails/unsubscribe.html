@@ -16,7 +16,9 @@
   <div>
     <p>Are you sure you want to unsubscribe from our mailing list?</p>
     <form method="POST" action="/emails/{{ email_id }}/unsubscribe">
-      <button type="submit">Unsubscribe {{ email_address }}</button>
+      <button class="ext/button" type="submit">
+        Unsubscribe {{ email_address }}
+      </button>
     </form>
   </div>
 {% endblock %}
