@@ -24,17 +24,17 @@
         "type_info": "Text"
       },
       {
-        "name": "start_date",
+        "name": "created_at",
         "ordinal": 4,
         "type_info": "Datetime"
       },
       {
-        "name": "created_at",
+        "name": "updated_at",
         "ordinal": 5,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "start_date",
         "ordinal": 6,
         "type_info": "Datetime"
       }

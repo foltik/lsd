@@ -1,34 +1,24 @@
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
-use thiserror::Error;
-
-use crate::views;
+use crate::prelude::*;
 
 /// App-wide result type which automatically handles conversion to an HTTP response.
-#[derive(Error, Debug)]
+pub type AppResult<T> = Result<T, AppError>;
+
+#[derive(thiserror::Error, Debug)]
 pub enum AppError {
     #[error("not found")]
     NotFound,
-
     #[error("not authorized")]
     NotAuthorized,
 
     #[error(transparent)]
     Email(#[from] lettre::error::Error),
-
     #[error(transparent)]
     Smtp(#[from] lettre::transport::smtp::Error),
-
     #[error(transparent)]
     Render(#[from] askama::Error),
-
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
-
-pub type AppResult<T> = Result<T, AppError>;
 
 /// Convert an [`AppError`] into an HTTP response.
 ///
@@ -36,49 +26,31 @@ pub type AppResult<T> = Result<T, AppError>;
 /// tells the framework how to deal with errors.
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        tracing::error!("{self:#}");
+
+        let error_401 = || (StatusCode::UNAUTHORIZED, "You do not have permission to view this page");
+        let error_404 = || (StatusCode::NOT_FOUND, "Page not found");
+        let error_500 = || (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong :( Please try again");
+
+        let (status, message) = match self {
+            AppError::NotAuthorized => error_401(),
+            AppError::NotFound => error_404(),
+            AppError::Database(_) => error_500(),
+            AppError::Smtp(_) => error_500(),
+            AppError::Email(_) => error_500(),
+            AppError::Render(_) => error_500(),
+        };
+
         // TODO: add a `dev` mode to `config.app`, and:
         // * when enabled, respond with a stack trace
         // * when disabled, respond with a generic error message that doesn't leak any details
-        match self {
-            AppError::NotAuthorized => serve_401().into_response(),
-            AppError::NotFound => serve_404().into_response(),
-            AppError::Database(e) => {
-                tracing::error!("{e}");
-                serve_500().into_response()
-            }
-            AppError::Smtp(e) => {
-                tracing::error!("{e}");
-                serve_500().into_response()
-            }
-            AppError::Email(e) => {
-                tracing::error!("{e}");
-                serve_500().into_response()
-            }
-            AppError::Render(e) => {
-                tracing::error!("{e}");
-                serve_500().into_response()
-            }
+        #[derive(Template, WebTemplate)]
+        #[template(path = "error.html")]
+        pub struct Html {
+            pub message: String,
         }
+        let html = Html { message: message.to_string() };
+
+        (status, html).into_response()
     }
-}
-
-fn serve_401() -> impl IntoResponse {
-    (
-        StatusCode::UNAUTHORIZED,
-        views::index::ErrorTemplate { message: "You do not have permission to view this page".into() },
-    )
-}
-
-pub fn serve_404() -> impl IntoResponse {
-    (
-        StatusCode::NOT_FOUND,
-        views::index::ErrorTemplate { message: "Page not found".into() },
-    )
-}
-
-fn serve_500() -> impl IntoResponse {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        views::index::ErrorTemplate { message: "Something went wrong :( Please try again".into() },
-    )
 }

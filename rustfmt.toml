@@ -4,4 +4,4 @@ fn_call_width = 80
 struct_lit_width = 75
 single_line_if_else_max_width = 80
 group_imports = "StdExternalCrate"
-imports_granularity = "Crate"
+imports_granularity = "Module"
