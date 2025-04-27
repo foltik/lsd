@@ -1,30 +1,17 @@
-use axum::{
-    extract::{Path, Query, State},
-    response::{IntoResponse, Redirect},
-    routing::get,
-    Form,
-};
-use chrono::Utc;
-
-use crate::{
-    db::event::{Event, UpdateEvent},
-    utils::{
-        error::{AppError, AppResult},
-        types::{AppRouter, SharedAppState},
-    },
-    views,
-};
+use crate::db::event::{Event, UpdateEvent};
+use crate::prelude::*;
 
 /// Add all `events` routes to the router.
-pub fn routes() -> AppRouter {
-    AppRouter::new()
-        .route("/", get(list_events_page))
-        .route("/new", get(create_event_page).post(create_event_form))
-        .route(
-            "/{id}",
-            // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
-            get(update_event_page).post(update_event_form).delete(delete_event),
-        )
+pub fn add_routes(router: AppRouter) -> AppRouter {
+    router.restricted_routes(User::ADMIN, |r| {
+        r.route("/events", get(list_events_page))
+            .route("/events/new", get(create_event_page).post(create_event_form))
+            .route(
+                "/events/{id}",
+                // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
+                get(update_event_page).post(update_event_form).delete(delete_event),
+            )
+    })
 }
 
 /// Display a list of all events.
@@ -46,7 +33,12 @@ async fn list_events_page(
         })
         .collect::<Vec<_>>();
 
-    Ok(views::events::EventList { events })
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/list.html")]
+    pub struct Html {
+        pub events: Vec<Event>,
+    }
+    Ok(Html { events })
 }
 #[derive(serde::Deserialize)]
 struct ListEventsQuery {
@@ -55,7 +47,10 @@ struct ListEventsQuery {
 
 /// Display the form to create a new event.
 async fn create_event_page() -> impl IntoResponse {
-    views::events::EventCreate
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/create.html")]
+    pub struct Html;
+    Html
 }
 
 /// Process the form and create a new event.
@@ -75,7 +70,12 @@ async fn update_event_page(
 ) -> AppResult<impl IntoResponse> {
     let event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
 
-    Ok(views::events::EventView { event })
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/view.html")]
+    pub struct Html {
+        pub event: Event,
+    }
+    Ok(Html { event })
 }
 
 /// Process the form and update an event.
