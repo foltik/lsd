@@ -1,13 +1,14 @@
-use axum::{response::IntoResponse, routing::get};
-
-use crate::{utils::types::AppRouter, views};
+use crate::prelude::*;
 
 /// Add all `home` routes to the router.
-pub fn routes() -> AppRouter {
-    AppRouter::new().route("/", get(home_page))
+pub fn add_routes(router: AppRouter) -> AppRouter {
+    router.public_routes(|r| r.route("/", get(home_page)))
 }
 
 /// Display the front page.
 async fn home_page() -> impl IntoResponse {
-    views::index::IndexTemplate
+    #[derive(Template, WebTemplate)]
+    #[template(path = "index.html")]
+    pub struct Html;
+    Html
 }

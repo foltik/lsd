@@ -96,9 +96,14 @@ impl User {
     }
 
     pub async fn has_role(&self, db: &Db, role: &str) -> AppResult<bool> {
-        let row = sqlx::query!("SELECT * FROM user_roles WHERE user_id = ? AND role = ?", self.id, role)
-            .fetch_optional(db)
-            .await?;
+        let row = sqlx::query!(
+            "SELECT * FROM user_roles WHERE user_id = ? AND role = ? OR role = ?",
+            self.id,
+            role,
+            User::ADMIN,
+        )
+        .fetch_optional(db)
+        .await?;
         Ok(row.is_some())
     }
 }
