@@ -1,24 +1,13 @@
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
-};
-
-use crate::{
-    db::{email::Email, list::List},
-    utils::{
-        error::AppResult,
-        types::{AppRouter, SharedAppState},
-    },
-    views,
-};
+use crate::db::list::List;
+use crate::prelude::*;
 
 /// Add all `email` routes to the router.
-pub fn routes() -> AppRouter {
-    AppRouter::new()
-        .route("/{id}/footer.gif", get(email_opened))
-        .route("/{id}/unsubscribe", get(email_unsubscribe_view).post(email_unsubscribe_form))
+#[rustfmt::skip]
+pub fn add_routes(router: AppRouter) -> AppRouter {
+    router.public_routes(|r| {
+        r.route("/emails/{id}/footer.gif", get(email_opened))
+         .route("/emails/{id}/unsubscribe", get(email_unsubscribe_view).post(email_unsubscribe_form))
+    })
 }
 
 async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
@@ -35,10 +24,18 @@ async fn email_unsubscribe_view(
     Path(email_id): Path<i64>,
     State(state): State<SharedAppState>,
 ) -> AppResult<Response> {
+    #[derive(Template, WebTemplate)]
+    #[template(path = "emails/unsubscribe.html")]
+    pub struct Html {
+        pub email_id: i64,
+        pub email_address: String,
+    }
+
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await? {
-        return Ok(views::emails::Unsubscribe { email_id, email_address: email.address }.into_response());
+        return Ok(Html { email_id, email_address: email.address }.into_response());
     }
+
     Ok("You have been unsubscribed.".into_response())
 }
 

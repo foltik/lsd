@@ -1,15 +1,20 @@
+mod prelude;
+
 mod app;
 mod db;
 mod utils;
-mod views;
 
-use anyhow::Context as _;
-use axum::{handler::HandlerWithoutStateExt, response::Redirect};
+use axum::handler::HandlerWithoutStateExt;
+use axum::response::Redirect;
 use axum_server::tls_rustls::RustlsConfig;
 use futures::StreamExt;
-use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
+use tracing::level_filters::LevelFilter;
+use tracing::Level;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 use utils::config::*;
+
+use crate::prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,7 +37,8 @@ async fn main() -> anyhow::Result<()> {
     // Load the server config
     let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
     let config = Config::load(&file).await?;
-    views::filters::set_timezone(config.app.tz);
+    // Make it visible to our HTML templates
+    utils::templates::CONFIG.set(config.clone()).unwrap();
 
     let app = app::build(config.clone()).await?.into_make_service();
     tracing::info!("Live at {}", &config.app.url);

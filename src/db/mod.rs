@@ -2,7 +2,8 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use serde::Deserialize;
-use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
+use sqlx::migrate::MigrateDatabase;
+use sqlx::{Sqlite, SqlitePool};
 use user::User;
 
 use crate::utils::config::DbConfig;

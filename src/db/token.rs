@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
-use rand::{rngs::OsRng, Rng};
+use rand::rngs::OsRng;
+use rand::Rng;
 
 use super::Db;
 use crate::utils::error::AppResult;
