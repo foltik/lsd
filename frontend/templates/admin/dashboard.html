@@ -2,6 +2,7 @@
 {% block title %}light and sound - admin{% endblock title %}
 {% block styles %}
   {% call super() %}
+
 {% endblock styles %}
 {% block content %}
   <div id="admin/">
@@ -60,7 +61,7 @@
         </svg>
         <span>Users</span>
       </a>
-      <a href="dashboard/events">
+      <a href="/events">
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -78,7 +79,7 @@
         </svg>
         <span>Events</span>
       </a>
-      <a href="dashboard/newsletters">
+      <a href="/posts">
         <svg
           class="h-6 w-6"
           aria-hidden="true"
@@ -102,6 +103,7 @@
       {% endblock panel %}
     </div>
   </div>
+  <link rel="stylesheet" href="https://unpkg.com/chartist@0.11.4/dist/chartist.min.css">
   <script>
     function createNewCounter(element, start, end, duration) {
       let startTime = null;

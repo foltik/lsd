@@ -105,8 +105,176 @@
         </svg>
       </a>
       <div class="widget-content">
-        <!-- Chart will go here -->
+        <div class="ct-chart" id="chart1" style="height:100%; width: 100%"></div>
       </div>
     </div>
   </div>
+  <script src="https://unpkg.com/chartist"></script>
+  <script src="https://unpkg.com/chartist-plugin-axistitle"></script>
+  <script type="module">
+    import { LineChart } from 'https://unpkg.com/chartist@1.3.1/dist/index.js';
+
+    const tooltipElement = document.createElement('div');
+    tooltipElement.className = 'chartist-tooltip hidden';
+    document.querySelector('.ct-chart').appendChild(tooltipElement);
+    
+    // TODO: make AJAX call to ticketing/revenue API to 
+    // get current revenue for current month
+
+    const aprilRevenueData = [
+          { meta: "Apr 1, 2025", value: 4750.25 },
+          { meta: "Apr 2, 2025", value: 5125.80 },
+          { meta: "Apr 3, 2025", value: 4980.35 },
+          { meta: "Apr 4, 2025", value: 5610.90 },
+          { meta: "Apr 5, 2025", value: 3890.45 },
+          { meta: "Apr 6, 2025", value: 3250.75 },
+          { meta: "Apr 7, 2025", value: 4520.30 },
+          { meta: "Apr 8, 2025", value: 5830.65 },
+          { meta: "Apr 9, 2025", value: 6125.20 },
+          { meta: "Apr 10, 2025", value: 5740.85 },
+          { meta: "Apr 11, 2025", value: 6310.50 },
+          { meta: "Apr 12, 2025", value: 4890.35 },
+          { meta: "Apr 13, 2025", value: 3780.40 },
+          { meta: "Apr 14, 2025", value: 5240.95 },
+          { meta: "Apr 15, 2025", value: 6450.30 },
+          { meta: "Apr 16, 2025", value: 5820.75 },
+          { meta: "Apr 17, 2025", value: 5680.20 },
+          { meta: "Apr 18, 2025", value: 6240.85 },
+          { meta: "Apr 19, 2025", value: 4930.40 },
+          { meta: "Apr 20, 2025", value: 3760.90 },
+          { meta: "Apr 21, 2025", value: 5340.25 },
+          { meta: "Apr 22, 2025", value: 6540.80 },
+          { meta: "Apr 23, 2025", value: 6190.35 },
+          { meta: "Apr 24, 2025", value: 5870.70 },
+          { meta: "Apr 25, 2025", value: 6420.15 },
+          { meta: "Apr 26, 2025", value: 5230.50 },
+          { meta: "Apr 27, 2025", value: 3950.85 },
+          { meta: "Apr 28, 2025", value: 5480.30 },
+          { meta: "Apr 29, 2025", value: 6730.75 },
+          { meta: "Apr 30, 2025", value: 7120.20 }
+        ];
+
+    const dayNumberLabels = aprilRevenueData.map(item => {
+      const dateParts = item.meta.split(' ');
+      return dateParts[1].replace(',', ''); // Remove the comma after the day
+    });
+
+    const chart = new LineChart('#chart1', {
+        labels: dayNumberLabels,
+        series: [aprilRevenueData]
+    }, {
+        fullWidth: true,
+        width: '100%',
+        height: '100%',
+        showArea: true,
+        low: 0,
+        chartPadding: {
+          bottom: 20,
+          left: 40,
+        },
+        plugins: [
+          Chartist.plugins.ctAxisTitle({
+            axisX: {
+              axisTitle: 'Days of April',
+              axisClass: 'ct-axis-title',
+              offset: {
+                x: 0,
+                y: 40
+              },
+              textAnchor: 'middle'
+            },
+            axisY: {
+              axisTitle: 'Revenue ($)',
+              axisClass: 'ct-axis-title',
+              offset: {
+                x: 0,
+                y: -5
+              },
+              textAnchor: 'middle',
+              flipTitle: false
+            }
+          })
+        ]
+    });
+
+    var seq = 0,
+      delays = 80,
+      durations = 500;
+
+    // Once the chart is fully created we reset the sequence
+    chart.on('created', function() {
+      seq = 0;
+    });
+
+    // Use the draw and created events to implement the tooltip behavior
+    chart.on('draw', function(data) {
+      if (data.type === 'point') {
+        // Add event listeners to each point
+        data.element._node.addEventListener('mouseenter', function(event) {
+          // Get the value from the point
+          const value = data.value.y;
+          
+          // Optional: get any series meta data or label if available
+          const seriesName = data.series.name || '';
+          const pointIndex = data.index;
+          const xLabel = chart.data.labels ? chart.data.labels[pointIndex] : '';
+          
+          // Position and populate the tooltip
+          tooltipElement.innerHTML = `${seriesName ? seriesName + ': ' : ''}${value}${xLabel ? ' (' + xLabel + ')' : ''}`;
+          tooltipElement.classList.add('show');
+          
+          // Position tooltip near the point
+          const rect = this.getBoundingClientRect();
+          console.log(rect);
+          const chartRect = document.querySelector('.ct-chart').getBoundingClientRect();
+          tooltipElement.style.left = (rect.left - 40) + 'px';
+          tooltipElement.style.top = (rect.top - 60) + 'px'; // Positioned above the point
+
+        });
+        
+        data.element._node.addEventListener('mouseleave', function() {
+          // Hide tooltip when mouse leaves the point
+          tooltipElement.classList.remove('show');
+        });
+      }
+
+      if(data.type === 'line' || data.type === 'area') {
+        data.element.animate({
+          d: {
+            begin: 3500 * data.index,
+            dur: 2000,
+            from: data.path.clone().scale(1, 0).translate(0, data.chartRect.height()).stringify(),
+            to: data.path.clone().stringify(),
+            easing: Chartist.Svg.Easing.easeOutQuint
+          }
+        });
+      } else if(data.type === 'point') {
+          data.element.animate({
+            x1: {
+              begin: seq * delays,
+              dur: durations,
+              from: data.x - 10,
+              to: data.x,
+              easing: 'easeOutQuart'
+            },
+            x2: {
+              begin: seq * delays,
+              dur: durations,
+              from: data.x - 10,
+              to: data.x,
+              easing: 'easeOutQuart'
+            },
+            opacity: {
+              begin: seq * delays,
+              dur: durations,
+              from: 0,
+              to: 1,
+              easing: 'easeOutQuart'
+            }
+          });
+      }
+    });
+  </script>
 {% endblock panel %}
+{% block scripts %}
+{% endblock scripts %}
