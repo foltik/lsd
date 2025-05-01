@@ -226,10 +226,14 @@ mod send {
                 email_template.unsub_url = format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url);
 
                 use lettre::message::header::ContentType;
+
+                let from = &state.config.email.from;
+                let reply_to = state.config.email.reply_to.as_ref().unwrap_or(from);
                 let msg = state
                     .mailer
                     .builder()
                     .to(email.parse().unwrap())
+                    .reply_to(reply_to.clone())
                     .subject(&post.title)
                     .header(ContentType::TEXT_HTML)
                     .body(email_template.render()?)
