@@ -27,13 +27,10 @@
 #admin\/dashboard {
   @apply flex flex-1 flex-col overflow-auto p-3;
 }
-
 .widget-container {
   @apply rounded-sm border border-neutral-800 bg-neutral-950 p-4;
-  a {
-    svg {
-      @apply ml-auto h-7 w-7 cursor-pointer rounded-sm p-1 hover:bg-neutral-800;
-    }
+  a > .widget-nav {
+    @apply ml-auto h-7 w-7 cursor-pointer rounded-sm p-1 hover:bg-neutral-800;
   }
   .widget-content-stat {
     @apply flex flex-col items-center;
@@ -47,3 +44,4 @@
 }
 
 @import "./dashboard/overview.css";
+@import "./dashboard/users.css";

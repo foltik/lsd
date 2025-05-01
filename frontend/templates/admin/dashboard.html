@@ -2,7 +2,6 @@
 {% block title %}light and sound - admin{% endblock title %}
 {% block styles %}
   {% call super() %}
-
 {% endblock styles %}
 {% block content %}
   <div id="admin/">
@@ -103,7 +102,10 @@
       {% endblock panel %}
     </div>
   </div>
-  <link rel="stylesheet" href="https://unpkg.com/chartist@0.11.4/dist/chartist.min.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/chartist@0.11.4/dist/chartist.min.css"
+  />
   <script>
     function createNewCounter(element, start, end, duration) {
       let startTime = null;
