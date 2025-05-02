@@ -2,7 +2,8 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use serde::Deserialize;
-use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
+use sqlx::migrate::MigrateDatabase;
+use sqlx::{Sqlite, SqlitePool};
 use user::User;
 
 use crate::utils::config::DbConfig;
@@ -24,7 +25,7 @@ pub async fn init(db_config: &DbConfig) -> anyhow::Result<Db> {
     }
     let db = SqlitePool::connect(&url).await?;
 
-    sqlx::migrate!("./migrations");
+    sqlx::migrate!("./migrations").run(&db).await?;
 
     if let Some(seed_data) = &db_config.seed_data {
         seed_db(&db, seed_data).await?;

@@ -1,80 +1,74 @@
 @import "tailwindcss";
 
+@import "./fonts.css";
+
+@theme {
+  --font-sans: DM Sans Variable, sans-serif;
+  --font-display: Poppins, sans-serif;
+  /* CSS HEX */
+  --color-lsd-black: #080504;
+  --color-lsd-white: #ebe3de;
+  --color-lsd-bright: #fcf3ee;
+  --color-lsd-blue: #8ec6ff;
+  --color-lsd-green: #6fd08c;
+  --color-lsd-red: #c36346;
+  --color-lsd-yellow: #eec643;
+}
+
 /*
  * TODO: Refactor styles into Tailwind utility classes
  *       Below styles are from page.tera.html
  */
 
-html,
+:root {
+  @apply bg-lsd-black text-lsd-white h-full w-full font-sans;
+}
+
 body {
-  @apply h-full w-full bg-black text-white;
+  @apply min-h-full;
 }
 
-header {
-  @apply border-b border-neutral-700 p-4;
-}
+body > header {
+  @apply border-lsd-white/10 flex flex-col items-center border-b px-6 py-4;
 
-article {
-  @apply mx-auto max-w-3xl p-4;
-
-  time {
-    @apply mb-8 block text-sm uppercase;
+  nav {
+    @apply flex w-full max-w-6xl items-center gap-x-8;
   }
-
-  p {
-    @apply mb-5 last:mb-0;
+  nav .lsd {
+    @apply font-display text-lsd-bright font-bold;
   }
-
-  blockquote {
-    @apply my-4 border-l-[4px] px-8 py-6 italic;
-  }
-
-  img {
-    @apply my-8 block h-auto max-w-full;
+  nav .sep {
+    @apply h-4 border-r border-neutral-700;
   }
 }
 
-h2 {
-  @apply mb-1 text-xl font-bold;
-}
+/** Extensions **/
 
-a {
-  @apply underline;
-}
+@import "./extentions/form.css";
 
-button,
-.button {
-  @apply block cursor-pointer bg-neutral-900 px-4 py-2 hover:bg-neutral-800;
-  @apply rounded-sm;
-}
+/** Modules **/
 
-ul {
-  @apply list-inside;
-}
+/* Auth */
 
-label {
-  @apply mb-2 block;
-}
+@import "./auth/login.css";
+@import "./auth/register.css";
 
-input[type="text"] {
-  @apply w-full border border-neutral-700 bg-neutral-950 p-2;
-}
+@import "./events/create.css";
+@import "./events/list.css";
+@import "./events/view.css";
 
-textarea {
-  @apply h-[50vh] w-full flex-1 resize-y bg-neutral-900 p-2;
-  @apply border border-neutral-700 font-mono text-sm;
-}
+/* Lists */
 
-select {
-  @apply border border-neutral-600 bg-neutral-950;
-}
+@import "./lists/edit.css";
+@import "./lists/signup.css";
+@import "./lists/view.css";
 
-form {
-  @apply flex flex-col p-8;
+/* Posts */
 
-  .field {
-    @apply mb-4 flex flex-col pb-4;
-  }
-}
+@import "./posts/edit.css";
+@import "./posts/list.css";
+@import "./posts/send.css";
+@import "./posts/view.css";
 
+/* Admin */
 @import "./admin/dashboard.css";

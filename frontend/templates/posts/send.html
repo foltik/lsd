@@ -1,26 +1,21 @@
 {% extends "layout.html" %}
 {% block title %}Send post - {{ post.title }}{% endblock %}
-{% block styles %}
-  {% call super() %}
-
-  <style>
-    h1 {
-      padding-bottom: 1rem;
-    }
-  </style>
-{% endblock styles %}
 
 {% block content %}
-  <form method="POST" action="/posts/{{ post.url }}/send">
-    <h1>{{ post.title }}</h1>
-    <div class="field">
-      <label for="list_id">Send to list</label>
-      <select name="list_id">
-        {% for list in lists %}
-          <option value="{{ list.id }}">{{ list.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <button type="submit">Send</button>
-  </form>
+  <div id="posts/send">
+    <form class="ext/form" method="POST" action="/posts/{{ post.url }}/send">
+      <header>Send post</header>
+      <label>Title</label>
+      <h1 class="title">{{ post.title }}</h1>
+      <div class="field">
+        <label for="list_id">Send to list</label>
+        <select class="ext/select" name="list_id">
+          {% for list in lists %}
+            <option value="{{ list.id }}">{{ list.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="ext/button :green" type="submit">Send</button>
+    </form>
+  </div>
 {% endblock content %}

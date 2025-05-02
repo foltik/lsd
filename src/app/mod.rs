@@ -1,12 +1,5 @@
-use std::sync::Arc;
-
-use axum::{response::Redirect, routing::get, Router};
-use tower_http::services::ServeDir;
-
-use crate::{
-    db::{self, Db},
-    utils::{self, config::*, emailer::Emailer, tracing::WithTracingLayer as _},
-};
+use crate::prelude::*;
+use crate::utils::emailer::Emailer;
 
 mod admin;
 mod auth;
@@ -19,34 +12,39 @@ mod posts;
 #[derive(Clone)]
 #[allow(unused)]
 pub struct AppState {
-    config: Config,
-    db: Db,
-    mailer: Emailer,
+    pub config: Config,
+    pub db: Db,
+    pub mailer: Emailer,
 }
 
-pub async fn build(config: Config) -> anyhow::Result<Router> {
+pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let state = Arc::new(AppState {
         config: config.clone(),
-        db: db::init(&config.db).await?,
+        db: crate::db::init(&config.db).await?,
         mailer: Emailer::connect(config.email).await?,
     });
 
-    let r = Router::new()
-        .merge(home::routes())
-        .merge(auth::routes())
-        .nest("/posts", posts::routes())
-        .route("/p/{url}", get(posts::view_post_page))
-        .nest("/events", events::routes())
-        .nest("/lists", lists::routes())
-        .nest("/emails", emails::routes())
-        .nest("/admin", admin::routes(&state))
-        .nest_service("/static", ServeDir::new("frontend/static"))
-        // For non-HTML pages without a <link rel="icon">, this is where the browser looks
-        .route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }))
-        .fallback(|| async { utils::error::serve_404() })
-        .layer(axum::middleware::from_fn_with_state(Arc::clone(&state), auth::middleware))
-        .with_tracing_layer()
-        .with_state(state);
+    // Register business logic routes
+    let r = AppRouter::new(&state);
+    let r = home::add_routes(r);
+    let r = auth::add_routes(r);
+    let r = posts::add_routes(r);
+    let r = events::add_routes(r);
+    let r = lists::add_routes(r);
+    let r = emails::add_routes(r);
+    let r = admin::add_routes(r);
+    let (r, state) = r.finish();
+
+    // Register app-wide routes
+    let r = r.nest_service("/static", tower_http::services::ServeDir::new("frontend/static"));
+    // For non-HTML pages without a <link rel="icon">, this is where the browser looks
+    let r = r.route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }));
+    let r = r.fallback(|| async { AppError::NotFound });
+
+    // Register middleware
+    let r = auth::add_middleware(r, Arc::clone(&state));
+    let r = crate::utils::tracing::add_middleware(r);
+    let r = r.with_state(state);
 
     Ok(r)
 }

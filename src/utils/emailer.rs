@@ -1,8 +1,6 @@
-use lettre::{
-    message::{Mailbox, MessageBuilder},
-    transport::smtp::authentication::Credentials,
-    Message, SmtpTransport, Transport,
-};
+use lettre::message::{Mailbox, MessageBuilder};
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::{Message, SmtpTransport, Transport};
 
 use super::error::AppResult;
 use crate::EmailConfig;

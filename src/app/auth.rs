@@ -18,41 +18,30 @@
 //!    - `/register`: The user is prompted to enter their first/last name.
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
-use std::convert::Infallible;
-
-use axum::{
-    extract::{OptionalFromRequestParts, Query, Request, State},
-    http::{header, request::Parts},
-    middleware::Next,
-    response::{IntoResponse, Redirect, Response},
-    routing::post,
-    Form,
-};
 use axum_extra::extract::CookieJar;
-use lettre::message::{header::ContentType, Mailbox};
+use lettre::message::header::ContentType;
+use lettre::message::Mailbox;
 
-use crate::{
-    db::{
-        email::Email,
-        token::{LoginToken, SessionToken},
-        user::{UpdateUser, User},
-    },
-    utils::{
-        error::{AppError, AppResult},
-        types::{AppRouter, SharedAppState},
-    },
-    views,
-};
+use crate::db::token::{LoginToken, SessionToken};
+use crate::db::user::UpdateUser;
+use crate::prelude::*;
 
-/// Add all auth routes to the router.
-pub fn routes() -> AppRouter {
-    AppRouter::new()
-        .route("/login", post(login_form).get(login_link))
-        .route("/register", post(register_form).get(register_link))
+/// Add all `auth` routes to the router.
+#[rustfmt::skip]
+pub fn add_routes(router: AppRouter) -> AppRouter {
+    router.public_routes(|r| {
+        r.route("/login", post(login_form).get(login_link))
+         .route("/register", post(register_form).get(register_link))
+    })
 }
 
-/// Middleware to lookup add a `User` to the request if a session token is present.
-pub async fn middleware(
+/// Add all `auth` middleware to the router.
+pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
+    router.layer(axum::middleware::from_fn_with_state(state, auth_middleware))
+}
+
+/// Middleware layer to lookup add a `User` to the request if a session token is present.
+pub async fn auth_middleware(
     State(state): State<SharedAppState>,
     mut cookies: CookieJar,
     mut request: Request,
@@ -70,37 +59,21 @@ pub async fn middleware(
     Ok((cookies, response))
 }
 
-// Middleware to be used to require admin role for certain routes (ie Admin dashboard)
-pub async fn require_admin(
-    State(state): State<SharedAppState>,
-    request: Request,
-    next: Next,
-) -> AppResult<impl IntoResponse> {
-    let user = request.extensions().get::<User>().ok_or(AppError::NotAuthorized)?;
+// // Middleware to be used to require admin role for certain routes (ie Admin dashboard)
+// pub async fn require_admin(
+//     State(state): State<SharedAppState>,
+//     request: Request,
+//     next: Next,
+// ) -> AppResult<impl IntoResponse> {
+//     let user = request.extensions().get::<User>().ok_or(AppError::NotAuthorized)?;
 
-    // Check if user has admin role
-    if !user.has_role(&state.db, "admin").await? {
-        return Err(AppError::NotAuthorized);
-    }
+//     // Check if user has admin role
+//     if !user.has_role(&state.db, "admin").await? {
+//         return Err(AppError::NotAuthorized);
+//     }
 
-    Ok(next.run(request).await)
-}
-
-/// Enable extracting an `Option<User>` in a handler.
-impl<S: Send + Sync> OptionalFromRequestParts<S> for User {
-    type Rejection = Infallible;
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Option<Self>, Self::Rejection> {
-        Ok(parts.extensions.get::<User>().cloned())
-    }
-}
-/// Enable extracting a `User` in a handler, returning UNAUTHORIZED if not logged in.
-impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
-    type Rejection = AppError;
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let user = parts.extensions.get::<User>().cloned().ok_or(AppError::NotAuthorized)?;
-        Ok(user)
-    }
-}
+//     Ok(next.run(request).await)
+// }
 
 /// Process a login form and send either a login or registration link via email.
 async fn login_form(
@@ -150,6 +123,10 @@ async fn login_link(
     State(state): State<SharedAppState>,
     Query(query): Query<LoginQuery>,
 ) -> AppResult<Response> {
+    #[derive(Template, WebTemplate)]
+    #[template(path = "auth/login.html")]
+    pub struct Html;
+
     match query.token {
         Some(token) => {
             let user = User::lookup_by_login_token(&state.db, &token)
@@ -164,7 +141,7 @@ async fn login_link(
             );
             Ok(headers.into_response())
         }
-        None => Ok(views::auth::Login.into_response()),
+        None => Ok(Html.into_response()),
     }
 }
 #[derive(serde::Deserialize)]
@@ -174,7 +151,12 @@ struct LoginQuery {
 
 /// Display the registration page.
 async fn register_link(Query(query): Query<RegisterQuery>) -> impl IntoResponse {
-    views::auth::Register { token: query.token }
+    #[derive(Template, WebTemplate)]
+    #[template(path = "auth/register.html")]
+    pub struct Html {
+        pub token: String,
+    }
+    Html { token: query.token }
 }
 #[derive(serde::Deserialize)]
 struct RegisterQuery {

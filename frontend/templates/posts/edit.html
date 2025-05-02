@@ -1,168 +1,73 @@
 {% extends "layout.html" %}
 {% block title %}Edit post - {{ post.title }}{% endblock title %}
-{% block styles %}
-  {% call super() %}
 
-  <style>
-    .editor {
-      border-right: 1px solid var(--color-border);
+{% block content %}
+  <div id="posts/edit">
+    <form
+      class="editor ext/form"
+      method="POST"
+      action="/posts/{{ post.url }}/edit"
+    >
+      <div class="navbar">
+        <a href="/posts">&larr; All Posts</a>
+        <div class="save">
+          <span id="status">No changes</span>
+          <button type="button" onclick="savePost()">Save</button>
+        </div>
+        <a class="ext/button :green" href="/posts/{{ post.url }}/send">Send</a>
+        <button
+          _="on click
+             if (confirm('Are you sure you want to delete this post?'))
+             then fetch '/posts/{{ post.url }}/delete' with method:'POST'
+             then go to url '/posts'
+           "
+          type="button"
+          class="ext/button :red"
+        >
+          Delete
+        </button>
+      </div>
+      <div class="content">
+        <div class="pell-wrapper">
+          <article class="pell"></article>
+        </div>
+      </div>
+      <div class="details">
+        {% if post.id != 0 %}
+          <input type="hidden" name="id" value="{{ post.id }}" />
+        {% endif %}
+        <div class="field">
+          <label for="title">Title</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value="{{ post.title }}"
+            oninput="updatePreview()"
+          />
+        </div>
+        <div class="field">
+          <label for="url">Slug</label>
+          <input type="text" id="url" name="url" value="{{ post.url }}" />
+        </div>
+        <div class="field">
+          <label for="author">Author</label>
+          <input
+            type="text"
+            id="author"
+            name="author"
+            value="{{ post.author }}"
+          />
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock content %}
 
-      .url {
-        display: inline-flex;
-        align-items: center;
-
-        width: 100%;
-        padding: 0.5rem;
-        background-color: var(--color-bg-alt);
-        border: 1px solid var(--color-border);
-
-        .origin {
-          color: var(--color-text-muted);
-          white-space: nowrap;
-          font-family: monospace;
-        }
-        input[type="text"] {
-          border: none;
-          padding: 0;
-          background: transparent;
-        }
-      }
-      .content {
-        flex-grow: 1;
-
-        article {
-          position: relative;
-          overflow: auto;
-          resize: horizontal;
-          max-width: 100vw;
-          width: calc(min(100vw, 768px));
-        }
-
-        .pell {
-          flex-grow: 1;
-          overflow: visible;
-
-          display: flex;
-          flex-direction: column;
-          border: 1px solid var(--color-border);
-          padding: 0 16px 16px 16px;
-
-          .pell-actionbar {
-            position: sticky;
-            top: 0;
-            background-color: var(--color-bg);
-            border-bottom: 1px solid var(--color-border);
-            padding: 10px 0 10px 0;
-
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            margin-bottom: 10px;
-            gap: 10px;
-
-            .pell-button {
-              background-color: var(--color-button);
-              outline: 0;
-              border: 1px solid var(--color-border);
-              width: 40px;
-              height: 30px;
-              padding: 5px 5px;
-            }
-            .pell-button-selected {
-              background-color: var(--color-button-hover);
-            }
-
-            #status {
-              margin-left: auto;
-              color: var(--color-text-muted);
-              font-size: 0.9rem;
-            }
-            #status::before {
-              content: "•";
-              margin-right: 6px;
-            }
-            #status.unsaved {
-              color: var(--color-text-warn);
-            }
-            #status.error {
-              color: var(--color-text-error);
-            }
-          }
-          .pell-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
-          }
-          .pell-content:focus {
-            outline: none;
-          }
-        }
-      }
-
-      .resize {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 16px;
-        cursor: ew-resize;
-        z-index: 100;
-        background: transparent;
-      }
-      .resize.left {
-        left: 0;
-      }
-      .resize.right {
-        right: 0;
-      }
-    }
-  </style>
-{% endblock styles %}
 {% block scripts %}
   <script src="/static/markdown.js"></script>
   <script src="https://unpkg.com/pell"></script>
-{% endblock scripts %}
-{% block content %}
-  <form class="editor form" method="POST" action="/posts/{{ post.url }}/edit">
-    {% if post.id != 0 %}
-      <input type="hidden" name="id" value="{{ post.id }}" />
-    {% endif %}
-    <div class="field">
-      <label for="title">Title</label>
-      <input
-        type="text"
-        id="title"
-        name="title"
-        value="{{ post.title }}"
-        oninput="updatePreview()"
-      />
-    </div>
-    <div class="field">
-      <label for="url">URL</label>
-      <div class="url">
-        <span class="origin"></span>
-        <input type="text" id="url" name="url" value="{{ post.url }}" />
-      </div>
-    </div>
-    <div class="field">
-      <label for="author">Author</label>
-      <input type="text" id="author" name="author" value="{{ post.author }}" />
-    </div>
-    <div class="field content">
-      <label for="content">Content</label>
-      <article class="pell">
-        <div class="left resize"></div>
-        <div class="right resize"></div>
-      </article>
-    </div>
-  </form>
   <script>
-    // Form setup
-    (() => {
-      // Populate the first part of the url input with the app's origin URL
-      document.querySelector(".url .origin").innerHTML =
-        window.location.origin + "/posts/";
-    })();
-
     // Editor setup
     (() => {
       window.pell.init({
@@ -173,13 +78,6 @@
       });
 
       // Add the status bar
-      document.querySelector(".pell-actionbar").insertAdjacentHTML(
-        "beforeend",
-        `
-        <span id="status">No changes</span>
-        <button type="button" onclick="savePost()">Save</button>
-      `,
-      );
 
       // Fill in post content
       document.querySelector(".pell-content").innerHTML =
@@ -286,36 +184,36 @@
       };
     })();
 
-    // Resize handles
-    (() => {
-      const container = document.querySelector(".content");
-      const article = document.querySelector("article");
-
-      function startResize(e) {
-        e.preventDefault();
-        const x0 = e.clientX;
-        const w0 = article.offsetWidth;
-        const right = e.target.classList.contains("right");
-
-        function doResize(e) {
-          let dx = (e.clientX - x0) * (right ? 1 : -1);
-          const w = w0 + dx * 2;
-          if (w >= 768 && w <= container.clientWidth) {
-            article.style.width = `${w}px`;
-          }
-        }
-
-        function stopResize() {
-          document.removeEventListener("mousemove", doResize);
-          document.removeEventListener("mouseup", stopResize);
-        }
-        document.addEventListener("mousemove", doResize);
-        document.addEventListener("mouseup", stopResize);
-      }
-      document
-        .querySelectorAll(".resize")
-        .forEach((e) => e.addEventListener("mousedown", startResize));
-    })();
+    // // Resize handles
+    // (() => {
+    //   const container = document.querySelector(".content");
+    //   const article = document.querySelector("article");
+    //
+    //   function startResize(e) {
+    //     e.preventDefault();
+    //     const x0 = e.clientX;
+    //     const w0 = article.offsetWidth;
+    //     const right = e.target.classList.contains("right");
+    //
+    //     function doResize(e) {
+    //       let dx = (e.clientX - x0) * (right ? 1 : -1);
+    //       const w = w0 + dx * 2;
+    //       if (w >= 768 && w <= container.clientWidth) {
+    //         article.style.width = `${w}px`;
+    //       }
+    //     }
+    //
+    //     function stopResize() {
+    //       document.removeEventListener("mousemove", doResize);
+    //       document.removeEventListener("mouseup", stopResize);
+    //     }
+    //     document.addEventListener("mousemove", doResize);
+    //     document.addEventListener("mouseup", stopResize);
+    //   }
+    //   document
+    //     .querySelectorAll(".resize")
+    //     .forEach((e) => e.addEventListener("mousedown", startResize));
+    // })();
 
     // Clear formatting when pasting into the editor
     (() => {
@@ -327,4 +225,4 @@
       });
     })();
   </script>
-{% endblock content %}
+{% endblock scripts %}

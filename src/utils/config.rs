@@ -1,4 +1,5 @@
-use std::{net::SocketAddr, path::PathBuf};
+use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use chrono_tz::Tz;
@@ -77,6 +78,8 @@ pub struct EmailConfig {
     pub smtp_password: Option<String>,
     /// Mailbox to send email from.
     pub from: Mailbox,
+    /// Mailbox to put as ReplyTo.
+    pub reply_to: Option<Mailbox>,
     /// Maximum number of emails to send per second.
     pub ratelimit: Option<usize>,
 }
