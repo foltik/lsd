@@ -16,7 +16,6 @@
       }
       .ct-series-a .ct-area {
         @apply fill-green-600;
-        /* fill-opacity: .1; */
       }
       .ct-label {
         @apply fill-white text-white;
@@ -30,13 +29,11 @@
         @apply stroke-neutral-500;
       }
 
-      /* Change specific axes */
       .ct-axis-title,
       .ct-axis-title text {
         @apply fill-white;
       }
 
-      /* Basic CSS for the tooltip (add to your stylesheet) */
       .chartist-tooltip {
         @apply absolute z-100 hidden min-w-5 cursor-none rounded-sm border-1 border-neutral-500 bg-neutral-800 px-2.5 py-2 text-center transition-opacity delay-200 ease-linear;
       }

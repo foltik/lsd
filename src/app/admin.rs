@@ -25,7 +25,7 @@ mod view {
         Ok(Html { users_count })
     }
 
-    //
+    // Display table of users dashboard
     pub async fn users(
         State(state): State<SharedAppState>,
         Query(query): Query<ListUserQuery>,
