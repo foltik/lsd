@@ -2,11 +2,13 @@ use std::sync::OnceLock;
 
 use chrono::NaiveDateTime;
 
-/// App timezone for usage
+/// Global app config for reference from askama filters, set once at startup.
 pub static CONFIG: OnceLock<crate::Config> = OnceLock::new();
 
-/// Askama requires a `filters` module to be in scope to provide extra functions
-/// to templates. Any such functions should be added here.
+/// Askama implicitly looks for a `filters` module to be in the same scope as
+/// the `#[derive(Template)]` to provide extra functions to templates.
+///
+/// We export this along with `Template` in `crate::prelude`, so it should always properly be in scope.
 pub mod filters {
     use super::*;
 
