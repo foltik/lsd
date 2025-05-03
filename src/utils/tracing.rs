@@ -17,6 +17,7 @@ impl MakeRequestId for MakeRequestUuidV7 {
     }
 }
 
+/// Register tracing-related middleware into the router.
 pub fn add_middleware(router: AxumRouter) -> AxumRouter {
     router.layer(
         ServiceBuilder::new()
