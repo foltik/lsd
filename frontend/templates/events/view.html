@@ -17,11 +17,6 @@
       </div>
 
       <div class="field">
-        <label for="artist">Artist Name</label>
-        <input type="text" name="artist" value="{{ event.artist }}" />
-      </div>
-
-      <div class="field">
         <label for="description">Event Description</label>
         <textarea name="description" value="{{ event.description }}">
         What can people expect...
@@ -29,15 +24,15 @@
       </div>
 
       <div class="field">
-        <label for="start_date_select">Event Date</label>
+        <label for="start_select">Event Date</label>
         <input
           type="datetime-local"
-          name="start_date_select"
-          value="{{ event.start_date }}"
+          name="start_select"
+          value="{{ event.start }}"
         />
       </div>
 
-      <input type="hidden" name="start_date" />
+      <input type="hidden" name="start" />
 
       <!-- <label for="cover_image">Event Cover Image</label>
             <input type="file" name="cover_image" /> -->
@@ -52,8 +47,8 @@
     function normalizeDateTime(e) {
       e.preventDefault();
       const form = e.target;
-      const inputA = form.querySelector('[name="start_date_select"]');
-      const inputB = form.querySelector('[name="start_date"]');
+      const inputA = form.querySelector('[name="start_select"]');
+      const inputB = form.querySelector('[name="start"]');
       inputB.value = inputA.value + ":00";
       form.submit();
     }

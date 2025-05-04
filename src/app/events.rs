@@ -26,10 +26,10 @@ async fn list_events_page(
         .await?
         .into_iter()
         .filter(|e| match past {
-            true => e.start_date < now,
+            true => e.start < now,
             // TODO: Don't filter out in-progress events until they're over.
             // Need to add an `end_date` field.
-            false => e.start_date >= now,
+            false => e.start >= now,
         })
         .collect::<Vec<_>>();
 
