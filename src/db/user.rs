@@ -27,6 +27,28 @@ pub struct UpdateUser {
     pub email: String,
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct UserView {
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
+}
+impl From<User> for UserView {
+    fn from(user: User) -> Self {
+        Self {
+            first_name: user.first_name.unwrap_or_default(),
+            last_name: user.last_name.unwrap_or_default(),
+            email: user.email,
+        }
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ListUserQuery {
+    pub page: i64,
+    pub page_size: i64,
+}
+
 impl User {
     /// Full access to everything.
     pub const ADMIN: &'static str = "admin";
@@ -105,5 +127,26 @@ impl User {
         .fetch_optional(db)
         .await?;
         Ok(row.is_some())
+    }
+
+    //Query users based on params
+    pub async fn list(db: &Db, query: &ListUserQuery) -> AppResult<Vec<UserView>> {
+        let current_page = (query.page - 1) * query.page_size;
+        let users = sqlx::query_as!(
+            User,
+            r#"SELECT u.*
+               FROM users u
+               LIMIT ?
+               OFFSET ?"#,
+            query.page_size,
+            current_page,
+        )
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .map(UserView::from)
+        .collect();
+
+        Ok(users)
     }
 }

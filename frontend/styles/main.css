@@ -69,3 +69,6 @@ body > header {
 @import "./posts/list.css";
 @import "./posts/send.css";
 @import "./posts/view.css";
+
+/* Admin */
+@import "./admin/dashboard.css";
