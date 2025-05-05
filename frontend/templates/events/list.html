@@ -8,8 +8,7 @@
     {% for event in events %}
       <div key="event-{{ event.id }}" class="event">
         <a href="/events/{{ event.id }}">
-          {{ event.start_date | format_datetime("%b %d, %Y") }} |
-          {{ event.title }}
+          {{ event.start | format_datetime("%b %d, %Y") }} | {{ event.title }}
         </a>
       </div>
     {% endfor %}

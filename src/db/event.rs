@@ -6,24 +6,31 @@ use crate::utils::error::AppResult;
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Event {
     pub id: i64,
-    // TODO: Add a pretty url field, for `https://site/e/{url}`.
-    // pub url: String,
+    pub guest_list_id: Option<i64>,
+
     pub title: String,
-    pub artist: String,
+    pub slug: String,
     pub description: String,
-    pub start_date: NaiveDateTime,
-    // TODO: Add an end. Maybe rename to just `start` and `end`.
-    // pub end_date: NaiveDateTime,
+    pub flyer: Option<String>,
+
+    pub start: NaiveDateTime,
+    pub end: Option<NaiveDateTime>,
+
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
 
 #[derive(serde::Deserialize)]
 pub struct UpdateEvent {
+    pub guest_list_id: Option<i64>,
+
     pub title: String,
-    pub artist: String,
+    pub slug: String,
     pub description: String,
-    pub start_date: NaiveDateTime,
+    pub flyer: Option<String>,
+
+    pub start: NaiveDateTime,
+    pub end: Option<NaiveDateTime>,
 }
 
 impl Event {
@@ -37,12 +44,15 @@ impl Event {
     pub async fn create(db: &Db, event: &UpdateEvent) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO events
-               (title, artist, description, start_date)
-               VALUES (?, ?, ?, ?)"#,
+               (title, slug, description, flyer, start, end, guest_list_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?)"#,
             event.title,
-            event.artist,
+            event.slug,
             event.description,
-            event.start_date
+            event.flyer,
+            event.start,
+            event.end,
+            event.guest_list_id,
         )
         .execute(db)
         .await?;
@@ -53,12 +63,21 @@ impl Event {
     pub async fn update(db: &Db, id: i64, event: &UpdateEvent) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE events
-               SET title = ?, artist = ?, description = ?, start_date = ?
-               WHERE id = ?"#,
+                SET title = ?,
+                    slug = ?,
+                    description = ?,
+                    flyer = ?,
+                    start = ?,
+                    end = ?,
+                    guest_list_id = ?
+                WHERE id = ?"#,
             event.title,
-            event.artist,
+            event.slug,
             event.description,
-            event.start_date,
+            event.flyer,
+            event.start,
+            event.end,
+            event.guest_list_id,
             id
         )
         .execute(db)
@@ -74,15 +93,9 @@ impl Event {
 
     // Lookup an event by id, if one exists.
     pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Event>> {
-        let event = sqlx::query_as!(
-            Self,
-            r#"SELECT e.*
-              FROM events e
-              WHERE id = ?"#,
-            id,
-        )
-        .fetch_optional(db)
-        .await?;
+        let event = sqlx::query_as!(Self, r#"SELECT * FROM events WHERE id = ?"#, id)
+            .fetch_optional(db)
+            .await?;
         Ok(event)
     }
 }
