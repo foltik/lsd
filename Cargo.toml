@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [dependencies]
-askama = "0.13.0"
+askama = { version = "0.13.0", features = ["serde_json"] }
 axum = { version = "0.8", default-features = false, features = [
     "query",
     "form",

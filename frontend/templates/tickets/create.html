@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - new ticket{% endblock title %}
+
+{% block content %}
+  <div id="tickets/create">
+    <h1>Let's Create a Ticket</h1>
+    <form
+      class="ext/form"
+      action="/tickets/new"
+      method="post"
+      onsubmit="normalizeDateTime(ticket)"
+    >
+      <div class="field">
+        <label for="name">Ticket Name</label>
+        <input type="text" name="name" placeholder="e.g., Standard" />
+      </div>
+
+      <div class="field">
+        <label for="description">Ticket Description</label>
+        <textarea
+          name="description"
+          placeholder="Describe the ticket type..."
+        ></textarea>
+      </div>
+
+      <button type="submit">Create</button>
+    </form>
+  </div>
+  <script>
+    function normalizeDateTime(e) {
+      e.preventDefault();
+      const form = e.target;
+      form.submit();
+    }
+  </script>
+{% endblock content %}

@@ -13,16 +13,13 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         })
 }
 
-
 /// Display a list of all tickets.
-async fn list_tickets_page(
-    State(state): State<SharedAppState>,
-) -> AppResult<impl IntoResponse> {
-    let tickets= Ticket::list(&state.db).await?;
+async fn list_tickets_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    let tickets = Ticket::list(&state.db).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "tickets/list.html")]
-    pub struct Html {
+    struct Html {
         pub tickets: Vec<Ticket>,
     }
     Ok(Html { tickets })
@@ -32,7 +29,7 @@ async fn list_tickets_page(
 async fn create_ticket_page() -> impl IntoResponse {
     #[derive(Template, WebTemplate)]
     #[template(path = "tickets/create.html")]
-    pub struct Html;
+    struct Html;
     Html
 }
 

@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - tickets{% endblock title %}
+
+{% block content %}
+  <div id="tickets/list">
+    <h1 class="title">Ticket Types</h1>
+    {% for ticket in tickets %}
+      <div key="ticket-{{ ticket.id }}" class="ticket">
+        <a href="/tickets/{{ ticket.id }}">
+          {{ ticket.created_at | format_datetime("%b %d, %Y") }} |
+          {{ ticket.name }}
+          {{ ticket.description }}
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock content %}

@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ ticket.name }}{% endblock title %}
+
+{% block content %}
+  <div id="tickets/view">
+    <h1>Update Ticket: {{ ticket.name }}</h1>
+    <form
+      class="ext/form"
+      action="/tickets/{{ ticket.id }}/update"
+      method="post"
+      onsubmit="normalizeDateTime(ticket)"
+    >
+      <div class="field">
+        <label for="name">Ticket Name</label>
+        <input type="text" name="name" value="{{ ticket.name }}" />
+      </div>
+
+      <div class="field">
+        <label for="description">Ticket Description</label>
+        <textarea name="description" value="{{ ticket.description }}">
+        Update ticket type description
+      </textarea>
+      </div>
+      <button type="submit">Update</button>
+    </form>
+
+    <form
+      class="ext/form"
+      action="/tickets/{{ ticket.id }}/delete"
+      method="post"
+    >
+      <button type="submit">Delete</button>
+    </form>
+  </div>
+  <script>
+    function normalizeDateTime(e) {
+      e.preventDefault();
+      const form = e.target;
+      form.submit();
+    }
+  </script>
+{% endblock content %}

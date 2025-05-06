@@ -1,4 +1,6 @@
 use crate::db::event::{Event, UpdateEvent};
+use crate::db::event_ticket::EventTicket;
+use crate::db::ticket::Ticket;
 use crate::prelude::*;
 
 /// Add all `events` routes to the router.
@@ -45,22 +47,52 @@ struct ListEventsQuery {
     past: Option<bool>,
 }
 
-/// Display the form to create a new event.
-async fn create_event_page() -> impl IntoResponse {
-    #[derive(Template, WebTemplate)]
-    #[template(path = "events/create.html")]
-    pub struct Html;
-    Html
+#[derive(serde::Deserialize)]
+struct CreateEventWithTickets {
+    #[serde(flatten)]
+    pub event: UpdateEvent,
+    pub tickets: Vec<EventTicketForm>,
 }
 
-/// Process the form and create a new event.
+#[derive(serde::Deserialize)]
+struct EventTicketForm {
+    pub ticket_id: i64,
+    pub price: i64,
+    pub quantity: i64,
+    pub sort: i64,
+}
+
+/// Display the form to create a new event with ticket type selection.
+async fn create_event_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    let tickets = Ticket::list(&state.db).await?;
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/create.html")]
+    pub struct Html {
+        pub tickets: Vec<Ticket>,
+    }
+    Ok(Html { tickets })
+}
+
+/// Process the form and create a new event with tickets.
 async fn create_event_form(
     State(state): State<SharedAppState>,
-    Form(form): Form<UpdateEvent>,
+    Form(form): Form<CreateEventWithTickets>,
 ) -> AppResult<impl IntoResponse> {
-    let _ = Event::create(&state.db, &form).await?;
-    // TODO: Redirect to event page.
-    Ok("Event created.")
+    let event_id = Event::create(&state.db, &form.event).await?;
+    for ticket_form in form.tickets {
+        if ticket_form.ticket_id > 0 {
+            EventTicket::create(
+                &state.db,
+                event_id,
+                ticket_form.ticket_id,
+                ticket_form.price,
+                ticket_form.quantity,
+                ticket_form.sort,
+            )
+            .await?;
+        }
+    }
+    Ok(Redirect::to("/events"))
 }
 
 /// Display the form to update an event.
