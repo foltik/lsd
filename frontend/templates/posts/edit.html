@@ -124,6 +124,22 @@
         setModified();
       });
 
+      const isMac = navigator.platform.toUpperCase().includes('MAC');
+
+      editor.addEventListener('keydown', (e) => {
+        const cmdOrCtrl = (isMac ? e.metaKey : e.ctrlKey) && !e.shiftKey;
+        const key = e.key.toLowerCase();
+
+        if (cmdOrCtrl && ["i", "b", "u"].includes(key)) {
+          e.preventDefault();
+          switch (key) {
+            case "i": document.execCommand('italic');
+            case "b": document.execCommand('bold');
+            case "u": document.execCommand('underline');
+          }
+        }
+      });
+
       // Warn before leaving if modified
       window.addEventListener("beforeunload", (e) => {
         if (modified) {
