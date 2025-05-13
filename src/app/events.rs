@@ -1,5 +1,6 @@
 use crate::db::event::{Event, UpdateEvent};
 use crate::db::event_ticket::EventTicket;
+use crate::db::event_ticket::UpdateEventTicket;
 use crate::db::ticket::Ticket;
 use crate::prelude::*;
 
@@ -47,7 +48,7 @@ struct ListEventsQuery {
     past: Option<bool>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 struct CreateEventWithTickets {
     #[serde(flatten)]
     pub event: UpdateEvent,
@@ -55,6 +56,13 @@ struct CreateEventWithTickets {
 }
 
 #[derive(serde::Deserialize)]
+struct UpdateEventWithTickets {
+    #[serde(flatten)]
+    pub event: UpdateEvent,
+    pub tickets: Vec<EventTicketForm>,
+}
+
+#[derive(serde::Deserialize, Debug)]
 struct EventTicketForm {
     pub ticket_id: i64,
     pub price: i64,
@@ -78,9 +86,14 @@ async fn create_event_form(
     State(state): State<SharedAppState>,
     Form(form): Form<CreateEventWithTickets>,
 ) -> AppResult<impl IntoResponse> {
+    println!("Raw form data: {:?}", form);
     let event_id = Event::create(&state.db, &form.event).await?;
     for ticket_form in form.tickets {
-        if ticket_form.ticket_id > 0 {
+        if ticket_form.ticket_id > 0
+            && ticket_form.price > 0
+            && ticket_form.quantity > 0
+            && ticket_form.sort >= 0
+        {
             EventTicket::create(
                 &state.db,
                 event_id,
@@ -101,24 +114,41 @@ async fn update_event_page(
     Path(id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
     let event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
+    let event_tickets = EventTicket::list_for_event(&state.db, id).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/view.html")]
     pub struct Html {
         pub event: Event,
+        pub event_tickets: Vec<EventTicket>,
     }
-    Ok(Html { event })
+    Ok(Html { event, event_tickets })
 }
 
 /// Process the form and update an event.
 async fn update_event_form(
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
-    Form(form): Form<UpdateEvent>,
+    Form(form): Form<UpdateEventWithTickets>,
 ) -> AppResult<impl IntoResponse> {
-    Event::update(&state.db, id, &form).await?;
+    Event::update(&state.db, id, &form.event).await?;
+    for ticket_form in form.tickets {
+        if ticket_form.ticket_id > 0 {
+            EventTicket::update(
+                &state.db,
+                id,
+                ticket_form.ticket_id,
+                &UpdateEventTicket {
+                    price: ticket_form.price,
+                    quantity: ticket_form.quantity,
+                    sort: ticket_form.sort,
+                },
+            )
+            .await?;
+        }
+    }
     // TODO: Redirect to event page.
-    Ok("Event updated.")
+    Ok(Redirect::to(&format!("/events/{}", id)))
 }
 
 /// Delete an event.

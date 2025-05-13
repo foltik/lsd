@@ -42,15 +42,51 @@
     <form class="ext/form" action="/events/{{ event.id }}/delete" method="post">
       <button type="submit">Delete</button>
     </form>
+
+    {% for event_ticket in event_tickets %}
+      <div class="ticket-row">
+        <input
+          type="hidden"
+          name="tickets[{{ loop.index0 }}].ticket_id"
+          value="{{ event_ticket.ticket_id }}"
+        />
+        <div class="field">
+          <label for="tickets[{{ loop.index0 }}].price">Price</label>
+          <input
+            type="number"
+            name="tickets[{{ loop.index0 }}].price"
+            value="{{ event_ticket.price }}"
+            min="0"
+          />
+        </div>
+        <div class="field">
+          <label for="tickets[{{ loop.index0 }}].quantity">Quantity</label>
+          <input
+            type="number"
+            name="tickets[{{ loop.index0 }}].quantity"
+            value="{{ event_ticket.quantity }}"
+            min="0"
+          />
+        </div>
+
+    <form
+      action="/events/{{ event.id }}/tickets/{{ event_ticket.ticket_id }}/delete"
+      method="post"
+      style="display: inline;"
+    >
+      <button type="submit" class="remove-ticket">Remove</button>
+      </div>
+    {% endfor %}
+    <script>
+      function normalizeDateTime(e) {
+        e.preventDefault();
+        const form = e.target;
+        const inputA = form.querySelector('[name="start_select"]');
+        const inputB = form.querySelector('[name="start"]');
+        inputB.value = inputA.value + ":00";
+        dbg!(&form);
+        form.submit();
+      }
+    </script>
   </div>
-  <script>
-    function normalizeDateTime(e) {
-      e.preventDefault();
-      const form = e.target;
-      const inputA = form.querySelector('[name="start_select"]');
-      const inputB = form.querySelector('[name="start"]');
-      inputB.value = inputA.value + ":00";
-      form.submit();
-    }
-  </script>
 {% endblock content %}

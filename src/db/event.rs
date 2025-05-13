@@ -20,7 +20,7 @@ pub struct Event {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct UpdateEvent {
     pub guest_list_id: Option<i64>,
 

@@ -7,7 +7,8 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router.restricted_routes(User::ADMIN, |r| {
         r.route("/tickets", get(list_tickets_page))
           .route("/tickets/new", get(create_ticket_page).post(create_ticket_form))
-          .route("/tickets/{id}", get(update_ticket_page).post(update_ticket_form))
+          .route("/tickets/{id}", get(view_ticket_page).delete(delete_ticket))
+          .route("/tickets/{id}/edit", get(update_ticket_page).post(update_ticket_form))
           .route("/tickets/{id}/delete", post(delete_ticket),
             )
         })
@@ -39,7 +40,21 @@ async fn create_ticket_form(
     Form(form): Form<UpdateTicket>,
 ) -> AppResult<impl IntoResponse> {
     let _ = Ticket::create(&state.db, &form).await?;
-    Ok("Ticket created.")
+    Ok(Redirect::to("/tickets"))
+}
+
+async fn view_ticket_page(
+    State(state): State<SharedAppState>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let ticket = Ticket::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "tickets/view.html")]
+    pub struct Html {
+        pub ticket: Ticket,
+    }
+    Ok(Html { ticket })
 }
 
 /// Display the form to update a ticket.

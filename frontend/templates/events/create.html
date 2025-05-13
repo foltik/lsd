@@ -33,27 +33,59 @@
         <input type="file" name="cover_image" />
       </div>
 
-
       <!-- Ticket Types Section -->
       <h2>Ticket Types</h2>
-     <div id="tickets-container">
+      <div id="tickets-container">
         {% for ticket in tickets %}
           <div class="ticket-row">
-            <h3>{{ ticket.name }}</h3>
-            <input type="hidden" name="tickets[{{ loop.index0 }}].ticket_id" value="{{ ticket.id }}" />
+            <h4>{{ ticket.name }}</h4>
+            <input
+              type="hidden"
+              name="tickets[{{ loop.index0 }}].ticket_id"
+              value="{{ ticket.id }}"
+            />
             <div class="field">
               <label for="tickets[{{ loop.index0 }}].price">Price</label>
-              <input type="number" name="tickets[{{ loop.index0 }}].price" id="tickets[{{ loop.index0 }}].price" placeholder="Price" value="0" min="0" />
+              <input
+                type="number"
+                name="tickets[{{ loop.index0 }}].price"
+                id="tickets[{{ loop.index0 }}].price"
+                placeholder="Price"
+                value="0"
+                min="0"
+                required
+              />
             </div>
             <div class="field">
               <label for="tickets[{{ loop.index0 }}].quantity">Quantity</label>
-              <input type="number" name="tickets[{{ loop.index0 }}].quantity" id="tickets[{{ loop.index0 }}].quantity" placeholder="Quantity" value="0" min="0" />
+              <input
+                type="number"
+                name="tickets[{{ loop.index0 }}].quantity"
+                id="tickets[{{ loop.index0 }}].quantity"
+                placeholder="Quantity"
+                value="0"
+                min="0"
+                required
+              />
             </div>
             <div class="field">
               <label for="tickets[{{ loop.index0 }}].sort">Sort Order</label>
-              <input type="number" name="tickets[{{ loop.index0 }}].sort" id="tickets[{{ loop.index0 }}].sort" placeholder="Sort Order" value="0" min="0" />
+              <input
+                type="number"
+                name="tickets[{{ loop.index0 }}].sort"
+                id="tickets[{{ loop.index0 }}].sort"
+                placeholder="Sort Order"
+                value="0"
+                min="0"
+              />
             </div>
-            <button type="button" class="remove-ticket">Remove</button>
+            <button
+              type="button"
+              class="remove-ticket"
+              aria-label="Remove {{ ticket.name }} ticket type"
+            >
+              Remove
+            </button>
           </div>
         {% endfor %}
       </div>
@@ -63,72 +95,118 @@
     </form>
   </div>
   <script>
-     document.addEventListener('DOMContentLoaded', function() {
-      const ticketsContainer = document.getElementById('tickets-container');
-      const addTicketButton = document.getElementById('add-ticket');
-      const ticketOptions = [
-        { id: '', name: 'Select Ticket Type' },
-        {% for ticket in tickets %}
-          { id: {{ ticket.id }}, name: {{ ticket.name | tojson }} },
-        {% endfor %}
-      ];
+document.addEventListener('DOMContentLoaded', function() {
+    const ticketsContainer = document.getElementById('tickets-container');
+    const addTicketButton = document.getElementById('add-ticket');
+    const ticketOptions = [
+      { id: '', name: 'Select Ticket Type' },
+      {% for ticket in tickets %}
+        { id: {{ ticket.id }}, name: {{ ticket.name | tojson }} },
+      {% endfor %}
+    ];
 
-      function createTicketRow(index) {
-        const newRow = document.createElement('div');
-        newRow.className = 'ticket-row';
-        let selectHtml = `<select name="tickets[${index}].ticket_id">`;
-        ticketOptions.forEach(option => {
-          selectHtml += `<option value="${option.id}">${option.name}</option>`;
-        });
-        selectHtml += '</select>';
-        newRow.innerHTML = `
-          ${selectHtml}
-          <input type="number" name="tickets[${index}].price" placeholder="Price" value="0" min="0" />
-          <input type="number" name="tickets[${index}].quantity" placeholder="Quantity" value="0" min="0" />
-          <input type="number" name="tickets[${index}].sort" placeholder="Sort Order" value="0" min="0" />
-          <button type="button" class="remove-ticket">Remove</button>
-        `;
-        return newRow;
-      }
-
-      function renumberTicketRows() {
-        const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
-        ticketRows.forEach((row, newIndex) => {
-          const select = row.querySelector('select');
-          const priceInput = row.querySelector('input[placeholder="Price"]');
-          const quantityInput = row.querySelector('input[placeholder="Quantity"]');
-          const sortInput = row.querySelector('input[placeholder="Sort Order"]');
-          select.name = `tickets[${newIndex}].ticket_id`;
-          priceInput.name = `tickets[${newIndex}].price`;
-          quantityInput.name = `tickets[${newIndex}].quantity`;
-          sortInput.name = `tickets[${newIndex}].sort`;
-        });
-      }
-
-      function addTicketRow() {
-        const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
-        const newIndex = ticketRows.length;
-        const newRow = createTicketRow(newIndex);
-        ticketsContainer.appendChild(newRow);
-      }
-
-      addTicketButton.addEventListener('click', addTicketRow);
-
-      ticketsContainer.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-ticket')) {
-          const row = e.target.parentElement;
-          row.remove();
-          renumberTicketRows();
-        }
+    function createTicketRow(index) {
+      const newRow = document.createElement('div');
+      newRow.className = 'ticket-row';
+      let selectHtml = `<select name="tickets[${index}].ticket_id" required>`;
+      ticketOptions.forEach(option => {
+        selectHtml += `<option value="${option.id}">${option.name}</option>`;
       });
+      selectHtml += '</select>';
+      newRow.innerHTML = `
+        ${selectHtml}
+        <div class="field">
+          <label for="tickets[${index}].price">Price</label>
+          <input type="number" name="tickets[${index}].price" id="tickets[${index}].price" placeholder="Price" value="0" min="0" required />
+        </div>
+        <div class="field">
+          <label for="tickets[${index}].quantity">Quantity</label>
+          <input type="number" name="tickets[${index}].quantity" id="tickets[${index}].quantity" placeholder="Quantity" value="0" min="0" required />
+        </div>
+        <div class="field">
+          <label for="tickets[${index}].sort">Sort Order</label>
+          <input type="number" name="tickets[${index}].sort" id="tickets[${index}].sort" placeholder="Sort Order" value="0" min="0" required />
+        </div>
+        <button type="button" class="remove-ticket" aria-label="Remove ticket type">Remove</button>
+      `;
+      return newRow;
+    }
+
+    function renumberTicketRows() {
+      const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
+      ticketRows.forEach((row, newIndex) => {
+        const select = row.querySelector('select');
+        const hiddenInput = row.querySelector('input[type="hidden"]');
+        const priceInput = row.querySelector('input[placeholder="Price"]');
+        const quantityInput = row.querySelector('input[placeholder="Quantity"]');
+        const sortInput = row.querySelector('input[placeholder="Sort Order"]');
+        const priceLabel = row.querySelector('label[for$=".price"]');
+        const quantityLabel = row.querySelector('label[for$=".quantity"]');
+        const sortLabel = row.querySelector('label[for$=".sort"]');
+        if (select) {
+          select.name = `tickets[${newIndex}].ticket_id`;
+        }
+        if (hiddenInput) {
+          hiddenInput.name = `tickets[${newIndex}].ticket_id`;
+        }
+        priceInput.name = `tickets[${newIndex}].price`;
+        priceInput.id = `tickets[${newIndex}].price`;
+        quantityInput.name = `tickets[${newIndex}].quantity`;
+        quantityInput.id = `tickets[${newIndex}].quantity`;
+        sortInput.name = `tickets[${newIndex}].sort`;
+        sortInput.id = `tickets[${newIndex}].sort`;
+        priceLabel.setAttribute('for', `tickets[${newIndex}].price`);
+        quantityLabel.setAttribute('for', `tickets[${newIndex}].quantity`);
+        sortLabel.setAttribute('for', `tickets[${newIndex}].sort`);
+      });
+    }
+
+    function addTicketRow() {
+      const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
+      const newIndex = ticketRows.length;
+      const newRow = createTicketRow(newIndex);
+      ticketsContainer.appendChild(newRow);
+    }
+
+    addTicketButton.addEventListener('click', addTicketRow);
+
+    ticketsContainer.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-ticket')) {
+        const row = e.target.parentElement;
+        row.remove();
+        renumberTicketRows();
+      }
     });
+
+  
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+      const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
+      let hasValidTicket = false;
+      for (const row of ticketRows) {
+        const ticketId = row.querySelector('input[type="hidden"], select').value;
+        const price = parseFloat(row.querySelector('input[placeholder="Price"]').value);
+        const quantity = parseFloat(row.querySelector('input[placeholder="Quantity"]').value);
+        const sort = parseFloat(row.querySelector('input[placeholder="Sort Order"]').value);
+        if (ticketId && price > 0 && quantity > 0 && sort >= 0) {
+          hasValidTicket = true;
+        }
+      }
+      if (!hasValidTicket) {
+        e.preventDefault();
+        alert('Please include at least one ticket type with a valid ticket ID, price, quantity, and sort order.');
+        return;
+      }
+    });
+
     function normalizeDateTime(e) {
       e.preventDefault();
       const form = e.target;
-      const inputA = form.querySelector('[name="start_date_select"]');
-      const inputB = form.querySelector('[name="start_date"]');
-      inputB.value = inputA.value + ":00";
+      const startInput = form.querySelector('[name="start_date_select"]');
+      const startHidden = form.querySelector('[name="start_date"]');
+      startHidden.value = startInput.value ? startInput.value + ":00" : "";
       form.submit();
     }
+  });
   </script>
 {% endblock content %}

@@ -5,6 +5,7 @@
 {% block content %}
   <div id="tickets/list">
     <h1 class="title">Ticket Types</h1>
+    <a href="/tickets/new" class="button">New Ticket Type</a>
     {% for ticket in tickets %}
       <div key="ticket-{{ ticket.id }}" class="ticket">
         <a href="/tickets/{{ ticket.id }}">
