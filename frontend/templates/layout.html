@@ -11,11 +11,30 @@
   <body>
     {% block header %}
       <header>
-        <nav>
+        <nav class="right-0 left-0 flex flex-row justify-between">
           <!-- TODO: Link to "/" when the homepage is finished -->
           <a class="lsd" href="https://lightandsound.design">
             lightandsound.design
           </a>
+          <div id="auth-container">
+            {% if user is defined && let Some(user) = user %}
+              <a href="/user/edit">
+                {% if user.first_name.is_some() || user.last_name.is_some() %}
+                  {% if let Some(first_name) = user.first_name %}
+                    {{ first_name }}
+                  {% endif %}
+
+                  {% if let Some(last_name) = user.last_name %}
+                    {{ last_name }}
+                  {% endif %}
+                {% else %}
+                  User
+                {% endif %}
+              </a>
+            {% else %}
+              <a href="/login">login</a>
+            {% endif %}
+          </div>
           <!-- <div class="sep"></div> -->
           <!-- <a href="/events">Events</a> -->
           <!-- <a href="/posts">Posts</a> -->

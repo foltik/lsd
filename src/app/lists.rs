@@ -9,6 +9,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| {
         r.route("/newsletter", get(newsletter_signup_page))
          .route("/lists/{id}/signup", get(signup_page).post(signup_form))
+         .route("/lists/confirm", get(signup_confirmation_page))
     })
     .restricted_routes(User::ADMIN, |r| {
         r.route("/lists", get(list_lists_page))
@@ -20,37 +21,43 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 
 #[derive(Template, WebTemplate)]
 #[template(path = "lists/edit.html")]
-pub struct ListEditHtml {
-    pub list: List,
-    pub members: Vec<ListMember>,
+struct ListEditHtml {
+    list: List,
+    members: Vec<ListMember>,
+    user: Option<User>,
 }
 
 /// Display a list of all lists
-async fn list_lists_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+async fn list_lists_page(
+    State(state): State<SharedAppState>,
+    user: Option<User>,
+) -> AppResult<impl IntoResponse> {
     let lists = List::list(&state.db).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/view.html")]
-    pub struct Html {
-        pub lists: Vec<List>,
+    struct Html {
+        lists: Vec<List>,
+        user: Option<User>,
     }
-    Ok(Html { lists })
+    Ok(Html { lists, user })
 }
 
 /// Display the form to view and edit a list.
 async fn edit_list_page(
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
+    user: Option<User>,
 ) -> AppResult<impl IntoResponse> {
     let list = List::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
 
     let members = List::list_members(&state.db, id).await?;
 
-    Ok(ListEditHtml { list, members })
+    Ok(ListEditHtml { list, members, user })
 }
 
 /// Display the form to create a new list.
-async fn create_list_page() -> AppResult<impl IntoResponse> {
+async fn create_list_page(user: Option<User>) -> AppResult<impl IntoResponse> {
     let list = List {
         id: 0,
         name: "".into(),
@@ -59,7 +66,7 @@ async fn create_list_page() -> AppResult<impl IntoResponse> {
         updated_at: Utc::now().naive_utc(),
     };
 
-    Ok(ListEditHtml { list, members: vec![] })
+    Ok(ListEditHtml { list, members: vec![], user })
 }
 
 /// Process the form and create or edit a list.
@@ -99,14 +106,18 @@ async fn remove_list_member(
 
 /// Display the newsletter signup page.
 // XXX: Hard coded to list with id=1.
-pub async fn newsletter_signup_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-    signup_page(State(state), Path(1)).await
+pub async fn newsletter_signup_page(
+    State(state): State<SharedAppState>,
+    user: Option<User>,
+) -> AppResult<impl IntoResponse> {
+    signup_page(State(state), Path(1), user).await
 }
 
 /// Display the list signup page.
 async fn signup_page(
     State(state): State<SharedAppState>,
     Path(list_id): Path<i64>,
+    user: Option<User>,
 ) -> AppResult<impl IntoResponse> {
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
@@ -120,10 +131,11 @@ async fn signup_page(
 
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/signup.html")]
-    pub struct Html {
-        pub list: List,
+    struct Html {
+        list: List,
+        user: Option<User>,
     }
-    Ok(Html { list })
+    Ok(Html { list, user })
 }
 
 /// Process the list signup form.
@@ -144,16 +156,29 @@ async fn signup_form(
     };
     List::add_members(&state.db, list.id, &[form.email.email.as_ref()]).await?;
 
-    #[derive(Template, WebTemplate)]
-    #[template(path = "lists/confirmation.html")]
-    pub struct Html {
-        pub list: List,
-        pub email: String,
-    }
-    Ok(Html { list, email: state.config.email.from.email.to_string() })
+    Ok(Redirect::to(&format!("/lists/confirmation?list_id={}", list.id)))
 }
 #[derive(serde::Deserialize)]
 struct NewsletterForm {
     list_id: i64,
     email: Mailbox,
+}
+
+async fn signup_confirmation_page(
+    State(state): State<SharedAppState>,
+    Query(list_id): Query<i64>,
+    user: Option<User>,
+) -> AppResult<impl IntoResponse> {
+    let Some(list) = List::lookup_by_id(&state.db, list_id).await? else {
+        return Err(AppError::NotFound);
+    };
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "lists/confirmation.html")]
+    struct Html {
+        list: List,
+        email: String,
+        user: Option<User>,
+    }
+    Ok(Html { list, email: state.config.email.from.email.to_string(), user })
 }

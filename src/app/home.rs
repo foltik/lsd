@@ -6,9 +6,11 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 }
 
 /// Display the front page.
-async fn home_page() -> impl IntoResponse {
+async fn home_page(user: Option<User>) -> impl IntoResponse {
     #[derive(Template, WebTemplate)]
     #[template(path = "index.html")]
-    pub struct Html;
-    Html
+    pub struct Html {
+        user: Option<User>,
+    }
+    Html { user }
 }

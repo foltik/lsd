@@ -23,17 +23,19 @@ async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppSt
 async fn email_unsubscribe_view(
     Path(email_id): Path<i64>,
     State(state): State<SharedAppState>,
+    user: Option<User>,
 ) -> AppResult<Response> {
     #[derive(Template, WebTemplate)]
     #[template(path = "emails/unsubscribe.html")]
-    pub struct Html {
-        pub email_id: i64,
-        pub email_address: String,
+    struct Html {
+        email_id: i64,
+        email_address: String,
+        user: Option<User>,
     }
 
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await? {
-        return Ok(Html { email_id, email_address: email.address }.into_response());
+        return Ok(Html { email_id, email_address: email.address, user }.into_response());
     }
 
     Ok("You have been unsubscribed.".into_response())

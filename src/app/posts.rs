@@ -25,21 +25,26 @@ mod read {
     use super::*;
 
     // Display a list of posts.
-    pub async fn list(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    pub async fn list(
+        State(state): State<SharedAppState>,
+        user: Option<User>,
+    ) -> AppResult<impl IntoResponse> {
         let posts = Post::list(&state.db).await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/list.html")]
         struct Html {
-            pub posts: Vec<Post>,
+            posts: Vec<Post>,
+            user: Option<User>,
         }
-        Ok(Html { posts })
+        Ok(Html { posts, user })
     }
 
     // Display a single post.
     pub async fn view(
         State(state): State<SharedAppState>,
         Path(url): Path<String>,
+        user: Option<User>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
             return Err(AppError::NotFound);
@@ -48,9 +53,10 @@ mod read {
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/view.html")]
         struct Html {
-            pub post: Post,
+            post: Post,
+            user: Option<User>,
         }
-        Ok(Html { post })
+        Ok(Html { post, user })
     }
 
     // Display a preview of a post as it would appear in an email.
@@ -78,7 +84,7 @@ mod edit {
     use super::*;
 
     // New post page.
-    pub async fn new() -> AppResult<impl IntoResponse> {
+    pub async fn new(user: Option<User>) -> AppResult<impl IntoResponse> {
         let post = Post {
             id: 0,
             title: "".into(),
@@ -91,16 +97,18 @@ mod edit {
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/edit.html")]
-        pub struct Html {
-            pub post: Post,
+        struct Html {
+            post: Post,
+            user: Option<User>,
         }
-        Ok(Html { post })
+        Ok(Html { post, user })
     }
 
     // Edit post page.
     pub async fn edit_page(
         State(state): State<SharedAppState>,
         Path(url): Path<String>,
+        user: Option<User>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
             return Err(AppError::NotFound);
@@ -108,10 +116,11 @@ mod edit {
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/edit.html")]
-        pub struct Html {
-            pub post: Post,
+        struct Html {
+            post: Post,
+            user: Option<User>,
         }
-        Ok(Html { post })
+        Ok(Html { post, user })
     }
 
     // Edit post form.
@@ -155,6 +164,7 @@ mod send {
     pub async fn page(
         State(state): State<SharedAppState>,
         Path(url): Path<String>,
+        user: Option<User>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
             return Err(AppError::NotFound);
@@ -163,11 +173,12 @@ mod send {
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/send.html")]
-        pub struct Html {
-            pub post: Post,
-            pub lists: Vec<List>,
+        struct Html {
+            post: Post,
+            lists: Vec<List>,
+            user: Option<User>,
         }
-        Ok(Html { post, lists })
+        Ok(Html { post, lists, user })
     }
 
     #[derive(Template, WebTemplate)]
@@ -186,6 +197,7 @@ mod send {
     pub async fn form(
         State(state): State<SharedAppState>,
         Path(url): Path<String>,
+        user: Option<User>,
         Form(form): Form<SendForm>,
     ) -> AppResult<impl IntoResponse> {
         let Some(mut post) = Post::lookup_by_url(&state.db, &url).await? else {
@@ -259,13 +271,21 @@ mod send {
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/sent.html")]
-        pub struct SentHtml {
-            pub post_title: String,
-            pub list_name: String,
-            pub num_sent: i64,
-            pub num_skipped: i64,
-            pub errors: HashMap<String, String>,
+        struct SentHtml {
+            post_title: String,
+            list_name: String,
+            num_sent: i64,
+            num_skipped: i64,
+            errors: HashMap<String, String>,
+            user: Option<User>,
         }
-        Ok(SentHtml { post_title: post.title, list_name: list.name, num_sent, num_skipped, errors })
+        Ok(SentHtml {
+            post_title: post.title,
+            list_name: list.name,
+            num_sent,
+            num_skipped,
+            errors,
+            user,
+        })
     }
 }

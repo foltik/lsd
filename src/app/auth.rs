@@ -109,7 +109,7 @@ async fn login_link(
 ) -> AppResult<Response> {
     #[derive(Template, WebTemplate)]
     #[template(path = "auth/login.html")]
-    pub struct Html;
+    struct Html;
 
     match query.token {
         Some(token) => {
@@ -137,8 +137,8 @@ struct LoginQuery {
 async fn register_link(Query(query): Query<RegisterQuery>) -> impl IntoResponse {
     #[derive(Template, WebTemplate)]
     #[template(path = "auth/register.html")]
-    pub struct Html {
-        pub token: String,
+    struct Html {
+        token: String,
     }
     Html { token: query.token }
 }

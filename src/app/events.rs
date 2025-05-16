@@ -18,6 +18,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 async fn list_events_page(
     State(state): State<SharedAppState>,
     Query(query): Query<ListEventsQuery>,
+    user: Option<User>,
 ) -> AppResult<impl IntoResponse> {
     let now = Utc::now().naive_utc();
     let past = query.past.unwrap_or(false);
@@ -35,10 +36,11 @@ async fn list_events_page(
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/list.html")]
-    pub struct Html {
-        pub events: Vec<Event>,
+    struct Html {
+        events: Vec<Event>,
+        user: Option<User>,
     }
-    Ok(Html { events })
+    Ok(Html { events, user })
 }
 #[derive(serde::Deserialize)]
 struct ListEventsQuery {
@@ -46,11 +48,13 @@ struct ListEventsQuery {
 }
 
 /// Display the form to create a new event.
-async fn create_event_page() -> impl IntoResponse {
+async fn create_event_page(user: Option<User>) -> impl IntoResponse {
     #[derive(Template, WebTemplate)]
     #[template(path = "events/create.html")]
-    pub struct Html;
-    Html
+    struct Html {
+        user: Option<User>,
+    }
+    Html { user }
 }
 
 /// Process the form and create a new event.
@@ -67,15 +71,17 @@ async fn create_event_form(
 async fn update_event_page(
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
+    user: Option<User>,
 ) -> AppResult<impl IntoResponse> {
     let event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/view.html")]
-    pub struct Html {
-        pub event: Event,
+    struct Html {
+        event: Event,
+        user: Option<User>,
     }
-    Ok(Html { event })
+    Ok(Html { event, user })
 }
 
 /// Process the form and update an event.
