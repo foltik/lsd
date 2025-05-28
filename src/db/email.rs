@@ -11,6 +11,8 @@ pub struct Email {
     pub address: String,
     pub post_id: Option<i64>,
     pub list_id: Option<i64>,
+    pub user_id: Option<i64>,
+    pub event_id: Option<i64>,
     pub error: Option<String>,
     pub created_at: NaiveDateTime,
     pub sent_at: Option<NaiveDateTime>,
