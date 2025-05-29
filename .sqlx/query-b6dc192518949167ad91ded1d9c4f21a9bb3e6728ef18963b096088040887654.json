@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT l.id, l.name, COUNT(m.email) as count, COUNT(e.sent_at) as skip\n            FROM lists l\n            LEFT JOIN list_members m ON m.list_id = l.id\n            LEFT JOIN emails e\n                ON e.address = m.email\n                AND e.post_id = ?\n                AND e.list_id = l.id\n                AND e.sent_at IS NOT NULL\n            GROUP BY l.id;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "count",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "skip",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b6dc192518949167ad91ded1d9c4f21a9bb3e6728ef18963b096088040887654"
+}

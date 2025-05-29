@@ -81,5 +81,11 @@ pub struct EmailConfig {
     /// Mailbox to put as ReplyTo.
     pub reply_to: Option<Mailbox>,
     /// Maximum number of emails to send per second.
-    pub ratelimit: Option<usize>,
+
+    #[serde(default = "default_ratelimit")]
+    pub ratelimit: usize,
+}
+
+fn default_ratelimit() -> usize {
+    10
 }
