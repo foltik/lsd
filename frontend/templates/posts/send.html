@@ -1,21 +1,233 @@
 {% extends "layout.html" %}
-{% block title %}Send post - {{ post.title }}{% endblock %}
+{% block title %}Send post – {{ post.title }}{% endblock %}
 
 {% block content %}
   <div id="posts/send">
-    <form class="ext/form" method="POST" action="/posts/{{ post.url }}/send">
+    <form
+      id="form"
+      class="ext/form"
+      method="POST"
+      action="/posts/{{ post.url }}/send"
+    >
       <header>Send post</header>
+
       <label>Title</label>
       <h1 class="title">{{ post.title }}</h1>
+
       <div class="field">
         <label for="list_id">Send to list</label>
-        <select class="ext/select" name="list_id">
+        <select id="list" class="ext/select" name="list_id">
           {% for list in lists %}
-            <option value="{{ list.id }}">{{ list.name }}</option>
+            <option
+              value="{{ list.id }}"
+              data-count="{{ list.count }}"
+              data-skip="{{ list.skip }}"
+            >
+              {{ list.name }}
+            </option>
           {% endfor %}
         </select>
       </div>
-      <button class="ext/button :green" type="submit">Send</button>
+
+      <button id="send" class="ext/button :green" type="submit">Send</button>
     </form>
+
+    <section id="results">
+      <ul class="counts">
+        <li>Sent<span id="sent">0</span></li>
+        <li>Remaining<span id="remaining">0</span></li>
+        <li>Already Sent<span id="skipped">0</span></li>
+        <li>ETA<span id="eta"></span></li>
+      </ul>
+
+      <div class="progress">
+        <div id="bar"></div>
+      </div>
+      <p id="status"></p>
+      <pre id="errors"></pre>
+    </section>
   </div>
 {% endblock content %}
+
+{% block scripts %}
+  <script type="module">
+    const ui = Object.fromEntries(
+      [
+        "form",
+        "list",
+        "results",
+        "sent",
+        "remaining",
+        "skipped",
+        "eta",
+        "bar",
+        "errors",
+        "status",
+        "send",
+      ].map((id) => [id, document.getElementById(id)]),
+    );
+
+    // Update the status section during sending
+    const sendState = {
+      status: null,
+
+      start: null,
+      sent: 0,
+      remaining: 0,
+      skipped: 0,
+      errors: [],
+    };
+    const renderSendStatus = (s) => {
+      if (s.status == "sending") {
+        ui.send.disabled = true;
+        ui.list.disabled = true;
+        ui.results.classList.add("visible");
+      } else if (s.status == "ok") {
+        ui.list.disabled = false;
+        ui.bar.className = "ok";
+        ui.status.className = "ok";
+        ui.status.innerText = "Sent successfully!";
+      } else if (s.status == "error") {
+        ui.list.disabled = false;
+        ui.bar.className = "error";
+        ui.status.className = "error";
+        ui.errors.className = "error";
+        ui.errors.innerHTML = s.errors.join("\n");
+        if (s.sent > 0) {
+          ui.status.innerText = "Sent with errors:";
+        } else {
+          ui.status.innerText = "Error:";
+        }
+      } else {
+        ui.results.classList.remove("visible");
+      }
+    };
+    const renderSendProgress = (s) => {
+      ui.sent.textContent = s.sent;
+      ui.remaining.textContent = s.remaining;
+      ui.skipped.textContent = s.skipped;
+
+      const total = s.sent + s.remaining;
+      const progress = total > 0 ? s.sent / total : 0;
+      ui.bar.style.width = progress * 100 + "%";
+    };
+    // Update the ETA during sending
+    const ratelimit = parseInt("{{ ratelimit }}"); // avoid breaking prettier's parser
+    const renderSendEta = (s) => {
+      const elapsed = (Date.now() - s.start) / 1000.0;
+      const rem = s.remaining / ratelimit;
+      const min = Math.floor(rem / 60);
+      const sec = Math.floor(rem % 60);
+      ui.eta.textContent = `${min}:${String(sec).padStart(2, "0")}`;
+    };
+
+    // Update the send button text when the destination list changes
+    const buttonState = {
+      count: 0,
+      skip: 0,
+    };
+    const renderButton = (s) => {
+      if (s.count - s.skip == 0) {
+        ui.send.innerText = `Already sent ${s.skip} emails`;
+        ui.send.disabled = true;
+      } else {
+        const extra = s.skip > 0 ? ` (${s.skip} already sent)` : "";
+        ui.send.innerText = `Send ${s.count - s.skip} emails${extra}`;
+        ui.send.disabled = false;
+      }
+    };
+    const buttonHandler = () => {
+      const { count, skip } = ui.list.selectedOptions[0].dataset;
+      buttonState.count = parseInt(count);
+      buttonState.skip = parseInt(skip);
+      renderButton(buttonState);
+    };
+    ui.list.addEventListener("change", () => {
+      buttonHandler();
+
+      sendState.status = null;
+      renderSendStatus(sendState);
+    });
+    buttonHandler();
+
+    // Handle form submission and response streaming
+    ui.form.addEventListener("submit", async (e) => {
+      // Prevent submission and collect form data before modifying it
+      e.preventDefault();
+      const formData = new FormData(ui.form);
+
+      sendState.status = "sending";
+      sendState.start = Date.now();
+      sendState.sent = 0;
+      sendState.remaining = 0;
+      sendState.skipped = 0;
+      renderSendStatus(sendState);
+      renderSendProgress(sendState);
+
+      // Set a timer to regularly update the ETA
+      const etaTimer = setInterval(() => renderSendEta(sendState), 1000);
+      renderSendEta(sendState);
+
+      try {
+        // Submit the form to kick off the stream
+        const resp = await fetch(ui.form.action, {
+          method: "POST",
+          body: new URLSearchParams(formData),
+        });
+        if (!resp.ok)
+          throw new Error(`${resp.statusText}: ${await resp.text()}`);
+
+        // Start streaming progress updates as newline-delimited JSON of the form:
+        // {sent: 1, remaining: 2, skipped: 3} or {error: "..."}
+        const stream = ndjson(resp.body);
+        for await (const msg of stream) {
+          if (msg.error) {
+            sendState.errors.push(msg.error);
+            continue;
+          }
+
+          sendState.sent = msg.sent;
+          sendState.remaining = msg.remaining;
+          sendState.skipped = msg.skipped;
+          renderSendProgress(sendState);
+        }
+
+        sendState.status = "ok";
+        renderSendStatus(sendState);
+
+        ui.list.selectedOptions[0].dataset.skip =
+          sendState.sent + sendState.skipped;
+        buttonState.skip += sendState.sent;
+        renderButton(buttonState);
+      } catch (err) {
+        sendState.status = "error";
+        sendState.errors.push(err);
+        renderSendStatus(sendState);
+      }
+
+      clearInterval(etaTimer);
+    });
+
+    // Generate an async stream of newline delimited JSON objects from a request body
+    async function* ndjson(body) {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        // Read some data. It might contain multiple or partial lines.
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Consume as many complete lines as we can from the buffer.
+        let i;
+        while ((i = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, i).trim();
+          yield JSON.parse(line);
+          buffer = buffer.slice(i + 1);
+        }
+      }
+    }
+  </script>
+{% endblock scripts %}

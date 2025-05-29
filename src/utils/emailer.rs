@@ -2,7 +2,7 @@ use lettre::message::{Mailbox, MessageBuilder};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
-use super::error::AppResult;
+use crate::prelude::*;
 use crate::EmailConfig;
 
 /// Email client.
@@ -12,6 +12,8 @@ pub struct Emailer {
     from: Mailbox,
     /// Underlying SMTPS transport.
     transport: SmtpTransport,
+    /// Batch size for bulk email sending.
+    batch_size: usize,
 }
 
 impl Emailer {
@@ -24,16 +26,46 @@ impl Emailer {
             transport = transport.credentials(Credentials::new(username, password));
         }
         let transport = transport.build();
+        let batch_size = config.ratelimit;
 
-        Ok(Self { transport, from: config.from })
+        Ok(Self { transport, from: config.from, batch_size })
     }
 
     pub fn builder(&self) -> MessageBuilder {
         Message::builder().from(self.from.clone())
     }
 
-    pub async fn send(&self, message: Message) -> AppResult<()> {
-        self.transport.send(&message)?;
+    pub async fn send(&self, message: &Message) -> AppResult<()> {
+        self.transport.send(message)?;
         Ok(())
     }
+
+    pub async fn send_batch(
+        &self,
+        state: SharedAppState,
+        messages: Vec<Message>,
+    ) -> impl Stream<Item = AppResult<Progress>> {
+        async_stream::stream! {
+            let mut progress = Progress { sent: 0, remaining: messages.len() as u32 };
+
+            for batch in messages.chunks(state.mailer.batch_size) {
+                for message in batch {
+                    let result = state.mailer.send(message).await;
+                    progress.sent += 1;
+                    progress.remaining -= 1;
+
+                    yield result.map(|_| progress);
+
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Progress {
+    pub sent: u32,
+    pub remaining: u32,
 }
