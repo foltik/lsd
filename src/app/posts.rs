@@ -235,10 +235,8 @@ mod send {
             EmailHtml { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
         let mut messages = vec![];
         let mut email_ids = vec![];
-        let mut skipped = 0;
         for Email { id, address, sent_at, .. } in emails {
             if sent_at.is_some() {
-                skipped += 1;
                 continue;
             }
 
@@ -261,23 +259,16 @@ mod send {
             email_ids.push(id);
         }
 
-        let to_send = messages.len();
         let email_ids = futures::stream::iter(email_ids);
         let results = state.mailer.send_batch(Arc::clone(&state), messages).await;
 
         let body = Body::from_stream(async_stream::stream! {
-            if to_send == 0 {
-                let json = json!({"sent": 0, "remaining": 0, "skipped": skipped}).to_string();
-                yield Ok::<_, AppError>(format!("{json}\n"));
-                return;
-            }
-
             let mut stream = Box::pin(results.zip(email_ids));
             while let Some((progress, email_id)) = stream.next().await {
                 let json = match progress {
                     Ok(p) => {
                         Email::mark_sent(&state.db, email_id).await?;
-                        json!({"sent": p.sent, "remaining": p.remaining, "skipped": skipped})
+                        json!({"sent": p.sent, "remaining": p.remaining})
                     }
                     Err(e) => {
                         let e = e.to_string();
@@ -285,7 +276,6 @@ mod send {
                         json!({"error": e})
                     }
                 }.to_string();
-
                 yield Ok::<_, AppError>(format!("{json}\n"));
             }
         });
