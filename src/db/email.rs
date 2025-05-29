@@ -31,21 +31,6 @@ impl Email {
         Ok(res)
     }
 
-    /// Lookup an email by address, post, and list.
-    pub async fn lookup_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> AppResult<Option<Email>> {
-        let res = sqlx::query_as!(
-            Self,
-            r#"SELECT * FROM emails
-               WHERE address = ? AND post_id = ? AND list_id = ?"#,
-            address,
-            post_id,
-            list_id
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(res)
-    }
-
     /// Create a new email record.
     pub async fn create_login(db: &Db, address: &str) -> AppResult<i64> {
         let res = sqlx::query!("INSERT INTO emails (kind, address) VALUES (?, ?)", Email::LOGIN, address)
@@ -54,18 +39,26 @@ impl Email {
         Ok(res.last_insert_rowid())
     }
 
-    /// Create a new email record referencing another database entry.
-    pub async fn create_post(db: &Db, address: &str, post_id: i64, list_id: i64) -> AppResult<i64> {
-        let res = sqlx::query!(
-            r#"INSERT INTO emails (kind, address, post_id, list_id) VALUES (?, ?, ?, ?)"#,
+    /// Create email entries for the given post for all users on the given list if they don't already exist.
+    pub async fn create_posts(db: &Db, post_id: i64, list_id: i64) -> AppResult<Vec<Email>> {
+        let emails = sqlx::query_as!(
+            Email,
+            r#"
+            INSERT INTO emails (kind, address, post_id, list_id)
+                SELECT ?, email, ?, list_id
+                FROM list_members
+                WHERE list_id = ?
+            ON CONFLICT(address, post_id, list_id) DO UPDATE
+                SET kind = emails.kind -- no-op so the rows are still returned
+            RETURNING *;
+            "#,
             Email::POST,
-            address,
             post_id,
-            list_id
+            list_id,
         )
-        .execute(db)
+        .fetch_all(db)
         .await?;
-        Ok(res.last_insert_rowid())
+        Ok(emails)
     }
 
     /// Mark an email as sent.

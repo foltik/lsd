@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM emails\n               WHERE address = ? AND post_id = ? AND list_id = ?",
+  "query": "\n            INSERT INTO emails (kind, address, post_id, list_id)\n                SELECT ?, email, ?, list_id\n                FROM list_members\n                WHERE list_id = ?\n            ON CONFLICT(address, post_id, list_id) DO UPDATE\n                SET kind = emails.kind -- no-op so the rows are still returned\n            RETURNING *;\n            ",
   "describe": {
     "columns": [
       {
@@ -64,5 +64,5 @@
       true
     ]
   },
-  "hash": "d5b31cf64e5569aefee09f726593c1bba2925c2bf3eececa5159caac1ff36bf2"
+  "hash": "29d668deeea76669f896a340fde8922a2137472758b5201cc183912cd5232e43"
 }

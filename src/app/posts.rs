@@ -1,4 +1,4 @@
-use crate::db::list::{List, ListMember};
+use crate::db::list::List;
 use crate::db::post::{Post, UpdatePost};
 use crate::prelude::*;
 
@@ -149,6 +149,10 @@ mod edit {
 }
 
 mod send {
+    use axum::body::Body;
+    use futures::StreamExt;
+    use serde_json::json;
+
     use super::*;
 
     /// Display the form to send a post.
@@ -159,15 +163,41 @@ mod send {
         let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
             return Err(AppError::NotFound);
         };
-        let lists = List::list(&state.db).await?;
+
+        #[derive(sqlx::FromRow)]
+        struct ListExt {
+            id: i64,
+            name: String,
+            count: i64,
+            skip: i64,
+        }
+        let lists = sqlx::query_as!(
+            ListExt,
+            r#"
+            SELECT l.id, l.name, COUNT(m.email) as count, COUNT(e.sent_at) as skip
+            FROM lists l
+            LEFT JOIN list_members m ON m.list_id = l.id
+            LEFT JOIN emails e
+                ON e.address = m.email
+                AND e.post_id = ?
+                AND e.list_id = l.id
+                AND e.sent_at IS NOT NULL
+            GROUP BY l.id;
+            "#,
+            post.id,
+        )
+        .fetch_all(&state.db)
+        .await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/send.html")]
         pub struct Html {
             pub post: Post,
-            pub lists: Vec<List>,
+            pub lists: Vec<ListExt>,
+            pub ratelimit: usize,
         }
-        Ok(Html { post, lists })
+        let ratelimit = state.config.email.ratelimit;
+        Ok(Html { post, lists, ratelimit })
     }
 
     #[derive(Template, WebTemplate)]
@@ -194,7 +224,8 @@ mod send {
         let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
             return Err(AppError::NotFound);
         };
-        let members = List::list_members(&state.db, form.list_id).await?;
+
+        let emails = Email::create_posts(&state.db, post.id, list.id).await?;
 
         // XXX: The `url` field is just a slug, not an absolute URL.
         // We can't yet access `config.app.url` within templates, so we just mutate
@@ -202,70 +233,63 @@ mod send {
         post.url = format!("{}/p/{}", &state.config.app.url, &post.url);
         let mut email_template =
             EmailHtml { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
+        let mut messages = vec![];
+        let mut email_ids = vec![];
+        let mut skipped = 0;
+        for Email { id, address, sent_at, .. } in emails {
+            if sent_at.is_some() {
+                skipped += 1;
+                continue;
+            }
 
-        let mut num_sent = 0;
-        let mut num_skipped = 0;
-        let mut errors = HashMap::new();
-        let batch_size = state.config.email.ratelimit.unwrap_or(members.len());
-        for (i, members) in members.chunks(batch_size).enumerate() {
-            tracing::info!(
-                "Sending emails ({}..{} of {})",
-                i * batch_size + 1,
-                (i + 1) * batch_size + 1,
-                members.len()
-            );
-            for ListMember { email, .. } in members {
-                // If this post was already sent to this address in this list, skip sending it again.
-                if Email::lookup_post(&state.db, email, post.id, list.id).await?.is_some() {
-                    num_skipped += 1;
-                    continue;
-                }
-                let email_id = Email::create_post(&state.db, email, post.id, list.id).await?;
+            email_template.opened_url = format!("{}/emails/{id}/footer.gif", &state.config.app.url);
+            email_template.unsub_url = format!("{}/emails/{id}/unsubscribe", &state.config.app.url);
 
-                email_template.opened_url = format!("{}/emails/{email_id}/footer.gif", &state.config.app.url);
-                email_template.unsub_url = format!("{}/emails/{email_id}/unsubscribe", &state.config.app.url);
+            let from = &state.config.email.from;
+            let reply_to = state.config.email.reply_to.as_ref().unwrap_or(from);
+            let message = state
+                .mailer
+                .builder()
+                .to(address.parse().unwrap())
+                .reply_to(reply_to.clone())
+                .subject(&post.title)
+                .header(lettre::message::header::ContentType::TEXT_HTML)
+                .body(email_template.render()?)
+                .unwrap();
 
-                use lettre::message::header::ContentType;
+            messages.push(message);
+            email_ids.push(id);
+        }
 
-                let from = &state.config.email.from;
-                let reply_to = state.config.email.reply_to.as_ref().unwrap_or(from);
-                let msg = state
-                    .mailer
-                    .builder()
-                    .to(email.parse().unwrap())
-                    .reply_to(reply_to.clone())
-                    .subject(&post.title)
-                    .header(ContentType::TEXT_HTML)
-                    .body(email_template.render()?)
-                    .unwrap();
+        let to_send = messages.len();
+        let email_ids = futures::stream::iter(email_ids);
+        let results = state.mailer.send_batch(Arc::clone(&state), messages).await;
 
-                match state.mailer.send(msg).await {
-                    Ok(_) => {
+        let body = Body::from_stream(async_stream::stream! {
+            if to_send == 0 {
+                let json = json!({"sent": 0, "remaining": 0, "skipped": skipped}).to_string();
+                yield Ok::<_, AppError>(format!("{json}\n"));
+                return;
+            }
+
+            let mut stream = Box::pin(results.zip(email_ids));
+            while let Some((progress, email_id)) = stream.next().await {
+                let json = match progress {
+                    Ok(p) => {
                         Email::mark_sent(&state.db, email_id).await?;
-                        num_sent += 1;
+                        json!({"sent": p.sent, "remaining": p.remaining, "skipped": skipped})
                     }
                     Err(e) => {
-                        tracing::error!("Sending email: {e:#}");
                         let e = e.to_string();
                         Email::mark_error(&state.db, email_id, &e).await?;
-                        errors.insert(email.clone(), e);
+                        json!({"error": e})
                     }
-                }
+                }.to_string();
+
+                yield Ok::<_, AppError>(format!("{json}\n"));
             }
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
+        });
 
-        tracing::info!("Successfully sent {} emails", members.len());
-
-        #[derive(Template, WebTemplate)]
-        #[template(path = "posts/sent.html")]
-        pub struct SentHtml {
-            pub post_title: String,
-            pub list_name: String,
-            pub num_sent: i64,
-            pub num_skipped: i64,
-            pub errors: HashMap<String, String>,
-        }
-        Ok(SentHtml { post_title: post.title, list_name: list.name, num_sent, num_skipped, errors })
+        Ok(body)
     }
 }
