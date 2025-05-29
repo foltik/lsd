@@ -11,7 +11,7 @@
     }
   }
 
-  #results {
+  #progress {
     @apply border-lsd-white/10 mt-6 hidden w-full max-w-md rounded-md border p-4;
 
     &.visible {
@@ -19,7 +19,7 @@
     }
 
     .counts {
-      @apply mb-4 grid grid-cols-4 text-sm;
+      @apply mb-4 grid grid-cols-3 text-sm;
       font-variant-numeric: tabular-nums;
       li {
         @apply flex flex-col items-center gap-0.5;
@@ -45,7 +45,7 @@
       }
     }
 
-    .progress {
+    .bar-container {
       @apply h-3 w-full overflow-hidden rounded bg-white/10;
       #bar {
         @apply relative h-full w-px overflow-hidden rounded bg-[var(--color-lsd-green)]/30 transition-[width] duration-200 ease-in-out;
