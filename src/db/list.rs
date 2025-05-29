@@ -28,6 +28,17 @@ pub struct UpdateList {
     pub emails: String,
 }
 
+#[derive(serde::Serialize)]
+pub struct ListWithCount {
+    pub id: i64,
+    pub name: String,
+    pub description: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+
+    pub count: i64,
+}
+
 impl List {
     /// List all lists.
     pub async fn list(db: &Db) -> AppResult<Vec<List>> {

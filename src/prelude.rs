@@ -1,4 +1,3 @@
-pub use std::collections::HashMap;
 pub use std::convert::Infallible;
 pub use std::sync::Arc;
 pub use std::time::Duration;
@@ -13,6 +12,7 @@ pub use axum::response::{IntoResponse, Redirect, Response};
 pub use axum::routing::{delete, get, post};
 pub use axum::Form;
 pub use chrono::Utc;
+pub use futures::{Stream, StreamExt as _};
 
 pub use crate::db::email::Email;
 pub use crate::db::user::User;
