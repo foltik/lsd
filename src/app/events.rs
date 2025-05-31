@@ -84,7 +84,7 @@ async fn create_event_page(State(state): State<SharedAppState>) -> AppResult<imp
 /// Process the form and create a new event with tickets.
 async fn create_event_form(
     State(state): State<SharedAppState>,
-    Form(form): Form<CreateEventWithTickets>,
+    Json(form): Json<CreateEventWithTickets>,
 ) -> AppResult<impl IntoResponse> {
     println!("Raw form data: {:?}", form);
     let event_id = Event::create(&state.db, &form.event).await?;

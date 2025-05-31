@@ -5,28 +5,21 @@
 {% block content %}
   <div id="events/create">
     <h1>Let's Create an Event</h1>
-    <form
-      class="ext/form"
-      action="/events/new"
-      method="post"
-      onsubmit="normalizeDateTime(event)"
-    >
+    <form id="event-form" class="ext/form" action="/events/new" method="post">
       <div class="field">
         <label for="title">Event Title</label>
-        <input type="text" name="title" />
+        <input type="text" name="title" required />
       </div>
 
       <div class="field">
         <label for="description">Event Description</label>
-        <textarea name="description">What can people expect...</textarea>
+        <textarea name="description" required>What can people expect...</textarea>
       </div>
 
       <div class="field">
         <label for="start_date_select">Event Date</label>
-        <input type="datetime-local" name="start_date_select" />
+        <input type="datetime-local" name="start_date_select" required />
       </div>
-
-      <input type="hidden" name="start_date" />
 
       <div class="field">
         <label for="cover_image">Event Cover Image</label>
@@ -94,119 +87,121 @@
       <button type="submit">Create</button>
     </form>
   </div>
+
   <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const ticketsContainer = document.getElementById('tickets-container');
-    const addTicketButton = document.getElementById('add-ticket');
-    const ticketOptions = [
-      { id: '', name: 'Select Ticket Type' },
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("event-form");
+      const ticketsContainer = document.getElementById("tickets-container");
+      const addTicketButton = document.getElementById("add-ticket");
+
+      const ticketOptions = [{ id: '', name: 'Select Ticket Type' }];
       {% for ticket in tickets %}
-        { id: {{ ticket.id }}, name: {{ ticket.name | tojson }} },
+      ticketOptions.push({ id: {{ ticket.id }}, name: {{ ticket.name | tojson | safe }} });
       {% endfor %}
-    ];
 
-    function createTicketRow(index) {
-      const newRow = document.createElement('div');
-      newRow.className = 'ticket-row';
-      let selectHtml = `<select name="tickets[${index}].ticket_id" required>`;
-      ticketOptions.forEach(option => {
-        selectHtml += `<option value="${option.id}">${option.name}</option>`;
-      });
-      selectHtml += '</select>';
-      newRow.innerHTML = `
-        ${selectHtml}
-        <div class="field">
-          <label for="tickets[${index}].price">Price</label>
-          <input type="number" name="tickets[${index}].price" id="tickets[${index}].price" placeholder="Price" value="0" min="0" required />
-        </div>
-        <div class="field">
-          <label for="tickets[${index}].quantity">Quantity</label>
-          <input type="number" name="tickets[${index}].quantity" id="tickets[${index}].quantity" placeholder="Quantity" value="0" min="0" required />
-        </div>
-        <div class="field">
-          <label for="tickets[${index}].sort">Sort Order</label>
-          <input type="number" name="tickets[${index}].sort" id="tickets[${index}].sort" placeholder="Sort Order" value="0" min="0" required />
-        </div>
-        <button type="button" class="remove-ticket" aria-label="Remove ticket type">Remove</button>
-      `;
-      return newRow;
-    }
-
-    function renumberTicketRows() {
-      const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
-      ticketRows.forEach((row, newIndex) => {
-        const select = row.querySelector('select');
-        const hiddenInput = row.querySelector('input[type="hidden"]');
-        const priceInput = row.querySelector('input[placeholder="Price"]');
-        const quantityInput = row.querySelector('input[placeholder="Quantity"]');
-        const sortInput = row.querySelector('input[placeholder="Sort Order"]');
-        const priceLabel = row.querySelector('label[for$=".price"]');
-        const quantityLabel = row.querySelector('label[for$=".quantity"]');
-        const sortLabel = row.querySelector('label[for$=".sort"]');
-        if (select) {
-          select.name = `tickets[${newIndex}].ticket_id`;
-        }
-        if (hiddenInput) {
-          hiddenInput.name = `tickets[${newIndex}].ticket_id`;
-        }
-        priceInput.name = `tickets[${newIndex}].price`;
-        priceInput.id = `tickets[${newIndex}].price`;
-        quantityInput.name = `tickets[${newIndex}].quantity`;
-        quantityInput.id = `tickets[${newIndex}].quantity`;
-        sortInput.name = `tickets[${newIndex}].sort`;
-        sortInput.id = `tickets[${newIndex}].sort`;
-        priceLabel.setAttribute('for', `tickets[${newIndex}].price`);
-        quantityLabel.setAttribute('for', `tickets[${newIndex}].quantity`);
-        sortLabel.setAttribute('for', `tickets[${newIndex}].sort`);
-      });
-    }
-
-    function addTicketRow() {
-      const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
-      const newIndex = ticketRows.length;
-      const newRow = createTicketRow(newIndex);
-      ticketsContainer.appendChild(newRow);
-    }
-
-    addTicketButton.addEventListener('click', addTicketRow);
-
-    ticketsContainer.addEventListener('click', function(e) {
-      if (e.target.classList.contains('remove-ticket')) {
-        const row = e.target.parentElement;
-        row.remove();
-        renumberTicketRows();
-      }
-    });
-
-  
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-      const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
-      let hasValidTicket = false;
-      for (const row of ticketRows) {
-        const ticketId = row.querySelector('input[type="hidden"], select').value;
-        const price = parseFloat(row.querySelector('input[placeholder="Price"]').value);
-        const quantity = parseFloat(row.querySelector('input[placeholder="Quantity"]').value);
-        const sort = parseFloat(row.querySelector('input[placeholder="Sort Order"]').value);
-        if (ticketId && price > 0 && quantity > 0 && sort >= 0) {
-          hasValidTicket = true;
-        }
-      }
-      if (!hasValidTicket) {
+      // Form submission
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        alert('Please include at least one ticket type with a valid ticket ID, price, quantity, and sort order.');
-        return;
-      }
-    });
 
-    function normalizeDateTime(e) {
-      e.preventDefault();
-      const form = e.target;
-      const startInput = form.querySelector('[name="start_date_select"]');
-      const startHidden = form.querySelector('[name="start_date"]');
-      startHidden.value = startInput.value ? startInput.value + ":00" : "";
-      form.submit();
-    }
-  });
+        const body = {};
+
+        body.title = form.querySelector('[name="title"]').value;
+        body.description = form.querySelector('[name="description"]').value;
+        body.start_date_select = form.querySelector('[name="start_date_select"]').value;
+
+
+        body.start = body.start_date_select + ":00";
+        delete body.start_date_select;
+
+        body.slug = body.title.toLowerCase().replace(/\s+/g, "-");
+        body.flyer = null;
+        body.end = null;
+        body.guest_list_id = null;
+
+        body.tickets = [];
+        const ticketRows = document.querySelectorAll("#tickets-container .ticket-row");
+        ticketRows.forEach((row) => {
+          const ticketIdInput = row.querySelector('input[type="hidden"], select');
+          const ticketId = ticketIdInput ? parseInt(ticketIdInput.value) : 0;
+          const price = parseInt(row.querySelector('input[name*="price"]').value) || 0;
+          const quantity = parseInt(row.querySelector('input[name*="quantity"]').value) || 0;
+          const sort = parseInt(row.querySelector('input[name*="sort"]').value) || 0;
+
+          if (ticketId > 0 && price > 0 && quantity > 0) {
+            body.tickets.push({
+              ticket_id: ticketId,
+              price: price,
+              quantity: quantity,
+              sort: sort,
+            });
+          }
+        });
+
+        console.log("Sending:", body);
+
+        const resp = await fetch(form.action, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (resp.ok) {
+          window.location.href = "/events";
+        } else {
+          console.error("Error:", await resp.text());
+        }
+      });
+
+      function createTicketRow(index) {
+        const newRow = document.createElement('div');
+        newRow.className = 'ticket-row';
+        
+        let selectHtml = `<select name="tickets[${index}].ticket_id" required>`;
+        ticketOptions.forEach(option => {
+          selectHtml += `<option value="${option.id}">${option.name}</option>`;
+        });
+        selectHtml += '</select>';
+        
+        newRow.innerHTML = `
+          <div class="field">
+            <label>Ticket Type</label>
+            ${selectHtml}
+          </div>
+          <div class="field">
+            <label for="tickets[${index}].price">Price</label>
+            <input type="number" name="tickets[${index}].price" id="tickets[${index}].price" placeholder="Price" value="0" min="0" required />
+          </div>
+          <div class="field">
+            <label for="tickets[${index}].quantity">Quantity</label>
+            <input type="number" name="tickets[${index}].quantity" id="tickets[${index}].quantity" placeholder="Quantity" value="0" min="0" required />
+          </div>
+          <div class="field">
+            <label for="tickets[${index}].sort">Sort Order</label>
+            <input type="number" name="tickets[${index}].sort" id="tickets[${index}].sort" placeholder="Sort Order" value="0" min="0" />
+          </div>
+          <button type="button" class="remove-ticket" aria-label="Remove ticket type">Remove</button>
+        `;
+        return newRow;
+      }
+
+      function addTicketRow() {
+        const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
+        const newIndex = ticketRows.length;
+        const newRow = createTicketRow(newIndex);
+        ticketsContainer.appendChild(newRow);
+      }
+
+      addTicketButton.addEventListener('click', addTicketRow);
+
+      ticketsContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-ticket')) {
+          const row = e.target.parentElement;
+          row.remove();
+        }
+      });
+
+    });
   </script>
 {% endblock content %}

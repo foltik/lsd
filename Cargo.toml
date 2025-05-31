@@ -9,6 +9,7 @@ askama = { version = "0.13.0", features = ["serde_json"] }
 axum = { version = "0.8", default-features = false, features = [
     "query",
     "form",
+    "json",
 ] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 axum-extra = { version = "0.10", features = ["cookie"] }

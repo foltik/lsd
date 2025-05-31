@@ -12,6 +12,7 @@ pub use axum::middleware::Next;
 pub use axum::response::{IntoResponse, Redirect, Response};
 pub use axum::routing::{delete, get, post};
 pub use axum::Form;
+pub use axum::Json;
 pub use chrono::Utc;
 
 pub use crate::db::email::Email;
