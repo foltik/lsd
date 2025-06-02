@@ -29,18 +29,28 @@ pub struct UpdateUser {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct UserView {
+    pub id: i64,
     pub first_name: String,
     pub last_name: String,
     pub email: String,
+    pub is_admin: bool,
+    pub is_writer: bool,
 }
 impl From<User> for UserView {
     fn from(user: User) -> Self {
         Self {
+            id: user.id,
             first_name: user.first_name.unwrap_or_default(),
             last_name: user.last_name.unwrap_or_default(),
             email: user.email,
+            is_writer: false,
+            is_admin: false,
         }
     }
+}
+pub struct UserViewList {
+    pub users: Vec<UserView>,
+    pub has_next_page: bool,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -70,11 +80,34 @@ impl User {
         Ok(row.last_insert_rowid())
     }
 
+    /// Delete a user
+    pub async fn remove(db: &Db, user_id: i64) -> AppResult<()> {
+        sqlx::query!(r#"DELETE FROM users WHERE id = ?"#, user_id).execute(db).await?;
+        Ok(())
+    }
+
+    /// Add role to a user
     pub async fn add_role(db: &Db, user_id: i64, role: &str) -> AppResult<()> {
         sqlx::query!(r#"INSERT INTO user_roles (user_id, role) VALUES (?, ?)"#, user_id, role)
             .execute(db)
             .await?;
         Ok(())
+    }
+
+    /// Remove role to a user
+    pub async fn remove_role(db: &Db, user_id: i64, role: &str) -> AppResult<()> {
+        sqlx::query!(r#"DELETE FROM user_roles WHERE user_id=? AND role=?"#, user_id, role)
+            .execute(db)
+            .await?;
+        Ok(())
+    }
+
+    /// Look up user by user_id, if one exists.
+    pub async fn lookup_by_id(db: &Db, user_id: i64) -> AppResult<Option<User>> {
+        let row = sqlx::query_as!(Self, "SELECT * FROM users WHERE id = ?", user_id)
+            .fetch_optional(db)
+            .await?;
+        Ok(row)
     }
 
     /// Lookup a user by email address, if one exists.
@@ -130,23 +163,58 @@ impl User {
     }
 
     //Query users based on params
-    pub async fn list(db: &Db, query: &ListUserQuery) -> AppResult<Vec<UserView>> {
+    pub async fn list(db: &Db, query: &ListUserQuery) -> AppResult<UserViewList> {
         let current_page = (query.page - 1) * query.page_size;
-        let users = sqlx::query_as!(
+        let next_page_check = query.page_size + 1;
+        let mut users = sqlx::query_as!(
             User,
             r#"SELECT u.*
                FROM users u
                LIMIT ?
                OFFSET ?"#,
-            query.page_size,
+            next_page_check,
             current_page,
         )
         .fetch_all(db)
-        .await?
-        .into_iter()
-        .map(UserView::from)
-        .collect();
+        .await?;
 
-        Ok(users)
+        let has_next_page = users.len() > query.page_size as usize;
+        users = if has_next_page { users[0..query.page_size as usize].to_vec() } else { users };
+
+        let user_ids: Vec<i64> = users.iter().map(|u| u.id).collect();
+
+        let user_roles: Vec<(i64, String)> = if !user_ids.is_empty() {
+            let placeholders = user_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let query_str =
+                format!("SELECT user_id, role FROM user_roles WHERE user_id IN ({})", placeholders);
+            let mut query = sqlx::query_as(&query_str);
+            for user_id in &user_ids {
+                query = query.bind(user_id);
+            }
+            query.fetch_all(db).await?
+        } else {
+            Vec::new()
+        };
+
+        let user_view_list: Vec<UserView> = users
+            .into_iter()
+            .map(|user| {
+                let user_roles_for_this_user: Vec<String> = user_roles
+                    .iter()
+                    .filter(|(user_id, _)| *user_id == user.id)
+                    .map(|(_, role)| role.clone())
+                    .collect();
+                UserView {
+                    id: user.id,
+                    first_name: user.first_name.unwrap_or_default(),
+                    last_name: user.last_name.unwrap_or_default(),
+                    email: user.email,
+                    is_writer: user_roles_for_this_user.contains(&"writer".to_string()),
+                    is_admin: user_roles_for_this_user.contains(&"admin".to_string()),
+                }
+            })
+            .collect();
+
+        Ok(UserViewList { users: user_view_list, has_next_page })
     }
 }

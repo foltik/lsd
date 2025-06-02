@@ -54,4 +54,7 @@
   &.\:red {
     @apply border-lsd-red/30 bg-lsd-red/20 hover:bg-lsd-red/30;
   }
+  &.\:disabled {
+    @apply border-lsd-white/10 bg-lsd-white/5 hover:bg-lsd-white/5 cursor-default;
+  }
 }

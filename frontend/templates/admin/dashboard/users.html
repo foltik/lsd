@@ -44,17 +44,55 @@
                 <td>{{ user.last_name }}</td>
                 <td>{{ user.email }}</td>
                 <td>
-                  <input type="checkbox" {% if true %}checked{% endif %} />
+                  <input
+                    _="on click 
+                    {% if user.is_writer %}
+                      if(confirm('Are you sure you want to promote user to a
+                      writer?'))
+                    {% else %}
+                      if(confirm('Are you sure you want to demote user from a
+                      writer?'))
+                    {% endif %}
+                    then fetch /admin/action/users/{{ user.id }}/changeRole?action={% if user.is_writer %}remove{% else %}add{% endif %}&role=writer with method:'POST'
+                    then reload() the location of the window"
+                    type="checkbox"
+                    {% if user.is_writer %}checked{% endif %}
+                  />
                 </td>
-                <td><input type="checkbox" /></td>
-                <td><button class="ext/button :red">Delete</button></td>
+                <td>
+                  <input
+                    _="on click 
+                    {% if user.is_admin %}
+                      if(confirm('Are you sure you want to promote user to a
+                      admin?'))
+                    {% else %}
+                      if(confirm('Are you sure you want to demote user from a
+                      admin?'))
+                    {% endif %}
+                    then fetch /admin/action/users/{{ user.id }}/changeRole?action={% if user.is_admin %}remove{% else %}add{% endif %}&role=admin with method:'POST'
+                    then reload() the location of the window"
+                    type="checkbox"
+                    {% if user.is_admin %}checked{% endif %}
+                  />
+                </td>
+                <td>
+                  <button
+                    _="on click
+                    if(confirm('Are you sure you want to remove this user?'))
+                    then fetch /admin/action/users/{{ user.id }}/remove with method:'DELETE'
+                    then reload() the location of the window"
+                    class="ext/button :red"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
       <div class="table-footer">
-        <a>
+        <a id="users-pagination-back" class="ext/button">
           <svg
             class="h-6 w-6 text-gray-800 dark:text-white"
             aria-hidden="true"
@@ -73,7 +111,10 @@
             />
           </svg>
         </a>
-        <a>
+        <a
+          class="ext/button {% if has_next_page == false %}:disabled{% endif %}"
+          data-has-next-page="{{ has_next_page }}"
+        >
           <svg
             class="h-6 w-6 text-gray-800 dark:text-white"
             aria-hidden="true"
@@ -95,5 +136,25 @@
       </div>
     </div>
   </div>
-  <script></script>
+  <script>
+    (() => {
+      let currentPage = parseInt(
+        window.location.search.split("&")[0].substr(6),
+      );
+      const [prevButton, nextButton] =
+        document.querySelectorAll(".table-footer>a");
+      const hasNextPage = nextButton.dataset.hasNextPage === "true";
+
+      if (currentPage <= 1) {
+        prevButton.classList.add(":disabled");
+      } else {
+        prevButton.href = `/admin/dashboard/users?page=${currentPage - 1}&page_size=25`;
+      }
+      if (!hasNextPage) {
+        nextButton.classList.add(":disabled");
+      } else {
+        nextButton.href = `/admin/dashboard/users?page=${currentPage + 1}&page_size=25`;
+      }
+    })();
+  </script>
 {% endblock panel %}

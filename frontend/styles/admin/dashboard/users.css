@@ -32,7 +32,7 @@
   .table-footer {
     @apply py-1.5;
     a {
-      @apply inline-flex w-12 cursor-pointer justify-center rounded-sm border-1 border-neutral-700 py-1.5 first-of-type:mr-3;
+      @apply inline-flex w-12 justify-center rounded-sm border-1 border-neutral-700 py-1.5 first-of-type:mr-3;
     }
   }
 }
