@@ -58,3 +58,7 @@
     @apply border-lsd-white/10 bg-lsd-white/5 hover:bg-lsd-white/5 cursor-default;
   }
 }
+
+.ext\/button:disabled {
+  @apply cursor-not-allowed opacity-50;
+}

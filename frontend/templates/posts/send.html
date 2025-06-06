@@ -1,21 +1,209 @@
 {% extends "layout.html" %}
-{% block title %}Send post - {{ post.title }}{% endblock %}
+{% block title %}Send post – {{ post.title }}{% endblock %}
 
 {% block content %}
   <div id="posts/send">
-    <form class="ext/form" method="POST" action="/posts/{{ post.url }}/send">
+    <form
+      id="form"
+      class="ext/form"
+      method="POST"
+      action="/posts/{{ post.url }}/send"
+    >
       <header>Send post</header>
+
       <label>Title</label>
       <h1 class="title">{{ post.title }}</h1>
+
       <div class="field">
         <label for="list_id">Send to list</label>
-        <select class="ext/select" name="list_id">
+        <select id="list" class="ext/select" name="list_id">
           {% for list in lists %}
-            <option value="{{ list.id }}">{{ list.name }}</option>
+            <option
+              value="{{ list.id }}"
+              data-count="{{ list.count }}"
+              data-skip="{{ list.skip }}"
+            >
+              {{ list.name }}
+            </option>
           {% endfor %}
         </select>
       </div>
-      <button class="ext/button :green" type="submit">Send</button>
+
+      <button id="send" class="ext/button :green" type="submit">Send</button>
     </form>
+
+    <section id="progress">
+      <ul class="counts">
+        <li>Sent<span id="sent">0</span></li>
+        <li>Remaining<span id="remaining">0</span></li>
+        <li>ETA<span id="eta"></span></li>
+      </ul>
+
+      <div class="bar-container">
+        <div id="bar"></div>
+      </div>
+      <p id="status"></p>
+      <pre id="errors"></pre>
+    </section>
   </div>
 {% endblock content %}
+
+{% block scripts %}
+  <!-- prettier-ignore -->
+  <script type="module">
+    /* ---------- DOM ----------------------------------------------------------- */
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form:   $('form'),
+      list:   $('list'),
+      send:   $('send'),
+
+      sent:   $('sent'),
+      remain: $('remaining'),
+      eta:    $('eta'),
+      bar:    $('bar'),
+
+      status: $('status'),
+      errors: $('errors'),
+      prog:   $('progress'),
+    };
+
+    /* ---------- State --------------------------------------------------------- */
+    const ratelimit = parseInt("{{ ratelimit }}");
+    const state = {
+      status: null,
+      statusText() {
+        switch (this.status) {
+          case 'sending': return 'Sending...';
+          case 'ok': return 'Sent successfully!';
+          case 'error': return this.sent > 0 ? 'Sent with errors' : 'Error sending';
+        }
+      },
+
+      list: {
+        count: 0,
+        skip: 0,
+        toSend() {
+          return this.count - this.skip;
+        }
+      },
+
+      errors: [],
+      progress: {
+        start: Date.now(),
+        sent: 0,
+        remaining: 0,
+        percent() {
+          const total = this.sent + this.remaining;
+          return total > 0 ? (this.sent / total) * 100 : 0;
+        },
+        eta() {
+          const rem = this.remaining / ratelimit;
+          const min = Math.floor(rem / 60);
+          const sec = Math.floor(rem % 60);
+          return `${min}:${String(sec).padStart(2, '0')}`;
+        },
+      },
+    };
+
+    /* ---------- Rendering ----------------------------------------------------- */
+    const render = () => {
+      // Update status
+      ui.status.textContent = state.statusText();
+      ui.status.className = state.status;
+      ui.bar.className = state.status;
+      ui.errors.className = state.status;
+
+      // Update progress
+      ui.list.disabled = state.status == 'sending';
+      ui.prog.classList.toggle('visible', state.status != null);
+      ui.sent.textContent   = state.progress.sent;
+      ui.remain.textContent = state.progress.remaining;
+      ui.eta.textContent    = state.progress.eta();
+      ui.bar.style.width    = state.progress.percent() + '%';
+      ui.errors.textContent = state.errors.join('\n');
+
+      // Update send button
+      ui.send.disabled = state.status == 'sending' || state.list.toSend() == 0;
+      ui.send.textContent = state.list.toSend() == 0
+        ? `Already sent ${state.list.skip} emails`
+        : `Send ${state.list.toSend()} emails`
+          + (state.list.skip > 0 ? ` (${state.list.skip} already sent)` : '');
+    }
+
+    /* ---------- List change handler ------------------------------------------- */
+    ui.list.addEventListener("change", () => {
+      const { count, skip } = ui.list.selectedOptions[0].dataset;
+      state.list.count = +count;
+      state.list.skip = +skip;
+      state.status = null;
+      render();
+    });
+    ui.list.dispatchEvent(new Event("change"));
+
+    /* ---------- Form submit handler ------------------------------------------- */
+    ui.form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = new URLSearchParams(new FormData(ui.form));
+
+      state.status = 'sending';
+      state.progress.start = Date.now();
+      state.progress.sent = 0;
+      state.progress.remaining = 0;
+      state.errors = [];
+      render();
+
+      try {
+        const resp = await fetch(ui.form.action, { method: "POST", body });
+        if (!resp.ok) throw new Error(await resp.text());
+
+        // The server streams us messages of the form:
+        // * {sent: 1, remaining: 2, skipped: 3}
+        // * {error: "..."}
+        for await (const msg of streamJson(resp.body)) {
+          if (msg.error) {
+            state.errors.push(msg.error);
+            continue;
+          }
+
+          state.progress.sent = msg.sent;
+          state.progress.remaining = msg.remaining;
+          render();
+        }
+
+        // Stash new skip count back into the <option> now that we've sent some emails
+        const opt = ui.list.selectedOptions[0];
+        state.list.skip = +opt.dataset.skip + state.progress.sent;
+        opt.dataset.skip = state.list.skip;
+
+        state.status = "ok";
+      } catch (e) {
+        state.errors.push(e.stack);
+        state.status = 'error';
+      }
+      render();
+    });
+
+    /* ---------- Stream JSON from request body --------------------------------- */
+    async function* streamJson(body) {
+      const reader = body.getReader();
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        // Read some data. It might contain multiple or partial lines.
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Consume as many complete lines as we can from the buffer.
+        let i;
+        while ((i = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, i).trim();
+          yield JSON.parse(line);
+          buffer = buffer.slice(i + 1);
+        }
+      }
+    }
+  </script>
+{% endblock scripts %}

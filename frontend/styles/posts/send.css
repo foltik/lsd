@@ -1,5 +1,6 @@
 #posts\/send {
   @apply mt-12 flex flex-col items-center;
+
   form {
     @apply border-lsd-white/10 w-full max-w-md rounded-md border p-6;
     header {
@@ -8,5 +9,81 @@
     .title {
       @apply mb-4 text-2xl font-bold;
     }
+  }
+
+  #progress {
+    @apply border-lsd-white/10 mt-6 hidden w-full max-w-md rounded-md border p-4;
+
+    &.visible {
+      @apply block;
+    }
+
+    .counts {
+      @apply mb-4 grid grid-cols-3 text-sm;
+      font-variant-numeric: tabular-nums;
+      li {
+        @apply flex flex-col items-center gap-0.5;
+        span {
+          @apply font-bold;
+        }
+      }
+    }
+    #status {
+      @apply mt-3 hidden text-center text-xl;
+
+      &.ok {
+        @apply block text-[var(--color-lsd-green)];
+      }
+      &.error {
+        @apply block text-[var(--color-lsd-red)];
+      }
+    }
+    #errors {
+      @apply mt-4 hidden rounded border border-[var(--color-lsd-red)] bg-[var(--color-lsd-red)]/10 p-3 text-sm whitespace-pre-wrap text-[var(--color-lsd-red)];
+      &.error {
+        @apply block;
+      }
+    }
+
+    .bar-container {
+      @apply h-3 w-full overflow-hidden rounded bg-white/10;
+      #bar {
+        @apply relative h-full w-px overflow-hidden rounded bg-[var(--color-lsd-green)]/30 transition-[width] duration-200 ease-in-out;
+        &::before {
+          @apply absolute inset-0 left-0 w-[150%];
+          content: "";
+          background: linear-gradient(
+            115deg,
+            transparent 0%,
+            color-mix(in srgb, var(--color-lsd-green) 80%, transparent) 45%,
+            color-mix(in srgb, var(--color-lsd-green) 80%, transparent) 55%,
+            transparent 100%
+          );
+          transform: translateX(-100%);
+          animation: shimmer 1.6s linear infinite;
+        }
+        &.ok {
+          @apply bg-[var(--color-lsd-green)]/80;
+          &::before {
+            animation: none;
+          }
+        }
+        &.error {
+          @apply bg-[var(--color-lsd-red)]/80;
+          &::before {
+            animation: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes shimmer {
+  80% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
   }
 }

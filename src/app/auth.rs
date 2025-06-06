@@ -102,7 +102,7 @@ async fn login_form(
         }
     };
 
-    match state.mailer.send(msg).await {
+    match state.mailer.send(&msg).await {
         Ok(_) => {
             Email::mark_sent(&state.db, email_id).await?;
             Ok("Check your email!")
