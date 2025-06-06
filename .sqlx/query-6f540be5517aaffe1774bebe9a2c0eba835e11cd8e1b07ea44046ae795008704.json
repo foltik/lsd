@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT u.*\n               FROM users u\n               LIMIT ?\n               OFFSET ?",
+  "query": "SELECT * FROM users WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       false,
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "d23b45d169c59a7dd2c4756b49e6322b98a16fa81e362e138d7ce99c4a020b4f"
+  "hash": "6f540be5517aaffe1774bebe9a2c0eba835e11cd8e1b07ea44046ae795008704"
 }
