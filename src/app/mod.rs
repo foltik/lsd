@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::utils::emailer::Emailer;
 
+mod admin;
 mod auth;
 mod emails;
 mod events;
@@ -31,6 +32,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let r = events::add_routes(r);
     let r = lists::add_routes(r);
     let r = emails::add_routes(r);
+    let r = admin::add_routes(r);
     let (r, state) = r.finish();
 
     // Register app-wide routes
