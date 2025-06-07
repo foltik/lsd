@@ -55,6 +55,7 @@ body > header {
 
 @import "./events/create.css";
 @import "./events/list.css";
+@import "./events/edit.css";
 @import "./events/view.css";
 
 /* Lists */

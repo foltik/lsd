@@ -1,9 +1,58 @@
 #events\/list {
-  @apply mx-auto mt-8 flex max-w-4xl flex-col;
+  @apply mx-auto mt-8 flex w-full max-w-4xl flex-col p-8;
   .title {
     @apply mb-4 text-2xl;
   }
   .event a {
     @apply hover:underline;
+  }
+  .header {
+    @apply mb-8 flex items-center justify-between;
+
+    a {
+      @apply bg-lsd-blue hover:bg-lsd-blue/80 inline-flex items-center rounded-md px-4 py-2 font-medium text-white;
+      text-decoration: none;
+    }
+  }
+
+  h1 {
+    @apply text-lsd-white text-3xl font-bold;
+  }
+
+  .event {
+    @apply bg-lsd-white/5 border-lsd-white/10 hover:bg-lsd-white/10 mb-4 flex items-center overflow-hidden rounded-lg border transition-colors;
+
+    a {
+      @apply text-lsd-white flex flex-grow;
+      text-decoration: none;
+    }
+  }
+
+  .event-cover-thumbnail {
+    @apply border-lsd-white/10 h-16 w-24 flex-shrink-0 border-r object-cover;
+  }
+
+  .event-info {
+    @apply flex flex-grow flex-col p-4;
+  }
+
+  .event-date {
+    @apply text-lsd-white/70 mb-1 text-sm;
+  }
+
+  .event-title {
+    @apply text-lsd-white font-semibold;
+  }
+
+  .event-description {
+    @apply text-lsd-white/80 mt-1 line-clamp-2 text-sm;
+  }
+
+  .event-actions {
+    @apply flex-shrink-0 p-4;
+
+    a {
+      @apply rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700;
+    }
   }
 }

@@ -1,3 +1,98 @@
 #events\/view {
-  @apply mx-auto flex w-full max-w-2xl flex-col;
+  @apply mx-auto flex w-full max-w-2xl flex-col gap-6 p-8;
+
+  h1 {
+    @apply text-lsd-white mb-6 text-3xl font-bold;
+  }
+
+  .current-cover-image {
+    @apply bg-lsd-white/5 border-lsd-white/10 rounded-lg border p-6;
+
+    h3 {
+      @apply text-lsd-white mb-4 text-lg font-semibold;
+    }
+  }
+
+  .event-cover-preview {
+    @apply border-lsd-white/20 h-auto max-w-full rounded-md border;
+    max-height: 300px;
+    object-fit: cover;
+  }
+
+  .event-details {
+    @apply bg-lsd-white/5 border-lsd-white/10 space-y-4 rounded-lg border p-6;
+  }
+
+  .field-display {
+    @apply flex flex-col gap-2;
+
+    label {
+      @apply text-lsd-white/70 text-sm font-medium tracking-wide uppercase;
+    }
+
+    span {
+      @apply text-lsd-white;
+    }
+
+    p {
+      @apply text-lsd-white leading-relaxed;
+      margin: 0;
+    }
+  }
+
+  h2 {
+    @apply text-lsd-white mt-8 mb-4 text-2xl font-bold;
+  }
+
+  .tickets-container {
+    @apply space-y-4;
+  }
+
+  .ticket-row {
+    @apply bg-lsd-white/5 border-lsd-white/10 rounded-lg border p-4;
+
+    h4 {
+      @apply text-lsd-white mb-3 text-lg font-semibold;
+    }
+  }
+
+  .ticket-details {
+    @apply grid grid-cols-1 gap-4 md:grid-cols-3;
+  }
+
+  .ticket-detail {
+    @apply flex flex-col gap-1;
+
+    label {
+      @apply text-lsd-white/70 text-sm font-medium tracking-wide uppercase;
+    }
+
+    span {
+      @apply text-lsd-white font-medium;
+    }
+  }
+
+  .actions {
+    @apply border-lsd-white/10 mt-8 flex flex-wrap items-center gap-4 border-t pt-6;
+
+    a {
+      @apply inline-flex items-center rounded-md px-4 py-2 font-medium transition-colors;
+      @apply bg-lsd-blue hover:bg-lsd-blue/80 text-white;
+      text-decoration: none;
+
+      &:nth-child(2) {
+        @apply bg-lsd-white/10 hover:bg-lsd-white/20 text-lsd-white;
+      }
+    }
+
+    form {
+      @apply ml-auto;
+      margin-top: 0 !important;
+    }
+
+    button {
+      @apply inline-flex items-center rounded-md px-4 py-2 font-medium transition-colors;
+      @apply cursor-pointer border-0 bg-red-600 text-white hover:bg-red-700;
+    }
+  }
 }

@@ -4,107 +4,66 @@
 
 {% block content %}
   <div id="events/view">
-    <h1>Update Event: {{ event.title }}</h1>
+    <h1> {{ event.title }}</h1>
 
-    <!-- Show current cover image if it exists -->
-    {% if event.flyer | has_value %}
+ {% if event.flyer | has_value %}
       <div class="current-cover-image">
-        <h3>Current Cover Image:</h3>
+        <h3>Cover Image:</h3>
         <img src="{{ event.flyer | unwrap_or_empty }}" alt="{{ event.title }} cover image" class="event-cover-preview" />
       </div>
     {% endif %}
 
-    <form
-      id="edit-event-form"
-      class="ext/form"
-      action="/events/{{ event.id }}"
-      method="post"
-    >
-      <div class="field">
-        <label for="title">Event Title</label>
-        <input type="text" name="title" value="{{ event.title }}" required />
+    <div class="event-details">
+      <div class="field-display">
+        <label>Event Title:</label>
+        <span>{{ event.title }}</span>
       </div>
 
-      <div class="field">
-        <label for="description">Event Description</label>
-        <textarea name="description" required>{{ event.description }}</textarea>
+      <div class="field-display">
+        <label>Description:</label>
+        <p>{{ event.description }}</p>
       </div>
 
-      <div class="field">
-        <label for="start_date_select">Event Date</label>
-        <input
-          type="datetime-local"
-          name="start_date_select"
-          value="{{ event.start }}"
-          required
-        />
+      <div class="field-display">
+        <label>Event Date:</label>
+        <span>{{ event.start | format_datetime("%A, %B %d, %Y at %I:%M %p") }}</span>
       </div>
 
-      <div class="field">
-        <label for="cover_image">Event Cover Image</label>
-        <input type="file" name="cover_image" accept="image/*" />
+      <div class="field-display">
+        <label>Slug:</label>
+        <span>{{ event.slug }}</span>
       </div>
+    </div>
 
-      <!-- Ticket Types Section -->
-      <h2>Ticket Types</h2>
-      <div id="tickets-container">
-        {% for event_ticket in event_tickets %}
-          <div class="ticket-row">
-            <h4>Ticket ID: {{ event_ticket.ticket_id }}</h4>
-            <input
-              type="hidden"
-              name="tickets[{{ loop.index0 }}].ticket_id"
-              value="{{ event_ticket.ticket_id }}"
-            />
-            <div class="field">
-              <label for="tickets[{{ loop.index0 }}].price">Price</label>
-              <input
-                type="number"
-                name="tickets[{{ loop.index0 }}].price"
-                id="tickets[{{ loop.index0 }}].price"
-                placeholder="Price"
-                value="{{ event_ticket.price }}"
-                min="0"
-                required
-              />
+    <!-- Ticket Types Section -->
+  {% if event_tickets | length > 0 %}
+    <h2>Ticket Types</h2>
+    <div class="tickets-container">
+      {% for event_ticket in event_tickets %}
+        <div class="ticket-row">
+          <h4>Ticket ID: {{ event_ticket.ticket_id }}</h4>
+          <div class="ticket-details">
+            <div class="ticket-detail">
+              <label>Price:</label>
+              <span>${{ event_ticket.price }}</span>
             </div>
-            <div class="field">
-              <label for="tickets[{{ loop.index0 }}].quantity">Quantity</label>
-              <input
-                type="number"
-                name="tickets[{{ loop.index0 }}].quantity"
-                id="tickets[{{ loop.index0 }}].quantity"
-                placeholder="Quantity"
-                value="{{ event_ticket.quantity }}"
-                min="0"
-                required
-              />
+            <div class="ticket-detail">
+              <label>Quantity:</label>
+              <span>{{ event_ticket.quantity }} available</span>
             </div>
-            <div class="field">
-              <label for="tickets[{{ loop.index0 }}].sort">Sort Order</label>
-              <input
-                type="number"
-                name="tickets[{{ loop.index0 }}].sort"
-                id="tickets[{{ loop.index0 }}].sort"
-                placeholder="Sort Order"
-                value="{{ event_ticket.sort }}"
-                min="0"
-              />
+            <div class="ticket-detail">
+              <label>Sort Order:</label>
+              <span>{{ event_ticket.sort }}</span>
             </div>
-            <button
-              type="button"
-              class="remove-ticket"
-              aria-label="Remove ticket type"
-            >
-              Remove
-            </button>
           </div>
-        {% endfor %}
-      </div>
-      <button type="button" id="add-ticket">Add Additional Ticket Type</button>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
-      <button type="submit">Update Event</button>
-    </form>
+    <div class="actions">
+        <a href="/events/{{ event.id }}/edit">Edit Event</a>
+        <a href="/events">Back to Events</a>
 
     <!-- Delete Event Form -->
     <form class="ext/form" action="/events/{{ event.id }}/delete" method="post" style="margin-top: 20px;  onsubmit="console.log('Delete form submitted!')"">
@@ -112,165 +71,4 @@
     </form>
   </div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const form = document.getElementById("edit-event-form");
-      const ticketsContainer = document.getElementById("tickets-container");
-      const addTicketButton = document.getElementById("add-ticket");
-
-      // Fix datetime format for HTML input
-      const startInput = form.querySelector('[name="start_date_select"]');
-      if (startInput.value) {
-        startInput.value = startInput.value.replace(" ", "T").substring(0, 16);
-      }
-
-      // Available ticket options
-      const ticketOptions = [
-        { id: "", name: "Select Ticket Type" },
-        {% for ticket in all_tickets %}
-        { id: {{ ticket.id }}, name: {{ ticket.name | tojson | safe }} },
-        {% endfor %}
-      ];
-
-      // Form submission
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const body = {};
-
-        // Get values directly
-        body.title = form.querySelector('[name="title"]').value;
-        body.description = form.querySelector('[name="description"]').value;
-        body.start_date_select = form.querySelector('[name="start_date_select"]').value;
-
-        // Setting the date and time field
-        body.start = body.start_date_select + ":00";
-        delete body.start_date_select;
-
-        // Add remaining fields
-        body.slug = body.title.toLowerCase().replace(/\s+/g, "-");
-        body.flyer = null;
-        body.end = null;
-        body.guest_list_id = null;
-
-        // Handle file upload as base64
-        const fileInput = form.querySelector('[name="cover_image"]');
-        if (fileInput.files && fileInput.files[0]) {
-          try {
-            const base64 = await fileToBase64(fileInput.files[0]);
-            body.cover_image = base64;
-            body.cover_image_filename = fileInput.files[0].name;
-          } catch (error) {
-            console.error("Error converting file to base64:", error);
-            alert("Error processing image file");
-            return;
-          }
-        } else {
-          body.cover_image = null;
-          body.cover_image_filename = null;
-        }
-
-        // Build out the tickets array manually
-        body.tickets = [];
-        const ticketRows = document.querySelectorAll("#tickets-container .ticket-row");
-        ticketRows.forEach((row) => {
-          const ticketIdInput = row.querySelector('input[type="hidden"], select');
-          const ticketId = ticketIdInput ? parseInt(ticketIdInput.value) : 0;
-          const price = parseInt(row.querySelector('input[name*="price"]').value) || 0;
-          const quantity = parseInt(row.querySelector('input[name*="quantity"]').value) || 0;
-          const sort = parseInt(row.querySelector('input[name*="sort"]').value) || 0;
-
-          if (ticketId > 0 && price > 0 && quantity > 0) {
-            body.tickets.push({
-              ticket_id: ticketId,
-              price: price,
-              quantity: quantity,
-              sort: sort,
-            });
-          }
-        });
-
-        console.log("Sending:", body);
-
-        const resp = await fetch(form.action, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (resp.ok) {
-          window.location.href = "/events";
-        } else {
-          console.error("Error:", await resp.text());
-        }
-      });
-
-      // Create new ticket row 
-      function createTicketRow(index) {
-        const newRow = document.createElement("div");
-        newRow.className = "ticket-row";
-
-        let selectHtml = `<select name="tickets[${index}].ticket_id" required>`;
-        ticketOptions.forEach((option) => {
-          selectHtml += `<option value="${option.id}">${option.name}</option>`;
-        });
-        selectHtml += "</select>";
-
-        newRow.innerHTML = `
-          <div class="field">
-            <label>Ticket Type</label>
-            ${selectHtml}
-          </div>
-          <div class="field">
-            <label for="tickets[${index}].price">Price</label>
-            <input type="number" name="tickets[${index}].price" id="tickets[${index}].price" placeholder="Price" value="0" min="0" required />
-          </div>
-          <div class="field">
-            <label for="tickets[${index}].quantity">Quantity</label>
-            <input type="number" name="tickets[${index}].quantity" id="tickets[${index}].quantity" placeholder="Quantity" value="0" min="0" required />
-          </div>
-          <div class="field">
-            <label for="tickets[${index}].sort">Sort Order</label>
-            <input type="number" name="tickets[${index}].sort" id="tickets[${index}].sort" placeholder="Sort Order" value="0" min="0" />
-          </div>
-          <button type="button" class="remove-ticket" aria-label="Remove ticket type">Remove</button>
-        `;
-        return newRow;
-      }
-
-      // Add new ticket row
-      function addTicketRow() {
-        const ticketRows = document.querySelectorAll("#tickets-container .ticket-row");
-        const newIndex = ticketRows.length;
-        const newRow = createTicketRow(newIndex);
-        ticketsContainer.appendChild(newRow);
-      }
-
-      addTicketButton.addEventListener("click", addTicketRow);
-
-      // Handle remove ticket button clicks
-      ticketsContainer.addEventListener("click", function (e) {
-        if (e.target.classList.contains("remove-ticket")) {
-          const row = e.target.parentElement;
-          row.remove();
-        }
-      });
-
-      // Helper function to convert file to base64
-      function fileToBase64(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-            // Remove the "data:image/jpeg;base64," prefix
-            const base64 = reader.result.split(",")[1];
-            resolve(base64);
-          };
-          reader.onerror = (error) => reject(error);
-        });
-      }
-    });
-  </script>
 {% endblock content %}

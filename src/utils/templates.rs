@@ -29,4 +29,9 @@ pub mod filters {
     pub fn has_value(value: &Option<String>) -> askama::Result<bool> {
         Ok(value.as_ref().map_or(false, |s| !s.is_empty()))
     }
+
+    /// Get the length of a vector
+    pub fn length<T>(value: &Vec<T>) -> askama::Result<usize> {
+        Ok(value.len())
+    }
 }

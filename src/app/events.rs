@@ -8,11 +8,8 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router.restricted_routes(User::ADMIN, |r| {
         r.route("/events", get(list_events_page))
             .route("/events/new", get(create_event_page).post(create_event_form))
-            .route(
-                "/events/{id}",
-                // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
-                get(update_event_page).post(update_event_form),
-            )
+            .route("/events/{id}", get(view_event_page))
+            .route("/events/{id}/edit", get(edit_event_page).post(update_event_form))
             .route("/events/{id}/delete", post(delete_event))
     })
 }
@@ -139,8 +136,8 @@ async fn create_event_form(
     Ok(Redirect::to("/events"))
 }
 
-/// Display the form to update an event.
-async fn update_event_page(
+/// Display the event details (read-only).
+async fn view_event_page(
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
@@ -150,6 +147,25 @@ async fn update_event_page(
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/view.html")]
+    pub struct Html {
+        pub event: Event,
+        pub event_tickets: Vec<EventTicket>,
+        pub all_tickets: Vec<Ticket>,
+    }
+    Ok(Html { event, event_tickets, all_tickets })
+}
+
+/// Display the form to edit an existing event.
+async fn edit_event_page(
+    State(state): State<SharedAppState>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
+    let event_tickets = EventTicket::list_for_event(&state.db, id).await?;
+    let all_tickets = Ticket::list(&state.db).await?;
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/edit.html")]
     pub struct Html {
         pub event: Event,
         pub event_tickets: Vec<EventTicket>,

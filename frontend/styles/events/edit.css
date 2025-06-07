@@ -1,0 +1,86 @@
+#events\/edit {
+  @apply mx-auto flex w-full max-w-2xl flex-col gap-6 p-8;
+
+  h1 {
+    @apply text-lsd-white mb-6 text-3xl font-bold;
+  }
+
+  .current-cover-image {
+    @apply bg-lsd-white/5 border-lsd-white/10 mb-6 rounded-lg border p-6;
+
+    h3 {
+      @apply text-lsd-white mb-4 text-lg font-semibold;
+    }
+  }
+
+  .event-cover-preview {
+    @apply border-lsd-white/20 h-auto max-w-full rounded-md border;
+    max-height: 200px;
+    object-fit: cover;
+  }
+
+  .field {
+    @apply mb-6;
+
+    label {
+      @apply text-lsd-white mb-2 block text-sm font-medium;
+    }
+
+    input,
+    textarea,
+    select {
+      @apply bg-lsd-white/5 border-lsd-white/10 w-full rounded-md border px-3 py-2;
+      @apply text-lsd-white placeholder-lsd-white/50;
+      @apply focus:ring-lsd-blue focus:border-transparent focus:ring-2 focus:outline-none;
+    }
+
+    small {
+      @apply text-lsd-white/60 mt-1 block text-sm;
+    }
+  }
+
+  h2 {
+    @apply text-lsd-white mt-8 mb-4 text-2xl font-bold;
+  }
+
+  .ticket-row {
+    @apply bg-lsd-white/5 border-lsd-white/10 mb-4 rounded-lg border p-4;
+
+    h4 {
+      @apply text-lsd-white mb-3 text-lg font-semibold;
+    }
+  }
+
+  .remove-ticket {
+    @apply mt-3 cursor-pointer rounded border-0 bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700;
+  }
+
+  #add-ticket {
+    @apply mb-6 cursor-pointer rounded border-0 bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700;
+  }
+
+  form button[type="submit"] {
+    @apply bg-lsd-blue hover:bg-lsd-blue/80 mb-6 cursor-pointer rounded border-0 px-6 py-2 font-medium text-white;
+  }
+
+  .actions {
+    @apply border-lsd-white/10 mt-8 flex flex-wrap items-center gap-4 border-t pt-6;
+
+    button {
+      @apply inline-flex cursor-pointer items-center rounded-md border-0 px-4 py-2 font-medium transition-colors;
+    }
+
+    .cancel-btn {
+      @apply bg-lsd-white/10 hover:bg-lsd-white/20 text-lsd-white;
+    }
+
+    form {
+      @apply ml-auto;
+      margin-top: 0 !important;
+
+      button {
+        @apply bg-red-600 text-white hover:bg-red-700;
+      }
+    }
+  }
+}
