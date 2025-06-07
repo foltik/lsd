@@ -70,3 +70,9 @@ body > header {
 @import "./posts/list.css";
 @import "./posts/send.css";
 @import "./posts/view.css";
+
+/* Tickets */
+@import "./tickets/create.css";
+@import "./tickets/edit.css";
+@import "./tickets/list.css";
+@import "./tickets/view.css";
