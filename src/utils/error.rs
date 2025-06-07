@@ -9,6 +9,10 @@ pub enum AppError {
     NotFound,
     #[error("not authorized")]
     NotAuthorized,
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+    #[error("Internal server error: {0}")]
+    InternalError(String),
 
     #[error(transparent)]
     Email(#[from] lettre::error::Error),
@@ -28,6 +32,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         tracing::error!("{self:#}");
 
+        let error_400 = || (StatusCode::BAD_REQUEST, "Invalid request");
         let error_401 = || (StatusCode::UNAUTHORIZED, "You do not have permission to view this page");
         let error_404 = || (StatusCode::NOT_FOUND, "Page not found");
         let error_500 = || (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong :( Please try again");
@@ -35,6 +40,8 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::NotAuthorized => error_401(),
             AppError::NotFound => error_404(),
+            AppError::ValidationError(_) => error_400(),
+            AppError::InternalError(_) => error_500(),
             AppError::Database(_) => error_500(),
             AppError::Smtp(_) => error_500(),
             AppError::Email(_) => error_500(),

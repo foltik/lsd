@@ -1,6 +1,5 @@
 use crate::db::event::{Event, UpdateEvent};
 use crate::db::event_ticket::EventTicket;
-use crate::db::event_ticket::UpdateEventTicket;
 use crate::db::ticket::Ticket;
 use crate::prelude::*;
 
@@ -12,8 +11,9 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
             .route(
                 "/events/{id}",
                 // TODO: Move to a separate `/e/{id}/edit` route, and add a `/e/{id}` to just view the event.
-                get(update_event_page).post(update_event_form).delete(delete_event),
+                get(update_event_page).post(update_event_form),
             )
+            .route("/events/{id}/delete", post(delete_event))
     })
 }
 
@@ -53,6 +53,8 @@ struct CreateEventWithTickets {
     #[serde(flatten)]
     pub event: UpdateEvent,
     pub tickets: Vec<EventTicketForm>,
+    pub cover_image: Option<String>,
+    pub cover_image_filename: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -60,6 +62,8 @@ struct UpdateEventWithTickets {
     #[serde(flatten)]
     pub event: UpdateEvent,
     pub tickets: Vec<EventTicketForm>,
+    pub cover_image: Option<String>,
+    pub cover_image_filename: Option<String>,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -87,7 +91,34 @@ async fn create_event_form(
     Json(form): Json<CreateEventWithTickets>,
 ) -> AppResult<impl IntoResponse> {
     println!("Raw form data: {:?}", form);
-    let event_id = Event::create(&state.db, &form.event).await?;
+
+    //Handle cover image processing
+    let processed_flyer = if let Some(base64_image) = &form.cover_image {
+        match process_image(base64_image, &form.cover_image_filename).await {
+            Ok(path) => {
+                println!("Successfully processed image, saved to: {}", path);
+                Some(path)
+            }
+            Err(e) => {
+                println!("Error processing image: {:?}", e);
+                return Err(e);
+            }
+        }
+    } else {
+        println!("No cover image provided");
+        None
+    };
+
+    //Create event with processed cover image path
+    let mut event = form.event.clone();
+    event.flyer = processed_flyer.clone();
+
+    let event_id = Event::create(&state.db, &event).await?;
+
+    sqlx::query!("DELETE FROM event_tickets WHERE event_id = ?", event_id)
+        .execute(&state.db)
+        .await?;
+
     for ticket_form in form.tickets {
         if ticket_form.ticket_id > 0
             && ticket_form.price > 0
@@ -115,34 +146,73 @@ async fn update_event_page(
 ) -> AppResult<impl IntoResponse> {
     let event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
     let event_tickets = EventTicket::list_for_event(&state.db, id).await?;
+    let all_tickets = Ticket::list(&state.db).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/view.html")]
     pub struct Html {
         pub event: Event,
         pub event_tickets: Vec<EventTicket>,
+        pub all_tickets: Vec<Ticket>,
     }
-    Ok(Html { event, event_tickets })
+    Ok(Html { event, event_tickets, all_tickets })
 }
 
 /// Process the form and update an event.
 async fn update_event_form(
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
-    Form(form): Form<UpdateEventWithTickets>,
+    Json(form): Json<UpdateEventWithTickets>,
 ) -> AppResult<impl IntoResponse> {
-    Event::update(&state.db, id, &form.event).await?;
+    // Get existing event to preserve flyer if no new image
+    let existing_event = Event::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
+
+    let processed_flyer = if let Some(base64_image) = &form.cover_image {
+        println!("Processing new cover image");
+
+        // Delete old image if it exists
+        if let Some(old_flyer) = &existing_event.flyer {
+            if let Err(e) = delete_image(old_flyer).await {
+                println!("Warning: Failed to delete old image {}: {:?}", old_flyer, e);
+            }
+        }
+
+        match process_image(base64_image, &form.cover_image_filename).await {
+            Ok(path) => {
+                println!("Successfully processed new image: {}", path);
+                Some(path)
+            }
+            Err(e) => {
+                println!("Error processing new image: {:?}", e);
+                return Err(e);
+            }
+        }
+    } else {
+        println!("No new image provided, keeping existing: {:?}", existing_event.flyer);
+        existing_event.flyer
+    };
+
+    let mut event = form.event;
+    event.flyer = processed_flyer.clone();
+
+    println!("Updating event with flyer: {:?}", event.flyer);
+
+    Event::update(&state.db, id, &event).await?;
+
+    // Delete existing event tickets first
+    sqlx::query!("DELETE FROM event_tickets WHERE event_id = ?", id)
+        .execute(&state.db)
+        .await?;
+
     for ticket_form in form.tickets {
-        if ticket_form.ticket_id > 0 {
-            EventTicket::update(
+        if ticket_form.ticket_id > 0 && ticket_form.price > 0 && ticket_form.quantity > 0 {
+            EventTicket::create(
                 &state.db,
                 id,
                 ticket_form.ticket_id,
-                &UpdateEventTicket {
-                    price: ticket_form.price,
-                    quantity: ticket_form.quantity,
-                    sort: ticket_form.sort,
-                },
+                ticket_form.price,
+                ticket_form.quantity,
+                ticket_form.sort,
             )
             .await?;
         }
@@ -156,6 +226,26 @@ async fn delete_event(
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
+    // Check if event exists first
+    let existing_event = Event::lookup_by_id(&state.db, id).await?;
+    if existing_event.is_none() {
+        println!("DELETE EVENT: Event {} not found", id);
+        return Err(AppError::NotFound);
+    }
+
+    let event = existing_event.unwrap();
+
+    // Delete associated image file if it exists
+    if let Some(flyer_path) = &event.flyer {
+        if let Err(e) = delete_image(flyer_path).await {
+            println!("Warning: Failed to delete image file {}: {:?}", flyer_path, e);
+        } else {
+            println!("Successfully deleted image file: {}", flyer_path);
+        }
+    }
+
+    println!("DELETE EVENT: Event {} found, proceeding with deletion", id);
     Event::delete(&state.db, id).await?;
+    println!("DELETE EVENT: Event {} deleted successfully, redirecting to /events", id);
     Ok(Redirect::to("/events"))
 }

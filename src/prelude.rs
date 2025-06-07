@@ -13,6 +13,7 @@ pub use axum::response::{IntoResponse, Redirect, Response};
 pub use axum::routing::{delete, get, post};
 pub use axum::Form;
 pub use axum::Json;
+pub use base64::prelude::*;
 pub use chrono::Utc;
 
 pub use crate::db::email::Email;
@@ -20,6 +21,7 @@ pub use crate::db::user::User;
 pub use crate::db::Db;
 pub use crate::utils::config::Config;
 pub use crate::utils::error::{AppError, AppResult};
+pub use crate::utils::image::{delete_image, process_image};
 pub use crate::utils::routing::{AppRouter, AxumRouter};
 pub use crate::utils::templates::filters;
 pub use crate::utils::types::SharedAppState;

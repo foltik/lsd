@@ -8,9 +8,58 @@
     {% for event in events %}
       <div key="event-{{ event.id }}" class="event">
         <a href="/events/{{ event.id }}">
-          {{ event.start | format_datetime("%b %d, %Y") }} | {{ event.title }}
+          {% if event.flyer | has_value %}
+            <img
+              src="{{ event.flyer | unwrap_or_empty }}"
+              alt="{{ event.title }} cover image"
+              class="event-cover-thumbnail"
+            />
+          {% endif %}
+          <div class="event-info">
+            <span class="event-date"
+              >{{ event.start | format_datetime("%b %d, %Y") }}</span
+            >
+            <span class="event-title">{{ event.title }}</span>
+          </div>
         </a>
       </div>
     {% endfor %}
   </div>
+
+  <style>
+    .event {
+      margin-bottom: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .event a {
+      display: flex;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .event-cover-thumbnail {
+      width: 120px;
+      height: 80px;
+      object-fit: cover;
+      border-right: 1px solid #ddd;
+    }
+
+    .event-info {
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .event-date {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .event-title {
+      font-weight: bold;
+    }
+  </style>
 {% endblock content %}

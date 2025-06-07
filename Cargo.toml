@@ -13,6 +13,7 @@ axum = { version = "0.8", default-features = false, features = [
 ] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
+base64 = "0.22.1"
 lettre = { version = "0.11", default-features = false, features = [
     "builder",
     "hostname",

@@ -19,4 +19,14 @@ pub mod filters {
         let fmt = dt.and_utc().with_timezone(&tz).format(format);
         Ok(fmt.to_string())
     }
+
+    /// Convert Option<String> to empty string if None
+    pub fn unwrap_or_empty(value: &Option<String>) -> askama::Result<String> {
+        Ok(value.as_deref().unwrap_or("").to_string())
+    }
+
+    /// Check if Option<String> has a value (not None and not empty)
+    pub fn has_value(value: &Option<String>) -> askama::Result<bool> {
+        Ok(value.as_ref().map_or(false, |s| !s.is_empty()))
+    }
 }

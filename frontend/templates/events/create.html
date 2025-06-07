@@ -23,7 +23,7 @@
 
       <div class="field">
         <label for="cover_image">Event Cover Image</label>
-        <input type="file" name="cover_image" />
+        <input type="file" name="cover_image" accept="image/*" />
       </div>
 
       <!-- Ticket Types Section -->
@@ -94,7 +94,7 @@
       const ticketsContainer = document.getElementById("tickets-container");
       const addTicketButton = document.getElementById("add-ticket");
 
-      const ticketOptions = [{ id: '', name: 'Select Ticket Type' }];
+      const ticketOptions = [{ id: "", name: "Select Ticket Type" }];
       {% for ticket in tickets %}
       ticketOptions.push({ id: {{ ticket.id }}, name: {{ ticket.name | tojson | safe }} });
       {% endfor %}
@@ -103,23 +103,62 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        // Validate at least one valid ticket
+        const ticketRows = document.querySelectorAll("#tickets-container .ticket-row");
+        let hasValidTicket = false;
+
+        for (const row of ticketRows) {
+          const ticketId = row.querySelector('input[type="hidden"], select').value;
+          const price = parseFloat(row.querySelector('input[name*="price"]').value);
+          const quantity = parseFloat(row.querySelector('input[name*="quantity"]').value);
+
+          if (ticketId && price > 0 && quantity > 0) {
+            hasValidTicket = true;
+            break;
+          }
+        }
+
+        if (!hasValidTicket) {
+          alert("Please include at least one ticket type with a valid ticket ID, price, and quantity.");
+          return;
+        }
+
         const body = {};
 
+        // Get basic form values
         body.title = form.querySelector('[name="title"]').value;
         body.description = form.querySelector('[name="description"]').value;
         body.start_date_select = form.querySelector('[name="start_date_select"]').value;
 
-
+        // Fix the datetime field
         body.start = body.start_date_select + ":00";
         delete body.start_date_select;
 
+        // Add missing required fields
         body.slug = body.title.toLowerCase().replace(/\s+/g, "-");
         body.flyer = null;
         body.end = null;
         body.guest_list_id = null;
 
+        // Handle file upload as base64
+        const fileInput = form.querySelector('[name="cover_image"]');
+        if (fileInput.files && fileInput.files[0]) {
+          try {
+            const base64 = await fileToBase64(fileInput.files[0]);
+            body.cover_image = base64;
+            body.cover_image_filename = fileInput.files[0].name;
+          } catch (error) {
+            console.error("Error converting file to base64:", error);
+            alert("Error processing image file");
+            return;
+          }
+        } else {
+          body.cover_image = null;
+          body.cover_image_filename = null;
+        }
+
+        // Build tickets array
         body.tickets = [];
-        const ticketRows = document.querySelectorAll("#tickets-container .ticket-row");
         ticketRows.forEach((row) => {
           const ticketIdInput = row.querySelector('input[type="hidden"], select');
           const ticketId = ticketIdInput ? parseInt(ticketIdInput.value) : 0;
@@ -154,16 +193,17 @@
         }
       });
 
+      // Create new ticket row function
       function createTicketRow(index) {
-        const newRow = document.createElement('div');
-        newRow.className = 'ticket-row';
-        
+        const newRow = document.createElement("div");
+        newRow.className = "ticket-row";
+
         let selectHtml = `<select name="tickets[${index}].ticket_id" required>`;
-        ticketOptions.forEach(option => {
+        ticketOptions.forEach((option) => {
           selectHtml += `<option value="${option.id}">${option.name}</option>`;
         });
-        selectHtml += '</select>';
-        
+        selectHtml += "</select>";
+
         newRow.innerHTML = `
           <div class="field">
             <label>Ticket Type</label>
@@ -186,22 +226,37 @@
         return newRow;
       }
 
+      // Add new ticket row
       function addTicketRow() {
-        const ticketRows = document.querySelectorAll('#tickets-container .ticket-row');
+        const ticketRows = document.querySelectorAll("#tickets-container .ticket-row");
         const newIndex = ticketRows.length;
         const newRow = createTicketRow(newIndex);
         ticketsContainer.appendChild(newRow);
       }
 
-      addTicketButton.addEventListener('click', addTicketRow);
+      // Event listeners for add/remove
+      addTicketButton.addEventListener("click", addTicketRow);
 
-      ticketsContainer.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-ticket')) {
+      ticketsContainer.addEventListener("click", function (e) {
+        if (e.target.classList.contains("remove-ticket")) {
           const row = e.target.parentElement;
           row.remove();
         }
       });
 
+      // Helper function to convert file to base64
+      function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => {
+            // Remove the "data:image/jpeg;base64," prefix
+            const base64 = reader.result.split(",")[1];
+            resolve(base64);
+          };
+          reader.onerror = (error) => reject(error);
+        });
+      }
     });
   </script>
 {% endblock content %}
