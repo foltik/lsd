@@ -19,12 +19,42 @@
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
 use axum_extra::extract::CookieJar;
+use jiff::SpanRelativeTo;
 use lettre::message::header::ContentType;
 use lettre::message::Mailbox;
 
 use crate::db::token::{LoginToken, SessionToken};
 use crate::db::user::UpdateUser;
 use crate::prelude::*;
+use crate::utils::templates::CONFIG;
+
+fn build_cookie(token: &str) -> (axum::http::HeaderName, String) {
+    let config = CONFIG.get().unwrap();
+    (
+        header::SET_COOKIE,
+        cookie::Cookie::build(("session", token))
+            .secure(if cfg!(debug_assertions) {
+                // Safari won't allow secure cookies
+                // coming from localhost in debug mode
+                false
+            } else {
+                // Secure cookies in release mode
+                true
+            })
+            .http_only(true)
+            .same_site(cookie::SameSite::Lax)
+            .domain(config.app.domain.as_str())
+            .max_age(cookie::time::Duration::seconds(
+                config
+                    .app
+                    .session_cookie_max_age
+                    .to_duration(SpanRelativeTo::days_are_24_hours())
+                    .unwrap()
+                    .as_secs(),
+            ))
+            .to_string(),
+    )
+}
 
 /// Add all `auth` routes to the router.
 #[rustfmt::skip]
@@ -120,7 +150,7 @@ async fn login_link(
             let token = SessionToken::create(&state.db, user.id).await?;
             let headers = (
                 // TODO: expiration date
-                [(header::SET_COOKIE, format!("session={token}; Secure; Secure"))],
+                [build_cookie(&token)],
                 Redirect::to(&state.config.app.url),
             );
             Ok(headers.into_response())
@@ -164,10 +194,7 @@ async fn register_form(
 
     // TODO: Expiration date on the cookie
     let session_token = SessionToken::create(&state.db, user_id).await?;
-    let headers = (
-        [(header::SET_COOKIE, format!("session={session_token}; Secure"))],
-        Redirect::to(&state.config.app.url),
-    );
+    let headers = ([build_cookie(&session_token)], Redirect::to(&state.config.app.url));
     Ok(headers.into_response())
 }
 #[derive(serde::Deserialize)]

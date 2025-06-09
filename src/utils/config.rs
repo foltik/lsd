@@ -35,6 +35,7 @@ pub struct AppConfig {
     pub url: String,
     /// Local timezone.
     pub tz: Tz,
+    pub session_cookie_max_age: jiff::Span,
 }
 
 /// Database configuration.
