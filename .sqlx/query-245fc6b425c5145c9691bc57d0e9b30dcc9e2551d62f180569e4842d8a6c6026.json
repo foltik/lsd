@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT e.*\n              FROM events e\n              WHERE id = ?",
+  "query": "SELECT e.*\n              FROM events e\n              WHERE url = ?",
   "describe": {
     "columns": [
       {
@@ -24,18 +24,28 @@
         "type_info": "Text"
       },
       {
-        "name": "start_date",
+        "name": "url",
         "ordinal": 4,
-        "type_info": "Datetime"
+        "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "start_date",
         "ordinal": 5,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "target_revenue",
         "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 8,
         "type_info": "Datetime"
       }
     ],
@@ -49,8 +59,10 @@
       false,
       false,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "2a0e6ef2b145f006461a9395e0329c7f47a77bd4d1d21ad3895da6edb83e469a"
+  "hash": "245fc6b425c5145c9691bc57d0e9b30dcc9e2551d62f180569e4842d8a6c6026"
 }

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT *\n              FROM reservation_types\n              WHERE name = ? AND event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "event_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "details",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "min_contribution",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "max_contribution",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "recommended_contribution",
+        "ordinal": 5,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "383608bccd2a6e4801e8ea08c3cdb1d462ff7bfe6ea163a383800ae88c613d6c"
+}

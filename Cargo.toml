@@ -26,6 +26,9 @@ chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-stream = "0.3"
 rand = "0.8"
+reqwest = { version = "0.12.19", features = ["json", "multipart"] }
+rubenvy = "0.1.1"
+secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"

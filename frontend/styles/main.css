@@ -54,6 +54,8 @@ body > header {
 @import "./auth/register.css";
 
 @import "./events/create.css";
+@import "./events/checkout.css";
+@import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
 

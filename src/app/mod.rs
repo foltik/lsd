@@ -14,13 +14,25 @@ pub struct AppState {
     pub config: Config,
     pub db: Db,
     pub mailer: Emailer,
+    pub secrets: Secrets,
+}
+
+// Use SecretString to ensure secrets aren't accidentally logged
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct Secrets {
+    pub stripe_secret_key: secrecy::SecretString,
 }
 
 pub async fn build(config: Config) -> Result<axum::Router<()>> {
+    rubenvy::rubenvy_auto()?;
+
     let state = Arc::new(AppState {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
         mailer: Emailer::connect(config.email).await?,
+        secrets: Secrets {
+            stripe_secret_key: secrecy::SecretString::from(std::env::var("LSD_STRIPE_SECRET_KEY").unwrap()),
+        },
     });
 
     // Register business logic routes

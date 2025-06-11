@@ -1,0 +1,262 @@
+{% extends "layout.html" %}
+
+{% block title %}Checkout - {{ event.title }}{% endblock title %}
+
+{% block styles %}
+  <style>
+    body {
+      line-height: 1;
+    }
+    .range-wrap {
+      position: relative;
+      width: 60vw;
+      margin: 0 auto 3rem;
+    }
+    .labels span {
+      position: absolute;
+      left: calc(
+        4px + (100% - 10px) *
+          ((var(--val) - var(--min)) / (var(--max) - var(--min)))
+      );
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .labels span::before {
+      content: "";
+      position: absolute;
+      top: -29px;
+      width: 2px;
+      height: 30px;
+      background-color: #c34346;
+      pointer-events: none;
+    }
+    .labels span p {
+      transform: translateX(2px) translateY(8px) rotate(45deg);
+      transform-origin: top left;
+      margin: 0;
+    }
+    .range {
+      width: 60vw;
+      height: 20px;
+      margin: 0;
+      appearance: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #fcf3ee;
+    }
+    .range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      background-color: #8ec6ff;
+      border: none;
+      height: 40px;
+      width: 10px;
+      cursor: col-resize;
+      border-radius: 5px;
+    }
+    .range::-moz-range-thumb {
+      appearance: none;
+      background-color: #8ec6ff;
+      border: none;
+      height: 40px;
+      width: 10px;
+      cursor: col-resize;
+      border-radius: 5px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div id="events/checkout">
+    <form id="choose-price-form">
+      <label for="range-wrap">Choose your contribution:</label>
+      <div class="range-wrap">
+        <input
+          type="range"
+          class="range"
+          id="price"
+          name="price"
+          value="{{ reservation_type.recommended_contribution / 100 }}"
+          min="{{ reservation_type.min_contribution / 100 }}"
+          max="{{ reservation_type.max_contribution / 100 }}"
+          step="1"
+          oninput="updateValue(this.value)"
+        />
+        <div class="labels">
+          {% for marker in markers %}
+            <span
+              style="--val: {{ marker.value_cents / 100 }}; --min: {{ reservation_type.min_contribution / 100 }}; --max: {{ reservation_type.max_contribution / 100 }}"
+            >
+              <p>{{ marker.text }}</p>
+            </span>
+          {% endfor %}
+        </div>
+        <input
+          type="number"
+          id="sliderValue"
+          min="{{ reservation_type.min_contribution / 100 }}"
+          max="{{ reservation_type.max_contribution / 100 }}"
+          value="{{ reservation_type.recommended_contribution / 100 }}"
+          onchange="updateSlider(this.value)"
+        />
+      </div>
+    </form>
+    <button id="choose-price-button" onclick="choosePrice()">
+      Choose price
+    </button>
+
+    <form id="payment-form" hidden>
+      <label>
+        Email
+        <input type="text" id="email" placeholder="you@example.com"
+      /></label>
+      <div type="text" id="email-errors"></div>
+      <h4>Payment</h4>
+      <div id="payment-element">
+        <!--Stripe.js injects the Payment Element-->
+      </div>
+      <button id="submit">
+        <div class="spinner hidden" id="spinner"></div>
+        <span id="button-text">Pay now</span>
+      </button>
+      <div id="payment-message" class="hidden"></div>
+    </form>
+  </div>
+{% endblock content %}
+
+{% block scripts %}
+  <script src="https://js.stripe.com/basil/stripe.js"></script>
+  <script>
+    function updateValue(value) {
+      document.getElementById("sliderValue").value = value;
+    }
+    function updateSlider(value) {
+      document.getElementById("price").value = value;
+    }
+  </script>
+
+  <script>
+    const stripe = Stripe(
+      "pk_test_51RYCCkRrN3zPrjLM90GrLc10ns7aagLfhEtLl5Rz5QPhB3OSKaT7hf6Ta3lWeroQ1hxEPCxmmWYgfr1Cb0ZisLhS00n8JTDvuv",
+    );
+    let checkout;
+
+    const validateEmail = async (email) => {
+      const updateResult = await checkout.updateEmail(email);
+      const isValid = updateResult.type !== "error";
+
+      return { isValid, message: !isValid ? updateResult.error.message : null };
+    };
+
+    document
+      .querySelector("#payment-form")
+      .addEventListener("submit", handleSubmit);
+
+    async function initialize(amount) {
+      const promise = fetch("/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          price: amount,
+        }),
+      }).then((r) => r.text());
+
+      const appearance = {
+        theme: "stripe",
+      };
+      checkout = await stripe.initCheckout({
+        fetchClientSecret: () => promise,
+        elementsOptions: { appearance },
+      });
+
+      document.querySelector("#button-text").textContent = `Pay ${
+        checkout.session().total.total.amount
+      } now`;
+      const emailInput = document.getElementById("email");
+      const emailErrors = document.getElementById("email-errors");
+
+      emailInput.addEventListener("input", () => {
+        // Clear any validation errors
+        emailErrors.textContent = "";
+      });
+
+      emailInput.addEventListener("blur", async () => {
+        const newEmail = emailInput.value;
+        if (!newEmail) {
+          return;
+        }
+
+        const { isValid, message } = await validateEmail(newEmail);
+        if (!isValid) {
+          emailErrors.textContent = message;
+        }
+      });
+
+      const paymentElement = checkout.createPaymentElement();
+      paymentElement.mount("#payment-element");
+    }
+
+    function choosePrice() {
+      const price = parseInt(document.getElementById("price").value);
+
+      console.log(price);
+
+      document.getElementById("choose-price-button").hidden = true;
+      document.getElementById("choose-price-form").hidden = true;
+
+      document.getElementById("payment-element").hidden = false;
+      document.getElementById("payment-form").hidden = false;
+
+      initialize(price);
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+
+      const email = document.getElementById("email").value;
+      const { isValid, message } = await validateEmail(email);
+      if (!isValid) {
+        showMessage(message);
+        setLoading(false);
+        return;
+      }
+
+      const { error } = await checkout.confirm();
+
+      // This point will only be reached if there is an immediate error when
+      // confirming the payment. Otherwise, your customer will be redirected to
+      // your `return_url`. For some payment methods like iDEAL, your customer will
+      // be redirected to an intermediate site first to authorize the payment, then
+      // redirected to the `return_url`.
+      showMessage(error.message);
+
+      setLoading(false);
+    }
+
+    function showMessage(messageText) {
+      const messageContainer = document.querySelector("#payment-message");
+
+      messageContainer.classList.remove("hidden");
+      messageContainer.textContent = messageText;
+
+      setTimeout(function () {
+        messageContainer.classList.add("hidden");
+        messageContainer.textContent = "";
+      }, 4000);
+    }
+
+    // Show a spinner on payment submission
+    function setLoading(isLoading) {
+      if (isLoading) {
+        // Disable the button and show a spinner
+        document.querySelector("#submit").disabled = true;
+        document.querySelector("#spinner").classList.remove("hidden");
+        document.querySelector("#button-text").classList.add("hidden");
+      } else {
+        document.querySelector("#submit").disabled = false;
+        document.querySelector("#spinner").classList.add("hidden");
+        document.querySelector("#button-text").classList.remove("hidden");
+      }
+    }
+  </script>
+{% endblock scripts %}

@@ -24,18 +24,28 @@
         "type_info": "Text"
       },
       {
-        "name": "start_date",
+        "name": "url",
         "ordinal": 4,
-        "type_info": "Datetime"
+        "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "start_date",
         "ordinal": 5,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "target_revenue",
         "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 8,
         "type_info": "Datetime"
       }
     ],
@@ -43,6 +53,8 @@
       "Right": 0
     },
     "nullable": [
+      false,
+      false,
       false,
       false,
       false,
