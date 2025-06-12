@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS posts_url_index;

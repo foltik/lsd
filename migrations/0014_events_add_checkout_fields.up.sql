@@ -1,0 +1,5 @@
+ALTER TABLE events ADD COLUMN url TEXT NOT NULL;
+ALTER TABLE events ADD COLUMN target_revenue INTEGER NOT NULL;
+ALTER TABLE events DROP COLUMN artist;
+CREATE UNIQUE INDEX IF NOT EXISTS events_url_index ON events(url);
+CREATE UNIQUE INDEX IF NOT EXISTS posts_url_index ON posts(url);

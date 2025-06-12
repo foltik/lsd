@@ -10,7 +10,6 @@ pub struct Event {
     // TODO: Add a pretty url field, for `https://site/e/{url}`.
     // pub url: String,
     pub title: String,
-    pub artist: String,
     pub description: String,
     pub url: String,
     pub start_date: NaiveDateTime,
@@ -26,6 +25,7 @@ pub struct ReservationType {
     pub event_id: i64,
     pub name: String,
     pub details: Option<String>,
+    pub quantity: i64,
     pub min_contribution: i64,
     pub max_contribution: i64,
     pub recommended_contribution: i64,
@@ -34,7 +34,6 @@ pub struct ReservationType {
 #[derive(Deserialize)]
 pub struct UpdateEvent {
     pub title: String,
-    pub artist: String,
     pub description: String,
     pub start_date: NaiveDateTime,
     pub target_revenue: i64,
@@ -52,10 +51,9 @@ impl Event {
     pub async fn create(db: &Db, event: &UpdateEvent) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO events
-               (title, artist, description, start_date, target_revenue)
-               VALUES (?, ?, ?, ?, ?)"#,
+               (title, description, start_date, target_revenue)
+               VALUES (?, ?, ?, ?)"#,
             event.title,
-            event.artist,
             event.description,
             event.start_date,
             event.target_revenue
@@ -69,10 +67,9 @@ impl Event {
     pub async fn update(db: &Db, id: i64, event: &UpdateEvent) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE events
-               SET title = ?, artist = ?, description = ?, start_date = ?
+               SET title = ?, description = ?, start_date = ?
                WHERE id = ?"#,
             event.title,
-            event.artist,
             event.description,
             event.start_date,
             id

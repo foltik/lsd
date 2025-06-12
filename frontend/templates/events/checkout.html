@@ -2,7 +2,7 @@
 
 {% block title %}Checkout - {{ event.title }}{% endblock title %}
 
-{% block styles %}
+{% block head %}
   <style>
     body {
       line-height: 1;
@@ -75,16 +75,16 @@
           class="range"
           id="price"
           name="price"
-          value="{{ reservation_type.recommended_contribution / 100 }}"
-          min="{{ reservation_type.min_contribution / 100 }}"
-          max="{{ reservation_type.max_contribution / 100 }}"
+          value="{{ reservation_type.recommended_contribution }}"
+          min="{{ reservation_type.min_contribution }}"
+          max="{{ reservation_type.max_contribution }}"
           step="1"
           oninput="updateValue(this.value)"
         />
         <div class="labels">
           {% for marker in markers %}
             <span
-              style="--val: {{ marker.value_cents / 100 }}; --min: {{ reservation_type.min_contribution / 100 }}; --max: {{ reservation_type.max_contribution / 100 }}"
+              style="--val: {{ marker.value_cents / 100 }}; --min: {{ reservation_type.min_contribution }}; --max: {{ reservation_type.max_contribution }}"
             >
               <p>{{ marker.text }}</p>
             </span>
@@ -93,9 +93,9 @@
         <input
           type="number"
           id="sliderValue"
-          min="{{ reservation_type.min_contribution / 100 }}"
-          max="{{ reservation_type.max_contribution / 100 }}"
-          value="{{ reservation_type.recommended_contribution / 100 }}"
+          min="{{ reservation_type.min_contribution }}"
+          max="{{ reservation_type.max_contribution }}"
+          value="{{ reservation_type.recommended_contribution }}"
           onchange="updateSlider(this.value)"
         />
       </div>

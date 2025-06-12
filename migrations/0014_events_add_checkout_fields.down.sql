@@ -1,0 +1,4 @@
+ALTER TABLE events DROP COLUMN url;
+ALTER TABLE events DROP COLUMN target_revenue;
+ALTER TABLE events ADD COLUMN artist TEXT NOT NULL;
+DROP INDEX IF EXISTS events_url_index;

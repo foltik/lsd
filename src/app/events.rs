@@ -170,7 +170,6 @@ async fn create_event_page() -> AppResult<impl IntoResponse> {
             id: 0,
             title: "".into(),
             url: "".into(),
-            artist: "".into(),
             description: "".into(),
             start_date: Utc::now().naive_utc(),
             target_revenue: 0,
