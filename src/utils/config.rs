@@ -35,7 +35,8 @@ pub struct AppConfig {
     pub url: String,
     /// Local timezone.
     pub tz: Tz,
-    pub session_cookie_max_age_days: i64,
+    /// How long until a login session expires.
+    pub session_expiry_days: u32,
 }
 
 /// Database configuration.
