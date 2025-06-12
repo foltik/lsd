@@ -19,34 +19,13 @@
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
 use axum_extra::extract::CookieJar;
+use cookie::Cookie;
 use lettre::message::header::ContentType;
 use lettre::message::Mailbox;
 
 use crate::db::token::{LoginToken, SessionToken};
 use crate::db::user::UpdateUser;
 use crate::prelude::*;
-use crate::utils::templates::CONFIG;
-
-fn build_cookie(token: &str) -> (axum::http::HeaderName, String) {
-    let config = CONFIG.get().unwrap();
-    (
-        header::SET_COOKIE,
-        cookie::Cookie::build(("session", token))
-            .secure(if cfg!(debug_assertions) {
-                // Safari won't allow secure cookies
-                // coming from localhost in debug mode
-                false
-            } else {
-                // Secure cookies in release mode
-                true
-            })
-            .http_only(true)
-            .same_site(cookie::SameSite::Lax)
-            .domain(config.app.domain.as_str())
-            .max_age(cookie::time::Duration::days(config.app.session_cookie_max_age_days))
-            .to_string(),
-    )
-}
 
 /// Add all `auth` routes to the router.
 #[rustfmt::skip]
@@ -124,31 +103,28 @@ struct LoginForm {
     email: Mailbox,
 }
 
-/// Login from a link containing a token, creating a new sesssion.
+/// Show the login page or handle a login link
 async fn login_link(
     State(state): State<SharedAppState>,
     Query(query): Query<LoginQuery>,
 ) -> AppResult<Response> {
-    #[derive(Template, WebTemplate)]
-    #[template(path = "auth/login.html")]
-    pub struct Html;
+    // If there's no query string with a login token, just show the login page.
+    let Some(token) = query.token else {
+        #[derive(Template, WebTemplate)]
+        #[template(path = "auth/login.html")]
+        pub struct Html;
 
-    match query.token {
-        Some(token) => {
-            let user = User::lookup_by_login_token(&state.db, &token)
-                .await?
-                .ok_or(AppError::NotAuthorized)?;
+        return Ok(Html.into_response());
+    };
 
-            let token = SessionToken::create(&state.db, user.id).await?;
-            let headers = (
-                // TODO: expiration date
-                [build_cookie(&token)],
-                Redirect::to(&state.config.app.url),
-            );
-            Ok(headers.into_response())
-        }
-        None => Ok(Html.into_response()),
-    }
+    // Otherwise we're handling a login link. Valdiate the login token and create a new session.
+    let Some(user) = User::lookup_by_login_token(&state.db, &token).await? else {
+        return Err(AppError::NotAuthorized);
+    };
+    let token = SessionToken::create(&state.db, user.id).await?;
+    let cookie = session_cookie(&state.config, token);
+
+    Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/")).into_response())
 }
 #[derive(serde::Deserialize)]
 struct LoginQuery {
@@ -178,20 +154,27 @@ async fn register_form(
         return Err(AppError::NotAuthorized);
     };
 
-    let user_id = User::create(
-        &state.db,
-        &UpdateUser { first_name: form.first_name, last_name: form.last_name, email },
-    )
-    .await?;
+    let form = UpdateUser { first_name: form.first_name, last_name: form.last_name, email };
+    let user_id = User::create(&state.db, &form).await?;
 
-    // TODO: Expiration date on the cookie
-    let session_token = SessionToken::create(&state.db, user_id).await?;
-    let headers = ([build_cookie(&session_token)], Redirect::to(&state.config.app.url));
-    Ok(headers.into_response())
+    let token = SessionToken::create(&state.db, user_id).await?;
+    let cookie = session_cookie(&state.config, token);
+
+    Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/")).into_response())
 }
 #[derive(serde::Deserialize)]
 struct RegisterForm {
     token: String,
     first_name: String,
     last_name: String,
+}
+
+fn session_cookie(config: &Config, token: String) -> String {
+    Cookie::build(("session", token))
+        .secure(config.acme.is_some())
+        .http_only(true)
+        .same_site(cookie::SameSite::Strict)
+        .domain(&config.app.domain)
+        .max_age(cookie::time::Duration::days(config.app.session_expiry_days as i64))
+        .to_string()
 }
