@@ -70,7 +70,7 @@ What can people expect...</textarea
 
       {# TODO: ability to pick from saved reservation_types #}
       <div id="reservation_types_list">
-        <div class="form flex flex-row" id="row_0">
+        <div class="flex flex-row" id="row_0">
           <input
             type="text"
             name="name"
@@ -126,11 +126,11 @@ What can people expect...</textarea
       </button>
 
       <div class="flex flex-row">
-        <button class=":green m-auto w-full" type="submit">
+        <button class="ext/button :green m-auto w-full" type="submit">
           {% if event.title.is_empty() %}Create{% else %}Update{% endif %} event
         </button>
         <button
-          class=":red m-auto w-full"
+          class="ext/button :red m-auto w-full"
           type="button"
           hx-delete="/events/{{ event.id }}/edit"
           hx-confirm="Are you sure you want to delete the event?"
