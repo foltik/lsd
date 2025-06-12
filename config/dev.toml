@@ -2,7 +2,7 @@
 domain = "localhost"
 url = "http://localhost:8080"
 tz = "America/New_York"
-session_cookie_max_age = "52w"
+session_cookie_max_age_days = 365
 
 [db]
 file = "db.sqlite"

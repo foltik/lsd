@@ -2,7 +2,7 @@
 domain = "beta.lightandsound.design"
 url = "https://beta.lightandsound.design"
 tz = "America/New_York"
-session_cookie_max_age = "4w"
+session_cookie_max_age_days = 30
 
 [db]
 file = "db.sqlite"
