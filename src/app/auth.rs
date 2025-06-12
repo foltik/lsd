@@ -19,7 +19,6 @@
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
 use axum_extra::extract::CookieJar;
-use jiff::SpanRelativeTo;
 use lettre::message::header::ContentType;
 use lettre::message::Mailbox;
 
@@ -44,14 +43,7 @@ fn build_cookie(token: &str) -> (axum::http::HeaderName, String) {
             .http_only(true)
             .same_site(cookie::SameSite::Lax)
             .domain(config.app.domain.as_str())
-            .max_age(cookie::time::Duration::seconds(
-                config
-                    .app
-                    .session_cookie_max_age
-                    .to_duration(SpanRelativeTo::days_are_24_hours())
-                    .unwrap()
-                    .as_secs(),
-            ))
+            .max_age(cookie::time::Duration::days(config.app.session_cookie_max_age_days))
             .to_string(),
     )
 }

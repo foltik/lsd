@@ -32,7 +32,6 @@ uuid = { version = "1.16.0", features = ["v7"] }
 askama_web = { version = "0.13.0", features = ["axum-0.8"] }
 thiserror = "2.0.12"
 cookie = "0.18.1"
-jiff = { version = "0.2.14", features = ["serde"] }
 
 # Add a little optimization to debug builds
 [profile.dev]
