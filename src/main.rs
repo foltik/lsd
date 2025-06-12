@@ -6,6 +6,7 @@ mod utils;
 
 use axum::handler::HandlerWithoutStateExt;
 use axum::response::Redirect;
+use axum_server::tls_rustls::RustlsConfig;
 use futures::StreamExt;
 use tracing::level_filters::LevelFilter;
 use tracing::Level;
@@ -42,18 +43,18 @@ async fn main() -> anyhow::Result<()> {
     let app = app::build(config.clone()).await?.into_make_service();
     tracing::info!("Live at {}", &config.app.url);
 
+    // Spawn an auxillary HTTP server which just redirects to HTTPS
+    tokio::spawn(async move {
+        let redirect = move || async move { Redirect::permanent(&config.app.url) };
+        axum_server::bind(config.net.http_addr)
+            .serve(redirect.into_make_service())
+            .await
+    });
+
     // Spawn the main HTTPS server
     match config.acme {
         // If ACME is configured, request a TLS certificate from Let's Encrypt
         Some(acme) => {
-            // Spawn an auxillary HTTP server which just redirects to HTTPS
-            tokio::spawn(async move {
-                let redirect = move || async move { Redirect::permanent(&config.app.url) };
-                axum_server::bind(config.net.http_addr)
-                    .serve(redirect.into_make_service())
-                    .await
-            });
-
             let mut acme = rustls_acme::AcmeConfig::new([&acme.domain])
                 .contact_push(format!("mailto:{}", &acme.email))
                 .cache(rustls_acme::caches::DirCache::new(acme.dir.clone()))
@@ -75,7 +76,10 @@ async fn main() -> anyhow::Result<()> {
         }
         // Otherwise, use the bundled self-signed TLS cert
         None => {
-            axum_server::bind(config.net.http_addr).serve(app).await?;
+            let cert = include_bytes!("../config/selfsigned.cert");
+            let key = include_bytes!("../config/selfsigned.key");
+            let rustls = RustlsConfig::from_pem(cert.into(), key.into()).await?;
+            axum_server::bind_rustls(config.net.https_addr, rustls).serve(app).await?;
         }
     }
 
