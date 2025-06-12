@@ -1,8 +1,8 @@
 [app]
 domain = "localhost"
-url = "http://localhost:8080"
+url = "https://localhost:4433"
 tz = "America/New_York"
-session_cookie_max_age_days = 365
+session_expiry_days = 365
 
 [db]
 file = "db.sqlite"

@@ -86,7 +86,7 @@ async fn edit_list_form(
         List::add_members(&state.db, id, &emails).await?;
     }
 
-    Ok(Redirect::to(&format!("{}/lists/{}", state.config.app.url, id)).into_response())
+    Ok(Redirect::to(&format!("/lists/{id}")).into_response())
 }
 
 async fn remove_list_member(
