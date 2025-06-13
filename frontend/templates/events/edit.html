@@ -1,0 +1,272 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ event.title }}{% endblock title %}
+
+{% block content %}
+  <section id="events/edit">
+    <form
+      id="form"
+      class="ext/form"
+      action="/events/{{ event.id }}/update"
+      method="post"
+    >
+      <div class="field">
+        <label for="title">Title</label>
+        <input type="text" name="title" value="{{ event.title }}" required />
+      </div>
+
+      <div class="field">
+        <label for="slug">Slug</label>
+        <input
+          type="text"
+          id="slug"
+          name="slug"
+          value="{{ event.slug }}"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea name="description" value="{{ event.description }}" required></textarea>
+      </div>
+
+      <div class="field">
+        <label for="unlisted">Unlisted</label>
+        <input name="unlisted" type="checkbox" {% if event.unlisted %}checked{% endif %}>
+      </div>
+
+      <div class="field">
+        <label for="guest_list_id">Guest List</label>
+        <select name="guest_list_id" data-type="number">
+            {% for list in lists %}
+                <option value>None</option>
+                <option value="{{ list.id }}" {% if event.guest_list_id == Some(*list.id) %}selected{% endif %}>{{ list.name }} ({{ list.count }} members)</option>
+            {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="start">Start</label>
+        <input
+          type="datetime-local"
+          name="start"
+          value="{{ event.start | format_datetime("%Y-%m-%dT%H:%M") }}"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="end">End (Optional)</label>
+        <input
+          type="datetime-local"
+          name="end"
+          value="{{ event.end | format_optional_datetime("%Y-%m-%dT%H:%M") }}"
+        />
+      </div>
+
+      <div id="tickets">
+          <div class="header">
+            <h2>Available Reservations</h2>
+            <button type="button" id="add">+</button>
+          </div>
+
+      </div>
+
+      <div class="field">
+        <label for="target_revenue">Target revenue ($)</label>
+        <input
+          type="number"
+          name="target_revenue"
+          value="{{ event.target_revenue | unwrap_or_empty }}"
+          step="1"
+        />
+      </div>
+
+      <button type="submit">
+          {% if event.title.is_empty() %}Create{% else %}Update{% endif %} event
+      </button>
+    </form>
+  </div>
+  <script>
+  /* ---------- DOM ----------------------------------------------------------- */
+  const $ = (id) => document.getElementById(id);
+  const ui = {
+    form:    $('form'),
+    list: $('tickets'),
+    add:     $('add'),
+    tickets: () => [...ui.list.querySelectorAll('.ticket')],
+  };
+  const KINDS = {
+    free:     'Free',
+    fixed:    'Fixed',
+    variable: 'Variable',
+    work:     'Work Trade',
+  };
+  const FIELDS = {
+    price: 'fixed',
+    price_min:     'variable',
+    price_max:     'variable',
+    price_default: 'variable',
+    notice_hours: 'work',
+  };
+
+  /* ---------- Rendering ----------------------------------------------------- */
+  const template = (t) => `
+    <div class="ticket">
+      <div class="ticket-row">
+        <input name="name"        placeholder="Name"      value="${t.name ?? ''}" required>
+        <input name="quantity"    placeholder="Quantity"  value="${t.quantity ?? ''}" type="number" required>
+        <select name="kind" required>
+          ${Object.entries(KINDS).map(([kind, desc]) =>
+            `<option value="${kind}" ${t.kind == kind ? 'selected' : ''}>${desc}</option>`
+          ).join('')}
+        </select>
+        <button type="button" class="ext/button"       data-action="up">↑</button>
+        <button type="button" class="ext/button"       data-action="down">↓</button>
+        <button type="button" class="ext/button :red"  data-action="remove">✕</button>
+      </div>
+      <div class="ticket-row">
+        <input name="description" placeholder="Description"  value="${t.description ?? ''}" required>
+      </div>
+      <div class="ticket-row">
+        <input name="price"         type="number" placeholder="Required Contribution" value="${t.price ?? ''}">
+        <input name="price_min"     type="number" placeholder="Min Contribution" value="${t.price_min ?? ''}">
+        <input name="price_max"     type="number" placeholder="Max Contribution" value="${t.price_max ?? ''}">
+        <input name="price_default" type="number" placeholder="Suggested Contribution" value="${t.price_default ?? ''}">
+        <input name="notice_hours"  type="number" placeholder="Notice Period (hrs)" value="${t.notice_hours ?? ''}" type="number">
+      </div>
+    </div>
+  `;
+
+  function render() {
+    ui.tickets().forEach((t, i, arr) => {
+      // Disable up/down buttons for first/last tickets
+      t.querySelector('[data-action="up"]').disabled = i == 0;
+      t.querySelector('[data-action="down"]').disabled = i == arr.length - 1;
+
+      // Update kind-specific field visibility
+      const kind = t.querySelector('[name="kind"]').value;
+      for (const [field, forKind] of Object.entries(FIELDS)) {
+        const el = t.querySelector(`[name="${field}"]`);
+        el.classList.toggle('hidden', kind != forKind);
+        el.required = kind == forKind;
+      }
+    });
+  }
+
+  /* ---------- Ticket operations ------------------------------------------- */
+  ui.add.addEventListener('click', () => {
+    // Add a new blank ticket
+    ui.list.insertAdjacentHTML('beforeend', template({}));
+    render();
+  });
+  ui.list.addEventListener('click', (e) => {
+    // Add, remove, or move an existing ticket
+    const tickets = ui.tickets();
+    const ticket = e.target.closest('.ticket');
+    const i = tickets.indexOf(ticket);
+
+    const action = e.target.dataset?.action;
+    if (!action) return;
+
+    if (action == 'remove') ticket.remove();
+    if (action == 'up') ui.list.insertBefore(ticket, tickets[i - 1]);
+    if (action == 'down') ui.list.insertBefore(tickets[i + 1], ticket);
+
+    render();
+  });
+  ui.list.addEventListener('change', (e) => {
+    // Re-render when the `kind` dropdown changes
+    if (e.target.name == 'kind') render();
+  });
+
+  /* ---------- Form submit handler ------------------------------------------- */
+  ui.form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (ui.tickets().length == 0) {
+      alert('Add at least one reservation!');
+      return;
+    }
+
+    const valueOfInput = (root, name) => {
+      const el = root.querySelector(`[name="${name}"]`);
+      const type = el.dataset?.type || el.type;
+      if (type == 'number') {
+        return el.value == '' ? null : +el.value;
+      } else if (type == 'checkbox') {
+        return el.checked;
+      } else if (type == 'datetime-local') {
+        return el.value == '' ? null : el.value + ':00';
+      } else {
+        return el.value == '' ? null : el.value;
+      }
+    };
+
+    let v = (name) => valueOfInput(ui.form, name);
+    const body = {
+      id: parseInt('{{ event.id }}') || undefined,
+      title: v('title'),
+      slug: v('slug'),
+      description: v('description'),
+      start: v('start'),
+      target_revenue: v('target_revenue'),
+      unlisted: v('unlisted'),
+      guest_list_id: v('guest_list_id'),
+      tickets: ui.tickets().map((t, i) => {
+        let v = (name) => valueOfInput(t, name);
+
+        const kind = v('kind');
+        const ticket = {
+          name: v('name'),
+          description: v('description'),
+          quantity: v('quantity'),
+          kind,
+          sort: i,
+        };
+
+        if (kind == 'fixed') {
+          ticket.price = v('price');
+        } else if (kind == 'variable') {
+          ticket.price_min = v('price_min');
+          ticket.price_max = v('price_max');
+          ticket.price_default = v('price_default');
+        } else if (kind == 'work') {
+          ticket.notice_hours = v('notice_hours');
+        }
+
+        return ticket;
+      })
+    };
+
+    console.log(body);
+
+    const slug = v('slug');
+    try {
+      const resp = await fetch(`/events/${slug}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (resp.ok) {
+        window.location.href = `/events/${slug}`;
+      } else {
+        alert(`Error: ${await resp.text()}`);
+      }
+    } catch (e) {
+      alert(`Error: ${e}`);
+    }
+  });
+
+  // Populate existing tickets from the backend
+  let tickets = JSON.parse('{{ tickets | json }}');
+  // Add an empty ticket if there are none
+  tickets = tickets.length > 0 ? tickets : [{}];
+
+  // Initial render
+  ui.list.insertAdjacentHTML('beforeend', tickets.map(template).join(''));
+  render();
+
+  </script>
+{% endblock content %}

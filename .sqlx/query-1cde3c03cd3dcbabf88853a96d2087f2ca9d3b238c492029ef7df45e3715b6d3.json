@@ -19,13 +19,53 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "quantity",
         "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "sort",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price_min",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price_max",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price_default",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notice_hours",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 11,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 4,
+        "ordinal": 12,
         "type_info": "Datetime"
       }
     ],
@@ -37,7 +77,15 @@
       false,
       false,
       false,
-      true
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
     ]
   },
   "hash": "1cde3c03cd3dcbabf88853a96d2087f2ca9d3b238c492029ef7df45e3715b6d3"

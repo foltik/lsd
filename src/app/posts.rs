@@ -7,16 +7,15 @@ use crate::prelude::*;
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router
         .public_routes(|r| {
-            r.route("/p/{url}", get(read::view))
-             .route("/posts/{url}", get(read::view))
-             .route("/posts/{url}/preview", get(read::preview))
+            r.route("/p/{slug}", get(read::view_page))
         })
         .restricted_routes(User::WRITER, |r| {
-            r.route("/posts", get(read::list))
-             .route("/posts/new", get(edit::new))
-             .route("/posts/{url}/edit", get(edit::edit_page).post(edit::edit_form))
-             .route("/posts/{url}/send", get(send::page).post(send::form))
-             .route("/posts/{url}/delete", post(edit::delete_form))
+            r.route("/posts", get(read::list_page))
+             .route("/posts/new", get(edit::new_page))
+             .route("/posts/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
+             .route("/posts/{slug}/delete", post(edit::delete_form))
+             .route("/posts/{slug}/send", get(send::page).post(send::send_form))
+             .route("/posts/{slug}/preview", get(read::preview_page))
         })
 }
 
@@ -25,7 +24,7 @@ mod read {
     use super::*;
 
     // Display a list of posts.
-    pub async fn list(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    pub async fn list_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
         let posts = Post::list(&state.db).await?;
 
         #[derive(Template, WebTemplate)]
@@ -37,11 +36,11 @@ mod read {
     }
 
     // Display a single post.
-    pub async fn view(
+    pub async fn view_page(
         State(state): State<SharedAppState>,
-        Path(url): Path<String>,
+        Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
-        let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
 
@@ -54,22 +53,28 @@ mod read {
     }
 
     // Display a preview of a post as it would appear in an email.
-    pub async fn preview(
+    pub async fn preview_page(
         State(state): State<SharedAppState>,
-        Path(url): Path<String>,
+        Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
-        let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/email.html")]
-        struct Html {
+        struct EmailHtml {
             pub post: Post,
+            pub post_url: String,
             pub opened_url: String,
             pub unsub_url: String,
         }
-        Ok(Html { post, opened_url: "".into(), unsub_url: "".into() })
+        Ok(EmailHtml {
+            post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
+            opened_url: "".into(),
+            unsub_url: "".into(),
+            post,
+        })
     }
 }
 
@@ -77,41 +82,36 @@ mod read {
 mod edit {
     use super::*;
 
-    // New post page.
-    pub async fn new() -> AppResult<impl IntoResponse> {
-        let post = Post {
-            id: 0,
-            title: "".into(),
-            url: "".into(),
-            author: "".into(),
-            content: "".into(),
-            created_at: Utc::now().naive_utc(),
-            updated_at: Utc::now().naive_utc(),
-        };
+    #[derive(Template, WebTemplate)]
+    #[template(path = "posts/edit.html")]
+    pub struct EditHtml {
+        pub post: Post,
+    }
 
-        #[derive(Template, WebTemplate)]
-        #[template(path = "posts/edit.html")]
-        pub struct Html {
-            pub post: Post,
-        }
-        Ok(Html { post })
+    // New post page.
+    pub async fn new_page() -> AppResult<impl IntoResponse> {
+        Ok(EditHtml {
+            post: Post {
+                id: 0,
+                title: "".into(),
+                slug: "".into(),
+                author: "".into(),
+                content: "".into(),
+                created_at: Utc::now().naive_utc(),
+                updated_at: Utc::now().naive_utc(),
+            },
+        })
     }
 
     // Edit post page.
     pub async fn edit_page(
         State(state): State<SharedAppState>,
-        Path(url): Path<String>,
+        Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
-        let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
-
-        #[derive(Template, WebTemplate)]
-        #[template(path = "posts/edit.html")]
-        pub struct Html {
-            pub post: Post,
-        }
-        Ok(Html { post })
+        Ok(EditHtml { post })
     }
 
     // Edit post form.
@@ -131,16 +131,15 @@ mod edit {
                 Post::create(&state.db, &form.post).await?;
             }
         }
-
         Ok(())
     }
 
     // Delete post form.
     pub async fn delete_form(
         State(state): State<SharedAppState>,
-        Path(url): Path<String>,
+        Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
-        let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
         Post::delete(&state.db, post.id).await?;
@@ -158,9 +157,9 @@ mod send {
     /// Display the form to send a post.
     pub async fn page(
         State(state): State<SharedAppState>,
-        Path(url): Path<String>,
+        Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
-        let Some(post) = Post::lookup_by_url(&state.db, &url).await? else {
+        let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
 
@@ -204,6 +203,7 @@ mod send {
     #[template(path = "posts/email.html")]
     pub struct EmailHtml {
         pub post: Post,
+        pub post_url: String,
         pub opened_url: String,
         pub unsub_url: String,
     }
@@ -213,12 +213,12 @@ mod send {
     pub struct SendForm {
         list_id: i64,
     }
-    pub async fn form(
+    pub async fn send_form(
         State(state): State<SharedAppState>,
-        Path(url): Path<String>,
+        Path(slug): Path<String>,
         Form(form): Form<SendForm>,
     ) -> AppResult<impl IntoResponse> {
-        let Some(mut post) = Post::lookup_by_url(&state.db, &url).await? else {
+        let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
         let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
@@ -227,12 +227,12 @@ mod send {
 
         let emails = Email::create_posts(&state.db, post.id, list.id).await?;
 
-        // XXX: The `url` field is just a slug, not an absolute URL.
-        // We can't yet access `config.app.url` within templates, so we just mutate
-        // the URL here and rely on that behavior in the `email.html` template.
-        post.url = format!("{}/p/{}", &state.config.app.url, &post.url);
-        let mut email_template =
-            EmailHtml { post: post.clone(), opened_url: "".into(), unsub_url: "".into() };
+        let mut email_template = EmailHtml {
+            post: post.clone(),
+            post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
+            opened_url: "".into(),
+            unsub_url: "".into(),
+        };
         let mut messages = vec![];
         let mut email_ids = vec![];
         for Email { id, address, sent_at, .. } in emails {

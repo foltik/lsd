@@ -24,6 +24,7 @@ pub struct Config {
     pub net: NetConfig,
     pub acme: Option<AcmeConfig>,
     pub email: EmailConfig,
+    pub stripe: StripeConfig,
 }
 
 /// Webapp configuration.
@@ -87,7 +88,11 @@ pub struct EmailConfig {
     #[serde(default = "default_ratelimit")]
     pub ratelimit: usize,
 }
-
 fn default_ratelimit() -> usize {
     10
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct StripeConfig {
+    pub secret_key: String,
 }

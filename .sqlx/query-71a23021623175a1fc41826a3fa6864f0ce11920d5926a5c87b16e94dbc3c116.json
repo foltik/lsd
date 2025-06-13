@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM events",
+  "query": "SELECT * FROM events WHERE slug = ?",
   "describe": {
     "columns": [
       {
@@ -65,7 +65,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -82,5 +82,5 @@
       false
     ]
   },
-  "hash": "0d4d698b039ac95743392f44379bd1b8881297a06d0e0d333b065aec5d9da24e"
+  "hash": "71a23021623175a1fc41826a3fa6864f0ce11920d5926a5c87b16e94dbc3c116"
 }

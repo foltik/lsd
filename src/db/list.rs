@@ -1,8 +1,6 @@
-use chrono::NaiveDateTime;
 use sqlx::QueryBuilder;
 
-use super::Db;
-use crate::utils::error::AppResult;
+use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct List {
@@ -43,13 +41,27 @@ pub struct ListWithCount {
 impl List {
     /// List all lists.
     pub async fn list(db: &Db) -> AppResult<Vec<List>> {
-        let events = sqlx::query_as!(Self, "SELECT * FROM lists").fetch_all(db).await?;
-        Ok(events)
+        let lists = sqlx::query_as!(Self, "SELECT * FROM lists").fetch_all(db).await?;
+        Ok(lists)
+    }
+
+    /// List all lists, and count the number of members in each list via list_members join.
+    pub async fn list_with_counts(db: &Db) -> AppResult<Vec<ListWithCount>> {
+        let lists = sqlx::query_as!(
+            ListWithCount,
+            "SELECT l.*, COUNT(m.list_id) AS count
+             FROM lists l
+             LEFT JOIN list_members m ON l.id = m.list_id
+             GROUP BY l.id"
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(lists)
     }
 
     /// Create a list.
     pub async fn create(db: &Db, event: &UpdateList) -> AppResult<i64> {
-        let row = sqlx::query!(
+        let res = sqlx::query!(
             r#"INSERT INTO lists
                (name, description)
                VALUES (?, ?)"#,
@@ -58,7 +70,7 @@ impl List {
         )
         .execute(db)
         .await?;
-        Ok(row.last_insert_rowid())
+        Ok(res.last_insert_rowid())
     }
 
     /// Update a list.
@@ -78,7 +90,7 @@ impl List {
 
     /// Lookup a list by id, if one exists.
     pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<List>> {
-        let event = sqlx::query_as!(
+        let list = sqlx::query_as!(
             Self,
             r#"SELECT *
                FROM lists
@@ -87,7 +99,7 @@ impl List {
         )
         .fetch_optional(db)
         .await?;
-        Ok(event)
+        Ok(list)
     }
 
     /// Lookup the members of a list.

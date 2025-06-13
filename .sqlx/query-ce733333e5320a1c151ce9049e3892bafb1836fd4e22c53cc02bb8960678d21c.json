@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE posts\n               SET title = ?,\n                 slug = ?,\n                 author = ?,\n                 content = ?,\n                 updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "ce733333e5320a1c151ce9049e3892bafb1836fd4e22c53cc02bb8960678d21c"
+}

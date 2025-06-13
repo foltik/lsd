@@ -1,13 +1,10 @@
-use chrono::NaiveDateTime;
+#![allow(unused)]
 
-use super::Db;
-use crate::utils::error::AppResult;
+use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Event {
     pub id: i64,
-    pub guest_list_id: Option<i64>,
-
     pub title: String,
     pub slug: String,
     pub description: String,
@@ -15,15 +12,17 @@ pub struct Event {
 
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
+
+    pub unlisted: bool,
+    pub guest_list_id: Option<i64>,
+    pub target_revenue: Option<i64>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct UpdateEvent {
-    pub guest_list_id: Option<i64>,
-
     pub title: String,
     pub slug: String,
     pub description: String,
@@ -31,6 +30,10 @@ pub struct UpdateEvent {
 
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
+
+    pub unlisted: bool,
+    pub guest_list_id: Option<i64>,
+    pub target_revenue: Option<i64>,
 }
 
 impl Event {
@@ -44,15 +47,17 @@ impl Event {
     pub async fn create(db: &Db, event: &UpdateEvent) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO events
-               (title, slug, description, flyer, start, end, guest_list_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?)"#,
+               (title, slug, description, flyer, start, end, unlisted, guest_list_id, target_revenue)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
             event.title,
             event.slug,
             event.description,
             event.flyer,
             event.start,
             event.end,
+            event.unlisted,
             event.guest_list_id,
+            event.target_revenue,
         )
         .execute(db)
         .await?;
@@ -69,7 +74,9 @@ impl Event {
                     flyer = ?,
                     start = ?,
                     end = ?,
-                    guest_list_id = ?
+                    unlisted = ?,
+                    guest_list_id = ?,
+                    target_revenue = ?
                 WHERE id = ?"#,
             event.title,
             event.slug,
@@ -77,7 +84,9 @@ impl Event {
             event.flyer,
             event.start,
             event.end,
+            event.unlisted,
             event.guest_list_id,
+            event.target_revenue,
             id
         )
         .execute(db)
@@ -97,5 +106,41 @@ impl Event {
             .fetch_optional(db)
             .await?;
         Ok(event)
+    }
+
+    /// Lookup a post by URL, if one exists.
+    pub async fn lookup_by_slug(db: &Db, slug: &str) -> AppResult<Option<Event>> {
+        let row = sqlx::query_as!(Self, "SELECT * FROM events WHERE slug = ?", slug)
+            .fetch_optional(db)
+            .await?;
+        Ok(row)
+    }
+
+    pub async fn is_on_list(&self, db: &Db, id: i64, user: &Option<User>) -> AppResult<bool> {
+        // If there's no guest list, anyone is on the list.
+        let Some(guest_list_id) = self.guest_list_id else {
+            return Ok(true);
+        };
+
+        Ok(match user {
+            None => false,
+            Some(user) => sqlx::query!(
+                "SELECT list_id FROM list_members WHERE list_id = ? AND email = ?",
+                guest_list_id,
+                user.email
+            )
+            .fetch_optional(db)
+            .await?
+            .is_some(),
+        })
+    }
+
+    #[allow(unused)]
+    pub fn is_upcoming(&self, now: NaiveDateTime) -> bool {
+        // TODO: use with:
+        // let now = Utc::now().naive_utc();
+        // let past = query.past.unwrap_or(false);
+
+        now <= self.start || self.end.is_some_and(|end| now <= end)
     }
 }

@@ -14,44 +14,54 @@
         "type_info": "Text"
       },
       {
-        "name": "description",
+        "name": "slug",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "description",
         "ordinal": 3,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "updated_at",
-        "ordinal": 4,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "slug",
-        "ordinal": 5,
         "type_info": "Text"
       },
       {
         "name": "flyer",
-        "ordinal": 6,
+        "ordinal": 4,
         "type_info": "Text"
       },
       {
         "name": "start",
-        "ordinal": 7,
+        "ordinal": 5,
         "type_info": "Datetime"
       },
       {
         "name": "end",
-        "ordinal": 8,
+        "ordinal": 6,
         "type_info": "Datetime"
       },
       {
+        "name": "unlisted",
+        "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
         "name": "guest_list_id",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "target_revenue",
         "ordinal": 9,
         "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 11,
+        "type_info": "Datetime"
       }
     ],
     "parameters": {
@@ -62,12 +72,14 @@
       false,
       false,
       false,
-      false,
-      false,
       true,
       false,
       true,
-      true
+      false,
+      true,
+      true,
+      false,
+      false
     ]
   },
   "hash": "9546f551138edd30d2c27560d55c41d13da40b3e927ab0eca381ab3af2b81455"

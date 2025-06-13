@@ -11,14 +11,11 @@ pub struct Rsvp {
     pub user_id: i64,
     pub event_id: i64,
     pub ticket_id: i64,
-
     pub transaction_id: Option<i64>,
-    pub promo_id: Option<i64>,
-    pub refund_id: Option<i64>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub arrived_at: Option<NaiveDateTime>,
+    pub checkin_at: Option<NaiveDateTime>,
 }
 
 #[derive(serde::Deserialize)]
@@ -26,30 +23,26 @@ pub struct UpdateRsvp {
     pub user_id: i64,
     pub event_id: i64,
     pub ticket_id: i64,
-
     pub transaction_id: Option<i64>,
-    pub promo_id: Option<i64>,
-    pub refund_id: Option<i64>,
 
-    pub arrived_at: Option<NaiveDateTime>,
+    pub checkin_at: Option<NaiveDateTime>,
 }
 
 impl Rsvp {
     pub async fn list(db: &Db) -> AppResult<Vec<Rsvp>> {
-        Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvps"#).fetch_all(db).await?)
+        Ok(sqlx::query_as!(Self, "SELECT * FROM rsvps").fetch_all(db).await?)
     }
 
     pub async fn create(db: &Db, rsvp: &UpdateRsvp) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO rsvps
-               (user_id, event_id, ticket_id, transaction_id, promo_id, refund_id)
-               VALUES (?, ?, ?, ?, ?, ?)"#,
+               (user_id, event_id, ticket_id, transaction_id, checkin_at)
+               VALUES (?, ?, ?, ?, ?)"#,
             rsvp.user_id,
             rsvp.event_id,
             rsvp.ticket_id,
             rsvp.transaction_id,
-            rsvp.promo_id,
-            rsvp.refund_id,
+            rsvp.checkin_at,
         )
         .execute(db)
         .await?;
@@ -59,21 +52,17 @@ impl Rsvp {
     pub async fn update(db: &Db, id: i64, rsvp: &UpdateRsvp) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE rsvps
-               SET user_id        = ?,
-                   event_id       = ?,
-                   ticket_id      = ?,
+               SET user_id = ?,
+                   event_id = ?,
+                   ticket_id = ?,
                    transaction_id = ?,
-                   promo_id       = ?,
-                   refund_id      = ?,
-                   arrived_at     = ?
+                   checkin_at = ?
                WHERE id = ?"#,
             rsvp.user_id,
             rsvp.event_id,
             rsvp.ticket_id,
             rsvp.transaction_id,
-            rsvp.promo_id,
-            rsvp.refund_id,
-            rsvp.arrived_at,
+            rsvp.checkin_at,
             id
         )
         .execute(db)
