@@ -3,12 +3,10 @@ CREATE TABLE IF NOT EXISTS rsvps (
     user_id INTEGER NOT NULL,
     event_id INTEGER NOT NULL,
     ticket_id INTEGER NOT NULL,
-
     transaction_id INTEGER,
-    promo_id INTEGER,
-    refund_id INTEGER,
+    price INTEGER,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    arrived_at TIMESTAMP
+    checkin_at TIMESTAMP
 );

@@ -23,3 +23,6 @@ smtp_username = "$SMTP_USERNAME"
 smtp_password = "$SMTP_PASSWORD"
 from = "Light and Sound Design <studio@beta.lightandsound.design>"
 ratelimit = 10
+
+[stripe]
+secret_key = "$STRIPE_SECRET_KEY"

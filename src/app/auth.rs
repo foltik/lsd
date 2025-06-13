@@ -104,6 +104,11 @@ struct LoginForm {
 }
 
 /// Show the login page or handle a login link
+#[derive(serde::Deserialize)]
+struct LoginQuery {
+    redirect: Option<String>,
+    token: Option<String>,
+}
 async fn login_link(
     State(state): State<SharedAppState>,
     Query(query): Query<LoginQuery>,
@@ -112,9 +117,10 @@ async fn login_link(
     let Some(token) = query.token else {
         #[derive(Template, WebTemplate)]
         #[template(path = "auth/login.html")]
-        pub struct Html;
-
-        return Ok(Html.into_response());
+        pub struct Html {
+            redirect: Option<String>,
+        };
+        return Ok(Html { redirect: query.redirect }.into_response());
     };
 
     // Otherwise we're handling a login link. Valdiate the login token and create a new session.
@@ -124,11 +130,12 @@ async fn login_link(
     let token = SessionToken::create(&state.db, user.id).await?;
     let cookie = session_cookie(&state.config, token);
 
-    Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/")).into_response())
-}
-#[derive(serde::Deserialize)]
-struct LoginQuery {
-    token: Option<String>,
+    let headers = [(header::SET_COOKIE, cookie)];
+    let redirect = Redirect::to(&match query.redirect {
+        Some(url) => url,
+        None => "/".to_string(),
+    });
+    Ok((headers, redirect).into_response())
 }
 
 /// Display the registration page.

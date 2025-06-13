@@ -29,28 +29,18 @@
         "type_info": "Integer"
       },
       {
-        "name": "promo_id",
-        "ordinal": 5,
-        "type_info": "Integer"
-      },
-      {
-        "name": "refund_id",
-        "ordinal": 6,
-        "type_info": "Integer"
-      },
-      {
         "name": "created_at",
-        "ordinal": 7,
+        "ordinal": 5,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 8,
+        "ordinal": 6,
         "type_info": "Datetime"
       },
       {
-        "name": "arrived_at",
-        "ordinal": 9,
+        "name": "checkin_at",
+        "ordinal": 7,
         "type_info": "Datetime"
       }
     ],
@@ -62,8 +52,6 @@
       false,
       false,
       false,
-      true,
-      true,
       true,
       false,
       false,

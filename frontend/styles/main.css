@@ -1,6 +1,26 @@
 @import "tailwindcss";
 
-@import "./fonts.css";
+/** Extensions **/
+@import "./extensions/fonts.css";
+@import "./extensions/form.css";
+
+/* Auth */
+@import "./auth/login.css";
+@import "./auth/register.css";
+/* Events */
+@import "./events/checkout.css";
+@import "./events/edit.css";
+@import "./events/list.css";
+@import "./events/view.css";
+/* Lists */
+@import "./lists/edit.css";
+@import "./lists/signup.css";
+@import "./lists/view.css";
+/* Posts */
+@import "./posts/edit.css";
+@import "./posts/list.css";
+@import "./posts/send.css";
+@import "./posts/view.css";
 
 @theme {
   --font-sans: DM Sans Variable, sans-serif;
@@ -41,31 +61,3 @@ body > header {
     @apply h-4 border-r border-neutral-700;
   }
 }
-
-/** Extensions **/
-
-@import "./extentions/form.css";
-
-/** Modules **/
-
-/* Auth */
-
-@import "./auth/login.css";
-@import "./auth/register.css";
-
-@import "./events/create.css";
-@import "./events/list.css";
-@import "./events/view.css";
-
-/* Lists */
-
-@import "./lists/edit.css";
-@import "./lists/signup.css";
-@import "./lists/view.css";
-
-/* Posts */
-
-@import "./posts/edit.css";
-@import "./posts/list.css";
-@import "./posts/send.css";
-@import "./posts/view.css";

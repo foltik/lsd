@@ -1,0 +1,17 @@
+#events\/edit {
+  @apply mx-auto flex w-full max-w-3xl flex-col;
+
+  #tickets {
+    @apply flex flex-col gap-10 mb-12;
+
+    .header {
+      @apply flex items-center gap-3;
+    }
+    .ticket {
+      @apply flex flex-col gap-2;
+    }
+    .ticket-row {
+      @apply flex gap-2;
+    }
+  }
+}

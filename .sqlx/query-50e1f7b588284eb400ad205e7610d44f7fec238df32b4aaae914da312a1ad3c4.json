@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM posts WHERE url = ?",
+  "query": "SELECT l.*, COUNT(m.list_id) AS count\n             FROM lists l\n             LEFT JOIN list_members m ON l.id = m.list_id\n             GROUP BY l.id",
   "describe": {
     "columns": [
       {
@@ -9,41 +9,35 @@
         "type_info": "Integer"
       },
       {
-        "name": "title",
+        "name": "name",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "url",
+        "name": "description",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "author",
-        "ordinal": 3,
-        "type_info": "Text"
-      },
-      {
-        "name": "content",
-        "ordinal": 4,
-        "type_info": "Text"
-      },
-      {
         "name": "created_at",
-        "ordinal": 5,
+        "ordinal": 3,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 6,
+        "ordinal": 4,
         "type_info": "Datetime"
+      },
+      {
+        "name": "count",
+        "ordinal": 5,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
-      false,
       false,
       false,
       false,
@@ -52,5 +46,5 @@
       false
     ]
   },
-  "hash": "20429d381a684d72a57d38616f4c695548575d341037b64a7f010d47f7d7fb1a"
+  "hash": "50e1f7b588284eb400ad205e7610d44f7fec238df32b4aaae914da312a1ad3c4"
 }
