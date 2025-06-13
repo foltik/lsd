@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM session_tokens WHERE token = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bde4259d9d8a4b05db867299ede1b42106bd6f3122c2700727f1dd4e0b503297"
+}
