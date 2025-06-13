@@ -1,0 +1,38 @@
+#admin\/dashboard\/users {
+  @apply grid h-full w-full grid-cols-3 gap-2;
+  grid-template-rows: 0.1fr minmax(0, 1fr);
+}
+
+#widget-table {
+  @apply col-start-1 col-end-4 row-start-2 row-end-3 flex w-full flex-col;
+  .widget-item-table {
+    @apply h-full w-full flex-1 overflow-auto text-left;
+  }
+  table {
+    @apply w-full border-separate border-spacing-0 text-left;
+    thead {
+      th {
+        @apply sticky top-0 border-b border-neutral-700;
+      }
+    }
+    td,
+    th {
+      @apply py-1.5 text-sm overflow-ellipsis;
+    }
+    th {
+      @apply sticky bg-black;
+    }
+    td {
+      @apply border-b border-neutral-800;
+    }
+    input {
+      @apply h-3.5 w-3.5 rounded-sm border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600;
+    }
+  }
+  .table-footer {
+    @apply py-1.5;
+    a {
+      @apply inline-flex w-12 justify-center rounded-sm border-1 border-neutral-700 py-1.5 first-of-type:mr-3;
+    }
+  }
+}

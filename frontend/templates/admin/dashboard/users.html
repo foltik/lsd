@@ -1,0 +1,160 @@
+{% extends "admin/dashboard.html" %}
+{% block title %}{% call super() %} overview{% endblock title %}
+{% block panel %}
+  <div id="admin/dashboard/users">
+    <div class="widget-container">
+      <div class="widget-content-stat">
+        <h1 class="widget-item">
+          <span class="counter">200</span>
+        </h1>
+        <h2>New Users</h2>
+      </div>
+    </div>
+    <div class="widget-container">
+      <div class="widget-content-stat">
+        <h1 class="widget-item">
+          <span class="counter">240</span>
+        </h1>
+        <h2>New Users</h2>
+      </div>
+    </div>
+    <div class="widget-container">
+      <div class="widget-content-stat">
+        <h1 class="widget-item">
+          <span class="counter">100</span>
+        </h1>
+        <h2>New Users</h2>
+      </div>
+    </div>
+    <div class="widget-container" id="widget-table">
+      <div class="widget-item-table">
+        <table>
+          <thead>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Email</th>
+            <th>Role: Writer</th>
+            <th>Role: Admin</th>
+            <th>Remove user</th>
+          </thead>
+          <tbody>
+            {% for user in users %}
+              <tr>
+                <td>{{ user.first_name }}</td>
+                <td>{{ user.last_name }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <input
+                    _="on click 
+                    {% if user.is_writer %}
+                      if(confirm('Are you sure you want to promote user to a
+                      writer?'))
+                    {% else %}
+                      if(confirm('Are you sure you want to demote user from a
+                      writer?'))
+                    {% endif %}
+                    then fetch /admin/action/users/{{ user.id }}/changeRole?action={% if user.is_writer %}remove{% else %}add{% endif %}&role=writer with method:'POST'
+                    then reload() the location of the window"
+                    type="checkbox"
+                    {% if user.is_writer %}checked{% endif %}
+                  />
+                </td>
+                <td>
+                  <input
+                    _="on click 
+                    {% if user.is_admin %}
+                      if(confirm('Are you sure you want to promote user to a
+                      admin?'))
+                    {% else %}
+                      if(confirm('Are you sure you want to demote user from a
+                      admin?'))
+                    {% endif %}
+                    then fetch /admin/action/users/{{ user.id }}/changeRole?action={% if user.is_admin %}remove{% else %}add{% endif %}&role=admin with method:'POST'
+                    then reload() the location of the window"
+                    type="checkbox"
+                    {% if user.is_admin %}checked{% endif %}
+                  />
+                </td>
+                <td>
+                  <button
+                    _="on click
+                    if(confirm('Are you sure you want to remove this user?'))
+                    then fetch /admin/action/users/{{ user.id }}/remove with method:'DELETE'
+                    then reload() the location of the window"
+                    class="ext/button :red"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <a id="users-pagination-back" class="ext/button">
+          <svg
+            class="h-6 w-6 text-gray-800 dark:text-white"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="m15 19-7-7 7-7"
+            />
+          </svg>
+        </a>
+        <a
+          class="ext/button {% if has_next_page == false %}:disabled{% endif %}"
+          data-has-next-page="{{ has_next_page }}"
+        >
+          <svg
+            class="h-6 w-6 text-gray-800 dark:text-white"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="m9 5 7 7-7 7"
+            />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      let currentPage = parseInt(
+        window.location.search.split("&")[0].substr(6),
+      );
+      const [prevButton, nextButton] =
+        document.querySelectorAll(".table-footer>a");
+      const hasNextPage = nextButton.dataset.hasNextPage === "true";
+
+      if (currentPage <= 1) {
+        prevButton.classList.add(":disabled");
+      } else {
+        prevButton.href = `/admin/dashboard/users?page=${currentPage - 1}&page_size=25`;
+      }
+      if (!hasNextPage) {
+        nextButton.classList.add(":disabled");
+      } else {
+        nextButton.href = `/admin/dashboard/users?page=${currentPage + 1}&page_size=25`;
+      }
+    })();
+  </script>
+{% endblock panel %}

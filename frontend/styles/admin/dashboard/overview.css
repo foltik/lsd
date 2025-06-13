@@ -1,0 +1,45 @@
+#admin\/dashboard\/overview {
+  @apply grid h-full w-full grid-cols-3 gap-2;
+  grid-template-rows: 0.25fr minmax(0, 1fr);
+}
+
+#widget-attendees {
+  @apply col-start-1 col-end-4 row-start-2 row-end-3 flex h-full w-full flex-col;
+  .widget-content {
+    @apply flex-1 overflow-auto;
+    #chart1 {
+      .ct-series-a .ct-line {
+        @apply stroke-green-600 stroke-2;
+      }
+      .ct-series-a .ct-point {
+        @apply stroke-green-600;
+      }
+      .ct-series-a .ct-area {
+        @apply fill-green-600;
+      }
+      .ct-label {
+        @apply fill-white text-white;
+      }
+
+      .ct-horizontal:first-child {
+        @apply stroke-neutral-500;
+      }
+
+      .ct-vertical:nth-child(6) {
+        @apply stroke-neutral-500;
+      }
+
+      .ct-axis-title,
+      .ct-axis-title text {
+        @apply fill-white;
+      }
+
+      .chartist-tooltip {
+        @apply absolute z-100 hidden min-w-5 cursor-none rounded-sm border-1 border-neutral-500 bg-neutral-800 px-2.5 py-2 text-center transition-opacity delay-200 ease-linear;
+      }
+      .chartist-tooltip.show {
+        @apply block;
+      }
+    }
+  }
+}

@@ -60,6 +60,22 @@ pub async fn auth_middleware(
     Ok((cookies, response))
 }
 
+// // Middleware to be used to require admin role for certain routes (ie Admin dashboard)
+// pub async fn require_admin(
+//     State(state): State<SharedAppState>,
+//     request: Request,
+//     next: Next,
+// ) -> AppResult<impl IntoResponse> {
+//     let user = request.extensions().get::<User>().ok_or(AppError::NotAuthorized)?;
+
+//     // Check if user has admin role
+//     if !user.has_role(&state.db, "admin").await? {
+//         return Err(AppError::NotAuthorized);
+//     }
+
+//     Ok(next.run(request).await)
+// }
+
 /// Process a login form and send either a login or registration link via email.
 async fn login_form(
     State(state): State<SharedAppState>,
