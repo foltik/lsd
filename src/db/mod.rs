@@ -35,9 +35,16 @@ pub async fn init(db_config: &DbConfig) -> anyhow::Result<Db> {
 }
 
 #[derive(Deserialize)]
+struct TokenSeed {
+    user_id: i64,
+    token: String,
+}
+
+#[derive(Deserialize)]
 struct SeedData {
     users: Vec<user::UpdateUser>,
     user_roles: Vec<user::UserRole>,
+    session_tokens: Vec<TokenSeed>,
 }
 
 impl SeedData {
@@ -68,6 +75,24 @@ async fn seed_db(db: &Db, seed_data_path: &Path) -> anyhow::Result<()> {
         {
             User::add_role(db, user_role.user_id, &user_role.role).await?;
         }
+    }
+
+    for session_token in seed_data.session_tokens {
+        if sqlx::query!("SELECT * FROM session_tokens WHERE token = ?", session_token.token)
+            .fetch_optional(db)
+            .await?
+            .is_some()
+        {
+            continue;
+        }
+
+        sqlx::query!(
+            r#"INSERT INTO session_tokens (user_id, token) VALUES (?, ?)"#,
+            session_token.user_id,
+            session_token.token
+        )
+        .execute(db)
+        .await?;
     }
 
     Ok(())
