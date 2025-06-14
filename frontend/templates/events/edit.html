@@ -56,11 +56,21 @@
       </div>
 
       <div class="field">
+        <label for="date">Date</label>
+        <input
+          type="date"
+          name="date"
+          value="{{ event.start | format_datetime("%Y-%m-%d") }}"
+          required
+        />
+      </div>
+
+      <div class="field">
         <label for="start">Start</label>
         <input
-          type="datetime-local"
+          type="time"
           name="start"
-          value="{{ event.start | format_datetime("%Y-%m-%dT%H:%M") }}"
+          value="{{ event.start | format_datetime("%H:%M") }}"
           required
         />
       </div>
@@ -68,9 +78,9 @@
       <div class="field">
         <label for="end">End (Optional)</label>
         <input
-          type="datetime-local"
+          type="time"
           name="end"
-          value="{{ event.end | format_optional_datetime("%Y-%m-%dT%H:%M") }}"
+          value="{{ event.end | format_optional_datetime("%H:%M") }}"
         />
       </div>
 
@@ -211,12 +221,32 @@
           return el.value == "" ? null : +el.value;
         } else if (type == "checkbox") {
           return el.checked;
-        } else if (type == "datetime-local") {
-          return el.value == "" ? null : el.value + ":00";
         } else {
           return el.value == "" ? null : el.value;
         }
       };
+
+      // Convert [date, start+end times] into just start+end timestamps.
+      const [start, end] = (() => {
+        const startDate = v("date");
+        const startTime = v("start") + ":00";
+        const startHour = startTime.split(":")[0];
+
+        let endDate = startDate;
+        const endTime = v("end") + ":00";
+        const endHour = +endTime.split(":")[0];
+
+        // If end < start (e.g. 8PM to 4AM, or 20:00 to 04:00), move the end date to the next day
+        if (endHour < startHour) {
+          endDate = new Date(endDate);
+          endDate.setDate(endDate.getDate() + 1);
+          endDate = endDate.toISOString().split("T")[0];
+        }
+
+        const start = `${startDate}T${startTime}`;
+        const end = v("end") ? `${endDate}T${endTime}` : null;
+        return [start, end];
+      })();
 
       let v = (name) => valueOfInput(ui.form, name);
       const body = {
@@ -224,7 +254,8 @@
         title: v("title"),
         slug: v("slug"),
         description: v("description"),
-        start: v("start"),
+        start,
+        end,
         target_revenue: v("target_revenue"),
         unlisted: v("unlisted"),
         guest_list_id: v("guest_list_id"),
@@ -275,7 +306,7 @@
     });
 
     // Populate existing tickets from the backend
-    let tickets = JSON.parse("{{ tickets | json | safe }}");
+    let tickets = JSON.parse(`{{ tickets | json | safe }}`);
     // Add an empty ticket if there are none
     tickets = tickets.length > 0 ? tickets : [{}];
 
