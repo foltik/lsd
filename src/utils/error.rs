@@ -18,6 +18,8 @@ pub enum AppError {
     Render(#[from] askama::Error),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
 }
 
 /// Convert an [`AppError`] into an HTTP response.
@@ -39,6 +41,7 @@ impl IntoResponse for AppError {
             AppError::Smtp(_) => error_500(),
             AppError::Email(_) => error_500(),
             AppError::Render(_) => error_500(),
+            AppError::Reqwest(_) => error_500(),
         };
 
         // TODO: add a `dev` mode to `config.app`, and:

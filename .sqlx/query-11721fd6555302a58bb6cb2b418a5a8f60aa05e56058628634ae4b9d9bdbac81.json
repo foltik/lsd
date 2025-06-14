@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT t.*\n               FROM tickets t\n               JOIN event_tickets et ON et.ticket_id\n               WHERE et.event_id = ?\n               ORDER BY t.sort\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "qty_total",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "qty_per_person",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "sort",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price_min",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price_max",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price_default",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notice_hours",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 12,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 13,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "11721fd6555302a58bb6cb2b418a5a8f60aa05e56058628634ae4b9d9bdbac81"
+}

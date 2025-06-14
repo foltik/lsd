@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT e.*\n              FROM events e\n              WHERE id = ?",
+  "query": "SELECT l.*, COUNT(m.list_id) AS count\n             FROM lists l\n             LEFT JOIN list_members m ON l.id = m.list_id\n             GROUP BY l.id",
   "describe": {
     "columns": [
       {
@@ -9,41 +9,35 @@
         "type_info": "Integer"
       },
       {
-        "name": "title",
+        "name": "name",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "artist",
+        "name": "description",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "description",
-        "ordinal": 3,
-        "type_info": "Text"
-      },
-      {
-        "name": "start_date",
-        "ordinal": 4,
-        "type_info": "Datetime"
-      },
-      {
         "name": "created_at",
-        "ordinal": 5,
+        "ordinal": 3,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 6,
+        "ordinal": 4,
         "type_info": "Datetime"
+      },
+      {
+        "name": "count",
+        "ordinal": 5,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
-      false,
       false,
       false,
       false,
@@ -52,5 +46,5 @@
       false
     ]
   },
-  "hash": "2a0e6ef2b145f006461a9395e0329c7f47a77bd4d1d21ad3895da6edb83e469a"
+  "hash": "50e1f7b588284eb400ad205e7610d44f7fec238df32b4aaae914da312a1ad3c4"
 }

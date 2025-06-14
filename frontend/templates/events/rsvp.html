@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}RSVP to {{ event.title }}{% endblock title %}
+
+{% block content %}
+  <section id="events/rsvp">
+    <h1>{{ event.title }}</h1>
+    <form id="form" class="ext/form">
+      {% if user.is_none() %}
+      {% endif %}
+
+      {% for ticket in tickets %}
+        <div class="ticket">
+          <h2>{{ ticket.name }}</h2>
+          <p>{{ ticket.description }}</p>
+          <div class="field">
+            <label for="quantity">Quantity</label>
+            <select name="quantity" data-ticket-id="{{ ticket.id }}"></select>
+          </div>
+        </div>
+      {% endfor %}
+    </form>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      tickets: () => [...ui.list.querySelectorAll(".ticket")],
+    };
+
+    const event = JSON.parse(`{{ event | json | safe }}`);
+    const tickets = JSON.parse(`{{ tickets | json | safe }}`);
+    const stats = JSON.parse(`{{ stats | json | safe }}`);
+
+    function render() {
+      for (const ticket of ui.tickets()) {
+      }
+    }
+  </script>
+{% endblock scripts %}

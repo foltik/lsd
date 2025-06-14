@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM rsvps WHERE event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "ticket_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "transaction_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "checkin_at",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "f69ede39b20c4d78884fc9daff31c2fd6e45c2fc099d746ccccb65c5310a2dc3"
+}

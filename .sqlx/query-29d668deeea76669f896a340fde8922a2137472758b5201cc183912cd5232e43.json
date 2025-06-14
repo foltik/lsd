@@ -47,6 +47,16 @@
         "name": "opened_at",
         "ordinal": 8,
         "type_info": "Datetime"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 10,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -60,6 +70,8 @@
       true,
       true,
       false,
+      true,
+      true,
       true,
       true
     ]

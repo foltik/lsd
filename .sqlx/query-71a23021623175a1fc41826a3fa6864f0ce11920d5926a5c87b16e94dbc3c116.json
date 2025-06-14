@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM posts WHERE url = ?",
+  "query": "SELECT * FROM events WHERE slug = ?",
   "describe": {
     "columns": [
       {
@@ -14,28 +14,48 @@
         "type_info": "Text"
       },
       {
-        "name": "url",
+        "name": "slug",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "author",
+        "name": "flyer",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "content",
+        "name": "description",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "start",
         "ordinal": 5,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "end",
         "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "unlisted",
+        "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 10,
         "type_info": "Datetime"
       }
     ],
@@ -46,11 +66,15 @@
       false,
       false,
       false,
+      true,
+      false,
+      false,
+      true,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "20429d381a684d72a57d38616f4c695548575d341037b64a7f010d47f7d7fb1a"
+  "hash": "71a23021623175a1fc41826a3fa6864f0ce11920d5926a5c87b16e94dbc3c116"
 }

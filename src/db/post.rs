@@ -7,7 +7,7 @@ use crate::utils::error::AppResult;
 pub struct Post {
     pub id: i64,
     pub title: String,
-    pub url: String,
+    pub slug: String,
     pub author: String,
     pub content: String,
     pub created_at: NaiveDateTime,
@@ -17,7 +17,7 @@ pub struct Post {
 #[derive(serde::Deserialize)]
 pub struct UpdatePost {
     pub title: String,
-    pub url: String,
+    pub slug: String,
     pub author: String,
     pub content: String,
 }
@@ -35,10 +35,10 @@ impl Post {
     pub async fn create(db: &Db, post: &UpdatePost) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO posts
-               (title, url, author, content)
+               (title, slug, author, content)
                VALUES (?, ?, ?, ?)"#,
             post.title,
-            post.url,
+            post.slug,
             post.author,
             post.content,
         )
@@ -52,13 +52,13 @@ impl Post {
         sqlx::query!(
             r#"UPDATE posts
                SET title = ?,
-                 url = ?,
+                 slug = ?,
                  author = ?,
                  content = ?,
                  updated_at = CURRENT_TIMESTAMP
                WHERE id = ?"#,
             post.title,
-            post.url,
+            post.slug,
             post.author,
             post.content,
             id
@@ -75,8 +75,8 @@ impl Post {
     }
 
     /// Lookup a post by URL, if one exists.
-    pub async fn lookup_by_url(db: &Db, url: &str) -> AppResult<Option<Post>> {
-        let row = sqlx::query_as!(Self, "SELECT * FROM posts WHERE url = ?", url)
+    pub async fn lookup_by_slug(db: &Db, slug: &str) -> AppResult<Option<Post>> {
+        let row = sqlx::query_as!(Self, "SELECT * FROM posts WHERE slug = ?", slug)
             .fetch_optional(db)
             .await?;
         Ok(row)

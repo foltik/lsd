@@ -14,28 +14,48 @@
         "type_info": "Text"
       },
       {
-        "name": "artist",
+        "name": "slug",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "description",
+        "name": "flyer",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "start_date",
+        "name": "description",
         "ordinal": 4,
-        "type_info": "Datetime"
+        "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "start",
         "ordinal": 5,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "end",
         "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "unlisted",
+        "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 10,
         "type_info": "Datetime"
       }
     ],
@@ -46,6 +66,10 @@
       false,
       false,
       false,
+      true,
+      false,
+      false,
+      true,
       false,
       false,
       false,

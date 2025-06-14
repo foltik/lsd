@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::utils::emailer::Emailer;
+use crate::utils::stripe::Stripe;
 
 mod auth;
 mod emails;
@@ -8,12 +9,11 @@ mod home;
 mod lists;
 mod posts;
 
-#[derive(Clone)]
-#[allow(unused)]
 pub struct AppState {
     pub config: Config,
     pub db: Db,
     pub mailer: Emailer,
+    pub stripe: Stripe,
 }
 
 pub async fn build(config: Config) -> Result<axum::Router<()>> {
@@ -21,6 +21,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
         mailer: Emailer::connect(config.email).await?,
+        stripe: Stripe::new(config.stripe),
     });
 
     // Register business logic routes

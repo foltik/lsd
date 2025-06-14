@@ -1,3 +1,35 @@
 #events\/view {
-  @apply mx-auto flex w-full max-w-2xl flex-col;
+  @apply flex flex-col items-center px-6;
+
+  > article {
+    @apply mt-6 lg:mt-12;
+  }
+
+  .details {
+    @apply border-lsd-white/20 mb-6 border-b pb-6;
+
+    .title {
+      @apply mb-1 text-4xl;
+      font-weight: 1000;
+    }
+  }
+
+  article {
+    @apply w-full max-w-2xl;
+
+    .content {
+      @apply text-lg leading-relaxed;
+      p a {
+        @apply decoration-lsd-blue hover:text-lsd-blue underline;
+      }
+      p img {
+        @apply mx-auto max-w-xl;
+      }
+    }
+  }
+
+  .rsvp {
+    @apply mt-6 mb-12 px-24 py-3 text-4xl font-bold;
+    letter-spacing: 4px;
+  }
 }
