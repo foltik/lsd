@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ticket_id, price FROM rsvps WHERE event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "ticket_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "8243ff612952c48f3d8b03df52651155623a26d9583677665f55838d40c9bb9a"
+}

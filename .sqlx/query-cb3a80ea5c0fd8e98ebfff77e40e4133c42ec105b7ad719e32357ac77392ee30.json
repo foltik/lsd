@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT list_id FROM list_members WHERE list_id = ? AND email = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "list_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cb3a80ea5c0fd8e98ebfff77e40e4133c42ec105b7ad719e32357ac77392ee30"
+}

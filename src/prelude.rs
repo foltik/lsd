@@ -1,4 +1,4 @@
-pub use std::collections::HashMap;
+pub use std::collections::{HashMap, HashSet};
 pub use std::convert::Infallible;
 pub use std::fmt::Write;
 pub use std::sync::Arc;

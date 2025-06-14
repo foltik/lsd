@@ -71,7 +71,6 @@ mod read {
 
     /// View an event.
     pub async fn view_page(
-        user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
@@ -115,16 +114,6 @@ mod read {
             event: Event,
             tickets: Vec<TicketWithStats>,
         }
-
-        // let markers = vec![
-        //     SliderMarker { text: "Median".into(), description: Some("50%".into()), value_cents: 1000 },
-        //     SliderMarker {
-        //         text: reservation_type.name.clone(),
-        //         description: reservation_type.details.clone(),
-        //         value_cents: reservation_type.recommended_contribution,
-        //     },
-        // ];
-
         Ok(Html { user, event, tickets }.into_response())
     }
 }
@@ -190,9 +179,38 @@ mod edit {
         Json(form): Json<EditForm>,
     ) -> AppResult<impl IntoResponse> {
         match form.id {
-            Some(id) => Event::update(&state.db, id, &form.event).await?,
+            Some(id) => {
+                Event::update(&state.db, id, &form.event).await?;
+
+                let mut to_add = vec![];
+                let mut to_delete = Ticket::list_ids_for_event(&state.db, id).await?;
+
+                for ticket in form.tickets {
+                    match ticket.id {
+                        Some(id) => {
+                            Ticket::update(&state.db, id, &ticket).await?;
+                            to_delete.retain(|&id_| id_ != id);
+                        }
+                        None => {
+                            let id = Ticket::create(&state.db, &ticket).await?;
+                            to_add.push(id);
+                        }
+                    }
+                }
+
+                Ticket::add_to_event(&state.db, id, to_add).await?;
+                Ticket::remove_from_event(&state.db, id, to_delete).await?;
+            }
             None => {
-                Event::create(&state.db, &form.event).await?;
+                let event_id = Event::create(&state.db, &form.event).await?;
+
+                let mut ticket_ids = vec![];
+                for ticket in form.tickets {
+                    let id = Ticket::create(&state.db, &ticket).await?;
+                    ticket_ids.push(id);
+                }
+
+                Ticket::add_to_event(&state.db, event_id, ticket_ids).await?;
             }
         }
         Ok(())

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     name TEXT NOT NULL,
     description TEXT NOT NULL,
     quantity INTEGER NOT NULL,
+    max INTEGER NOT NULL,
     kind TEXT NOT NULL,
     sort INTEGER NOT NULL,
 

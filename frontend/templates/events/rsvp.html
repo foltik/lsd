@@ -3,197 +3,36 @@
 {% block title %}RSVP to {{ event.title }}{% endblock title %}
 
 {% block content %}
-  <div id="events/rsvp">
-    <form id="choose-price-form">
-      <label for="range-wrap">Choose your contribution:</label>
-      <div class="range-wrap">
-        <input
-          type="range"
-          class="range"
-          id="price"
-          name="price"
-          value="{{ reservation_type.recommended_contribution }}"
-          min="{{ reservation_type.min_contribution }}"
-          max="{{ reservation_type.max_contribution }}"
-          step="1"
-          oninput="updateValue(this.value)"
-        />
-        <div class="labels">
-          {% for marker in markers %}
-            <span
-              style="--val: {{ marker.value_cents / 100 }}; --min: {{ reservation_type.min_contribution }}; --max: {{ reservation_type.max_contribution }}"
-            >
-              <p>{{ marker.text }}</p>
-            </span>
-          {% endfor %}
-        </div>
-        <input
-          type="number"
-          id="sliderValue"
-          min="{{ reservation_type.min_contribution }}"
-          max="{{ reservation_type.max_contribution }}"
-          value="{{ reservation_type.recommended_contribution }}"
-          onchange="updateSlider(this.value)"
-        />
-      </div>
-    </form>
-    <button id="choose-price-button" onclick="choosePrice()">
-      Choose price
-    </button>
+  <section id="events/rsvp">
+    <h1>{{ event.title }}</h1>
+    <form id="form" class="ext/form">
+      {% if user.is_none() %}
 
-    <form id="payment-form" hidden>
-      <label>
-        Email
-        <input type="text" id="email" placeholder="you@example.com"
-      /></label>
-      <div type="text" id="email-errors"></div>
-      <h4>Payment</h4>
-      <div id="payment-element">
-        <!--Stripe.js injects the Payment Element-->
-      </div>
-      <button id="submit">
-        <div class="spinner hidden" id="spinner"></div>
-        <span id="button-text">Pay now</span>
-      </button>
-      <div id="payment-message" class="hidden"></div>
+      {% endif %}
+
+      {% for ticket in tickets %}
+        <div class="ticket">
+            <h2>{{ ticket.ticket.name }}</h2>
+            <p>{{ ticket.ticket.description }}</p>
+            <div class="field">
+                <label for="quantity">Quantity</label>
+                <select name="quantity" data-ticket-id="{{ ticket.ticket.id }}" {% if ticket.remaining == 0 %}disabled{% endif %}>
+                    {% if ticket.remaining == 0 %}
+                        <option value="0">Sold Out</option>
+                    {% else %}
+                        {% for i in 0..=ticket.ticket.max.min(*ticket.remaining) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+        </div>
+      {% endfor %}
     </form>
-  </div>
+  </section>
 {% endblock content %}
 
 {% block scripts %}
-  <script src="https://js.stripe.com/basil/stripe.js"></script>
   <script>
-    function updateValue(value) {
-      document.getElementById("sliderValue").value = value;
-    }
-    function updateSlider(value) {
-      document.getElementById("price").value = value;
-    }
-  </script>
-
-  <script>
-    const stripe = Stripe(
-      "pk_test_51RYCCkRrN3zPrjLM90GrLc10ns7aagLfhEtLl5Rz5QPhB3OSKaT7hf6Ta3lWeroQ1hxEPCxmmWYgfr1Cb0ZisLhS00n8JTDvuv",
-    );
-    let checkout;
-
-    const validateEmail = async (email) => {
-      const updateResult = await checkout.updateEmail(email);
-      const isValid = updateResult.type !== "error";
-
-      return { isValid, message: !isValid ? updateResult.error.message : null };
-    };
-
-    document
-      .querySelector("#payment-form")
-      .addEventListener("submit", handleSubmit);
-
-    async function initialize(amount) {
-      const promise = fetch("/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          price: amount,
-        }),
-      }).then((r) => r.text());
-
-      const appearance = {
-        theme: "stripe",
-      };
-      checkout = await stripe.initCheckout({
-        fetchClientSecret: () => promise,
-        elementsOptions: { appearance },
-      });
-
-      document.querySelector("#button-text").textContent = `Pay ${
-        checkout.session().total.total.amount
-      } now`;
-      const emailInput = document.getElementById("email");
-      const emailErrors = document.getElementById("email-errors");
-
-      emailInput.addEventListener("input", () => {
-        // Clear any validation errors
-        emailErrors.textContent = "";
-      });
-
-      emailInput.addEventListener("blur", async () => {
-        const newEmail = emailInput.value;
-        if (!newEmail) {
-          return;
-        }
-
-        const { isValid, message } = await validateEmail(newEmail);
-        if (!isValid) {
-          emailErrors.textContent = message;
-        }
-      });
-
-      const paymentElement = checkout.createPaymentElement();
-      paymentElement.mount("#payment-element");
-    }
-
-    function choosePrice() {
-      const price = parseInt(document.getElementById("price").value);
-
-      console.log(price);
-
-      document.getElementById("choose-price-button").hidden = true;
-      document.getElementById("choose-price-form").hidden = true;
-
-      document.getElementById("payment-element").hidden = false;
-      document.getElementById("payment-form").hidden = false;
-
-      initialize(price);
-    }
-
-    async function handleSubmit(e) {
-      e.preventDefault();
-      setLoading(true);
-
-      const email = document.getElementById("email").value;
-      const { isValid, message } = await validateEmail(email);
-      if (!isValid) {
-        showMessage(message);
-        setLoading(false);
-        return;
-      }
-
-      const { error } = await checkout.confirm();
-
-      // This point will only be reached if there is an immediate error when
-      // confirming the payment. Otherwise, your customer will be redirected to
-      // your `return_url`. For some payment methods like iDEAL, your customer will
-      // be redirected to an intermediate site first to authorize the payment, then
-      // redirected to the `return_url`.
-      showMessage(error.message);
-
-      setLoading(false);
-    }
-
-    function showMessage(messageText) {
-      const messageContainer = document.querySelector("#payment-message");
-
-      messageContainer.classList.remove("hidden");
-      messageContainer.textContent = messageText;
-
-      setTimeout(function () {
-        messageContainer.classList.add("hidden");
-        messageContainer.textContent = "";
-      }, 4000);
-    }
-
-    // Show a spinner on payment submission
-    function setLoading(isLoading) {
-      if (isLoading) {
-        // Disable the button and show a spinner
-        document.querySelector("#submit").disabled = true;
-        document.querySelector("#spinner").classList.remove("hidden");
-        document.querySelector("#button-text").classList.add("hidden");
-      } else {
-        document.querySelector("#submit").disabled = false;
-        document.querySelector("#spinner").classList.add("hidden");
-        document.querySelector("#button-text").classList.remove("hidden");
-      }
-    }
   </script>
 {% endblock scripts %}

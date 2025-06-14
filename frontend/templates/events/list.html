@@ -6,8 +6,8 @@
   <div id="events/list">
     <h1 class="title">Upcoming Events</h1>
     {% for event in events %}
-      <div key="event-{{ event.id }}" class="event">
-        <a href="/events/{{ event.id }}">
+      <div class="event">
+        <a href="/e/{{ event.slug }}">
           {{ event.start | format_datetime("%b %d, %Y") }} | {{ event.title }}
         </a>
       </div>

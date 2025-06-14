@@ -29,18 +29,23 @@
         "type_info": "Integer"
       },
       {
-        "name": "created_at",
+        "name": "price",
         "ordinal": 5,
-        "type_info": "Datetime"
+        "type_info": "Integer"
       },
       {
-        "name": "updated_at",
+        "name": "created_at",
         "ordinal": 6,
         "type_info": "Datetime"
       },
       {
-        "name": "checkin_at",
+        "name": "updated_at",
         "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "checkin_at",
+        "ordinal": 8,
         "type_info": "Datetime"
       }
     ],
@@ -52,6 +57,7 @@
       false,
       false,
       false,
+      true,
       true,
       false,
       false,
