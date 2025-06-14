@@ -29,7 +29,7 @@
   }
 
   .rsvp {
-    @apply text-4xl font-bold px-24 py-3 mt-6 mb-12;
+    @apply mt-6 mb-12 px-24 py-3 text-4xl font-bold;
     letter-spacing: 4px;
   }
 }

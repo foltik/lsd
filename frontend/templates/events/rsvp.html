@@ -7,25 +7,28 @@
     <h1>{{ event.title }}</h1>
     <form id="form" class="ext/form">
       {% if user.is_none() %}
-
       {% endif %}
 
       {% for ticket in tickets %}
         <div class="ticket">
-            <h2>{{ ticket.ticket.name }}</h2>
-            <p>{{ ticket.ticket.description }}</p>
-            <div class="field">
-                <label for="quantity">Quantity</label>
-                <select name="quantity" data-ticket-id="{{ ticket.ticket.id }}" {% if ticket.remaining == 0 %}disabled{% endif %}>
-                    {% if ticket.remaining == 0 %}
-                        <option value="0">Sold Out</option>
-                    {% else %}
-                        {% for i in 0..=ticket.ticket.max.min(*ticket.remaining) %}
-                            <option value="{{ i }}">{{ i }}</option>
-                        {% endfor %}
-                    {% endif %}
-                </select>
-            </div>
+          <h2>{{ ticket.ticket.name }}</h2>
+          <p>{{ ticket.ticket.description }}</p>
+          <div class="field">
+            <label for="quantity">Quantity</label>
+            <select
+              name="quantity"
+              data-ticket-id="{{ ticket.ticket.id }}"
+              {% if ticket.remaining == 0 %}disabled{% endif %}
+            >
+              {% if ticket.remaining == 0 %}
+                <option value="0">Sold Out</option>
+              {% else %}
+                {% for i in 0..=ticket.ticket.max.min(*ticket.remaining) %}
+                  <option value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+              {% endif %}
+            </select>
+          </div>
         </div>
       {% endfor %}
     </form>
@@ -33,6 +36,5 @@
 {% endblock content %}
 
 {% block scripts %}
-  <script>
-  </script>
+  <script></script>
 {% endblock scripts %}
