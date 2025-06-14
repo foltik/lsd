@@ -2,7 +2,7 @@
   @apply mx-auto flex w-full max-w-3xl flex-col;
 
   #tickets {
-    @apply flex flex-col gap-10 mb-12;
+    @apply mb-12 flex flex-col gap-10;
 
     .header {
       @apply flex items-center gap-3;
