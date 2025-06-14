@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM tickets WHERE id = ?",
+  "query": "SELECT t.*\n               FROM tickets t\n               JOIN event_tickets et ON et.ticket_id = t.id\n               WHERE et.event_id = ?\n               ORDER BY t.sort\n            ",
   "describe": {
     "columns": [
       {
@@ -24,48 +24,53 @@
         "type_info": "Integer"
       },
       {
-        "name": "kind",
+        "name": "max",
         "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 5,
         "type_info": "Text"
       },
       {
         "name": "sort",
-        "ordinal": 5,
-        "type_info": "Integer"
-      },
-      {
-        "name": "price",
         "ordinal": 6,
         "type_info": "Integer"
       },
       {
-        "name": "price_min",
+        "name": "price",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "price_max",
+        "name": "price_min",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "price_default",
+        "name": "price_max",
         "ordinal": 9,
         "type_info": "Integer"
       },
       {
-        "name": "notice_hours",
+        "name": "price_default",
         "ordinal": 10,
         "type_info": "Integer"
       },
       {
-        "name": "created_at",
+        "name": "notice_hours",
         "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 12,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Datetime"
       }
     ],
@@ -73,6 +78,7 @@
       "Right": 1
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -88,5 +94,5 @@
       false
     ]
   },
-  "hash": "7abf036127f3202794dc45a450365041925daff19313e4ef1ad09bc460ed991d"
+  "hash": "29eb89117d20b41ff59ded6cd437546bd902d2a4984ee9565afff7cdca9b1e35"
 }

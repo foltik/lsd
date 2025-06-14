@@ -1,4 +1,4 @@
-#![allow(unused)]
+use sqlx::QueryBuilder;
 
 use crate::prelude::*;
 
@@ -9,6 +9,7 @@ pub struct Ticket {
     pub name: String,
     pub description: String,
     pub quantity: i64,
+    pub max: i64,
     pub kind: String,
     pub sort: i64,
 
@@ -27,9 +28,12 @@ pub struct Ticket {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct UpdateTicket {
+    pub id: Option<i64>,
+
     pub name: String,
     pub description: String,
     pub quantity: i64,
+    pub max: i64,
     pub kind: String,
     pub sort: i64,
 
@@ -51,9 +55,9 @@ pub struct TicketStat {
 #[derive(serde::Serialize)]
 pub struct TicketWithStats {
     #[serde(flatten)]
-    ticket: Ticket,
-    remaining: i64,
-    stats: Vec<TicketStat>,
+    pub ticket: Ticket,
+    pub remaining: i64,
+    pub stats: Vec<TicketStat>,
 }
 
 impl Ticket {
@@ -71,6 +75,15 @@ impl Ticket {
         Ok(sqlx::query_as!(Self, "SELECT * FROM tickets").fetch_all(db).await?)
     }
 
+    pub async fn list_ids_for_event(db: &Db, event_id: i64) -> AppResult<Vec<i64>> {
+        Ok(sqlx::query!("SELECT ticket_id FROM event_tickets WHERE event_id = ?", event_id)
+            .fetch_all(db)
+            .await?
+            .into_iter()
+            .map(|row| row.ticket_id)
+            .collect())
+    }
+
     pub async fn list_for_event(db: &Db, event_id: i64) -> AppResult<Vec<Ticket>> {
         Ok(sqlx::query_as!(
             Ticket,
@@ -78,6 +91,7 @@ impl Ticket {
                FROM tickets t
                JOIN event_tickets et ON et.ticket_id
                WHERE et.event_id = ?
+               ORDER BY t.sort
             "#,
             event_id
         )
@@ -91,8 +105,9 @@ impl Ticket {
             Ticket,
             r#"SELECT t.*
                FROM tickets t
-               JOIN event_tickets et ON et.ticket_id
+               JOIN event_tickets et ON et.ticket_id = t.id
                WHERE et.event_id = ?
+               ORDER BY t.sort
             "#,
             event_id
         )
@@ -122,11 +137,11 @@ impl Ticket {
         // Build result
         let mut with_stats = vec![];
         for ticket in tickets {
-            let count = *counts.get(&ticket.id).unwrap_or(&0);
-            let remaining = ticket.quantity - count;
+            let sold = *counts.get(&ticket.id).unwrap_or(&0);
+            let remaining = ticket.quantity.saturating_sub(sold);
 
             let stats = match ticket.kind.as_str() {
-                Ticket::VARIABLE if count > 0 => {
+                Ticket::VARIABLE if sold > 0 => {
                     let prices = prices.get_mut(&ticket.id).unwrap(); // we checked count > 0
                     prices.sort_unstable();
 
@@ -152,17 +167,19 @@ impl Ticket {
     pub async fn create(db: &Db, ticket: &UpdateTicket) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO tickets
-               (name, description, quantity, kind, sort, price, price_min, price_max, price_default)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+               (name, description, quantity, max, kind, sort, price, price_min, price_max, price_default, notice_hours)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
             ticket.name,
             ticket.description,
             ticket.quantity,
+            ticket.max,
             ticket.kind,
             ticket.sort,
             ticket.price,
             ticket.price_min,
             ticket.price_max,
             ticket.price_default,
+            ticket.notice_hours,
         )
         .execute(db)
         .await?;
@@ -173,27 +190,31 @@ impl Ticket {
     /// Update an existing ticket.
     pub async fn update(db: &Db, id: i64, ticket: &UpdateTicket) -> AppResult<()> {
         sqlx::query!(
-            r#"UPDATE tickets
+            "UPDATE tickets
                SET name = ?,
                    description = ?,
                    quantity = ?,
+                   max = ?,
                    kind = ?,
                    sort = ?,
                    price = ?,
                    price_min = ?,
                    price_max = ?,
                    price_default = ?,
+                   notice_hours = ?,
                    updated_at = CURRENT_TIMESTAMP
-               WHERE id = ?"#,
+               WHERE id = ?",
             ticket.name,
             ticket.description,
             ticket.quantity,
+            ticket.max,
             ticket.kind,
             ticket.sort,
             ticket.price,
             ticket.price_min,
             ticket.price_max,
             ticket.price_default,
+            ticket.notice_hours,
             id
         )
         .execute(db)
@@ -202,16 +223,54 @@ impl Ticket {
         Ok(())
     }
 
-    /// Remove a ticket.
-    pub async fn delete(db: &Db, id: i64) -> AppResult<()> {
-        sqlx::query!(r#"DELETE FROM tickets WHERE id = ?"#, id).execute(db).await?;
+    pub async fn add_to_event(db: &Db, event_id: i64, ticket_ids: Vec<i64>) -> AppResult<()> {
+        if ticket_ids.is_empty() {
+            return Ok(());
+        }
+
+        QueryBuilder::new("INSERT INTO event_tickets (event_id, ticket_id) ")
+            .push_values(ticket_ids, |mut b, ticket_id| {
+                b.push_bind(event_id).push_bind(ticket_id);
+            })
+            .build()
+            .execute(db)
+            .await?;
         Ok(())
     }
 
-    /// Retrieve a ticket (if any) by its id.
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Ticket>> {
-        Ok(sqlx::query_as!(Self, "SELECT * FROM tickets WHERE id = ?", id)
-            .fetch_optional(db)
-            .await?)
+    pub async fn remove_from_event(db: &Db, event_id: i64, ticket_ids: Vec<i64>) -> AppResult<()> {
+        if ticket_ids.is_empty() {
+            return Ok(());
+        }
+
+        // Remove the event_tickets associations
+        QueryBuilder::new("DELETE FROM event_tickets WHERE event_id = ")
+            .push_bind(event_id)
+            .push("AND ticket_id IN ")
+            .push_tuples(&ticket_ids, |mut b, ticket_id| {
+                b.push_bind(ticket_id);
+            })
+            .build()
+            .execute(db)
+            .await?;
+
+        // Remove any now unused tickets
+        QueryBuilder::new(
+            r#"DELETE FROM tickets
+               WHERE NOT EXISTS (
+                   SELECT 1 FROM rsvps r
+                   WHERE r.ticket_id = tickets.id
+                   AND r.event_id = "#,
+        )
+        .push_bind(event_id)
+        .push(") AND id IN ")
+        .push_tuples(&ticket_ids, |mut b, ticket_id| {
+            b.push_bind(ticket_id);
+        })
+        .build()
+        .execute(db)
+        .await?;
+
+        Ok(())
     }
 }

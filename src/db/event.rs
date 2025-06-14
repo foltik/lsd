@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]

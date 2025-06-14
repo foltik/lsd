@@ -8,16 +8,10 @@
       <section class="details">
         <h1 class="title">{{ event.title }}</h1>
       </section>
-      <section class="content">{{ event.description | safe }}</section>
-      <form action="/events/select_ticket" id="select-ticket">
-        <label for="select-reservation">Choose reservation type:</label>
-        <input type="submit" value="Continue" />
-      </form>
-      <select id="select-reservation" name="type" form="select-ticket">
-        <option value="contribution">Contribution</option>
-        <option value="work-trade">Work Trade</option>
-        <option value="late-entry">4 AM Entry</option>
-      </select>
+      <section class="content">
+        <section class="content">{{ event.description | safe }}</section>
+      </section>
     </article>
+    <a href="/e/{{ event.slug }}/rsvp"><button class="ext/button rsvp">RSVP</button></a>
   </div>
 {% endblock content %}

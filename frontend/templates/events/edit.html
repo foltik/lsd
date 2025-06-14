@@ -28,7 +28,7 @@
 
       <div class="field">
         <label for="description">Description</label>
-        <textarea name="description" value="{{ event.description }}" required></textarea>
+        <input name="description" value="{{ event.description }}" required>
       </div>
 
       <div class="field">
@@ -87,14 +87,14 @@
           {% if event.title.is_empty() %}Create{% else %}Update{% endif %} event
       </button>
     </form>
-  </div>
+  </section>
   <script>
   /* ---------- DOM ----------------------------------------------------------- */
   const $ = (id) => document.getElementById(id);
   const ui = {
-    form:    $('form'),
+    form: $('form'),
     list: $('tickets'),
-    add:     $('add'),
+    add:  $('add'),
     tickets: () => [...ui.list.querySelectorAll('.ticket')],
   };
   const KINDS = {
@@ -115,26 +115,30 @@
   const template = (t) => `
     <div class="ticket">
       <div class="ticket-row">
-        <input name="name"        placeholder="Name"      value="${t.name ?? ''}" required>
-        <input name="quantity"    placeholder="Quantity"  value="${t.quantity ?? ''}" type="number" required>
-        <select name="kind" required>
-          ${Object.entries(KINDS).map(([kind, desc]) =>
-            `<option value="${kind}" ${t.kind == kind ? 'selected' : ''}>${desc}</option>`
-          ).join('')}
-        </select>
+        <input name="id"   value="${t.id ?? ''}" type="hidden" data-type="number">
+        <input name="name" value="${t.name ?? ''}" placeholder="Name" required>
         <button type="button" class="ext/button"       data-action="up">↑</button>
         <button type="button" class="ext/button"       data-action="down">↓</button>
         <button type="button" class="ext/button :red"  data-action="remove">✕</button>
       </div>
       <div class="ticket-row">
-        <input name="description" placeholder="Description"  value="${t.description ?? ''}" required>
+        <input name="quantity"  placeholder="Qty available"   value="${t.quantity ?? ''}" type="number" required>
+        <input name="max"       placeholder="Qty per person"  value="${t.max ?? ''}" type="number" required>
+        <select name="kind" required>
+          ${Object.entries(KINDS).map(([kind, desc]) =>
+            `<option value="${kind}" ${t.kind == kind ? 'selected' : ''}>${desc}</option>`
+          ).join('')}
+        </select>
       </div>
       <div class="ticket-row">
         <input name="price"         type="number" placeholder="Required Contribution" value="${t.price ?? ''}">
         <input name="price_min"     type="number" placeholder="Min Contribution" value="${t.price_min ?? ''}">
         <input name="price_max"     type="number" placeholder="Max Contribution" value="${t.price_max ?? ''}">
         <input name="price_default" type="number" placeholder="Suggested Contribution" value="${t.price_default ?? ''}">
-        <input name="notice_hours"  type="number" placeholder="Notice Period (hrs)" value="${t.notice_hours ?? ''}" type="number">
+        <input name="notice_hours"  type="number" placeholder="Notice Period (Hours)" value="${t.notice_hours ?? ''}" type="number">
+      </div>
+      <div class="ticket-row">
+        <input name="description" placeholder="Description"  value="${t.description ?? ''}" required>
       </div>
     </div>
   `;
@@ -218,9 +222,11 @@
 
         const kind = v('kind');
         const ticket = {
+          id: v('id'),
           name: v('name'),
           description: v('description'),
           quantity: v('quantity'),
+          max: v('max'),
           kind,
           sort: i,
         };
@@ -239,8 +245,6 @@
       })
     };
 
-    console.log(body);
-
     const slug = v('slug');
     try {
       const resp = await fetch(`/events/${slug}/edit`, {
@@ -250,7 +254,7 @@
       });
 
       if (resp.ok) {
-        window.location.href = `/events/${slug}`;
+        window.location.href = `/e/${slug}`;
       } else {
         alert(`Error: ${await resp.text()}`);
       }
@@ -260,7 +264,7 @@
   });
 
   // Populate existing tickets from the backend
-  let tickets = JSON.parse('{{ tickets | json }}');
+  let tickets = JSON.parse('{{ tickets | json | safe }}');
   // Add an empty ticket if there are none
   tickets = tickets.length > 0 ? tickets : [{}];
 

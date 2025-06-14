@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM tickets",
+  "query": "SELECT t.*\n               FROM tickets t\n               JOIN event_tickets et ON et.ticket_id\n               WHERE et.event_id = ?\n               ORDER BY t.sort\n            ",
   "describe": {
     "columns": [
       {
@@ -75,7 +75,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "1cde3c03cd3dcbabf88853a96d2087f2ca9d3b238c492029ef7df45e3715b6d3"
+  "hash": "11721fd6555302a58bb6cb2b418a5a8f60aa05e56058628634ae4b9d9bdbac81"
 }

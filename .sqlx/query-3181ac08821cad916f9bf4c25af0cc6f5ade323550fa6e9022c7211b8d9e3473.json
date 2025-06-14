@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tickets\n               SET name = ?,\n                   description = ?,\n                   quantity = ?,\n                   max = ?,\n                   kind = ?,\n                   sort = ?,\n                   price = ?,\n                   price_min = ?,\n                   price_max = ?,\n                   price_default = ?,\n                   notice_hours = ?,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "3181ac08821cad916f9bf4c25af0cc6f5ade323550fa6e9022c7211b8d9e3473"
+}
