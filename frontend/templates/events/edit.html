@@ -32,27 +32,22 @@
       </div>
 
       <div class="field">
+        <label for="capacity">Capacity</label>
+        <input
+          name="capacity"
+          type="number"
+          value="{{ event.capacity }}"
+          step="1"
+        />
+      </div>
+
+      <div class="field">
         <label for="unlisted">Unlisted</label>
         <input
           name="unlisted"
           type="checkbox"
           {% if event.unlisted %}checked{% endif %}
         />
-      </div>
-
-      <div class="field">
-        <label for="guest_list_id">Guest List</label>
-        <select name="guest_list_id" data-type="number">
-          {% for list in lists %}
-            <option value>None</option>
-            <option
-              value="{{ list.id }}"
-              {% if event.guest_list_id == Some(*list.id) %}selected{% endif %}
-            >
-              {{ list.name }} ({{ list.count }} members)
-            </option>
-          {% endfor %}
-        </select>
       </div>
 
       <div class="field">
@@ -89,16 +84,6 @@
           <h2>Available Reservations</h2>
           <button type="button" id="add">+</button>
         </div>
-      </div>
-
-      <div class="field">
-        <label for="target_revenue">Target revenue ($)</label>
-        <input
-          type="number"
-          name="target_revenue"
-          value="{{ event.target_revenue | unwrap_or_empty }}"
-          step="1"
-        />
       </div>
 
       <button type="submit">
@@ -140,8 +125,8 @@
         <button type="button" class="ext/button :red"  data-action="remove">✕</button>
       </div>
       <div class="ticket-row">
-        <input name="quantity"  placeholder="Qty available"   value="${t.quantity ?? ""}" type="number" required>
-        <input name="max"       placeholder="Qty per person"  value="${t.max ?? ""}" type="number" required>
+        <input name="qty_total"       placeholder="Qty available"   value="${t.qty_total ?? ""}"      type="number" required>
+        <input name="qty_per_person"  placeholder="Qty per person"  value="${t.qty_per_person ?? ""}" type="number" required>
         <select name="kind" required>
           ${Object.entries(KINDS)
             .map(
@@ -214,7 +199,8 @@
         return;
       }
 
-      const valueOfInput = (root, name) => {
+      // Retrieve the value of an input, with adjustments for HTML input type weirdness
+      let value = (name, root = ui.form) => {
         const el = root.querySelector(`[name="${name}"]`);
         const type = el.dataset?.type || el.type;
         if (type == "number") {
@@ -228,12 +214,12 @@
 
       // Convert [date, start+end times] into just start+end timestamps.
       const [start, end] = (() => {
-        const startDate = v("date");
-        const startTime = v("start") + ":00";
+        const startDate = value("date");
+        const startTime = value("start") + ":00";
         const startHour = startTime.split(":")[0];
 
         let endDate = startDate;
-        const endTime = v("end") + ":00";
+        const endTime = value("end") + ":00";
         const endHour = +endTime.split(":")[0];
 
         // If end < start (e.g. 8PM to 4AM, or 20:00 to 04:00), move the end date to the next day
@@ -244,50 +230,46 @@
         }
 
         const start = `${startDate}T${startTime}`;
-        const end = v("end") ? `${endDate}T${endTime}` : null;
+        const end = value("end") ? `${endDate}T${endTime}` : null;
         return [start, end];
       })();
 
-      let v = (name) => valueOfInput(ui.form, name);
       const body = {
         id: parseInt("{{ event.id }}") || undefined,
-        title: v("title"),
-        slug: v("slug"),
-        description: v("description"),
+        title: value("title"),
+        slug: value("slug"),
+        description: value("description"),
         start,
         end,
-        target_revenue: v("target_revenue"),
-        unlisted: v("unlisted"),
-        guest_list_id: v("guest_list_id"),
+        capacity: value("capacity"),
+        unlisted: value("unlisted"),
         tickets: ui.tickets().map((t, i) => {
-          let v = (name) => valueOfInput(t, name);
-
-          const kind = v("kind");
+          const kind = value("kind", t);
           const ticket = {
-            id: v("id"),
-            name: v("name"),
-            description: v("description"),
-            quantity: v("quantity"),
-            max: v("max"),
+            id: value("id", t),
+            name: value("name", t),
+            description: value("description", t),
+            qty_total: value("qty_total", t),
+            qty_per_person: value("qty_per_person", t),
             kind,
             sort: i,
           };
 
           if (kind == "fixed") {
-            ticket.price = v("price");
+            ticket.price = value("price", t);
           } else if (kind == "variable") {
-            ticket.price_min = v("price_min");
-            ticket.price_max = v("price_max");
-            ticket.price_default = v("price_default");
+            ticket.price_min = value("price_min", t);
+            ticket.price_max = value("price_max", t);
+            ticket.price_default = value("price_default", t);
           } else if (kind == "work") {
-            ticket.notice_hours = v("notice_hours");
+            ticket.notice_hours = value("notice_hours", t);
           }
 
           return ticket;
         }),
       };
 
-      const slug = v("slug");
+      const slug = value("slug");
       try {
         const resp = await fetch(`/events/${slug}/edit`, {
           method: "POST",

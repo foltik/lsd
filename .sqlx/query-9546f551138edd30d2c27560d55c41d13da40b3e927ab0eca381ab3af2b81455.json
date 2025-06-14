@@ -19,12 +19,12 @@
         "type_info": "Text"
       },
       {
-        "name": "description",
+        "name": "flyer",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "flyer",
+        "name": "description",
         "ordinal": 4,
         "type_info": "Text"
       },
@@ -39,28 +39,23 @@
         "type_info": "Datetime"
       },
       {
-        "name": "unlisted",
+        "name": "capacity",
         "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "unlisted",
+        "ordinal": 8,
         "type_info": "Bool"
       },
       {
-        "name": "guest_list_id",
-        "ordinal": 8,
-        "type_info": "Integer"
-      },
-      {
-        "name": "target_revenue",
-        "ordinal": 9,
-        "type_info": "Integer"
-      },
-      {
         "name": "created_at",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 11,
+        "ordinal": 10,
         "type_info": "Datetime"
       }
     ],
@@ -71,13 +66,12 @@
       false,
       false,
       false,
+      true,
+      false,
       false,
       true,
       false,
-      true,
       false,
-      true,
-      true,
       false,
       false
     ]
