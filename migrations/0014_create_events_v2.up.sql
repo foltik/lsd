@@ -4,15 +4,14 @@ CREATE TABLE events (
     id INTEGER PRIMARY KEY NOT NULL,
     title TEXT NOT NULL,
     slug TEXT NOT NULL,
-    description TEXT NOT NULL,
     flyer TEXT,
+    description TEXT NOT NULL,
 
     start TIMESTAMP NOT NULL,
     end TIMESTAMP,
 
+    capacity INTEGER NOT NULL,
     unlisted BOOLEAN NOT NULL,
-    guest_list_id INTEGER,
-    target_revenue INTEGER,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

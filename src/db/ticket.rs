@@ -8,8 +8,8 @@ pub struct Ticket {
 
     pub name: String,
     pub description: String,
-    pub quantity: i64,
-    pub max: i64,
+    pub qty_total: i64,
+    pub qty_per_person: i64,
     pub kind: String,
     pub sort: i64,
 
@@ -32,8 +32,8 @@ pub struct UpdateTicket {
 
     pub name: String,
     pub description: String,
-    pub quantity: i64,
-    pub max: i64,
+    pub qty_total: i64,
+    pub qty_per_person: i64,
     pub kind: String,
     pub sort: i64,
 
@@ -45,19 +45,6 @@ pub struct UpdateTicket {
     pub price_default: Option<i64>,
     // kind = 'work'
     pub notice_hours: Option<i64>,
-}
-
-#[derive(serde::Serialize)]
-pub struct TicketStat {
-    name: String,
-    value: i64,
-}
-#[derive(serde::Serialize)]
-pub struct TicketWithStats {
-    #[serde(flatten)]
-    pub ticket: Ticket,
-    pub remaining: i64,
-    pub stats: Vec<TicketStat>,
 }
 
 impl Ticket {
@@ -99,80 +86,16 @@ impl Ticket {
         .await?)
     }
 
-    pub async fn list_for_event_with_stats(db: &Db, event_id: i64) -> AppResult<Vec<TicketWithStats>> {
-        // List all tickets for this event.
-        let tickets = sqlx::query_as!(
-            Ticket,
-            r#"SELECT t.*
-               FROM tickets t
-               JOIN event_tickets et ON et.ticket_id = t.id
-               WHERE et.event_id = ?
-               ORDER BY t.sort
-            "#,
-            event_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        // List all RSVPs for this ticket.
-        #[derive(sqlx::FromRow)]
-        struct Rsvp {
-            ticket_id: i64,
-            price: Option<i64>,
-        }
-        let rsvps = sqlx::query_as!(Rsvp, "SELECT ticket_id, price FROM rsvps WHERE event_id = ?", event_id)
-            .fetch_all(db)
-            .await?;
-
-        // Calculate stats for each ticket
-        let mut prices: HashMap<i64, Vec<i64>> = HashMap::new();
-        let mut counts: HashMap<i64, i64> = HashMap::new();
-        for rsvp in rsvps {
-            if let Some(price) = rsvp.price {
-                prices.entry(rsvp.ticket_id).or_default().push(price);
-                *counts.entry(rsvp.ticket_id).or_insert(0) += 1;
-            }
-        }
-
-        // Build result
-        let mut with_stats = vec![];
-        for ticket in tickets {
-            let sold = *counts.get(&ticket.id).unwrap_or(&0);
-            let remaining = ticket.quantity.saturating_sub(sold);
-
-            let stats = match ticket.kind.as_str() {
-                Ticket::VARIABLE if sold > 0 => {
-                    let prices = prices.get_mut(&ticket.id).unwrap(); // we checked count > 0
-                    prices.sort_unstable();
-
-                    let n = prices.len();
-                    let median =
-                        if n % 2 == 0 { (prices[n / 2 - 1] + prices[n / 2]) / 2 } else { prices[n / 2] };
-                    let max = prices.last().copied().unwrap();
-
-                    vec![
-                        TicketStat { name: "median".into(), value: median },
-                        TicketStat { name: "max".into(), value: max },
-                    ]
-                }
-                _ => vec![],
-            };
-
-            with_stats.push(TicketWithStats { ticket, remaining, stats })
-        }
-        Ok(with_stats)
-    }
-
     /// Create a new ticket.
     pub async fn create(db: &Db, ticket: &UpdateTicket) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO tickets
-               (name, description, quantity, max, kind, sort, price, price_min, price_max, price_default, notice_hours)
+               (name, description, qty_total, qty_per_person, kind, sort, price, price_min, price_max, price_default, notice_hours)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
             ticket.name,
             ticket.description,
-            ticket.quantity,
-            ticket.max,
+            ticket.qty_total,
+            ticket.qty_per_person,
             ticket.kind,
             ticket.sort,
             ticket.price,
@@ -193,8 +116,8 @@ impl Ticket {
             "UPDATE tickets
                SET name = ?,
                    description = ?,
-                   quantity = ?,
-                   max = ?,
+                   qty_total = ?,
+                   qty_per_person = ?,
                    kind = ?,
                    sort = ?,
                    price = ?,
@@ -206,8 +129,8 @@ impl Ticket {
                WHERE id = ?",
             ticket.name,
             ticket.description,
-            ticket.quantity,
-            ticket.max,
+            ticket.qty_total,
+            ticket.qty_per_person,
             ticket.kind,
             ticket.sort,
             ticket.price,

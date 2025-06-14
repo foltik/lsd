@@ -19,12 +19,12 @@
         "type_info": "Text"
       },
       {
-        "name": "quantity",
+        "name": "qty_total",
         "ordinal": 3,
         "type_info": "Integer"
       },
       {
-        "name": "max",
+        "name": "qty_per_person",
         "ordinal": 4,
         "type_info": "Integer"
       },

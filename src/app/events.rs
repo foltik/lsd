@@ -101,20 +101,18 @@ mod read {
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        if user.is_none() && event.guest_list_id.is_some() {
-            return Ok(Redirect::to(&format!("/login?redirect=/e/{slug}/rsvp")).into_response());
-        }
-
-        let tickets = Ticket::list_for_event_with_stats(&state.db, event.id).await?;
+        let tickets = Ticket::list_for_event(&state.db, event.id).await?;
+        let stats = event.stats(&state.db).await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp.html")]
         struct Html {
             user: Option<User>,
             event: Event,
-            tickets: Vec<TicketWithStats>,
+            tickets: Vec<Ticket>,
+            stats: EventStats,
         }
-        Ok(Html { user, event, tickets }.into_response())
+        Ok(Html { user, event, tickets, stats }.into_response())
     }
 }
 
@@ -126,7 +124,7 @@ mod edit {
     #[template(path = "events/edit.html")]
     pub struct EditHtml {
         pub event: Event,
-        pub tickets: Vec<TicketWithStats>,
+        pub tickets: Vec<Ticket>,
         pub lists: Vec<ListWithCount>,
     }
 
@@ -144,9 +142,8 @@ mod edit {
                 start: Utc::now().naive_utc(),
                 end: None,
 
+                capacity: 0,
                 unlisted: false,
-                guest_list_id: None,
-                target_revenue: None,
 
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),
@@ -161,7 +158,7 @@ mod edit {
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let tickets = Ticket::list_for_event_with_stats(&state.db, event.id).await?;
+        let tickets = Ticket::list_for_event(&state.db, event.id).await?;
         let lists = List::list_with_counts(&state.db).await?;
         Ok(EditHtml { event, tickets, lists })
     }

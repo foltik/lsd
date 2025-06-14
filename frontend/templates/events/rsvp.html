@@ -11,23 +11,11 @@
 
       {% for ticket in tickets %}
         <div class="ticket">
-          <h2>{{ ticket.ticket.name }}</h2>
-          <p>{{ ticket.ticket.description }}</p>
+          <h2>{{ ticket.name }}</h2>
+          <p>{{ ticket.description }}</p>
           <div class="field">
             <label for="quantity">Quantity</label>
-            <select
-              name="quantity"
-              data-ticket-id="{{ ticket.ticket.id }}"
-              {% if ticket.remaining == 0 %}disabled{% endif %}
-            >
-              {% if ticket.remaining == 0 %}
-                <option value="0">Sold Out</option>
-              {% else %}
-                {% for i in 0..=ticket.ticket.max.min(*ticket.remaining) %}
-                  <option value="{{ i }}">{{ i }}</option>
-                {% endfor %}
-              {% endif %}
-            </select>
+            <select name="quantity" data-ticket-id="{{ ticket.id }}"></select>
           </div>
         </div>
       {% endfor %}
@@ -36,5 +24,20 @@
 {% endblock content %}
 
 {% block scripts %}
-  <script></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      tickets: () => [...ui.list.querySelectorAll(".ticket")],
+    };
+
+    const event = JSON.parse(`{{ event | json | safe }}`);
+    const tickets = JSON.parse(`{{ tickets | json | safe }}`);
+    const stats = JSON.parse(`{{ stats | json | safe }}`);
+
+    function render() {
+      for (const ticket of ui.tickets()) {
+      }
+    }
+  </script>
 {% endblock scripts %}

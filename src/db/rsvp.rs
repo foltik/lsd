@@ -35,6 +35,12 @@ impl Rsvp {
         Ok(sqlx::query_as!(Self, "SELECT * FROM rsvps").fetch_all(db).await?)
     }
 
+    pub async fn list_for_event(db: &Db, event_id: i64) -> AppResult<Vec<Rsvp>> {
+        Ok(sqlx::query_as!(Self, "SELECT * FROM rsvps WHERE event_id = ?", event_id)
+            .fetch_all(db)
+            .await?)
+    }
+
     pub async fn create(db: &Db, rsvp: &UpdateRsvp) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO rsvps

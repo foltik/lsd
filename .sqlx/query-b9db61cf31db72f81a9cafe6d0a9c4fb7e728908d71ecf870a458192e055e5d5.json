@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO tickets\n               (name, description, qty_total, qty_per_person, kind, sort, price, price_min, price_max, price_default, notice_hours)\n               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "b9db61cf31db72f81a9cafe6d0a9c4fb7e728908d71ecf870a458192e055e5d5"
+}
