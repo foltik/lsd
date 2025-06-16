@@ -1,7 +1,59 @@
 #events\/rsvp {
-  @apply mx-auto mt-8 flex max-w-4xl flex-col px-6;
-}
+  @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
 
-.reservation_row {
-  @apply mb-4 flex flex-row pb-4;
+  h1 {
+    @apply mb-6 text-4xl;
+  }
+
+  .spot {
+    @apply mb-16 grid grid-cols-[auto_60px] grid-rows-[auto_auto_auto];
+    .name {
+      @apply row-start-1 pr-4 text-2xl;
+    }
+    .description {
+      @apply text-lsd-gray row-start-2;
+    }
+    .contribution {
+      @apply col-span-2 row-start-3 text-xl font-bold;
+    }
+    .quantity {
+      @apply col-start-2 min-w-[60px];
+    }
+  }
+
+  .range {
+    @apply grid grid-cols-[110px_auto] grid-rows-[40px];
+
+    .number {
+      @apply flex items-center;
+      label {
+        @apply my-0 mr-1 ml-0 text-lg;
+      }
+      input {
+        @apply mr-2 h-[30px];
+      }
+    }
+
+    .slider {
+      @apply relative;
+      input {
+        @apply relative z-10 px-0;
+      }
+      .stat {
+        @apply absolute;
+        left: calc(
+          8px + (100% - 18px) *
+            ((var(--val) - var(--min)) / (var(--max) - var(--min)))
+        );
+
+        &::before {
+          @apply bg-lsd-green pointer-events-none absolute top-[4px] h-[30px] w-[2px] content-[""];
+        }
+
+        .label {
+          @apply absolute top-[34px] left-[6px] m-0 origin-top-left transform-[rotate(45deg)] text-sm select-none;
+        }
+      }
+    }
+  }
 }

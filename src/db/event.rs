@@ -45,8 +45,8 @@ pub struct EventStats {
 
 #[derive(Debug, serde::Serialize)]
 pub struct SpotStat {
-    name: String,
-    value: i64,
+    pub name: String,
+    pub value: i64,
 }
 
 impl Event {
@@ -138,37 +138,52 @@ impl Event {
         }
 
         let remaining_capacity = self.capacity.saturating_sub(qty_reserved.values().sum::<i64>());
-        let remaining_tickets = spots
+        let remaining_spots = spots
             .iter()
-            .map(|t| (t.id, t.qty_total.saturating_sub(*qty_reserved.get(&t.id).unwrap_or(&0))))
+            .map(|t| {
+                (
+                    t.id,
+                    t.qty_total
+                        .saturating_sub(*qty_reserved.get(&t.id).unwrap_or(&0))
+                        .min(t.qty_per_person),
+                )
+            })
             .collect();
 
-        let mut ticket_stats: HashMap<i64, Vec<SpotStat>> = HashMap::default();
-        for ticket in &spots {
-            let n = qty_reserved.get(&ticket.id).copied().unwrap_or(0) as usize;
-            if ticket.kind != Spot::VARIABLE || n == 0 {
+        let mut spot_stats: HashMap<i64, Vec<SpotStat>> = HashMap::default();
+        for spot in &spots {
+            let n = qty_reserved.get(&spot.id).copied().unwrap_or(0) as usize;
+            if spot.kind != Spot::VARIABLE {
                 continue;
             }
 
-            let prices = prices.get_mut(&ticket.id).unwrap(); // we checked n > 0
+            // If the spot hasn't been reserved, just use the suggested contribution as the median
+            // so we always have at least one stat to make frontend styling easier.
+            if n == 0 {
+                spot_stats.insert(
+                    spot.id,
+                    vec![SpotStat { name: "Median".into(), value: spot.suggested_contribution.unwrap() }],
+                );
+                continue;
+            }
+
+            let prices = prices.get_mut(&spot.id).unwrap(); // we checked n > 0
             prices.sort_unstable();
 
             let median = if n % 2 == 0 { (prices[n / 2 - 1] + prices[n / 2]) / 2 } else { prices[n / 2] };
             let max = prices.last().copied().unwrap();
-            ticket_stats.insert(
-                ticket.id,
-                vec![
-                    SpotStat { name: "median".into(), value: median },
-                    SpotStat { name: "max".into(), value: max },
-                ],
-            );
+
+            // Only add the max if it's different from the median to avoid clutter
+            let mut stats = vec![];
+            stats.push(SpotStat { name: "Median".into(), value: median });
+            if max > median {
+                stats.push(SpotStat { name: "Max".into(), value: max });
+            }
+
+            spot_stats.insert(spot.id, stats);
         }
 
-        Ok(EventStats {
-            remaining_capacity,
-            remaining_spots: remaining_tickets,
-            spot_stats: ticket_stats,
-        })
+        Ok(EventStats { remaining_capacity, remaining_spots, spot_stats })
     }
 
     #[allow(unused)]

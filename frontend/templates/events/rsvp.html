@@ -10,16 +10,54 @@
       {% endif %}
 
       {% for spot in spots %}
-        <div class="spot">
-          <h2>{{ spot.name }}</h2>
-          <p>{{ spot.description }}</p>
-          <div class="field">
-            <label for="quantity">Quantity</label>
-            <select name="quantity" data-spot-id="{{ spot.id }}"></select>
+        <div class="spot" data-id="{{ spot.id }}" data-kind="{{ spot.kind }}">
+          <h2 class="name">{{ spot.name }}</h2>
+          <p class="description">{{ spot.description }}</p>
+          <div class="contribution">
+            {% if spot.kind == "fixed" %}
+              ${{ spot.required_contribution.unwrap() }}
+            {% elif spot.kind == "variable" %}
+              <div class="range">
+                <div class="number">
+                  <label for="contribution">$</label>
+                  <input
+                    type="number"
+                    name="contribution"
+                    value="{{ spot.suggested_contribution.unwrap() }}"
+                    min="{{ spot.min_contribution.unwrap() }}"
+                    max="{{ spot.max_contribution.unwrap() }}"
+                  />
+                </div>
+                <div class="slider">
+                  <input
+                    type="range"
+                    name="contribution"
+                    value="{{ spot.suggested_contribution.unwrap() }}"
+                    min="{{ spot.min_contribution.unwrap() }}"
+                    max="{{ spot.max_contribution.unwrap() }}"
+                    step="1"
+                  />
+                  {% for stat in stats.spot_stats.get(spot.id).into_iter().flatten() %}
+                    <span
+                      class="stat"
+                      style="--i: {{ loop.index - 1 }}; --val: {{ stat.value }}; --min: {{ spot.min_contribution.unwrap() }}; --max: {{ spot.max_contribution.unwrap() }}"
+                    >
+                      <span class="label">{{ stat.name }}</span>
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+            {% elif spot.kind == "free" || spot.kind == "work" %}
+              $0
+            {% endif %}
           </div>
+          <select class="quantity" name="quantity">
+            <option value="0">0</option>
+          </select>
         </div>
       {% endfor %}
     </form>
+    <button id="continue" class="ext/button">Continue</button>
   </section>
 {% endblock content %}
 
@@ -28,16 +66,109 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
-      spots: () => [...ui.list.querySelectorAll(".spot")],
+      continue: $("continue"),
+      spots: () => [...ui.form.querySelectorAll(".spot")],
+      qty: (spot) => spot.querySelector('[name="quantity"]'),
+      totalQty: () => {
+        let total = 0;
+        for (const spot of ui.spots()) {
+          total += +ui.qty(spot).value;
+        }
+        return total;
+      },
     };
-
-    const event = JSON.parse(`{{ event | json | safe }}`);
-    const spots = JSON.parse(`{{ spots | json | safe }}`);
     const stats = JSON.parse(`{{ stats | json | safe }}`);
 
-    function render() {
+    /* ---------- Update available spot quantities on change ------------------ */
+    const updateQuantities = () => {
+      let totalQty = ui.totalQty();
       for (const spot of ui.spots()) {
+        const id = +spot.dataset.id;
+        const qty = ui.qty(spot);
+
+        const ourQty = +(qty.value || 0);
+        const otherQty = totalQty - ourQty;
+        const remainingCapacity = stats.remaining_capacity - otherQty;
+        const remainingForSpot = stats.remaining_spots[id];
+        const ourLimit = Math.min(remainingForSpot, remainingCapacity);
+
+        // Add new options
+        for (let i = 0; i <= ourLimit; i++) {
+          if (qty.querySelector(`option[value="${i}"]`)) continue;
+
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = i;
+          qty.appendChild(option);
+        }
+        // Remove old options
+        for (const option of qty.querySelectorAll("option")) {
+          if (+option.value > ourLimit) {
+            option.remove();
+          }
+        }
       }
-    }
+    };
+    ui.form.addEventListener("change", (e) => {
+      if (e.target.name != "quantity") return;
+      updateQuantities();
+    });
+    updateQuantities();
+
+    /* ---------- Sync variable contribution inputs --------------------------- */
+    ["input", "change"].forEach((ev) =>
+      ui.form.addEventListener(ev, (e) => {
+        if (e.target.name != "contribution") return;
+
+        const spot = e.target.closest(".spot");
+        const inputs = spot.querySelectorAll('input[name="contribution"]');
+        for (const input of inputs) {
+          input.value = e.target.value;
+        }
+      }),
+    );
+
+    /* ---------- Continue button --------------------------------------------- */
+    ui.continue.addEventListener("click", async () => {
+      const totalQty = ui.totalQty();
+      if (totalQty == 0) {
+        alert("Select at least one spot!");
+        return;
+      }
+
+      const reservations = [];
+      for (const spot of ui.spots()) {
+        const id = +spot.dataset.id;
+        const qty = +ui.qty(spot).value;
+        const contribution = +spot.querySelector('input[name="contribution"]')
+          .value;
+
+        if (qty > 0) {
+          const reservation = { id, qty };
+          if (spot.dataset.kind == "variable") {
+            reservation.contribution = contribution;
+          }
+          reservations.push(reservation);
+        }
+      }
+
+      console.log(reservations);
+
+      // try {
+      //   const resp = await fetch(`/events/{{ event.slug }}/rsvp`, {
+      //     method: "POST",
+      //     headers: { "Content-Type": "application/json" },
+      //     body: JSON.stringify(reservations),
+      //   });
+
+      //   if (resp.ok) {
+      //     // TODO
+      //   } else {
+      //     alert(`Error: ${await resp.text()}`);
+      //   }
+      // } catch (e) {
+      //   alert(`Error: ${e}`);
+      // }
+    });
   </script>
 {% endblock scripts %}
