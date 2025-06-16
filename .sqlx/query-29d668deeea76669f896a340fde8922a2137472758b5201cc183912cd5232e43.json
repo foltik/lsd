@@ -57,6 +57,11 @@
         "name": "event_id",
         "ordinal": 10,
         "type_info": "Integer"
+      },
+      {
+        "name": "notification_id",
+        "ordinal": 11,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -70,6 +75,7 @@
       true,
       true,
       false,
+      true,
       true,
       true,
       true,

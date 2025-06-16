@@ -8,9 +8,6 @@ use crate::utils::error::AppResult;
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Notification {
     pub id: i64,
-    /// Set when this notification is specific to an individual event, rather
-    /// than a generically applicable notification for a certain type of event.
-    pub event_id: Option<i64>,
 
     pub name: String,
     pub content: String,
@@ -33,9 +30,8 @@ impl Notification {
 
     pub async fn create(db: &Db, n: &UpdateNotification) -> AppResult<i64> {
         let row = sqlx::query!(
-            r#"INSERT INTO notifications (event_id, name, content)
-               VALUES (?, ?, ?)"#,
-            n.event_id,
+            r#"INSERT INTO notifications (name, content)
+               VALUES (?, ?)"#,
             n.name,
             n.content,
         )
@@ -47,9 +43,8 @@ impl Notification {
     pub async fn update(db: &Db, id: i64, n: &UpdateNotification) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE notifications
-               SET event_id = ?, name = ?, content = ?
+               SET name = ?, content = ?
                WHERE id = ?"#,
-            n.event_id,
             n.name,
             n.content,
             id

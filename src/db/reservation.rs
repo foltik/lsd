@@ -6,7 +6,7 @@ use super::Db;
 use crate::utils::error::AppResult;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
-pub struct Rsvp {
+pub struct Reservation {
     pub id: i64,
     pub user_id: i64,
     pub event_id: i64,
@@ -18,13 +18,13 @@ pub struct Rsvp {
     pub checkin_at: Option<NaiveDateTime>,
 }
 
-pub struct EventRsvp {
+pub struct EventReservation {
     pub spot_id: i64,
     pub price: Option<i64>,
 }
 
 #[derive(serde::Deserialize)]
-pub struct UpdateRsvp {
+pub struct UpdateReservation {
     pub user_id: i64,
     pub event_id: i64,
     pub spot_id: i64,
@@ -33,14 +33,14 @@ pub struct UpdateRsvp {
     pub checkin_at: Option<NaiveDateTime>,
 }
 
-impl Rsvp {
-    pub async fn list(db: &Db) -> AppResult<Vec<Rsvp>> {
+impl Reservation {
+    pub async fn list(db: &Db) -> AppResult<Vec<Reservation>> {
         Ok(sqlx::query_as!(Self, "SELECT * FROM reservations").fetch_all(db).await?)
     }
 
-    pub async fn list_for_event(db: &Db, event_id: i64) -> AppResult<Vec<EventRsvp>> {
+    pub async fn list_for_event(db: &Db, event_id: i64) -> AppResult<Vec<EventReservation>> {
         Ok(sqlx::query_as!(
-            EventRsvp,
+            EventReservation,
             "SELECT r.spot_id, t.price
              FROM reservations r
              LEFT JOIN transactions t ON t.id = r.transaction_id
@@ -51,7 +51,7 @@ impl Rsvp {
         .await?)
     }
 
-    pub async fn create(db: &Db, rsvp: &UpdateRsvp) -> AppResult<i64> {
+    pub async fn create(db: &Db, rsvp: &UpdateReservation) -> AppResult<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO reservations
                (user_id, event_id, spot_id, transaction_id, checkin_at)
@@ -67,7 +67,7 @@ impl Rsvp {
         Ok(row.last_insert_rowid())
     }
 
-    pub async fn update(db: &Db, id: i64, rsvp: &UpdateRsvp) -> AppResult<()> {
+    pub async fn update(db: &Db, id: i64, rsvp: &UpdateReservation) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE reservations
                SET user_id = ?,
@@ -94,7 +94,7 @@ impl Rsvp {
         Ok(())
     }
 
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Rsvp>> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Reservation>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM reservations WHERE id = ?"#, id)
             .fetch_optional(db)
             .await?)

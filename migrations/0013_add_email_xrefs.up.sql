@@ -1,2 +1,3 @@
 ALTER TABLE emails ADD COLUMN user_id INTEGER;
 ALTER TABLE emails ADD COLUMN event_id INTEGER;
+ALTER TABLE emails ADD COLUMN notification_id INTEGER;

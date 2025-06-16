@@ -1,4 +1,4 @@
-use crate::db::reservation::Rsvp;
+use crate::db::reservation::Reservation;
 use crate::db::spot::Spot;
 use crate::prelude::*;
 
@@ -153,7 +153,7 @@ impl Event {
     /// Calculate user-facing stats for an event.
     pub async fn stats(&self, db: &Db) -> AppResult<EventStats> {
         let spots = Spot::list_for_event(db, self.id).await?;
-        let rsvps = Rsvp::list_for_event(db, self.id).await?;
+        let rsvps = Reservation::list_for_event(db, self.id).await?;
 
         let mut prices: HashMap<i64, Vec<i64>> = HashMap::default();
         let mut qty_reserved: HashMap<i64, i64> = HashMap::default();
@@ -197,7 +197,13 @@ impl Event {
             let prices = prices.get_mut(&spot.id).unwrap(); // we checked n > 0
             prices.sort_unstable();
 
-            let median = if n % 2 == 0 { (prices[n / 2 - 1] + prices[n / 2]) / 2 } else { prices[n / 2] };
+            let median = if n.is_multiple_of(2) {
+                let l = prices[n / 2 - 1];
+                let r = prices[n / 2];
+                (l + r) / 2
+            } else {
+                prices[n / 2]
+            };
             let max = prices.last().copied().unwrap();
 
             // Only add the max if it's different from the median to avoid clutter

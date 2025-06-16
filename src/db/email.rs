@@ -13,6 +13,7 @@ pub struct Email {
     pub list_id: Option<i64>,
     pub user_id: Option<i64>,
     pub event_id: Option<i64>,
+    pub notification_id: Option<i64>,
     pub error: Option<String>,
     pub created_at: NaiveDateTime,
     pub sent_at: Option<NaiveDateTime>,
