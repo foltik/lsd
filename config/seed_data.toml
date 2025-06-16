@@ -1,19 +1,39 @@
 [[users]]
-email = "test@test.com"
-first_name = "Test"
-last_name = "Testington"
+email = "foo@foo.com"
+first_name = "Foo"
+last_name = "Fooington"
+
+[[users]]
+email = "bar@bar.com"
+first_name = "Bar"
+last_name = "Barington"
+
+[[users]]
+email = "baz@baz.com"
+first_name = "Baz"
+last_name = "Bazington"
 
 # Can add manually to cookies store in browser to persist sessions between database resets
 [[session_tokens]]
 user_id = 1
-token = "91acde7529be7cf7"
+token = "foo"
+[[session_tokens]]
+user_id = 2
+token = "bar"
+[[session_tokens]]
+user_id = 3
+token = "baz"
 
 [[user_roles]]
 user_id = 1
 role = "admin"
 created_at = "2025-04-04T16:03:35"
-
 [[user_roles]]
 user_id = 1
+role = "writer"
+created_at = "2025-04-04T16:03:35"
+
+[[user_roles]]
+user_id = 2
 role = "writer"
 created_at = "2025-04-04T16:03:35"
