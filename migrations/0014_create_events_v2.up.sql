@@ -4,7 +4,6 @@ CREATE TABLE events (
     id INTEGER PRIMARY KEY NOT NULL,
     title TEXT NOT NULL,
     slug TEXT NOT NULL,
-    flyer TEXT,
     description TEXT NOT NULL,
 
     start TIMESTAMP NOT NULL,

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM tickets",
+  "query": "SELECT * FROM spots",
   "describe": {
     "columns": [
       {
@@ -39,27 +39,27 @@
         "type_info": "Integer"
       },
       {
-        "name": "price",
+        "name": "required_contribution",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "price_min",
+        "name": "min_contribution",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "price_max",
+        "name": "max_contribution",
         "ordinal": 9,
         "type_info": "Integer"
       },
       {
-        "name": "price_default",
+        "name": "suggested_contribution",
         "ordinal": 10,
         "type_info": "Integer"
       },
       {
-        "name": "notice_hours",
+        "name": "required_notice_hours",
         "ordinal": 11,
         "type_info": "Integer"
       },
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "1cde3c03cd3dcbabf88853a96d2087f2ca9d3b238c492029ef7df45e3715b6d3"
+  "hash": "04ebec329753cbb695ebc2f7e411f74aed91f71cc2063ba4fed809538a6a537a"
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO spots\n               (name, description, qty_total, qty_per_person, kind, sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours)\n               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "83a26b44d1541ee06452d77d91e90fbb7439a75e23f6d0d80673f8f457075181"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvps WHERE id = ?",
+  "query": "SELECT * FROM reservations",
   "describe": {
     "columns": [
       {
@@ -19,7 +19,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "ticket_id",
+        "name": "spot_id",
         "ordinal": 3,
         "type_info": "Integer"
       },
@@ -29,28 +29,23 @@
         "type_info": "Integer"
       },
       {
-        "name": "price",
-        "ordinal": 5,
-        "type_info": "Integer"
-      },
-      {
         "name": "created_at",
-        "ordinal": 6,
+        "ordinal": 5,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 7,
+        "ordinal": 6,
         "type_info": "Datetime"
       },
       {
         "name": "checkin_at",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Datetime"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       false,
@@ -58,11 +53,10 @@
       false,
       false,
       true,
-      true,
       false,
       false,
       true
     ]
   },
-  "hash": "7b37a8021c049847732a467805a001fba10f564249048e72623f644400b724a7"
+  "hash": "34adbf2d0047e071ad2598f5fa502759bc156305279936b0397e8a1cf7980522"
 }

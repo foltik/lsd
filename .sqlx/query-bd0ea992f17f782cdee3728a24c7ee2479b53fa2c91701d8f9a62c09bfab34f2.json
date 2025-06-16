@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO reservations\n               (user_id, event_id, spot_id, transaction_id, checkin_at)\n               VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "bd0ea992f17f782cdee3728a24c7ee2479b53fa2c91701d8f9a62c09bfab34f2"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT t.*\n               FROM tickets t\n               JOIN event_tickets et ON et.ticket_id\n               WHERE et.event_id = ?\n               ORDER BY t.sort\n            ",
+  "query": "SELECT s.*\n               FROM spots s\n               JOIN event_spots es ON es.spot_id = s.id\n               WHERE es.event_id = ?\n               ORDER BY s.sort\n            ",
   "describe": {
     "columns": [
       {
@@ -39,27 +39,27 @@
         "type_info": "Integer"
       },
       {
-        "name": "price",
+        "name": "required_contribution",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "price_min",
+        "name": "min_contribution",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "price_max",
+        "name": "max_contribution",
         "ordinal": 9,
         "type_info": "Integer"
       },
       {
-        "name": "price_default",
+        "name": "suggested_contribution",
         "ordinal": 10,
         "type_info": "Integer"
       },
       {
-        "name": "notice_hours",
+        "name": "required_notice_hours",
         "ordinal": 11,
         "type_info": "Integer"
       },
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "11721fd6555302a58bb6cb2b418a5a8f60aa05e56058628634ae4b9d9bdbac81"
+  "hash": "6116973b9fda9214835875fbfa0bb8bc892795a1e74d8a243a2f8398abe020ce"
 }

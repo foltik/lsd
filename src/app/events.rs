@@ -1,6 +1,6 @@
 use crate::db::event::*;
 use crate::db::list::*;
-use crate::db::ticket::*;
+use crate::db::spot::*;
 use crate::prelude::*;
 
 /// Add all `events` routes to the router.
@@ -94,25 +94,25 @@ mod read {
         Ok(Html { events: Event::list(&state.db).await? })
     }
 
-    // RSVP for an event.
+    // RSVP to an event.
     pub async fn rsvp_page(
         user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let tickets = Ticket::list_for_event(&state.db, event.id).await?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
         let stats = event.stats(&state.db).await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp.html")]
-        struct Html {
+        struct RsvpHtml {
             user: Option<User>,
             event: Event,
-            tickets: Vec<Ticket>,
+            spots: Vec<Spot>,
             stats: EventStats,
         }
-        Ok(Html { user, event, tickets, stats }.into_response())
+        Ok(RsvpHtml { user, event, spots, stats }.into_response())
     }
 }
 
@@ -124,20 +124,17 @@ mod edit {
     #[template(path = "events/edit.html")]
     pub struct EditHtml {
         pub event: Event,
-        pub tickets: Vec<Ticket>,
-        pub lists: Vec<ListWithCount>,
+        pub spots: Vec<Spot>,
     }
 
     /// Display the form to create a new event.
-    pub async fn new_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    pub async fn new_page() -> AppResult<impl IntoResponse> {
         Ok(EditHtml {
-            lists: List::list_with_counts(&state.db).await?,
             event: Event {
                 id: 0,
                 title: "".into(),
                 slug: "".into(),
                 description: "".into(),
-                flyer: None,
 
                 start: Utc::now().naive_utc(),
                 end: None,
@@ -148,7 +145,7 @@ mod edit {
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),
             },
-            tickets: vec![],
+            spots: vec![],
         })
     }
 
@@ -158,9 +155,8 @@ mod edit {
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let tickets = Ticket::list_for_event(&state.db, event.id).await?;
-        let lists = List::list_with_counts(&state.db).await?;
-        Ok(EditHtml { event, tickets, lists })
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        Ok(EditHtml { event, spots })
     }
 
     // Handle edit submission.
@@ -169,7 +165,7 @@ mod edit {
         id: Option<i64>,
         #[serde(flatten)]
         event: UpdateEvent,
-        tickets: Vec<UpdateTicket>,
+        spots: Vec<UpdateSpot>,
     }
     pub async fn edit_form(
         State(state): State<SharedAppState>,
@@ -180,34 +176,34 @@ mod edit {
                 Event::update(&state.db, id, &form.event).await?;
 
                 let mut to_add = vec![];
-                let mut to_delete = Ticket::list_ids_for_event(&state.db, id).await?;
+                let mut to_delete = Spot::list_ids_for_event(&state.db, id).await?;
 
-                for ticket in form.tickets {
-                    match ticket.id {
+                for spot in form.spots {
+                    match spot.id {
                         Some(id) => {
-                            Ticket::update(&state.db, id, &ticket).await?;
+                            Spot::update(&state.db, id, &spot).await?;
                             to_delete.retain(|&id_| id_ != id);
                         }
                         None => {
-                            let id = Ticket::create(&state.db, &ticket).await?;
+                            let id = Spot::create(&state.db, &spot).await?;
                             to_add.push(id);
                         }
                     }
                 }
 
-                Ticket::add_to_event(&state.db, id, to_add).await?;
-                Ticket::remove_from_event(&state.db, id, to_delete).await?;
+                Spot::add_to_event(&state.db, id, to_add).await?;
+                Spot::remove_from_event(&state.db, id, to_delete).await?;
             }
             None => {
                 let event_id = Event::create(&state.db, &form.event).await?;
 
-                let mut ticket_ids = vec![];
-                for ticket in form.tickets {
-                    let id = Ticket::create(&state.db, &ticket).await?;
-                    ticket_ids.push(id);
+                let mut spot_ids = vec![];
+                for spot in form.spots {
+                    let id = Spot::create(&state.db, &spot).await?;
+                    spot_ids.push(id);
                 }
 
-                Ticket::add_to_event(&state.db, event_id, ticket_ids).await?;
+                Spot::add_to_event(&state.db, event_id, spot_ids).await?;
             }
         }
         Ok(())

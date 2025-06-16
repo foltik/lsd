@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE spots\n               SET name = ?,\n                   description = ?,\n                   qty_total = ?,\n                   qty_per_person = ?,\n                   kind = ?,\n                   sort = ?,\n                   required_contribution = ?,\n                   min_contribution = ?,\n                   max_contribution = ?,\n                   suggested_contribution = ?,\n                   required_notice_hours = ?,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "83ca7260a64c6c3e0af6e636f165c67bd8a1a6d39b37f8ada427431ee8000c00"
+}

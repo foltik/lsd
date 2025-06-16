@@ -9,13 +9,13 @@
       {% if user.is_none() %}
       {% endif %}
 
-      {% for ticket in tickets %}
-        <div class="ticket">
-          <h2>{{ ticket.name }}</h2>
-          <p>{{ ticket.description }}</p>
+      {% for spot in spots %}
+        <div class="spot">
+          <h2>{{ spot.name }}</h2>
+          <p>{{ spot.description }}</p>
           <div class="field">
             <label for="quantity">Quantity</label>
-            <select name="quantity" data-ticket-id="{{ ticket.id }}"></select>
+            <select name="quantity" data-spot-id="{{ spot.id }}"></select>
           </div>
         </div>
       {% endfor %}
@@ -28,15 +28,15 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
-      tickets: () => [...ui.list.querySelectorAll(".ticket")],
+      spots: () => [...ui.list.querySelectorAll(".spot")],
     };
 
     const event = JSON.parse(`{{ event | json | safe }}`);
-    const tickets = JSON.parse(`{{ tickets | json | safe }}`);
+    const spots = JSON.parse(`{{ spots | json | safe }}`);
     const stats = JSON.parse(`{{ stats | json | safe }}`);
 
     function render() {
-      for (const ticket of ui.tickets()) {
+      for (const spot of ui.spots()) {
       }
     }
   </script>

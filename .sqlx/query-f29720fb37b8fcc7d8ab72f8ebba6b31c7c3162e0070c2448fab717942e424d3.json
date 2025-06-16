@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.spot_id, t.price\n             FROM reservations r\n             LEFT JOIN transactions t ON t.id = r.transaction_id\n             WHERE r.event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "spot_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "f29720fb37b8fcc7d8ab72f8ebba6b31c7c3162e0070c2448fab717942e424d3"
+}

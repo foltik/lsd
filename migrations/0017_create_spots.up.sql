@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS tickets (
+CREATE TABLE IF NOT EXISTS spots (
     id INTEGER PRIMARY KEY NOT NULL,
 
     name TEXT NOT NULL,
@@ -9,20 +9,20 @@ CREATE TABLE IF NOT EXISTS tickets (
     sort INTEGER NOT NULL,
 
     -- kind = 'fixed'
-    price INTEGER,
+    required_contribution INTEGER,
     -- kind = 'variable'
-    price_min INTEGER,
-    price_max INTEGER,
-    price_default INTEGER,
+    min_contribution INTEGER,
+    max_contribution INTEGER,
+    suggested_contribution INTEGER,
     -- kind = 'work'
-    notice_hours INTEGER,
+    required_notice_hours INTEGER,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS event_tickets (
+CREATE TABLE IF NOT EXISTS event_spots (
     event_id INTEGER NOT NULL,
-    ticket_id INTEGER NOT NULL,
-    PRIMARY KEY (event_id, ticket_id)
+    spot_id INTEGER NOT NULL,
+    PRIMARY KEY (event_id, spot_id)
 );

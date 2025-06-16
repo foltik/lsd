@@ -15,8 +15,8 @@ pub mod event;
 pub mod list;
 pub mod notification;
 pub mod post;
-pub mod rsvp;
-pub mod ticket;
+pub mod reservation;
+pub mod spot;
 pub mod token;
 pub mod user;
 

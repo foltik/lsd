@@ -79,9 +79,9 @@
         />
       </div>
 
-      <div id="tickets">
+      <div id="spots">
         <div class="header">
-          <h2>Available Reservations</h2>
+          <h2>Available Spots</h2>
           <button type="button" id="add">+</button>
         </div>
       </div>
@@ -96,9 +96,9 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
-      list: $("tickets"),
+      list: $("spots"),
       add: $("add"),
-      tickets: () => [...ui.list.querySelectorAll(".ticket")],
+      spots: () => [...ui.list.querySelectorAll(".spot")],
     };
     const KINDS = {
       free: "Free",
@@ -107,24 +107,24 @@
       work: "Work Trade",
     };
     const FIELDS = {
-      price: "fixed",
-      price_min: "variable",
-      price_max: "variable",
-      price_default: "variable",
-      notice_hours: "work",
+      required_contribution: "fixed",
+      min_contribution: "variable",
+      max_contribution: "variable",
+      suggested_contribution: "variable",
+      required_notice_hours: "work",
     };
 
     /* ---------- Rendering ----------------------------------------------------- */
     const template = (t) => `
-    <div class="ticket">
-      <div class="ticket-row">
+    <div class="spot">
+      <div class="spot-row">
         <input name="id"   value="${t.id ?? ""}" type="hidden" data-type="number">
         <input name="name" value="${t.name ?? ""}" placeholder="Name" required>
         <button type="button" class="ext/button"       data-action="up">↑</button>
         <button type="button" class="ext/button"       data-action="down">↓</button>
         <button type="button" class="ext/button :red"  data-action="remove">✕</button>
       </div>
-      <div class="ticket-row">
+      <div class="spot-row">
         <input name="qty_total"       placeholder="Qty available"   value="${t.qty_total ?? ""}"      type="number" required>
         <input name="qty_per_person"  placeholder="Qty per person"  value="${t.qty_per_person ?? ""}" type="number" required>
         <select name="kind" required>
@@ -136,53 +136,53 @@
             .join("")}
         </select>
       </div>
-      <div class="ticket-row">
-        <input name="price"         type="number" placeholder="Required Contribution" value="${t.price ?? ""}">
-        <input name="price_min"     type="number" placeholder="Min Contribution" value="${t.price_min ?? ""}">
-        <input name="price_max"     type="number" placeholder="Max Contribution" value="${t.price_max ?? ""}">
-        <input name="price_default" type="number" placeholder="Suggested Contribution" value="${t.price_default ?? ""}">
-        <input name="notice_hours"  type="number" placeholder="Notice Period (Hours)" value="${t.notice_hours ?? ""}" type="number">
+      <div class="spot-row">
+        <input name="required_contribution"  type="number" placeholder="Required Contribution"  value="${t.required_contribution ?? ""}">
+        <input name="min_contribution"       type="number" placeholder="Min Contribution"       value="${t.min_contribution ?? ""}">
+        <input name="max_contribution"       type="number" placeholder="Max Contribution"       value="${t.max_contribution ?? ""}">
+        <input name="suggested_contribution" type="number" placeholder="Suggested Contribution" value="${t.suggested_contribution ?? ""}">
+        <input name="required_notice_hours"  type="number" placeholder="Notice Period (Hours)"  value="${t.required_notice_hours ?? ""}" type="number">
       </div>
-      <div class="ticket-row">
+      <div class="spot-row">
         <input name="description" placeholder="Description"  value="${t.description ?? ""}" required>
       </div>
     </div>
   `;
 
     function render() {
-      ui.tickets().forEach((t, i, arr) => {
-        // Disable up/down buttons for first/last tickets
-        t.querySelector('[data-action="up"]').disabled = i == 0;
-        t.querySelector('[data-action="down"]').disabled = i == arr.length - 1;
+      ui.spots().forEach((s, i, arr) => {
+        // Disable up/down buttons for first/last spots
+        s.querySelector('[data-action="up"]').disabled = i == 0;
+        s.querySelector('[data-action="down"]').disabled = i == arr.length - 1;
 
         // Update kind-specific field visibility
-        const kind = t.querySelector('[name="kind"]').value;
+        const kind = s.querySelector('[name="kind"]').value;
         for (const [field, forKind] of Object.entries(FIELDS)) {
-          const el = t.querySelector(`[name="${field}"]`);
+          const el = s.querySelector(`[name="${field}"]`);
           el.classList.toggle("hidden", kind != forKind);
           el.required = kind == forKind;
         }
       });
     }
 
-    /* ---------- Ticket operations ------------------------------------------- */
+    /* ---------- Spot operations --------------------------------------------- */
     ui.add.addEventListener("click", () => {
-      // Add a new blank ticket
+      // Add a new blank spot
       ui.list.insertAdjacentHTML("beforeend", template({}));
       render();
     });
     ui.list.addEventListener("click", (e) => {
-      // Add, remove, or move an existing ticket
-      const tickets = ui.tickets();
-      const ticket = e.target.closest(".ticket");
-      const i = tickets.indexOf(ticket);
+      // Add, remove, or move an existing spot
+      const spots = ui.spots();
+      const spot = e.target.closest(".spot");
+      const i = spots.indexOf(spot);
 
       const action = e.target.dataset?.action;
       if (!action) return;
 
-      if (action == "remove") ticket.remove();
-      if (action == "up") ui.list.insertBefore(ticket, tickets[i - 1]);
-      if (action == "down") ui.list.insertBefore(tickets[i + 1], ticket);
+      if (action == "remove") spot.remove();
+      if (action == "up") ui.list.insertBefore(spot, spots[i - 1]);
+      if (action == "down") ui.list.insertBefore(spots[i + 1], spot);
 
       render();
     });
@@ -194,7 +194,7 @@
     /* ---------- Form submit handler ------------------------------------------- */
     ui.form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (ui.tickets().length == 0) {
+      if (ui.spots().length == 0) {
         alert("Add at least one reservation!");
         return;
       }
@@ -214,23 +214,30 @@
 
       // Convert [date, start+end times] into just start+end timestamps.
       const [start, end] = (() => {
+        const format = (date, time) => {
+          if (date == null || time == null) return null;
+          const iso = new Date(date + "T" + time).toISOString();
+          return iso.replace("Z", "");
+        };
+
         const startDate = value("date");
-        const startTime = value("start") + ":00";
-        const startHour = startTime.split(":")[0];
+        const startTime = value("start");
+        const startHour = +startTime.split(":")[0];
+        const start = format(startDate, startTime);
 
         let endDate = startDate;
-        const endTime = value("end") + ":00";
-        const endHour = +endTime.split(":")[0];
+        let endTime = value("end");
+        let endHour = endTime != null && +endTime.split(":")[0];
+        let end = format(endDate, endTime);
 
         // If end < start (e.g. 8PM to 4AM, or 20:00 to 04:00), move the end date to the next day
-        if (endHour < startHour) {
+        if (endHour != null && endHour < startHour) {
           endDate = new Date(endDate);
           endDate.setDate(endDate.getDate() + 1);
           endDate = endDate.toISOString().split("T")[0];
+          end = format(endDate, endTime);
         }
 
-        const start = `${startDate}T${startTime}`;
-        const end = value("end") ? `${endDate}T${endTime}` : null;
         return [start, end];
       })();
 
@@ -243,9 +250,9 @@
         end,
         capacity: value("capacity"),
         unlisted: value("unlisted"),
-        tickets: ui.tickets().map((t, i) => {
+        spots: ui.spots().map((t, i) => {
           const kind = value("kind", t);
-          const ticket = {
+          const spot = {
             id: value("id", t),
             name: value("name", t),
             description: value("description", t),
@@ -256,16 +263,16 @@
           };
 
           if (kind == "fixed") {
-            ticket.price = value("price", t);
+            spot.required_contribution = value("required_contribution", t);
           } else if (kind == "variable") {
-            ticket.price_min = value("price_min", t);
-            ticket.price_max = value("price_max", t);
-            ticket.price_default = value("price_default", t);
+            spot.min_contribution = value("min_contribution", t);
+            spot.max_contribution = value("max_contribution", t);
+            spot.suggested_contribution = value("suggested_contribution", t);
           } else if (kind == "work") {
-            ticket.notice_hours = value("notice_hours", t);
+            spot.required_notice_hours = value("required_notice_hours", t);
           }
 
-          return ticket;
+          return spot;
         }),
       };
 
@@ -287,13 +294,13 @@
       }
     });
 
-    // Populate existing tickets from the backend
-    let tickets = JSON.parse(`{{ tickets | json | safe }}`);
-    // Add an empty ticket if there are none
-    tickets = tickets.length > 0 ? tickets : [{}];
+    // Populate existing spots from the backend
+    let spots = JSON.parse(`{{ spots | json | safe }}`);
+    // Add an empty spot if there are none
+    spots = spots.length > 0 ? spots : [{}];
 
     // Initial render
-    ui.list.insertAdjacentHTML("beforeend", tickets.map(template).join(""));
+    ui.list.insertAdjacentHTML("beforeend", spots.map(template).join(""));
     render();
   </script>
 {% endblock content %}
