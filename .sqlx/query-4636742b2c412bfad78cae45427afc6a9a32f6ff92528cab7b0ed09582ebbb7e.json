@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, x, y, rotation, z_index, image_url, event_url, event_end FROM flyers",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "x",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "y",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rotation",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "z_index",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "image_url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_url",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_end",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "4636742b2c412bfad78cae45427afc6a9a32f6ff92528cab7b0ed09582ebbb7e"
+}
