@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <script type="module" src="/static/dist/bulletin/main.js"></script>
+    <link rel="stylesheet" href="/static/bulletin.css" />
+  </head>
+  <body>
+    <main id="door">
+      {% for flyer in flyers %}
+        <div
+          id="{{ flyer.id }}"
+          class="magnet"
+          style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.z_index }};"
+        >
+          {% if let Some(event_url) = flyer.event_url %}
+            <a href="{{ event_url }}">
+              <img draggable="false" src="{{ flyer.image_url }}" />
+            </a>
+          {% else %}
+            <img draggable="false" src="{{ flyer.image_url }}" />
+          {% endif %}
+        </div>
+      {% endfor %}
+    </main>
+  </body>
+</html>
