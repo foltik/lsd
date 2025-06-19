@@ -215,7 +215,7 @@ async fn update_event_form(
 
     Event::update(&state.db, id, &event).await?;
 
-    // Delete existing event tickets first
+    // Delete existing event tickets first to prevent duplicates
     sqlx::query!("DELETE FROM event_tickets WHERE event_id = ?", id)
         .execute(&state.db)
         .await?;
