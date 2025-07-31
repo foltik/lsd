@@ -6,7 +6,7 @@ session_expiry_days = 365
 
 [db]
 file = "db.sqlite"
-seed_data = "config/seed_data.toml"
+seed_data = "config/seed_data.sql"
 
 [net]
 http_addr = "[::]:8080"

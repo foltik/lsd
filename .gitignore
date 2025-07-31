@@ -1,6 +1,7 @@
 config/*
 !config/prod.toml
 !config/dev.toml
+!config/seed_data.sql
 frontend/static/dist
 
 Cargo.lock
