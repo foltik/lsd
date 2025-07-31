@@ -1,48 +1,37 @@
 #events\/list {
-  @apply mx-auto mt-8 flex max-w-4xl flex-col;
-  .title {
-    @apply mb-4 text-2xl;
-  }
-  .event {
-    a {
-      text-decoration: none;
-      color: inherit;
+  @apply mx-auto mt-8 flex max-w-4xl flex-col px-6;
+
+  header {
+    @apply mb-8 flex items-end justify-between px-0 pb-4;
+    @apply border-lsd-white/20 border-b;
+    .title {
+      @apply text-2xl font-bold;
     }
   }
 
-  .row {
-    display: flex;
-    align-items: center;
-    padding-bottom: 30px;
-  }
+  .event {
+    @apply mb-6 flex items-start justify-between pb-6;
 
-  .heading {
-    text-transform: uppercase;
-    font-size: 1.45em;
-    letter-spacing: 1.2px;
-  }
+    .title {
+      @apply mb-1 text-2xl font-bold;
+      a {
+        @apply decoration-lsd-blue hover:text-lsd-blue underline;
+      }
+    }
 
-  a:visited {
-    color: inherit;
-  }
+    .info {
+      @apply mb-4;
+    }
 
-  a:hover,
-  a:hover h2,
-  a:hover span {
-    color: #a7a5a1;
-    border-color: #a7a5a1;
-  }
-
-  span.date {
-    padding-right: 24px;
-    border-right: 1px solid white;
-    margin-right: 24px;
-  }
-
-  span.divider {
-    border-left: 1px solid white;
-    width: 22px;
-    margin-left: 22px;
-    height: 25px;
+    .actions {
+      @apply flex;
+      a,
+      form {
+        @apply mr-2;
+      }
+      form {
+        @apply p-0;
+      }
+    }
   }
 }
