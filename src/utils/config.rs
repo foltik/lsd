@@ -94,5 +94,6 @@ fn default_ratelimit() -> usize {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct StripeConfig {
+    pub publishable_key: String,
     pub secret_key: String,
 }

@@ -140,13 +140,13 @@
       for (const spot of ui.spots()) {
         const id = +spot.dataset.id;
         const qty = +ui.qty(spot).value;
-        const contribution = +spot.querySelector('input[name="contribution"]')
-          .value;
 
         if (qty > 0) {
           const reservation = { id, qty };
           if (spot.dataset.kind == "variable") {
-            reservation.contribution = contribution;
+            reservation.contribution = +spot.querySelector(
+              'input[name="contribution"]',
+            ).value;
           }
           reservations.push(reservation);
         }
@@ -154,21 +154,18 @@
 
       console.log(reservations);
 
-      // try {
-      //   const resp = await fetch(`/events/{{ event.slug }}/rsvp`, {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/json" },
-      //     body: JSON.stringify(reservations),
-      //   });
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `/e/{{ event.slug }}/rsvp`;
 
-      //   if (resp.ok) {
-      //     // TODO
-      //   } else {
-      //     alert(`Error: ${await resp.text()}`);
-      //   }
-      // } catch (e) {
-      //   alert(`Error: ${e}`);
-      // }
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "reservations";
+      input.value = JSON.stringify(reservations);
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
     });
   </script>
 {% endblock scripts %}

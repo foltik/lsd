@@ -20,8 +20,8 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let state = Arc::new(AppState {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
+        stripe: Stripe::new(&config),
         mailer: Emailer::connect(config.email).await?,
-        stripe: Stripe::new(config.stripe),
     });
 
     // Register business logic routes

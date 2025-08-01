@@ -5,10 +5,12 @@ pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum AppError {
+    #[error("bad request")]
+    BadRequest,
+    #[error("not authorized")]
+    Unauthorized,
     #[error("not found")]
     NotFound,
-    #[error("not authorized")]
-    NotAuthorized,
 
     #[error(transparent)]
     Email(#[from] lettre::error::Error),
@@ -30,12 +32,14 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         tracing::error!("{self:#}");
 
+        let error_400 = || (StatusCode::BAD_REQUEST, "Bad request");
         let error_401 = || (StatusCode::UNAUTHORIZED, "You do not have permission to view this page");
         let error_404 = || (StatusCode::NOT_FOUND, "Page not found");
         let error_500 = || (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong :( Please try again");
 
         let (status, message) = match self {
-            AppError::NotAuthorized => error_401(),
+            AppError::BadRequest => error_400(),
+            AppError::Unauthorized => error_401(),
             AppError::NotFound => error_404(),
             AppError::Database(_) => error_500(),
             AppError::Smtp(_) => error_500(),

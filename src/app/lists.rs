@@ -111,7 +111,7 @@ async fn signup_page(
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
     if list_id != 1 {
-        return Err(AppError::NotAuthorized);
+        return Err(AppError::Unauthorized);
     }
 
     let Some(list) = List::lookup_by_id(&state.db, list_id).await? else {
@@ -136,7 +136,7 @@ async fn signup_form(
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
     if form.list_id != 1 {
-        return Err(AppError::NotAuthorized);
+        return Err(AppError::Unauthorized);
     }
 
     let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {

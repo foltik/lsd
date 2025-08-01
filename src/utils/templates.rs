@@ -2,8 +2,10 @@ use std::sync::OnceLock;
 
 use chrono::NaiveDateTime;
 
+use crate::prelude::*;
+
 /// Global app config for reference from askama filters, set once at startup.
-pub static CONFIG: OnceLock<crate::Config> = OnceLock::new();
+pub static CONFIG: OnceLock<Config> = OnceLock::new();
 
 /// Askama implicitly looks for a `filters` module to be in the same scope as
 /// the `#[derive(Template)]` to provide extra functions to templates.
@@ -13,6 +15,10 @@ pub mod filters {
     use std::fmt::Display;
 
     use super::*;
+
+    pub fn config() -> Result<&'static Config, askama::Error> {
+        Ok(CONFIG.get().unwrap())
+    }
 
     /// Format a datetime with a `strftime` format string.
     pub fn format_datetime(dt: &NaiveDateTime, format: &str) -> Result<String, askama::Error> {

@@ -17,4 +17,5 @@ smtp_addr = "smtp://localhost:1025"
 from = "Light and Sound Design <studio@beta.lightandsound.design>"
 
 [stripe]
+publishable_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 secret_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"

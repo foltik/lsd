@@ -125,7 +125,7 @@ async fn login_link(
 
     // Otherwise we're handling a login link. Valdiate the login token and create a new session.
     let Some(user) = User::lookup_by_login_token(&state.db, &token).await? else {
-        return Err(AppError::NotAuthorized);
+        return Err(AppError::Unauthorized);
     };
     let token = SessionToken::create(&state.db, user.id).await?;
     let cookie = session_cookie(&state.config, token);
@@ -158,7 +158,7 @@ async fn register_form(
     Form(form): Form<RegisterForm>,
 ) -> AppResult<Response> {
     let Some(email) = LoginToken::lookup_email(&state.db, &form.token).await? else {
-        return Err(AppError::NotAuthorized);
+        return Err(AppError::Unauthorized);
     };
 
     let form = UpdateUser { first_name: form.first_name, last_name: form.last_name, email };

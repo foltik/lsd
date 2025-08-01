@@ -2,7 +2,7 @@
   @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
 
   h1 {
-    @apply mb-6 text-4xl;
+    @apply border-lsd-white/20 mb-6 border-b pb-4 text-4xl;
   }
 
   .spot {

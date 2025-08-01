@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block head %}
+  <script src="https://js.stripe.com/basil/stripe.js"></script>
+{% endblock head %}
+
+{% block title %}light and sound - checkout{% endblock title %}
+
+{% block content %}
+  <div id="events/checkout">
+    <h1>Checkout</h1>
+    <div id="checkout"></div>
+  </div>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    (async () => {
+      const stripe = Stripe(`{{ stripe_publishable_key }}`);
+      const checkout = await stripe.initEmbeddedCheckout({
+        fetchClientSecret: async () => `{{ stripe_checkout_client_secret }}`,
+        // appearance: {
+        //   theme: 'night',
+        //   variables: {
+        //     fontFamily: 'Poppins, sans-serif',
+        //     colorBackground: '#080504',
+        //     colorText: '#ebe3de',
+        //     colorDanger: '#c34346',
+        //   },
+        // }
+      });
+      checkout.mount("#checkout");
+    })();
+  </script>
+{% endblock scripts %}

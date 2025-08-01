@@ -1,14 +1,14 @@
 use crate::db::event::*;
-use crate::db::list::*;
 use crate::db::spot::*;
 use crate::prelude::*;
+use crate::utils::stripe;
 
 /// Add all `events` routes to the router.
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
-                .route("/e/{slug}/rsvp", get(read::rsvp_page))
+                .route("/e/{slug}/rsvp", get(rsvp::rsvp_page).post(rsvp::rsvp_form))
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
@@ -18,53 +18,6 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{slug}/delete", post(edit::delete_form))
         })
 }
-
-// RETURN URL:
-// /events/{}/confirm?session_id={{CHECKOUT_SESSION_ID}}\
-
-// async fn checkout_session(
-//     // user: Option<User>,
-//     Path(id): Path<i64>,
-//     State(state): State<SharedAppState>,
-//     Json(CheckoutSessionData { price }): Json<CheckoutSessionData>,
-// ) -> AppResult<String> {
-//     let price_cents = price * 100;
-
-//     // Gross but there doesn't seem to be any other supported way to build form data in the way
-//     // that stripe expects in particular for lists of objects.
-//     // The v2 APIs will allow sending JSON data but currently checkout API doesn't support v2
-//     // as of 2025-06-10.
-//     // See https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-05-28.basil
-//     let form_data = format!("ui_mode=custom&return_url={}/events/{}/confirm?session_id={{CHECKOUT_SESSION_ID}}&mode=payment&currency=usd&allow_promotion_codes=true&payment_method_types[]=card&payment_method_types[]=cashapp&line_items[0][quantity]=1&line_items[0][price_data][currency]=usd&line_items[0][price_data][unit_amount]={}&line_items[0][price_data][product_data][name]=Contribution&line_items[0][price_data][product_data][description]=Contribute to this event", state.config.app.url, id,price_cents);
-
-//     // if let Some(user) = user {
-//     //     form_data = format!("{}&customer_email={}", form_data, user.email);
-//     // }
-//     //
-
-//     let res = state
-//         .http
-//         .post("https://api.stripe.com/v1/checkout/sessions")
-//         .header(
-//             header::AUTHORIZATION,
-//             format!("Bearer {}", state..stripe_secret_key.expose_secret()),
-//         )
-//         .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-//         .body(form_data)
-//         .send()
-//         .await
-//         .unwrap();
-
-//     tracing::info!("{res:?}");
-
-//     let json: serde_json::Value = res.json().await?;
-//     let client_secret = json["client_secret"]
-//         .as_str()
-//         .context("Cannot parse client_secret as string")?
-//         .to_string();
-
-//     Ok(client_secret)
-// }
 
 // View and list events.
 mod read {
@@ -98,27 +51,6 @@ mod read {
 
     pub async fn past_events_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
         Ok(ListHtml { events: Event::list_past(&state.db).await? })
-    }
-
-    // RSVP to an event.
-    pub async fn rsvp_page(
-        user: Option<User>,
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let stats = event.stats(&state.db).await?;
-
-        #[derive(Template, WebTemplate)]
-        #[template(path = "events/rsvp.html")]
-        struct RsvpHtml {
-            user: Option<User>,
-            event: Event,
-            spots: Vec<Spot>,
-            stats: EventStats,
-        }
-        Ok(RsvpHtml { user, event, spots, stats }.into_response())
     }
 }
 
@@ -222,5 +154,142 @@ mod edit {
     ) -> AppResult<impl IntoResponse> {
         Event::delete(&state.db, id).await?;
         Ok(Redirect::to("/events"))
+    }
+}
+
+mod rsvp {
+    use super::*;
+
+    // RSVP to an event.
+    pub async fn rsvp_page(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+    ) -> AppResult<impl IntoResponse> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let stats = event.stats(&state.db).await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/rsvp.html")]
+        struct RsvpHtml {
+            user: Option<User>,
+            event: Event,
+            spots: Vec<Spot>,
+            stats: EventStats,
+        }
+        Ok(RsvpHtml { user, event, spots, stats }.into_response())
+    }
+
+    // Handle RSVP submission.
+    #[derive(Debug, serde::Deserialize)]
+    pub struct RsvpForm {
+        reservations: String,
+    }
+    #[derive(Debug, serde::Deserialize)]
+    pub struct Reservation {
+        id: i64,
+        qty: i64,
+        contribution: Option<i64>,
+    }
+    pub async fn rsvp_form(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Form(form): Form<RsvpForm>,
+    ) -> AppResult<impl IntoResponse> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let stats = event.stats(&state.db).await?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+
+        let reservations: Vec<Reservation> =
+            serde_json::from_str(&form.reservations).map_err(|_| AppError::BadRequest)?;
+
+        if let Err(e) = validate_reservations(&stats, &spots, &reservations) {
+            tracing::info!("{e}");
+            return Err(AppError::BadRequest);
+        }
+
+        let line_items = make_line_items(&spots, &reservations);
+        let stripe_checkout_client_secret = state
+            .stripe
+            .create_checkout_session(&user, line_items, format!("/e/{slug}/confirmation"))
+            .await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/checkout.html")]
+        struct CheckoutHtml {
+            stripe_publishable_key: String,
+            stripe_checkout_client_secret: String,
+        }
+        Ok(CheckoutHtml {
+            stripe_checkout_client_secret,
+            stripe_publishable_key: state.config.stripe.publishable_key.clone(),
+        }
+        .into_response())
+    }
+
+    #[derive(thiserror::Error, Debug)]
+    pub enum ValidationError {
+        #[error("unknown spot_id={id}")]
+        UnknownSpot { id: i64 },
+
+        #[error("number of reservations exceeds event capacity")]
+        EventCapacity,
+        #[error("number of reservations exceeds capacity for spot_id={id}")]
+        SpotCapacity { id: i64 },
+
+        #[error("contribution is outside of range for spot_id={id}")]
+        SpotRange { id: i64 },
+    }
+    fn validate_reservations(
+        stats: &EventStats,
+        spots: &[Spot],
+        reservations: &[Reservation],
+    ) -> Result<(), ValidationError> {
+        let mut reserved_qty = 0;
+        for res in reservations {
+            let id = res.id;
+            let Some(spot) = spots.iter().find(|s| s.id == id) else {
+                return Err(ValidationError::UnknownSpot { id });
+            };
+
+            if res.qty > *stats.remaining_spots.get(&res.id).unwrap_or(&0) {
+                return Err(ValidationError::SpotCapacity { id });
+            }
+            if spot.kind == Spot::VARIABLE {
+                let min = spot.min_contribution.unwrap();
+                let max = spot.max_contribution.unwrap();
+                if !res.contribution.is_some_and(|c| (min..=max).contains(&c)) {
+                    return Err(ValidationError::SpotRange { id });
+                }
+            }
+            reserved_qty += res.qty;
+        }
+
+        if reserved_qty > stats.remaining_capacity {
+            return Err(ValidationError::EventCapacity);
+        }
+
+        Ok(())
+    }
+
+    fn make_line_items(spots: &[Spot], reservations: &[Reservation]) -> Vec<stripe::LineItem> {
+        let mut items = vec![];
+        for res in reservations {
+            let spot = spots.iter().find(|s| s.id == res.id).unwrap(); // unwrap(): we've already validated
+            items.push(stripe::LineItem {
+                name: spot.name.clone(),
+                quantity: res.qty,
+                price: match spot.kind.as_str() {
+                    Spot::FREE => 0,
+                    Spot::FIXED => spot.required_contribution.unwrap(),
+                    Spot::VARIABLE => res.contribution.unwrap(),
+                    Spot::WORK => 0,
+                    kind => panic!("unknown kind: {kind}"),
+                },
+            });
+        }
+        items
     }
 }
