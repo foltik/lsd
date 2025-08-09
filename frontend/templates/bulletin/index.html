@@ -1,25 +1,31 @@
-<html>
-  <head>
-    <script type="module" src="/static/dist/bulletin/main.js"></script>
-    <link rel="stylesheet" href="/static/bulletin.css" />
-  </head>
-  <body>
-    <main id="door">
-      {% for flyer in flyers %}
-        <div
-          id="{{ flyer.id }}"
-          class="magnet"
-          style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.z_index }};"
-        >
-          {% if let Some(event_url) = flyer.event_url %}
-            <a href="{{ event_url }}">
-              <img draggable="false" src="{{ flyer.image_url }}" />
-            </a>
-          {% else %}
+{% extends "layout.html" %}
+
+{% block title %}LSD Bulletin{% endblock title %}
+
+{% block styles %}
+  <link rel="stylesheet" href="/static/bulletin.css" />
+{% endblock styles %}
+
+{% block scripts %}
+  <script src="/static/scripts/bulletin.js"></script>
+{% endblock scripts %}
+
+{% block content %}
+  <div id="door">
+    {% for flyer in flyers %}
+      <div
+        id="{{ flyer.id }}"
+        class="flyer"
+        style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.z_index }};"
+      >
+        {% if let Some(event_url) = flyer.event_url %}
+          <a href="{{ event_url }}">
             <img draggable="false" src="{{ flyer.image_url }}" />
-          {% endif %}
-        </div>
-      {% endfor %}
-    </main>
-  </body>
-</html>
+          </a>
+        {% else %}
+          <img draggable="false" src="{{ flyer.image_url }}" />
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock content %}

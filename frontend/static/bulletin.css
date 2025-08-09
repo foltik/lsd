@@ -3,10 +3,18 @@ body {
   touch-action: none;
 }
 
+header {
+  position: absolute;
+  z-index: 999999999;
+  background-color: black;
+  width: 100%;
+}
+
 #door {
   --center-x: 0px;
   --center-y: 0px;
   --scale: 1;
+  z-index: 0;
   width: 200vw;
   height: 200vh;
   left: -50vw;
@@ -23,7 +31,7 @@ body {
   cursor: move;
 }
 
-.magnet {
+.flyer {
   --x: 0px;
   --y: 0px;
   --rotation: 0deg;
@@ -47,11 +55,11 @@ body {
   background: white;
 }
 
-.magnet:active {
+.flyer:active {
   cursor: grabbing;
 }
 
-.magnet a {
+.flyer a {
   text-decoration: none;
   color: inherit;
   user-select: none;
@@ -59,7 +67,7 @@ body {
   -webkit-user-drag: none;
 }
 
-.magnet img {
+.flyer img {
   -webkit-user-drag: none;
   max-width: 200px;
   max-height: 200px;
@@ -67,11 +75,11 @@ body {
   height: auto;
 }
 
-.magnet:has(> img.qr) {
+.flyer:has(> img.qr) {
   padding: 0;
 }
 
-.fake-magnet {
+.fake-flyer {
   border: 1px solid black;
   display: inline-block;
   padding: 5px;
@@ -150,36 +158,4 @@ footer {
 button {
   all: unset;
   cursor: pointer;
-}
-
-.loader {
-  border: 12px solid lightgray;
-  border-top: 12px solid plum;
-  border-radius: 50%;
-  width: 8vh;
-  height: 8vh;
-  animation: spin 1s linear infinite;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
-@keyframes spin {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-.error {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  user-select: none;
-  -webkit-user-select: none;
-  transform: translate(-50%, -50%);
-  font-size: x-large;
 }
