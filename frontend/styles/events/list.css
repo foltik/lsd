@@ -3,7 +3,46 @@
   .title {
     @apply mb-4 text-2xl;
   }
-  .event a {
-    @apply hover:underline;
+  .event {
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    padding-bottom: 30px;
+  }
+
+  .heading {
+    text-transform: uppercase;
+    font-size: 1.45em;
+    letter-spacing: 1.2px;
+  }
+
+  a:visited {
+    color: inherit;
+  }
+
+  a:hover,
+  a:hover h2,
+  a:hover span {
+    color: #a7a5a1;
+    border-color: #a7a5a1;
+  }
+
+  span.date {
+    padding-right: 24px;
+    border-right: 1px solid white;
+    margin-right: 8px;
+  }
+
+  span.divider {
+    border-left: 1px solid white;
+    width: 22px;
+    margin-left: 22px;
+    height: 25px;
   }
 }

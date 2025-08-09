@@ -50,9 +50,36 @@ pub struct SpotStat {
 }
 
 impl Event {
-    // List all events.
     pub async fn list(db: &Db) -> AppResult<Vec<Event>> {
+        let events = sqlx::query_as!(Self, "SELECT * FROM events WHERE unlisted = FALSE")
+            .fetch_all(db)
+            .await?;
+        Ok(events)
+    }
+
+    // List all events, including unlisted
+    pub async fn list_all(db: &Db) -> AppResult<Vec<Event>> {
         let events = sqlx::query_as!(Self, "SELECT * FROM events").fetch_all(db).await?;
+        Ok(events)
+    }
+
+    pub async fn list_upcoming(db: &Db) -> AppResult<Vec<Event>> {
+        let events = sqlx::query_as!(
+            Self,
+            "SELECT * FROM events WHERE start > DATETIME(CURRENT_TIMESTAMP, '-24 hours') AND unlisted = FALSE"
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(events)
+    }
+
+    pub async fn list_past(db: &Db) -> AppResult<Vec<Event>> {
+        let events = sqlx::query_as!(
+            Self,
+            "SELECT * FROM events WHERE start <= DATETIME(CURRENT_TIMESTAMP, '-24 hours') AND unlisted = FALSE"
+        )
+        .fetch_all(db)
+        .await?;
         Ok(events)
     }
 

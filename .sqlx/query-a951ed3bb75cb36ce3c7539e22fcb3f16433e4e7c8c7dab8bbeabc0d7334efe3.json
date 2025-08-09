@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM events WHERE unlisted = FALSE",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "start",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "end",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "unlisted",
+        "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a951ed3bb75cb36ce3c7539e22fcb3f16433e4e7c8c7dab8bbeabc0d7334efe3"
+}

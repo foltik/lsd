@@ -1,0 +1,20 @@
+<div id="events/list">
+  <div class="row">
+    <a href="/events"><h2 class="heading">Upcoming Events</h2></a>
+    <span class="divider"></span>
+    <a href="/events/past"><h2 class="heading">Past Events</h2></a>
+  </div>
+
+  <ul>
+    {% for event in events %}
+      <li class="event">
+        <a href="/e/{{ event.slug }}">
+          <span class="date">
+            {{ event.start | format_datetime("%b %d, %Y") }}
+          </span>
+          {{ event.title }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</div>

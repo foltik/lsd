@@ -12,6 +12,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
+                .route("/events/past", get(read::past_events_page))
                 .route("/events/new", get(edit::new_page))
                 .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
                 .route("/events/{slug}/delete", post(edit::delete_form))
@@ -85,13 +86,18 @@ mod read {
     }
 
     // List all events.
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/list.html")]
+    pub struct ListHtml {
+        pub events: Vec<Event>,
+    }
+
     pub async fn list_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-        #[derive(Template, WebTemplate)]
-        #[template(path = "events/list.html")]
-        pub struct Html {
-            pub events: Vec<Event>,
-        }
-        Ok(Html { events: Event::list(&state.db).await? })
+        Ok(ListHtml { events: Event::list_upcoming(&state.db).await? })
+    }
+
+    pub async fn past_events_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+        Ok(ListHtml { events: Event::list_past(&state.db).await? })
     }
 
     // RSVP to an event.
