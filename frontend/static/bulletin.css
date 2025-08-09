@@ -55,6 +55,36 @@ header {
   background: white;
 }
 
+.add-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background-color: #2d0036;
+  font-weight: bold;
+  font-size: x-large;
+  --x: 0px;
+  --y: 0px;
+  --rotation: 0deg;
+  transform: translate3d(
+      calc(var(--x) - var(--center-x)),
+      calc(var(--center-y) - var(--y)),
+      0
+    )
+    rotate(var(--rotation));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  padding: 5px;
+  box-shadow: calc(3px * cos(45deg - var(--rotation)))
+    calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .flyer:active {
   cursor: grabbing;
 }

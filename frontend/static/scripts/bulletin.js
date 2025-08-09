@@ -1,6 +1,23 @@
 let clickedElement = null;
 let isDraggingFlyer = false;
 
+const App = {
+  door: document.getElementById("door"),
+  rotationDot: (() => {
+    const rotationDot = document.createElement("div");
+    rotationDot.hidden = true;
+    rotationDot.className = "rotate-dot";
+    return rotationDot;
+  })(),
+  rotationLink: (() => {
+    const rotationLink = document.createElement("div");
+    rotationLink.hidden = true;
+    rotationLink.className = "rotate-link";
+    return rotationLink;
+  })(),
+  addPosterButton: document.getElementById("add-poster-button"),
+};
+
 const AppState = {
   scale: 1.0,
   centerX: 0,
@@ -8,6 +25,17 @@ const AppState = {
 
   isInLoadingAnimation: false,
 };
+
+function showAddPosterButton(x, y) {
+  App.addPosterButton.style.setProperty("--x", `${x - 15}px`);
+  App.addPosterButton.style.setProperty("--y", `${-y + 15}px`);
+  App.addPosterButton.style.setProperty("--rotation", `0deg`);
+  App.addPosterButton.hidden = false;
+}
+
+function hideAddPosterButton() {
+  App.addPosterButton.hidden = true;
+}
 
 function showRotationDotOn(element) {
   clickedElement = element;
@@ -59,6 +87,8 @@ function setupEventListeners(element) {
       if (e.button !== 0) return;
 
       element.setPointerCapture(e.pointerId);
+
+      hideAddPosterButton();
 
       if (e.target === App.rotationDot) {
         rotating = true;
@@ -182,22 +212,6 @@ function setupEventListeners(element) {
 
 const START_ANIMATION_DURATION = 2000;
 
-const App = {
-  door: document.getElementById("door"),
-  rotationDot: (() => {
-    const rotationDot = document.createElement("div");
-    rotationDot.hidden = true;
-    rotationDot.className = "rotate-dot";
-    return rotationDot;
-  })(),
-  rotationLink: (() => {
-    const rotationLink = document.createElement("div");
-    rotationLink.hidden = true;
-    rotationLink.className = "rotate-link";
-    return rotationLink;
-  })(),
-};
-
 function setup() {
   setupDocumentEventListeners();
 
@@ -218,6 +232,8 @@ function setupDocumentEventListeners() {
     // starting x, y of cursor relative to world origin
     startingX: 0,
     startingY: 0,
+
+    hasDragged: false,
 
     originalCenterX: 0,
     originalCenterY: 0,
@@ -257,6 +273,8 @@ function setupDocumentEventListeners() {
       dragState.startingY =
         -AppState.centerY +
         (e.clientY - globalThis.innerHeight / 2) / AppState.scale;
+
+      dragState.hasDragged = false;
     },
     { passive: true },
   );
@@ -288,6 +306,7 @@ function setupDocumentEventListeners() {
 
         dragState.prevDiff = curDiff;
       } else if (dragState.evCache.length === 1 && dragState.isDraggingWindow) {
+        dragState.hasDragged = true;
         AppState.centerX = Math.floor(
           dragState.startingX -
             (e.clientX - globalThis.innerWidth / 2) / AppState.scale,
@@ -318,9 +337,20 @@ function setupDocumentEventListeners() {
         dragState.prevDiff = -1;
       }
 
+      if (!dragState.hasDragged) {
+        clickX =
+          AppState.centerX +
+          (e.clientX - globalThis.innerWidth / 2) / AppState.scale;
+        clickY =
+          -AppState.centerY +
+          (e.clientY - globalThis.innerHeight / 2) / AppState.scale;
+        showAddPosterButton(clickX, clickY);
+      }
+
       if (!dragState.isDraggingWindow) return;
       App.door.releasePointerCapture(e.pointerId);
       dragState.isDraggingWindow = false;
+      dragState.hasDragged = false;
 
       // TODO make sure window.replace hash side effects are covered
     },
