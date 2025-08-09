@@ -1,5 +1,5 @@
-export let clickedElement: HTMLElement | null = null;
-export let isDraggingFlyer = false;
+let clickedElement = null;
+let isDraggingFlyer = false;
 
 const AppState = {
   scale: 1.0,
@@ -9,32 +9,7 @@ const AppState = {
   isInLoadingAnimation: false,
 };
 
-export class Flyer {
-  id: number;
-  x: number;
-  y: number;
-  rotation: number;
-  zIndex: number;
-  word: string;
-
-  constructor(
-    id: number,
-    x: number,
-    y: number,
-    rotation: number,
-    zIndex: number,
-    word: string,
-  ) {
-    this.id = id;
-    this.x = x;
-    this.y = y;
-    this.rotation = rotation;
-    this.zIndex = zIndex;
-    this.word = word;
-  }
-}
-
-function showRotationDotOn(element: HTMLElement) {
+function showRotationDotOn(element) {
   clickedElement = element;
   element.appendChild(App.rotationDot);
   element.appendChild(App.rotationLink);
@@ -42,7 +17,7 @@ function showRotationDotOn(element: HTMLElement) {
   App.rotationLink.hidden = false;
 }
 
-export function hideRotationDot() {
+function hideRotationDot() {
   if (clickedElement) {
     clickedElement.removeChild(App.rotationDot);
     clickedElement.removeChild(App.rotationLink);
@@ -52,7 +27,7 @@ export function hideRotationDot() {
   }
 }
 
-function getAngle(element: HTMLElement, clientX: number, clientY: number) {
+function getAngle(element, clientX, clientY) {
   const rect = element.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
@@ -61,7 +36,7 @@ function getAngle(element: HTMLElement, clientX: number, clientY: number) {
   return Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI);
 }
 
-export function setupEventListeners(element: HTMLElement) {
+function setupEventListeners(element) {
   let startX = 0;
   let startY = 0;
 
@@ -207,8 +182,8 @@ export function setupEventListeners(element: HTMLElement) {
 
 const START_ANIMATION_DURATION = 2000;
 
-export const App = {
-  door: document.getElementById("door")! as HTMLElement,
+const App = {
+  door: document.getElementById("door"),
   rotationDot: (() => {
     const rotationDot = document.createElement("div");
     rotationDot.hidden = true;
@@ -235,7 +210,7 @@ function setup() {
 
 function setupDocumentEventListeners() {
   const dragState = {
-    evCache: [] as PointerEvent[],
+    evCache: [],
     prevDiff: -1,
 
     isDraggingWindow: false,
@@ -258,7 +233,7 @@ function setupDocumentEventListeners() {
       dragState.evCache.push(e);
       if (dragState.evCache.length > 1) return;
 
-      const target = e.target as HTMLElement;
+      const target = e.target;
 
       // remove rotation dot if it's showing on any magnet
       if (clickedElement && !clickedElement.contains(target)) {
@@ -376,7 +351,7 @@ function setupDocumentEventListeners() {
 
 function setupFlyerEventListeners() {
   App.door.querySelectorAll(".magnet").forEach((element) => {
-    setupEventListeners(element as HTMLElement);
+    setupEventListeners(element);
   });
 }
 
@@ -384,12 +359,12 @@ const zoomState = {
   startTime: 0,
 };
 
-function easeOutCubic(t: number) {
+function easeOutCubic(t) {
   const t1 = t - 1;
   return t1 * t1 * t1 + 1;
 }
 
-function animateZoom(now: number) {
+function animateZoom(now) {
   if (zoomState.startTime === 0) {
     AppState.isInLoadingAnimation = true;
     zoomState.startTime = now;
