@@ -38,4 +38,11 @@
     border-right: 1px solid white;
     margin-right: 8px;
   }
+
+  span.divider {
+    border-left: 1px solid white;
+    width: 22px;
+    margin-left: 22px;
+    height: 25px;
+  }
 }

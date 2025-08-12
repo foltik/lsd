@@ -12,7 +12,6 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
-                .route("/past", get(read::list_past_page))
                 .route("/events/new", get(edit::new_page))
                 .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
                 .route("/events/{slug}/delete", post(edit::delete_form))
@@ -47,10 +46,6 @@ mod read {
 
     pub async fn list_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
         Ok(ListHtml { events: Event::list(&state.db).await? })
-    }
-
-    pub async fn list_past_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-        Ok(ListHtml { events: Event::list_past(&state.db).await? })
     }
 }
 
