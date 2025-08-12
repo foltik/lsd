@@ -10,17 +10,13 @@
   }
 
   .event {
-    @apply mb-6 flex items-start justify-between pb-6;
+    @apply mb-6 flex items-start justify-between;
 
     .title {
       @apply mb-1 text-2xl font-bold;
       a {
         @apply decoration-lsd-blue hover:text-lsd-blue underline;
       }
-    }
-
-    .info {
-      @apply mb-4;
     }
 
     .actions {

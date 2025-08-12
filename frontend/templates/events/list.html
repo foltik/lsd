@@ -3,20 +3,6 @@
 {% block title %}light and sound - events{% endblock title %}
 
 {% block content %}
-<<<<<<< HEAD
-  {% include "events/table.partial.html" %}
-||||||| parent of 7983888 (better event listing, tweaks)
-  <div id="events/list">
-    <h1 class="title">Upcoming Events</h1>
-    {% for event in events %}
-      <div class="event">
-        <a href="/e/{{ event.slug }}">
-          {{ event.start | format_datetime("%b %d, %Y") }} | {{ event.title }}
-        </a>
-      </div>
-    {% endfor %}
-  </div>
-=======
   <div id="events/list">
     <header>
       <h1 class="title">Events</h1>
@@ -53,5 +39,4 @@
       </div>
     {% endfor %}
   </div>
->>>>>>> 7983888 (better event listing, tweaks)
 {% endblock content %}

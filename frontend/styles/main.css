@@ -12,6 +12,7 @@
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
+@import "./events/table.css";
 /* Lists */
 @import "./lists/edit.css";
 @import "./lists/signup.css";
