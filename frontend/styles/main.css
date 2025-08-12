@@ -8,11 +8,12 @@
 @import "./auth/login.css";
 @import "./auth/register.css";
 /* Events */
-@import "./events/rsvp.css";
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
 @import "./events/table.css";
+@import "./events/rsvp.css";
+@import "./events/checkout.css";
 /* Lists */
 @import "./lists/edit.css";
 @import "./lists/signup.css";

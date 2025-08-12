@@ -6,6 +6,9 @@
 .ext\/input {
   @apply border-lsd-white/30 bg-lsd-black w-full rounded-md border px-3 py-2;
   @apply focus:border-lsd-blue focus:outline-none;
+  &:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
 }
 
 .ext\/form label,

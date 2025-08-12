@@ -8,27 +8,76 @@
 {% block content %}
   <div id="events/checkout">
     <h1>Checkout</h1>
-    <div id="checkout"></div>
+    <form id="form" class="ext/form" action="/login" method="post">
+      {% if user.is_none() %}
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" name="email" required />
+        </div>
+      {% endif %}
+      <div class="field">
+        <div id="stripe"></div>
+      </div>
+      <div class="field">
+        <button id="checkout" type="submit">Checkout</button>
+      </div>
+    </form>
   </div>
 {% endblock content %}
 
 {% block scripts %}
   <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      email: $("email"),
+    };
+
+    let checkout;
+
     (async () => {
       const stripe = Stripe(`{{ stripe_publishable_key }}`);
-      const checkout = await stripe.initEmbeddedCheckout({
+      checkout = await stripe.initCheckout({
         fetchClientSecret: async () => `{{ stripe_checkout_client_secret }}`,
-        // appearance: {
-        //   theme: 'night',
-        //   variables: {
-        //     fontFamily: 'Poppins, sans-serif',
-        //     colorBackground: '#080504',
-        //     colorText: '#ebe3de',
-        //     colorDanger: '#c34346',
-        //   },
-        // }
+        elementsOptions: {
+          appearance: {
+            theme: "night",
+            variables: {
+              fontFamily: "Poppins, sans-serif",
+              colorPrimary: "#8ec6ff",
+              colorBackground: "#080504",
+              colorText: "#ebe3de",
+              colorDanger: "#c34346",
+            },
+            rules: {
+              ".Block, .Tab, .Input": {
+                borderColor: "color-mix(in oklab, #ebe3de 30%, transparent)",
+                borderWidth: "1px",
+                borderStyle: "solid",
+              },
+            },
+          },
+        },
       });
-      checkout.mount("#checkout");
+
+      const paymentEl = checkout.createPaymentElement();
+      paymentEl.mount("#stripe");
     })();
+
+    ui.form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // {% if user.is_none() %}
+      var { type, error } = await checkout.updateEmail(ui.email.value);
+      if (type == "error") {
+        alert(error.message);
+      }
+      // {% endif %}
+
+      var { type, error } = await checkout.confirm();
+      if (type == "error") {
+        alert(error.message);
+      }
+    });
   </script>
 {% endblock scripts %}

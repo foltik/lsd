@@ -1,0 +1,14 @@
+#events\/checkout {
+  @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
+
+  h1 {
+    @apply border-lsd-white mb-6 border-b pb-4 text-4xl;
+  }
+
+  #stripe {
+    @apply rounded-md;
+    /* stripe elements is weird and doesn't work when using border-lsd-white/30 */
+    border: 1px solid
+      color-mix(in oklab, var(--color-lsd-white) 30%, transparent);
+  }
+}

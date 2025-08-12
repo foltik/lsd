@@ -46,7 +46,7 @@ impl Stripe {
         //
         // TODO: do we need?
         let mut form_data = format!(
-            "ui_mode=embedded\
+            "ui_mode=custom\
             &mode=payment\
             &currency=usd\
             &allow_promotion_codes=false\

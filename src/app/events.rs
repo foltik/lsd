@@ -214,10 +214,12 @@ mod rsvp {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/checkout.html")]
         struct CheckoutHtml {
+            user: Option<User>,
             stripe_publishable_key: String,
             stripe_checkout_client_secret: String,
         }
         Ok(CheckoutHtml {
+            user,
             stripe_checkout_client_secret,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
         }
