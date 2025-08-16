@@ -28,6 +28,7 @@ pub struct UpdateList {
     pub emails: String,
 }
 
+#[allow(unused)]
 #[derive(serde::Serialize)]
 pub struct ListWithCount {
     pub id: i64,
