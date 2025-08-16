@@ -5,5 +5,8 @@
     textarea {
       @apply min-h-52;
     }
+    li {
+      @apply flex justify-between;
+    }
   }
 }
