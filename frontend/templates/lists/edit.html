@@ -23,6 +23,15 @@
         <label for="description">Description</label>
         <input type="text" name="description" value="{{ list.description }}" />
       </div>
+      <div class="field">
+        <label for="emails">Add members</label>
+        <textarea
+          class="emails"
+          name="emails"
+          placeholder="Enter email addresses, one per line..."
+        ></textarea>
+      </div>
+      <button type="submit">Save</button>
       {% if list.id != 0 %}
         <div class="field">
           <label>Members</label>
@@ -53,15 +62,6 @@
           </ul>
         </div>
       {% endif %}
-      <div class="field">
-        <label for="emails">Add members</label>
-        <textarea
-          class="emails"
-          name="emails"
-          placeholder="Enter email addresses, one per line..."
-        ></textarea>
-      </div>
-      <button type="submit">Save</button>
     </form>
   </div>
 {% endblock %}
