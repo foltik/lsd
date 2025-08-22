@@ -3,18 +3,6 @@ let isDraggingFlyer = false;
 
 const App = {
   door: document.getElementById("door"),
-  rotationDot: (() => {
-    const rotationDot = document.createElement("div");
-    rotationDot.hidden = true;
-    rotationDot.className = "rotate-dot";
-    return rotationDot;
-  })(),
-  rotationLink: (() => {
-    const rotationLink = document.createElement("div");
-    rotationLink.hidden = true;
-    rotationLink.className = "rotate-link";
-    return rotationLink;
-  })(),
   addPosterButton: document.getElementById("add-poster-button"),
 };
 
@@ -26,10 +14,22 @@ const AppState = {
   isInLoadingAnimation: false,
 };
 
+function getWorldMousePosition(event) {
+  const x =
+    AppState.centerX +
+    (event.clientX - globalThis.innerWidth / 2) / AppState.scale;
+  const y =
+    -AppState.centerY +
+    (event.clientY - globalThis.innerHeight / 2) / AppState.scale;
+  return [x, y];
+}
+
 function showAddPosterButton(x, y) {
+  // button is only conditionally rendered based on user login/role
+  if (!App.addPosterButton) return;
+
   App.addPosterButton.style.setProperty("--x", `${x - 15}px`);
   App.addPosterButton.style.setProperty("--y", `${-y + 15}px`);
-  App.addPosterButton.style.setProperty("--rotation", `0deg`);
   App.addPosterButton.hidden = false;
 }
 
@@ -37,20 +37,20 @@ function hideAddPosterButton() {
   App.addPosterButton.hidden = true;
 }
 
-function showRotationDotOn(element) {
+function showEditUI(element) {
   clickedElement = element;
-  element.appendChild(App.rotationDot);
-  element.appendChild(App.rotationLink);
-  App.rotationDot.hidden = false;
-  App.rotationLink.hidden = false;
+  // TODO(sam) all in one div?
+  clickedElement.querySelector(".rotate-dot").hidden = false;
+  clickedElement.querySelector(".rotate-link").hidden = false;
+  clickedElement.querySelector(".edit-row").hidden = false;
 }
 
-function hideRotationDot() {
+function hideEditUI() {
   if (clickedElement) {
-    clickedElement.removeChild(App.rotationDot);
-    clickedElement.removeChild(App.rotationLink);
-    App.rotationDot.hidden = true;
-    App.rotationLink.hidden = true;
+    clickedElement.querySelector(".rotate-dot").hidden = true;
+    clickedElement.querySelector(".rotate-link").hidden = true;
+    clickedElement.querySelector(".edit-row").hidden = true;
+
     clickedElement = null;
   }
 }
@@ -117,7 +117,7 @@ function setupEventListeners(element) {
     "pointermove",
     (e) => {
       if (isDragging) {
-        hideRotationDot();
+        hideEditUI();
 
         hasChanged = true;
 
@@ -165,9 +165,9 @@ function setupEventListeners(element) {
           (Math.abs(newX - originalX) < 0.5 && Math.abs(newY - originalY) < 0.5)
         ) {
           if (!clickedElement) {
-            showRotationDotOn(element);
+            showEditUI(element);
           } else {
-            hideRotationDot();
+            hideEditUI();
           }
         } else {
           const flyerUpdate = JSON.stringify({
@@ -253,7 +253,11 @@ function setupDocumentEventListeners() {
 
       // remove rotation dot if it's showing on any magnet
       if (clickedElement && !clickedElement.contains(target)) {
-        hideRotationDot();
+        hideEditUI();
+      }
+
+      if (e.target !== App.addPosterButton) {
+        hideAddPosterButton();
       }
 
       if (e.target !== App.door || dragState.isDraggingWindow) {
@@ -267,12 +271,7 @@ function setupDocumentEventListeners() {
       dragState.originalCenterY = AppState.centerY;
 
       // starting coordinates of mouse relative to world origin
-      dragState.startingX =
-        AppState.centerX +
-        (e.clientX - globalThis.innerWidth / 2) / AppState.scale;
-      dragState.startingY =
-        -AppState.centerY +
-        (e.clientY - globalThis.innerHeight / 2) / AppState.scale;
+      [dragState.startingX, dragState.startingY] = getWorldMousePosition(e);
 
       dragState.hasDragged = false;
     },
@@ -337,13 +336,8 @@ function setupDocumentEventListeners() {
         dragState.prevDiff = -1;
       }
 
-      if (!dragState.hasDragged) {
-        clickX =
-          AppState.centerX +
-          (e.clientX - globalThis.innerWidth / 2) / AppState.scale;
-        clickY =
-          -AppState.centerY +
-          (e.clientY - globalThis.innerHeight / 2) / AppState.scale;
+      if (e.target === App.door && !dragState.hasDragged) {
+        [clickX, clickY] = getWorldMousePosition(e);
         showAddPosterButton(clickX, clickY);
       }
 
@@ -352,7 +346,7 @@ function setupDocumentEventListeners() {
       dragState.isDraggingWindow = false;
       dragState.hasDragged = false;
 
-      // TODO make sure window.replace hash side effects are covered
+      // TODO(sam) make sure window.replace hash side effects are covered
     },
     { passive: true },
   );
@@ -377,10 +371,23 @@ function setupDocumentEventListeners() {
     },
     { passive: true },
   );
+
+  App.addPosterButton?.addEventListener(
+    "pointerup",
+    () => {
+      hideAddPosterButton();
+      document.getElementById("edit-flyer").showPopover();
+      const x = parseInt(App.addPosterButton.style.getPropertyValue("--x"));
+      const y = parseInt(App.addPosterButton.style.getPropertyValue("--y"));
+      document.querySelector('input[name="x"]').value = x;
+      document.querySelector('input[name="y"]').value = y;
+    },
+    { passive: true },
+  );
 }
 
 function setupFlyerEventListeners() {
-  App.door.querySelectorAll(".magnet").forEach((element) => {
+  App.door.querySelectorAll(".flyer").forEach((element) => {
     setupEventListeners(element);
   });
 }

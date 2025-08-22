@@ -3,11 +3,26 @@
 {% block title %}LSD Bulletin{% endblock title %}
 
 {% block styles %}
+  {# TODO(sam) is user-scalable=no really necessary? can avoid overwriting the viewport meta here if not #}
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
   <link rel="stylesheet" href="/static/bulletin.css" />
 {% endblock styles %}
 
 {% block scripts %}
   <script src="/static/scripts/bulletin.js"></script>
+  <script>
+    function normalizeDateTime(e) {
+      e.preventDefault();
+      const form = e.target;
+      const inputA = form.querySelector('[name="event_end_select"]');
+      const inputB = form.querySelector('[name="event_end"]');
+      inputB.value = inputA.value + ":00";
+      form.submit();
+    }
+  </script>
 {% endblock scripts %}
 
 {% block content %}
@@ -18,15 +33,63 @@
         class="flyer"
         style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.z_index }};"
       >
-        {% if let Some(event_url) = flyer.event_url %}
-          <a href="{{ event_url }}">
-            <img draggable="false" src="{{ flyer.image_url }}" />
-          </a>
-        {% else %}
-          <img draggable="false" src="{{ flyer.image_url }}" />
-        {% endif %}
+        <div class="rotate-dot" hidden></div>
+        <div class="rotate-link" hidden></div>
+        <div class="edit-row" hidden>
+          <div class="edit-button" hidden>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style="vertical-align:middle"
+            >
+              <path
+                d="M15.5 2.5L17.5 4.5C18.1667 5.16667 18.1667 6.16667 17.5 6.83333L7.5 16.8333L3 17.5L3.66667 13L13.6667 3C14.3333 2.33333 15.3333 2.33333 16 3Z"
+                stroke="#333"
+                stroke-width="2"
+                fill="none"
+              />
+            </svg>
+          </div>
+        </div>
+        <img draggable="false" src="{{ flyer.image_url }}" />
       </div>
     {% endfor %}
-    <div id="add-poster-button" class="add-button" hidden>+</div>
+    {# TODO(sam) gate on [has purchased tickets] #}
+    {% if user.is_some() %}
+      <div id="add-poster-button" class="add-button" hidden>+</div>
+
+      <div class="outer-popover">
+        <div id="edit-flyer" class="middle-popover" popover>
+          <div class="inner-popover">
+            <form
+              class="flyer-form"
+              action="/bulletin/flyer/new"
+              method="post"
+              onsubmit="normalizeDateTime(event)"
+            >
+              <input type="url" name="image_url" placeholder="Flyer URL" />
+              <input type="text" name="event_name" placeholder="Event Name" />
+              <input
+                type="url"
+                name="event_url"
+                placeholder="Event URL (optional)"
+              />
+              <input
+                type="datetime-local"
+                name="event_end_select"
+                placeholder="Remove-after time"
+              />
+              <input type="hidden" name="event_end" />
+              <input type="hidden" name="x" />
+              <input type="hidden" name="y" />
+              <button type="submit">Add Flyer</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endif %}
   </div>
 {% endblock content %}
