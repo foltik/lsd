@@ -179,12 +179,12 @@ async fn bulletin_page(
     let (editable_flyers, read_only_flyers) = if let Some(ref u) = user {
         let is_admin = u.has_role(&state.db, User::ADMIN).await?;
         if is_admin {
-            (flyers.into_iter().collect(), Vec::new())
+            (flyers, Vec::new())
         } else {
             flyers.into_iter().partition(|f| f.user_id == u.id)
         }
     } else {
-        (Vec::new(), flyers.into_iter().collect())
+        (Vec::new(), flyers)
     };
 
     #[derive(Template, WebTemplate)]
