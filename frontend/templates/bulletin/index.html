@@ -8,17 +8,17 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0, user-scalable=no"
   />
-  <link rel="stylesheet" href="/static/bulletin.css" />
+  <link rel="stylesheet" href="/static/bulletin/bulletin.css" />
 {% endblock styles %}
 
 {% block scripts %}
-  <script src="/static/scripts/bulletin.js"></script>
+  <script src="/static/bulletin/bulletin.js"></script>
   <script>
     function normalizeDateTime(e) {
       e.preventDefault();
       const form = e.target;
-      const inputA = form.querySelector('[name="event_end_select"]');
-      const inputB = form.querySelector('[name="event_end"]');
+      const inputA = form.querySelector('[name="remove_after_time_select"]');
+      const inputB = form.querySelector('[name="remove_after_time"]');
       inputB.value = inputA.value + ":00";
       form.submit();
     }
@@ -26,43 +26,85 @@
 {% endblock scripts %}
 
 {% block content %}
-  <div id="door">
-    {% for flyer in flyers %}
+  <div id="board">
+    {# Separate editable and non-editable flyers depending on user owner and role: admin #}
+    {% for flyer in read_only_flyers %}
       <div
         id="{{ flyer.id }}"
         class="flyer"
-        style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.z_index }};"
+        style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.id }};"
       >
-        <div class="rotate-dot" hidden></div>
-        <div class="rotate-link" hidden></div>
-        <div class="edit-row" hidden>
-          <div class="edit-button" hidden>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              style="vertical-align:middle"
-            >
-              <path
-                d="M15.5 2.5L17.5 4.5C18.1667 5.16667 18.1667 6.16667 17.5 6.83333L7.5 16.8333L3 17.5L3.66667 13L13.6667 3C14.3333 2.33333 15.3333 2.33333 16 3Z"
-                stroke="#333"
-                stroke-width="2"
-                fill="none"
-              />
-            </svg>
-          </div>
-        </div>
         <img draggable="false" src="{{ flyer.image_url }}" />
       </div>
     {% endfor %}
+    {% for flyer in editable_flyers %}
+      <div
+        id="{{ flyer.id }}"
+        class="flyer editable"
+        style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.id }};"
+      >
+        <div class="rotate-dot" hidden></div>
+        <div class="rotate-link" hidden></div>
+        <button class="edit-button" type="button" hidden>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style="vertical-align:middle;"
+          >
+            <path
+              d="M15.5 2.5L17.5 4.5C18.1667 5.16667 18.1667 6.16667 17.5 6.83333L7.5 16.8333L3 17.5L3.66667 13L13.6667 3C14.3333 2.33333 15.3333 2.33333 16 3Z"
+              stroke="#333"
+              stroke-width="2"
+              fill="none"
+            />
+          </svg>
+        </button>
+        <img draggable="false" src="{{ flyer.image_url }}" />
+      </div>
+    {% endfor %}
+
     {# TODO(sam) gate on [has purchased tickets] #}
     {% if user.is_some() %}
       <div id="add-poster-button" class="add-button" hidden>+</div>
 
       <div class="outer-popover">
-        <div id="edit-flyer" class="middle-popover" popover>
+        <div id="about-modal" class="middle-popover" popover>
+          <div class="inner-popover">
+            <p>
+              This bulletin board is free to use for anyone who has previously
+              attended an event at LSD.
+              <br />
+              <br />
+              Feel free to post flyers for upcoming events, classes, workshops,
+              personal ads or anything else you think the community would be
+              interested in.
+              <br />
+              <br />
+              Although you can place a flyer anywhere on the board, please be
+              considerate of others' space. In particular, don't cover up flyers
+              that others have posted unless the event in question has already
+              passed.
+              <br />
+              <br />
+              When uploading a flyer you can specify a "remove-after" time.
+              Please set this to within a couple days after the end of your
+              event or whenever the flyer is no longer relevant. Once this date
+              has passed, anyone in the community can remove your flyer to make
+              space for new ones.
+              <br />
+              <br />
+              Be aware that this website is publicly accessible, and anyone with
+              the link can view and post flyers. Do not share anything you
+              wouldn't want a 🐷 to see.
+            </p>
+          </div>
+        </div>
+
+        {# TODO(sam) avoid duplication between create-flyer and edit-flyer forms #}
+        <div id="create-flyer" class="middle-popover" popover>
           <div class="inner-popover">
             <form
               class="flyer-form"
@@ -71,25 +113,49 @@
               onsubmit="normalizeDateTime(event)"
             >
               <input type="url" name="image_url" placeholder="Flyer URL" />
-              <input type="text" name="event_name" placeholder="Event Name" />
-              <input
-                type="url"
-                name="event_url"
-                placeholder="Event URL (optional)"
-              />
+              <input type="text" name="flyer_name" placeholder="Event Name" />
               <input
                 type="datetime-local"
-                name="event_end_select"
+                name="remove_after_time_select"
                 placeholder="Remove-after time"
               />
-              <input type="hidden" name="event_end" />
+              <input type="hidden" name="remove_after_time" />
               <input type="hidden" name="x" />
               <input type="hidden" name="y" />
               <button type="submit">Add Flyer</button>
             </form>
           </div>
         </div>
+        <div id="edit-flyer" class="middle-popover" popover>
+          <div class="inner-popover">
+            <form
+              id="edit-flyer-form"
+              class="flyer-form"
+              method="post"
+              onsubmit="normalizeDateTime(event)"
+            >
+              <input type="url" name="image_url" placeholder="Flyer URL" />
+              <input type="text" name="flyer_name" placeholder="Event Name" />
+              <input
+                type="datetime-local"
+                name="remove_after_time_select"
+                placeholder="Remove-after time"
+              />
+              <input type="hidden" name="remove_after_time" />
+              <button type="submit">Edit Flyer</button>
+            </form>
+          </div>
+        </div>
       </div>
     {% endif %}
   </div>
+  <footer>
+    <button
+      id="about-button"
+      popovertarget="about-modal"
+      style="position: absolute; bottom: 10px; right: 10px;"
+    >
+      About
+    </button>
+  </footer>
 {% endblock content %}

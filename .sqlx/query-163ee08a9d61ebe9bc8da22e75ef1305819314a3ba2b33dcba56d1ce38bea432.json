@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT flyer_name, image_url, remove_after_time FROM flyers WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "flyer_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "image_url",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "remove_after_time",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "163ee08a9d61ebe9bc8da22e75ef1305819314a3ba2b33dcba56d1ce38bea432"
+}
