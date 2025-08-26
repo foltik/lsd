@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO flyers (user_id, x, y, image_url, flyer_name, remove_after_time)\n           VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "71ab420abe9e9865a5649d040f5d7b855f5a6381f71bbafbcb142670b46583f0"
+}

@@ -1,3 +1,17 @@
+/* TODO(sam): use tailwind styling */
+
+:root {
+  --font-sans: DM Sans Variable, sans-serif;
+  --font-display: Poppins, sans-serif;
+  --color-lsd-black: #080504;
+  --color-lsd-white: #ebe3de;
+  --color-lsd-bright: #fcf3ee;
+  --color-lsd-blue: #8ec6ff;
+  --color-lsd-green: #6fd08c;
+  --color-lsd-red: #c34346;
+  --color-lsd-yellow: #eec643;
+}
+
 body {
   overflow: hidden;
   touch-action: none;
@@ -10,7 +24,7 @@ header {
   width: 100%;
 }
 
-#door {
+#board {
   --center-x: 0px;
   --center-y: 0px;
   --scale: 1;
@@ -20,14 +34,14 @@ header {
   left: -50vw;
   top: -50vh;
   position: absolute;
-  background-image: url("/static/corkboard.png");
+  background-image: url("/static/bulletin/corkboard.jpg");
   background-position: calc(0px - var(--center-x)) calc(var(--center-y));
-  background-size: 900px 600px;
+  background-size: 800px 400px;
   background-repeat: repeat;
   transform: scale(var(--scale));
 }
 
-#door:active {
+#board:active {
   cursor: move;
 }
 
@@ -51,15 +65,18 @@ header {
     calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
   user-select: none;
   -webkit-user-select: none;
+  background: var(--color-lsd-white);
+}
+
+.flyer.editable {
   cursor: grab;
-  background: white;
 }
 
 .add-button {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background-color: #2d0036;
+  background-color: var(--color-lsd-black);
   font-weight: bold;
   font-size: x-large;
   --x: 0px;
@@ -83,7 +100,7 @@ header {
   justify-content: center;
 }
 
-.flyer:active {
+.flyer.editable:active {
   cursor: grabbing;
 }
 
@@ -108,28 +125,15 @@ header {
   padding: 0;
 }
 
-.fake-flyer {
-  border: 1px solid black;
-  display: inline-block;
-  padding: 5px;
-  font-family: Georgia, "Times New Roman", Times, serif;
-  --rotation: 0deg;
-  rotate: var(--rotation);
-  box-shadow: calc(3px * cos(45deg - var(--rotation)))
-    calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
-  user-select: none;
-  -webkit-user-select: none;
-  background: white;
-}
 .rotate-dot {
   top: -25px;
   left: calc(50% - 6.5px);
   height: 12px;
   width: 12px;
-  background-color: plum;
+  background-color: var(--color-lsd-green);
   position: absolute;
   border-radius: 12px;
-  border: 1px solid cornsilk;
+  border: 1px solid var(--color-lsd-white);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -138,18 +142,22 @@ header {
   position: absolute;
   width: 1px;
   height: 11px;
-  background-color: plum;
+  background-color: var(--color-lsd-green);
   top: -12px;
   left: calc(50% - 1px);
-  border: 1px solid cornsilk;
+  border: 1px solid var(--color-lsd-white);
   border-top: none;
   border-bottom: none;
 }
 
-.edit-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.edit-button {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  background: var(--color-lsd-white);
+  border-radius: 999px;
+  padding: 6px;
+  border: 1px solid #eee;
 }
 
 [popover] {
@@ -159,6 +167,7 @@ header {
 
 .outer-popover:has(> :popover-open) {
   backdrop-filter: blur(3px);
+  z-index: 999999998;
   position: absolute;
   top: 0;
   left: 0;
@@ -174,15 +183,18 @@ header {
 .inner-popover {
   display: flex;
   flex-direction: column;
+  text-align: center;
+  padding: 3rem;
   align-items: center;
   gap: 25px;
   position: fixed;
-  width: 50vw;
-  height: 60vh;
+  width: fit-content;
+  height: fit-content;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background-color: white;
+  background-color: var(--color-lsd-black);
+  color: var(--color-lsd-white);
   cursor: default;
 }
 
