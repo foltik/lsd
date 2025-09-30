@@ -20,8 +20,8 @@
 
 use axum_extra::extract::CookieJar;
 use cookie::Cookie;
-use lettre::message::header::ContentType;
 use lettre::message::Mailbox;
+use lettre::message::header::ContentType;
 
 use crate::db::token::{LoginToken, SessionToken};
 use crate::db::user::UpdateUser;
@@ -118,6 +118,7 @@ async fn login_link(
         #[derive(Template, WebTemplate)]
         #[template(path = "auth/login.html")]
         pub struct Html {
+            #[allow(unused)]
             redirect: Option<String>,
         };
         return Ok(Html { redirect: query.redirect }.into_response());

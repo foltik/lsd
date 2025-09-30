@@ -50,9 +50,6 @@ pub struct EventRsvp {
 }
 
 impl Rsvp {
-    pub async fn list(db: &Db) -> AppResult<Vec<Rsvp>> {
-        Ok(sqlx::query_as!(Self, "SELECT * FROM rsvps").fetch_all(db).await?)
-    }
     pub async fn list_for_session(db: &Db, session_id: i64) -> AppResult<Vec<Rsvp>> {
         Ok(sqlx::query_as!(Self, "SELECT * FROM rsvps WHERE session_id = ?", session_id)
             .fetch_all(db)

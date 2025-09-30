@@ -26,17 +26,15 @@ pub struct UpdateList {
     pub emails: String,
 }
 
-#[allow(unused)]
-#[derive(serde::Serialize)]
-pub struct ListWithCount {
-    pub id: i64,
-    pub name: String,
-    pub description: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-
-    pub count: i64,
-}
+// #[derive(serde::Serialize)]
+// pub struct ListWithCount {
+//     pub id: i64,
+//     pub name: String,
+//     pub description: String,
+//     pub created_at: NaiveDateTime,
+//     pub updated_at: NaiveDateTime,
+//     pub count: i64,
+// }
 
 impl List {
     /// List all lists.
@@ -45,19 +43,19 @@ impl List {
         Ok(lists)
     }
 
-    /// List all lists, and count the number of members in each list via list_members join.
-    pub async fn list_with_counts(db: &Db) -> AppResult<Vec<ListWithCount>> {
-        let lists = sqlx::query_as!(
-            ListWithCount,
-            "SELECT l.*, COUNT(m.list_id) AS count
-             FROM lists l
-             LEFT JOIN list_members m ON l.id = m.list_id
-             GROUP BY l.id"
-        )
-        .fetch_all(db)
-        .await?;
-        Ok(lists)
-    }
+    // /// List all lists, and count the number of members in each list via list_members join.
+    // pub async fn list_with_counts(db: &Db) -> AppResult<Vec<ListWithCount>> {
+    //     let lists = sqlx::query_as!(
+    //         ListWithCount,
+    //         "SELECT l.*, COUNT(m.list_id) AS count
+    //          FROM lists l
+    //          LEFT JOIN list_members m ON l.id = m.list_id
+    //          GROUP BY l.id"
+    //     )
+    //     .fetch_all(db)
+    //     .await?;
+    //     Ok(lists)
+    // }
 
     /// Create a list.
     pub async fn create(db: &Db, event: &UpdateList) -> AppResult<i64> {

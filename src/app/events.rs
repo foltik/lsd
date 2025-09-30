@@ -157,8 +157,6 @@ mod edit {
 }
 
 mod rsvp {
-    use std::time::Instant;
-
     use super::*;
     use crate::db::rsvp::{CreateRsvp, Rsvp, UpdateRsvp};
     use crate::db::rsvp_session::RsvpSession;
@@ -190,7 +188,7 @@ mod rsvp {
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
-        if session.status == "paid" {
+        if session.status == RsvpSession::PAID {
             return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
                 .into_response());
         }
@@ -237,7 +235,7 @@ mod rsvp {
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
-        if session.status == "paid" {
+        if session.status == RsvpSession::PAID {
             return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
                 .into_response());
         }
@@ -262,7 +260,7 @@ mod rsvp {
             // In the case of a logged in user buying a single ticket, we can skip attendee selection.
 
             // unwrap(): we've just validated in `parse_selection()`.
-            let rsvp = rsvps.get(0).unwrap();
+            let rsvp = rsvps.first().unwrap();
             let spot = spots.iter().find(|s| s.id == rsvp.spot_id).unwrap();
             Rsvp::create(
                 &state.db,
@@ -270,7 +268,7 @@ mod rsvp {
                     event_id: event.id,
                     spot_id: rsvp.spot_id,
                     contribution: rsvp.contribution,
-                    status: "pending".into(),
+                    status: RsvpSession::PENDING.into(),
                     session_id: session.id,
                     first_name: Some(user.first_name.clone()),
                     last_name: Some(user.last_name.clone()),
@@ -301,7 +299,7 @@ mod rsvp {
                         event_id: event.id,
                         spot_id: rsvp.spot_id,
                         contribution: rsvp.contribution,
-                        status: "pending".into(),
+                        status: RsvpSession::PENDING.into(),
                         session_id: session.id,
                         first_name: None,
                         last_name: None,
@@ -326,7 +324,7 @@ mod rsvp {
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
-        if session.status == "paid" {
+        if session.status == RsvpSession::PAID {
             return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
                 .into_response());
         }
@@ -380,7 +378,7 @@ mod rsvp {
         let Some(mut session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
-        if session.status == "paid" {
+        if session.status == RsvpSession::PAID {
             return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
                 .into_response());
         }
@@ -406,7 +404,7 @@ mod rsvp {
                 &state.db,
                 rsvp.id,
                 UpdateRsvp {
-                    status: "pending".into(),
+                    status: RsvpSession::PENDING.into(),
                     first_name: Some(a.first_name),
                     last_name: Some(a.last_name),
                     email: Some(a.email),
@@ -440,7 +438,7 @@ mod rsvp {
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
-        if session.status == "paid" {
+        if session.status == RsvpSession::PAID {
             return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
                 .into_response());
         }

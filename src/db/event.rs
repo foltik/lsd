@@ -57,12 +57,6 @@ impl Event {
         Ok(events)
     }
 
-    // List all events, including unlisted
-    pub async fn list_all(db: &Db) -> AppResult<Vec<Event>> {
-        let events = sqlx::query_as!(Self, "SELECT * FROM events").fetch_all(db).await?;
-        Ok(events)
-    }
-
     pub async fn list_upcoming(db: &Db) -> AppResult<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,

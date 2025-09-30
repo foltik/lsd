@@ -104,7 +104,7 @@ pub mod stripe {
         }
         let event: Type = serde_json::from_str(&body).map_err(|_| AppError::BadRequest)?;
         fn parse<T: serde::de::DeserializeOwned>(body: &str) -> AppResult<T> {
-            let event: Event<T> = serde_json::from_str(&body).map_err(|_| AppError::BadRequest)?;
+            let event: Event<T> = serde_json::from_str(body).map_err(|_| AppError::BadRequest)?;
             Ok(event.data.object)
         }
         match event.ty.as_str() {

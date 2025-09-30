@@ -57,11 +57,6 @@ impl Spot {
     /// A work trade spot.
     pub const WORK: &'static str = "work";
 
-    /// List all spots.
-    pub async fn list(db: &Db) -> AppResult<Vec<Spot>> {
-        Ok(sqlx::query_as!(Self, "SELECT * FROM spots").fetch_all(db).await?)
-    }
-
     pub async fn list_ids_for_event(db: &Db, event_id: i64) -> AppResult<Vec<i64>> {
         Ok(sqlx::query!("SELECT spot_id FROM event_spots WHERE event_id = ?", event_id)
             .fetch_all(db)

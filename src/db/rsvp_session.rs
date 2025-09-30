@@ -65,9 +65,10 @@ impl RsvpSession {
         sqlx::query!(
             r#"INSERT INTO rsvp_sessions
                (event_id, token, status, first_name, last_name, email, user_id)
-               VALUES (?, ?, 'pending', ?, ?, ?, ?)"#,
+               VALUES (?, ?, ?, ?, ?, ?, ?)"#,
             event_id,
             token,
+            Self::PENDING,
             first_name,
             last_name,
             email,
@@ -108,16 +109,17 @@ impl RsvpSession {
     pub async fn set_paid(&self, db: &Db, payment_intent_id: &str) -> AppResult<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
-             SET status = 'paid',
+             SET status = ?,
                  stripe_payment_intent_id = ?
              WHERE id = ?",
+            Self::PAID,
             payment_intent_id,
             self.id
         )
         .execute(db)
         .await?;
 
-        sqlx::query!("UPDATE rsvps SET status = 'paid' WHERE session_id = ?", self.id)
+        sqlx::query!("UPDATE rsvps SET status = ? WHERE session_id = ?", Self::PAID, self.id)
             .execute(db)
             .await?;
 
