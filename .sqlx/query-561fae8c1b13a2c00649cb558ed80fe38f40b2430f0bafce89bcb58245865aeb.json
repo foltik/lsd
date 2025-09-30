@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.spot_id, t.price\n             FROM reservations r\n             LEFT JOIN transactions t ON t.id = r.transaction_id\n             WHERE r.event_id = ?",
+  "query": "SELECT spot_id, contribution FROM rsvps WHERE event_id = ?",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "price",
+        "name": "contribution",
         "ordinal": 1,
         "type_info": "Integer"
       }
@@ -19,8 +19,8 @@
     },
     "nullable": [
       false,
-      true
+      false
     ]
   },
-  "hash": "f29720fb37b8fcc7d8ab72f8ebba6b31c7c3162e0070c2448fab717942e424d3"
+  "hash": "561fae8c1b13a2c00649cb558ed80fe38f40b2430f0bafce89bcb58245865aeb"
 }

@@ -1,7 +1,6 @@
-mod prelude;
-
 mod app;
 mod db;
+mod prelude;
 mod utils;
 
 use axum::handler::HandlerWithoutStateExt;

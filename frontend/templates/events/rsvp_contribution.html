@@ -3,23 +3,18 @@
   <script src="https://js.stripe.com/basil/stripe.js"></script>
 {% endblock head %}
 
-{% block title %}light and sound - checkout{% endblock title %}
+{% block title %}light and sound - RSVP{% endblock title %}
 
 {% block content %}
-  <div id="events/checkout">
+  <div id="events/rsvp/contribution">
     <h1>Checkout</h1>
     <form id="form" class="ext/form" action="/login" method="post">
-      {% if user.is_none() %}
-        <div class="field">
-          <label for="email">Email</label>
-          <input id="email" type="email" name="email" required />
-        </div>
-      {% endif %}
+      <div class="field">TODO: line items</div>
       <div class="field">
         <div id="stripe"></div>
       </div>
       <div class="field">
-        <button id="checkout" type="submit">Checkout</button>
+        <button id="checkout" type="submit">Submit</button>
       </div>
     </form>
   </div>
@@ -30,7 +25,6 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
-      email: $("email"),
     };
 
     let checkout;
@@ -38,7 +32,7 @@
     (async () => {
       const stripe = Stripe(`{{ stripe_publishable_key }}`);
       checkout = await stripe.initCheckout({
-        fetchClientSecret: async () => `{{ stripe_checkout_client_secret }}`,
+        fetchClientSecret: async () => `{{ stripe_client_secret }}`,
         elementsOptions: {
           appearance: {
             theme: "night",
@@ -67,12 +61,11 @@
     ui.form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // {% if user.is_none() %}
+      // TODO: get email from somewhere?
       var { type, error } = await checkout.updateEmail(ui.email.value);
       if (type == "error") {
         alert(error.message);
       }
-      // {% endif %}
 
       var { type, error } = await checkout.confirm();
       if (type == "error") {

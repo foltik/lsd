@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS rsvp_sessions (
+    id INTEGER PRIMARY KEY NOT NULL,
+    event_id INTEGER NOT NULL,
+    user_id INTEGER,
+    token TEXT NOT NULL,
+
+    status TEXT NOT NULL,
+    transaction_id INTEGER,
+    refund_id INTEGER,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

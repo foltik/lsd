@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - RSVP{% endblock title %}
+
+{% block content %}
+  <section id="events/rsvp/attendees">
+    <h1>Who will be attending?</h1>
+    <form id="form" class="ext/form">
+      {% if user.is_none() %}
+      {% endif %}
+    </form>
+    <button id="continue" class="ext/button">Continue</button>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      continue: $("continue"),
+      spots: () => [...ui.form.querySelectorAll(".spot")],
+      qty: (spot) => spot.querySelector('[name="quantity"]'),
+      totalQty: () => {
+        let total = 0;
+        for (const spot of ui.spots()) {
+          total += +ui.qty(spot).value;
+        }
+        return total;
+      },
+    };
+
+    /* ---------- Continue button --------------------------------------------- */
+    ui.continue.addEventListener("click", async () => {
+      const attendees = [];
+      for (const spot of []) {
+      }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `/e/{{ slug }}/rsvp/attendees?session=TODO`;
+
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "attendees";
+      input.value = JSON.stringify(attendees);
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      form.submit();
+    });
+  </script>
+{% endblock scripts %}

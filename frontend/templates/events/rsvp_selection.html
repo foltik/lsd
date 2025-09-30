@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 
-{% block title %}RSVP to {{ event.title }}{% endblock title %}
+{% block title %}light and sound - RSVP{% endblock title %}
 
 {% block content %}
-  <section id="events/rsvp">
-    <h1>{{ event.title }}</h1>
+  <section id="events/rsvp/selection">
+    <h1>Choose a contribution</h1>
     <form id="form" class="ext/form">
       {% if user.is_none() %}
       {% endif %}
@@ -21,6 +21,7 @@
                 <div class="number">
                   <label for="contribution">$</label>
                   <input
+                    class="ext/input"
                     type="number"
                     name="contribution"
                     value="{{ spot.suggested_contribution.unwrap() }}"
@@ -30,6 +31,7 @@
                 </div>
                 <div class="slider">
                   <input
+                    class="ext/input"
                     type="range"
                     name="contribution"
                     value="{{ spot.suggested_contribution.unwrap() }}"
@@ -51,7 +53,7 @@
               $0
             {% endif %}
           </div>
-          <select class="quantity" name="quantity">
+          <select class="ext/input quantity" name="quantity">
             <option value="0">0</option>
           </select>
         </div>
@@ -107,6 +109,8 @@
             option.remove();
           }
         }
+        // Disable if limit is zero
+        qty.disabled = ourLimit == 0;
       }
     };
     ui.form.addEventListener("change", (e) => {
@@ -136,32 +140,30 @@
         return;
       }
 
-      const reservations = [];
+      const rsvps = [];
       for (const spot of ui.spots()) {
-        const id = +spot.dataset.id;
+        const spot_id = +spot.dataset.id;
         const qty = +ui.qty(spot).value;
 
         if (qty > 0) {
-          const reservation = { id, qty };
+          const rsvp = { spot_id, qty };
           if (spot.dataset.kind == "variable") {
-            reservation.contribution = +spot.querySelector(
+            rsvp.contribution = +spot.querySelector(
               'input[name="contribution"]',
             ).value;
           }
-          reservations.push(reservation);
+          rsvps.push(rsvp);
         }
       }
 
-      console.log(reservations);
-
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = `/e/{{ event.slug }}/rsvp`;
+      form.action = `/e/{{ slug }}/rsvp/selection?session=TODO`;
 
       const input = document.createElement("input");
       input.type = "hidden";
-      input.name = "reservations";
-      input.value = JSON.stringify(reservations);
+      input.name = "rsvps";
+      input.value = JSON.stringify(rsvps);
       form.appendChild(input);
 
       document.body.appendChild(form);

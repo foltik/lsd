@@ -1,4 +1,4 @@
-use crate::db::reservation::Reservation;
+use crate::db::rsvp::Rsvp;
 use crate::db::spot::Spot;
 use crate::prelude::*;
 
@@ -153,15 +153,13 @@ impl Event {
     /// Calculate user-facing stats for an event.
     pub async fn stats(&self, db: &Db) -> AppResult<EventStats> {
         let spots = Spot::list_for_event(db, self.id).await?;
-        let rsvps = Reservation::list_for_event(db, self.id).await?;
+        let rsvps = Rsvp::list_for_event(db, self.id).await?;
 
-        let mut prices: HashMap<i64, Vec<i64>> = HashMap::default();
+        let mut contributions: HashMap<i64, Vec<i64>> = HashMap::default();
         let mut qty_reserved: HashMap<i64, i64> = HashMap::default();
         for rsvp in rsvps {
-            if let Some(price) = rsvp.price {
-                prices.entry(rsvp.spot_id).or_default().push(price);
-                *qty_reserved.entry(rsvp.spot_id).or_insert(0) += 1;
-            }
+            contributions.entry(rsvp.spot_id).or_default().push(rsvp.contribution);
+            *qty_reserved.entry(rsvp.spot_id).or_insert(0) += 1;
         }
 
         let remaining_capacity = self.capacity.saturating_sub(qty_reserved.values().sum::<i64>());
@@ -194,7 +192,7 @@ impl Event {
                 continue;
             }
 
-            let prices = prices.get_mut(&spot.id).unwrap(); // we checked n > 0
+            let prices = contributions.get_mut(&spot.id).unwrap(); // we checked n > 0
             prices.sort_unstable();
 
             let median = if n.is_multiple_of(2) {

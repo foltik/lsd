@@ -1,9 +1,12 @@
-CREATE TABLE IF NOT EXISTS reservations (
+CREATE TABLE IF NOT EXISTS rsvps (
     id INTEGER PRIMARY KEY NOT NULL,
-    user_id INTEGER NOT NULL,
     event_id INTEGER NOT NULL,
     spot_id INTEGER NOT NULL,
-    transaction_id INTEGER,
+    contribution INTEGER NOT NULL,
+
+    status TEXT NOT NULL,
+    session_id INTEGER NOT NULL,
+    user_id INTEGER,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

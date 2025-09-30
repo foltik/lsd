@@ -16,10 +16,6 @@ pub mod filters {
 
     use super::*;
 
-    pub fn config() -> Result<&'static Config, askama::Error> {
-        Ok(CONFIG.get().unwrap())
-    }
-
     /// Format a datetime with a `strftime` format string.
     pub fn format_datetime(dt: &NaiveDateTime, format: &str) -> Result<String, askama::Error> {
         let tz = CONFIG.get().unwrap().app.tz;

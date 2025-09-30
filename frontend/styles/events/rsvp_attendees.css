@@ -1,0 +1,7 @@
+#events\/rsvp\/attendees {
+  @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
+
+  h1 {
+    @apply border-lsd-white mb-6 border-b pb-4 text-4xl;
+  }
+}

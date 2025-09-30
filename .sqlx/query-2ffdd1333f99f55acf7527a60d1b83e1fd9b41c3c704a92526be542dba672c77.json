@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "DELETE FROM reservations WHERE id = ?",
+  "query": "DELETE FROM rsvps WHERE session_id = ?",
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,5 +8,5 @@
     },
     "nullable": []
   },
-  "hash": "a59f09b54c3f99e12e8840554df3022fc98b7899c8cdb563cc67cc325fc4bbbf"
+  "hash": "2ffdd1333f99f55acf7527a60d1b83e1fd9b41c3c704a92526be542dba672c77"
 }

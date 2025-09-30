@@ -1,5 +1,8 @@
 use crate::prelude::*;
-use crate::utils::config::StripeConfig;
+
+// do we need to track stripe session ids locally
+// they contain user emails
+// what do we do with user first/last name?
 
 const API_VERSION: &str = "2025-07-30.basil";
 
@@ -28,7 +31,7 @@ impl Stripe {
     }
 
     /// Begin a stripe transaction, returning the client secret.
-    pub async fn create_checkout_session(
+    pub async fn create_session(
         &self,
         user: &Option<User>,
         line_items: Vec<LineItem>,

@@ -4,11 +4,16 @@ use crate::prelude::*;
 use crate::utils::stripe;
 
 /// Add all `events` routes to the router.
+#[rustfmt::skip]
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
-                .route("/e/{slug}/rsvp", get(rsvp::rsvp_page).post(rsvp::rsvp_form))
+                .route("/e/{slug}/rsvp", post(rsvp::rsvp_form))
+                .route("/e/{slug}/rsvp/selection", get(rsvp::rsvp_selection_page).post(rsvp::rsvp_selection_form))
+                .route("/e/{slug}/rsvp/attendees", get(rsvp::rsvp_attendees_page).post(rsvp::rsvp_attendees_form))
+                .route("/e/{slug}/rsvp/contribution", get(rsvp::rsvp_contribution_page))
+                .route("/e/{slug}/rsvp/confirmation", get(rsvp::rsvp_confirmation_page))
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
@@ -154,139 +159,246 @@ mod edit {
 
 mod rsvp {
     use super::*;
+    use crate::db::rsvp::{CreateRsvp, Rsvp};
+    use crate::db::rsvp_sessions::RsvpSession;
 
-    // RSVP to an event.
-    pub async fn rsvp_page(
-        user: Option<User>,
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let stats = event.stats(&state.db).await?;
-
-        #[derive(Template, WebTemplate)]
-        #[template(path = "events/rsvp.html")]
-        struct RsvpHtml {
-            user: Option<User>,
-            event: Event,
-            spots: Vec<Spot>,
-            stats: EventStats,
-        }
-        Ok(RsvpHtml { user, event, spots, stats }.into_response())
-    }
-
-    // Handle RSVP submission.
+    /// Token passed between RSVP steps for idempotency.
     #[derive(Debug, serde::Deserialize)]
-    pub struct RsvpForm {
-        reservations: String,
+    pub struct RsvpSessionQuery {
+        session: String,
     }
+    /// Token plus stripe secret.
     #[derive(Debug, serde::Deserialize)]
-    pub struct Reservation {
-        id: i64,
-        qty: i64,
-        contribution: Option<i64>,
+    pub struct RsvpSessionStripeQuery {
+        session: String,
+        secret: String,
     }
+
+    /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
         user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-        Form(form): Form<RsvpForm>,
     ) -> AppResult<impl IntoResponse> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let token = RsvpSession::create(&state.db, event.id, &user).await?;
+        Ok(Redirect::to(&format!("/e/{slug}/rsvp/selection?session={token}")))
+    }
+
+    // Display the "Choose a contribution" page
+    pub async fn rsvp_selection_page(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+    ) -> AppResult<impl IntoResponse> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let stats = event.stats(&state.db).await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/rsvp_selection.html")]
+        struct SelectionHtml {
+            slug: String,
+            user: Option<User>,
+            spots: Vec<Spot>,
+            stats: EventStats,
+        }
+        Ok(SelectionHtml { slug, user, spots, stats }.into_response())
+    }
+
+    // Handle submission of the "Choose a contribution" page
+    #[derive(Debug, serde::Deserialize)]
+    pub struct RsvpSelectionForm {
+        attendees: String,
+    }
+    pub async fn rsvp_selection_form(
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Query(query): Query<RsvpSessionQuery>,
+        Form(form): Form<RsvpSelectionForm>,
+    ) -> AppResult<impl IntoResponse> {
+        let session = RsvpSession::lookup_by_token(&state.db, &query.session)
+            .await?
+            .ok_or(AppError::BadRequest)?;
+
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
         let stats = event.stats(&state.db).await?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
 
-        let reservations: Vec<Reservation> =
-            serde_json::from_str(&form.reservations).map_err(|_| AppError::BadRequest)?;
+        // Sending structured data through a form submission is pain, and axum doesn't even
+        // support deserializing serde types from the several methods that exist... we just use a string.
+        let rsvps =
+            parse_rsvp_selection(&stats, &spots, &form.attendees).map_err(|_| AppError::BadRequest)?;
 
-        if let Err(e) = validate_reservations(&stats, &spots, &reservations) {
-            tracing::info!("{e}");
-            return Err(AppError::BadRequest);
+        // Delete any pending RSVPs and create new ones.
+        // Needed in case the user presses back and changes their selection.
+        Rsvp::delete_for_session(&state.db, session.id).await?;
+        for rsvp in rsvps {
+            Rsvp::create(
+                &state.db,
+                CreateRsvp {
+                    event_id: event.id,
+                    spot_id: rsvp.spot_id,
+                    contribution: rsvp.contribution,
+                    status: "pending".into(),
+                    session_id: session.id,
+                    user_id: None,
+                },
+            )
+            .await?;
         }
 
-        let line_items = make_line_items(&spots, &reservations);
-        let stripe_checkout_client_secret = state
-            .stripe
-            .create_checkout_session(&user, line_items, format!("/e/{slug}/confirmation"))
-            .await?;
+        Ok(Redirect::to(&format!("/e/{slug}/rsvp/attendees?session={}", session.token)))
+    }
+
+    // Display the "Who will be attending?" page after submitting spots
+    pub async fn rsvp_attendees_page(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Query(query): Query<RsvpSessionQuery>,
+    ) -> AppResult<impl IntoResponse> {
+        let session = RsvpSession::lookup_by_token(&state.db, &query.session)
+            .await?
+            .ok_or(AppError::BadRequest)?;
+
+        let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
 
         #[derive(Template, WebTemplate)]
-        #[template(path = "events/checkout.html")]
-        struct CheckoutHtml {
+        #[template(path = "events/rsvp_attendees.html")]
+        struct AttendeesHtml {
+            slug: String,
             user: Option<User>,
+            rsvps: Vec<Rsvp>,
+        }
+        Ok(AttendeesHtml { slug, user, rsvps })
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    pub struct RsvpAttendeesForm {
+        attendees: String,
+    }
+    pub async fn rsvp_attendees_form(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Query(query): Query<RsvpSessionQuery>,
+    ) -> AppResult<impl IntoResponse> {
+        let session = RsvpSession::lookup_by_token(&state.db, &query.session)
+            .await?
+            .ok_or(AppError::BadRequest)?;
+
+        let line_items = session.line_items(&state.db).await?;
+        let return_url = format!("/e/{slug}/rsvp/confirmation?session={}", session.id);
+        let stripe_client_secret = state.stripe.create_session(&user, line_items, return_url).await?;
+
+        Ok(Redirect::to(&format!(
+            "/e/{slug}/rsvp/contribution?session={}&secret={}",
+            session.token, stripe_client_secret
+        )))
+    }
+
+    pub async fn rsvp_contribution_page(
+        State(state): State<SharedAppState>,
+        Query(query): Query<RsvpSessionStripeQuery>,
+    ) -> AppResult<impl IntoResponse> {
+        let session = RsvpSession::lookup_by_token(&state.db, &query.session)
+            .await?
+            .ok_or(AppError::BadRequest)?;
+
+        let line_items = session.line_items(&state.db).await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/rsvp_contribution.html")]
+        struct ContributionHtml {
+            line_items: Vec<stripe::LineItem>,
             stripe_publishable_key: String,
-            stripe_checkout_client_secret: String,
+            stripe_client_secret: String,
         }
-        Ok(CheckoutHtml {
-            user,
-            stripe_checkout_client_secret,
+        Ok(ContributionHtml {
+            line_items,
+            stripe_client_secret: query.secret,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
-        }
-        .into_response())
+        })
     }
 
+    pub async fn rsvp_confirmation_page() -> AppResult<impl IntoResponse> {
+        Ok(Redirect::to("/"))
+    }
+
+    pub struct ParsedRsvp {
+        spot_id: i64,
+        contribution: i64,
+    }
     #[derive(thiserror::Error, Debug)]
-    pub enum ValidationError {
-        #[error("unknown spot_id={id}")]
-        UnknownSpot { id: i64 },
+    pub enum ParseRsvpSelectionError {
+        #[error("failed to parse request JSON")]
+        Parse,
 
-        #[error("number of reservations exceeds event capacity")]
+        #[error("unknown spot_id={spot_id}")]
+        UnknownSpot { spot_id: i64 },
+
+        #[error("number of rsvps exceeds event capacity")]
         EventCapacity,
-        #[error("number of reservations exceeds capacity for spot_id={id}")]
-        SpotCapacity { id: i64 },
+        #[error("number of rsvps exceeds capacity for spot_id={spot_id}")]
+        SpotCapacity { spot_id: i64 },
 
-        #[error("contribution is outside of range for spot_id={id}")]
-        SpotRange { id: i64 },
+        #[error("contribution is outside of range for spot_id={spot_id}")]
+        SpotRange { spot_id: i64 },
     }
-    fn validate_reservations(
+    fn parse_rsvp_selection(
         stats: &EventStats,
         spots: &[Spot],
-        reservations: &[Reservation],
-    ) -> Result<(), ValidationError> {
+        rsvps: &str,
+    ) -> Result<Vec<ParsedRsvp>, ParseRsvpSelectionError> {
+        type Error = ParseRsvpSelectionError;
+
+        #[derive(Debug, serde::Deserialize)]
+        pub struct RsvpRequest {
+            spot_id: i64,
+            qty: i64,
+            contribution: Option<i64>,
+        }
+
+        let requests: Vec<RsvpRequest> = serde_json::from_str(rsvps).map_err(|_| Error::Parse)?;
+        let mut rsvps = vec![];
+
         let mut reserved_qty = 0;
-        for res in reservations {
-            let id = res.id;
-            let Some(spot) = spots.iter().find(|s| s.id == id) else {
-                return Err(ValidationError::UnknownSpot { id });
+        for res in requests {
+            let spot_id = res.spot_id;
+            let Some(spot) = spots.iter().find(|s| s.id == spot_id) else {
+                return Err(Error::UnknownSpot { spot_id });
             };
 
-            if res.qty > *stats.remaining_spots.get(&res.id).unwrap_or(&0) {
-                return Err(ValidationError::SpotCapacity { id });
+            if res.qty > *stats.remaining_spots.get(&res.spot_id).unwrap_or(&0) {
+                return Err(Error::SpotCapacity { spot_id });
             }
+
+            let contribution = match spot.kind.as_str() {
+                Spot::FIXED => spot.required_contribution.unwrap(),
+                Spot::VARIABLE => res.contribution.unwrap(),
+                Spot::FREE => 0,
+                Spot::WORK => 0,
+                kind => panic!("unknown kind: {kind}"),
+            };
             if spot.kind == Spot::VARIABLE {
                 let min = spot.min_contribution.unwrap();
                 let max = spot.max_contribution.unwrap();
-                if !res.contribution.is_some_and(|c| (min..=max).contains(&c)) {
-                    return Err(ValidationError::SpotRange { id });
+                if !(min..=max).contains(&contribution) {
+                    return Err(Error::SpotRange { spot_id });
                 }
             }
             reserved_qty += res.qty;
+
+            for _ in 0..res.qty {
+                rsvps.push(ParsedRsvp { spot_id, contribution })
+            }
         }
 
         if reserved_qty > stats.remaining_capacity {
-            return Err(ValidationError::EventCapacity);
+            return Err(Error::EventCapacity);
         }
 
-        Ok(())
-    }
-
-    fn make_line_items(spots: &[Spot], reservations: &[Reservation]) -> Vec<stripe::LineItem> {
-        let mut items = vec![];
-        for res in reservations {
-            let spot = spots.iter().find(|s| s.id == res.id).unwrap(); // unwrap(): we've already validated
-            items.push(stripe::LineItem {
-                name: spot.name.clone(),
-                quantity: res.qty,
-                price: match spot.kind.as_str() {
-                    Spot::FREE => 0,
-                    Spot::FIXED => spot.required_contribution.unwrap(),
-                    Spot::VARIABLE => res.contribution.unwrap(),
-                    Spot::WORK => 0,
-                    kind => panic!("unknown kind: {kind}"),
-                },
-            });
-        }
-        items
+        Ok(rsvps)
     }
 }

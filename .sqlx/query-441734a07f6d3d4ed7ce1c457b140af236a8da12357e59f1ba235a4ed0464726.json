@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM reservations",
+  "query": "SELECT * FROM rsvps WHERE session_id = ?",
   "describe": {
     "columns": [
       {
@@ -9,45 +9,57 @@
         "type_info": "Integer"
       },
       {
-        "name": "user_id",
+        "name": "event_id",
         "ordinal": 1,
         "type_info": "Integer"
       },
       {
-        "name": "event_id",
+        "name": "spot_id",
         "ordinal": 2,
         "type_info": "Integer"
       },
       {
-        "name": "spot_id",
+        "name": "contribution",
         "ordinal": 3,
         "type_info": "Integer"
       },
       {
-        "name": "transaction_id",
+        "name": "status",
         "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "session_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 6,
         "type_info": "Integer"
       },
       {
         "name": "created_at",
-        "ordinal": 5,
+        "ordinal": 7,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 6,
+        "ordinal": 8,
         "type_info": "Datetime"
       },
       {
         "name": "checkin_at",
-        "ordinal": 7,
+        "ordinal": 9,
         "type_info": "Datetime"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
+      false,
+      false,
       false,
       false,
       false,
@@ -58,5 +70,5 @@
       true
     ]
   },
-  "hash": "34adbf2d0047e071ad2598f5fa502759bc156305279936b0397e8a1cf7980522"
+  "hash": "441734a07f6d3d4ed7ce1c457b140af236a8da12357e59f1ba235a4ed0464726"
 }

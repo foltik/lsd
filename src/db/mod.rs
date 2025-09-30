@@ -1,10 +1,6 @@
-use std::path::Path;
-
 use anyhow::Context as _;
-use serde::Deserialize;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::{Sqlite, SqlitePool};
-use user::User;
 
 use crate::utils::config::DbConfig;
 
@@ -15,7 +11,8 @@ pub mod event;
 pub mod list;
 pub mod notification;
 pub mod post;
-pub mod reservation;
+pub mod rsvp;
+pub mod rsvp_sessions;
 pub mod spot;
 pub mod token;
 pub mod user;
