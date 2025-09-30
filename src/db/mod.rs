@@ -12,7 +12,7 @@ pub mod list;
 pub mod notification;
 pub mod post;
 pub mod rsvp;
-pub mod rsvp_sessions;
+pub mod rsvp_session;
 pub mod spot;
 pub mod token;
 pub mod user;

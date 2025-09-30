@@ -1,5 +1,5 @@
 #events\/rsvp\/selection {
-  @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
+  @apply mx-auto flex max-w-2xl flex-col px-12 py-8;
 
   h1 {
     @apply border-lsd-white/20 mb-6 border-b pb-4 text-4xl;

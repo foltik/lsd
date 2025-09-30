@@ -1,7 +1,42 @@
 #events\/rsvp\/attendees {
-  @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
+  @apply mx-auto flex max-w-2xl flex-col px-12 py-8;
 
   h1 {
-    @apply border-lsd-white mb-6 border-b pb-4 text-4xl;
+    @apply border-lsd-white/20 mb-6 border-b pb-4 text-4xl;
+  }
+
+  .attendee {
+    @apply mb-12 grid grid-cols-1 gap-y-2;
+
+    .header {
+      @apply mb-1 flex items-center justify-between;
+      .name {
+        @apply mr-4 flex-1 text-xl;
+      }
+      .is-me {
+        @apply mb-0 flex items-center gap-2 text-sm;
+        .radio {
+          @apply h-4 w-4;
+        }
+        span {
+          @apply select-none;
+        }
+      }
+    }
+
+    .fields {
+      @apply grid grid-cols-1 gap-4 md:grid-cols-2;
+
+      .field {
+        @apply mb-0 pb-0;
+        .label {
+          @apply text-lsd-gray mb-1 text-sm;
+        }
+      }
+
+      .email {
+        @apply md:col-span-2;
+      }
+    }
   }
 }

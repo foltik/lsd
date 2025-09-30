@@ -1,3 +1,4 @@
+pub use crate::app::webhooks::Webhooks;
 use crate::prelude::*;
 use crate::utils::emailer::Emailer;
 use crate::utils::stripe::Stripe;
@@ -8,12 +9,14 @@ mod events;
 mod home;
 mod lists;
 mod posts;
+mod webhooks;
 
 pub struct AppState {
     pub config: Config,
     pub db: Db,
     pub mailer: Emailer,
     pub stripe: Stripe,
+    pub webhooks: Webhooks,
 }
 
 pub async fn build(config: Config) -> Result<axum::Router<()>> {
@@ -22,6 +25,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
         db: crate::db::init(&config.db).await?,
         stripe: Stripe::new(&config),
         mailer: Emailer::connect(config.email).await?,
+        webhooks: Webhooks::default(),
     });
 
     // Register business logic routes
@@ -32,6 +36,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let r = events::add_routes(r);
     let r = lists::add_routes(r);
     let r = emails::add_routes(r);
+    let r = webhooks::add_routes(r);
     let (r, state) = r.finish();
 
     // Register app-wide routes

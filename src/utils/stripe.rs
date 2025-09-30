@@ -1,3 +1,4 @@
+use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
 
 // do we need to track stripe session ids locally
@@ -33,7 +34,8 @@ impl Stripe {
     /// Begin a stripe transaction, returning the client secret.
     pub async fn create_session(
         &self,
-        user: &Option<User>,
+        session_id: i64,
+        email: &str,
         line_items: Vec<LineItem>,
         return_path: String,
     ) -> AppResult<String> {
@@ -49,17 +51,15 @@ impl Stripe {
         //
         // TODO: do we need?
         let mut form_data = format!(
-            "ui_mode=custom\
+            "client_reference_id={session_id}\
+            &customer_email={email}\
+            &ui_mode=custom\
             &mode=payment\
             &currency=usd\
             &allow_promotion_codes=false\
             &payment_method_types[]=card\
             &return_url={return_url}"
         );
-
-        if let Some(user) = user.as_ref() {
-            write!(&mut form_data, "&customer_email={}", &user.email).unwrap();
-        }
 
         for (i, LineItem { name, quantity, price }) in line_items.into_iter().enumerate() {
             let price_cents = price * 100;
@@ -89,4 +89,36 @@ impl Stripe {
 
         Ok(res.client_secret)
     }
+
+    pub async fn wait_for_payment(db: &Db, webhooks: &Webhooks, session_id: i64) -> Result<(), AppError> {
+        const TIMEOUT: Duration = Duration::from_secs(3);
+        const WEBHOOK_TIMEOUT: Duration = Duration::from_secs(3);
+
+        let start = Instant::now();
+        loop {
+            let webhook = webhooks.wait(Webhooks::STRIPE_CHECKOUT_SESSION_COMPLETED, WEBHOOK_TIMEOUT);
+
+            let status = RsvpSession::lookup_status(db, session_id).await?.unwrap();
+            if status == "paid" {
+                return Ok(());
+            }
+
+            let _ = webhook.await;
+
+            let status = RsvpSession::lookup_status(db, session_id).await?.unwrap();
+            if status == "paid" {
+                return Ok(());
+            }
+
+            if start.elapsed() > TIMEOUT {
+                return Err(StripeError::PaymentTimeout { session_id, timeout: TIMEOUT }.into());
+            }
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error, serde::Serialize)]
+pub enum StripeError {
+    #[error("timed out waiting for payment for session={session_id} timeout={timeout:?}")]
+    PaymentTimeout { session_id: i64, timeout: Duration },
 }

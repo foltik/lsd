@@ -13,6 +13,8 @@ pub enum AppError {
     NotFound,
 
     #[error(transparent)]
+    Stripe(#[from] crate::utils::stripe::StripeError),
+    #[error(transparent)]
     Email(#[from] lettre::error::Error),
     #[error(transparent)]
     Smtp(#[from] lettre::transport::smtp::Error),
@@ -46,6 +48,7 @@ impl IntoResponse for AppError {
             AppError::Email(_) => error_500(),
             AppError::Render(_) => error_500(),
             AppError::Reqwest(_) => error_500(),
+            AppError::Stripe(_) => error_500(),
         };
 
         // TODO: add a `dev` mode to `config.app`, and:

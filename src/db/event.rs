@@ -151,9 +151,9 @@ impl Event {
     }
 
     /// Calculate user-facing stats for an event.
-    pub async fn stats(&self, db: &Db) -> AppResult<EventStats> {
+    pub async fn stats_for_session(&self, db: &Db, session_id: i64) -> AppResult<EventStats> {
         let spots = Spot::list_for_event(db, self.id).await?;
-        let rsvps = Rsvp::list_for_event(db, self.id).await?;
+        let rsvps = Rsvp::list_for_event_excluding_session(db, self.id, session_id).await?;
 
         let mut contributions: HashMap<i64, Vec<i64>> = HashMap::default();
         let mut qty_reserved: HashMap<i64, i64> = HashMap::default();

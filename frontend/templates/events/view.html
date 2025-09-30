@@ -12,8 +12,8 @@
         <section class="content">{{ event.description | safe }}</section>
       </section>
     </article>
-    <a href="/e/{{ event.slug }}/rsvp"
-      ><button class="ext/button rsvp">RSVP</button></a
-    >
+    <form method="POST" action="/e/{{ event.slug }}/rsvp">
+      <button type="submit" class="ext/button rsvp">RSVP</button>
+    </form>
   </div>
 {% endblock content %}

@@ -12,8 +12,10 @@
 @import "./events/list.css";
 @import "./events/view.css";
 @import "./events/table.css";
-@import "./events/rsvp.css";
-@import "./events/checkout.css";
+@import "./events/rsvp_selection.css";
+@import "./events/rsvp_attendees.css";
+@import "./events/rsvp_contribution.css";
+@import "./events/rsvp_confirmation.css";
 /* Lists */
 @import "./lists/edit.css";
 @import "./lists/signup.css";
@@ -43,7 +45,8 @@
  *       Below styles are from page.tera.html
  */
 
-:root {
+:root,
+main {
   @apply bg-lsd-black text-lsd-white h-full w-full font-sans;
 }
 

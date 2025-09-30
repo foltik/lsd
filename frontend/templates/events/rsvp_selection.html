@@ -6,9 +6,6 @@
   <section id="events/rsvp/selection">
     <h1>Choose a contribution</h1>
     <form id="form" class="ext/form">
-      {% if user.is_none() %}
-      {% endif %}
-
       {% for spot in spots %}
         <div class="spot" data-id="{{ spot.id }}" data-kind="{{ spot.kind }}">
           <h2 class="name">{{ spot.name }}</h2>
@@ -24,7 +21,7 @@
                     class="ext/input"
                     type="number"
                     name="contribution"
-                    value="{{ spot.suggested_contribution.unwrap() }}"
+                    value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
                     min="{{ spot.min_contribution.unwrap() }}"
                     max="{{ spot.max_contribution.unwrap() }}"
                   />
@@ -34,7 +31,7 @@
                     class="ext/input"
                     type="range"
                     name="contribution"
-                    value="{{ spot.suggested_contribution.unwrap() }}"
+                    value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
                     min="{{ spot.min_contribution.unwrap() }}"
                     max="{{ spot.max_contribution.unwrap() }}"
                     step="1"
@@ -53,7 +50,7 @@
               $0
             {% endif %}
           </div>
-          <select class="ext/input quantity" name="quantity">
+          <select class="ext/input quantity" name="quantity" disabled>
             <option value="0">0</option>
           </select>
         </div>
@@ -71,10 +68,11 @@
       continue: $("continue"),
       spots: () => [...ui.form.querySelectorAll(".spot")],
       qty: (spot) => spot.querySelector('[name="quantity"]'),
-      totalQty: () => {
+      totalQty: (init = {}) => {
         let total = 0;
         for (const spot of ui.spots()) {
-          total += +ui.qty(spot).value;
+          const id = +spot.dataset.id;
+          total += init[id] || +ui.qty(spot).value;
         }
         return total;
       },
@@ -82,13 +80,13 @@
     const stats = JSON.parse(`{{ stats | json | safe }}`);
 
     /* ---------- Update available spot quantities on change ------------------ */
-    const updateQuantities = () => {
-      let totalQty = ui.totalQty();
+    const updateQuantities = (init = {}) => {
+      let totalQty = ui.totalQty(init);
       for (const spot of ui.spots()) {
         const id = +spot.dataset.id;
         const qty = ui.qty(spot);
 
-        const ourQty = +(qty.value || 0);
+        const ourQty = init[id] || +(qty.value || 0);
         const otherQty = totalQty - ourQty;
         const remainingCapacity = stats.remaining_capacity - otherQty;
         const remainingForSpot = stats.remaining_spots[id];
@@ -111,13 +109,22 @@
         }
         // Disable if limit is zero
         qty.disabled = ourLimit == 0;
+
+        // Select on init
+        if (id in init) {
+          qty.value = ourQty;
+        }
       }
     };
     ui.form.addEventListener("change", (e) => {
       if (e.target.name != "quantity") return;
       updateQuantities();
     });
-    updateQuantities();
+    updateQuantities({
+      // {% for (spot_id, qty) in spot_qtys %}
+      {{ spot_id }}: {{ qty }},
+      // {% endfor %}
+    });
 
     /* ---------- Sync variable contribution inputs --------------------------- */
     ["input", "change"].forEach((ev) =>
@@ -156,9 +163,12 @@
         }
       }
 
+      const query = new URLSearchParams(location.search);
+      const session = encodeURIComponent(query.get("session"));
+
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = `/e/{{ slug }}/rsvp/selection?session=TODO`;
+      form.action = `/e/{{ slug }}/rsvp/selection?session=${session}`;
 
       const input = document.createElement("input");
       input.type = "hidden";

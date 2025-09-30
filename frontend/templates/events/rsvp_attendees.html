@@ -5,10 +5,76 @@
 {% block content %}
   <section id="events/rsvp/attendees">
     <h1>Who will be attending?</h1>
+
     <form id="form" class="ext/form">
-      {% if user.is_none() %}
-      {% endif %}
+      {% for rsvp in rsvps %}
+        <div class="attendee" data-rsvp-id="{{ rsvp.id }}">
+          <div class="header">
+            <h2 class="name">
+              {{ rsvp.spot_name }}
+              {% if rsvps.len() > 1 %}({{ loop.index }}){% endif %}
+            </h2>
+
+            {% if rsvps.len() > 1 %}
+              <label class="is-me">
+                <input
+                  class="ext/input radio"
+                  type="radio"
+                  name="is_me"
+                  value="{{ rsvp.id }}"
+                  {% if session.email.is_some() %}
+                    {% if session.email == rsvp.email %}
+                      checked
+                    {% endif %}
+                  {% endif %}
+                  required
+                />
+                <span>This is me!</span>
+              </label>
+            {% endif %}
+          </div>
+
+          <div class="fields">
+            <label class="field">
+              <span class="label">First name</span>
+              <input
+                name="first_name"
+                class="ext/input"
+                type="text"
+                value="{{ rsvp.first_name | unwrap_or_empty }}"
+                autocomplete="given-name"
+                required
+              />
+            </label>
+
+            <label class="field">
+              <span class="label">Last name</span>
+              <input
+                name="last_name"
+                class="ext/input"
+                type="text"
+                value="{{ rsvp.last_name | unwrap_or_empty }}"
+                autocomplete="family-name"
+                required
+              />
+            </label>
+
+            <label class="field email">
+              <span class="label">Email</span>
+              <input
+                name="email"
+                class="ext/input"
+                type="email"
+                value="{{ rsvp.email | unwrap_or_empty }}"
+                autocomplete="email"
+                required
+              />
+            </label>
+          </div>
+        </div>
+      {% endfor %}
     </form>
+
     <button id="continue" class="ext/button">Continue</button>
   </section>
 {% endblock content %}
@@ -16,29 +82,71 @@
 {% block scripts %}
   <script>
     const $ = (id) => document.getElementById(id);
+
     const ui = {
       form: $("form"),
       continue: $("continue"),
-      spots: () => [...ui.form.querySelectorAll(".spot")],
-      qty: (spot) => spot.querySelector('[name="quantity"]'),
-      totalQty: () => {
-        let total = 0;
-        for (const spot of ui.spots()) {
-          total += +ui.qty(spot).value;
-        }
-        return total;
-      },
+      attendees: () => [...ui.form.querySelectorAll(".attendee")],
+      field: (a, name) => a.querySelector(`[name="${name}"]`),
+      isMeRadios: () => [...ui.form.querySelectorAll('input[name="is_me"]')],
     };
 
-    /* ---------- Continue button --------------------------------------------- */
-    ui.continue.addEventListener("click", async () => {
-      const attendees = [];
-      for (const spot of []) {
+    // Provide current user data for autofill; null if not logged in.
+    const user = JSON.parse(`{{ user | json | safe }}`);
+
+    /* ---------- Handle "This is me!" selection and autofill ----------------- */
+    ui.form.addEventListener("change", (e) => {
+      if (!user || e.target.name != "is_me") return;
+
+      // Find ticked "is_me"
+      const ticked = ui.isMeRadios().find((r) => r.checked);
+      if (!ticked) return;
+
+      // First enable all fields
+      for (const a of ui.attendees()) {
+        for (const name of ["first_name", "last_name", "email"]) {
+          ui.field(a, name).disabled = false;
+        }
       }
+
+      // Then autofill and disable just the fields for the user
+      const a = ticked.closest(".attendee");
+      let first = ui.field(a, "first_name");
+      let last = ui.field(a, "last_name");
+      let email = ui.field(a, "email_name");
+      first.disabled = true;
+      last.disabled = true;
+      email.disabled = true;
+      first.value = user.first_name;
+      last.value = user.last_name;
+      email.value = user.email;
+    });
+
+    /* ---------- Continue button -------------------------------------------- */
+    ui.continue.addEventListener("click", async () => {
+      // Let the browser run built-in HTML validation first.
+      if (!ui.form.reportValidity()) return;
+
+      const attendees = [];
+      for (const a of ui.attendees()) {
+        const rsvp_id = +a.dataset.rsvpId;
+        const first_name = ui.field(a, "first_name").value.trim();
+        const last_name = ui.field(a, "last_name").value.trim();
+        const email = ui.field(a, "email").value.trim();
+
+        // When there's only a single RSVP, is_me is always true
+        let is_me_radio = a.querySelector('input[name="is_me"]');
+        const is_me = is_me_radio ? is_me_radio.checked : true;
+
+        attendees.push({ rsvp_id, first_name, last_name, email, is_me });
+      }
+
+      const query = new URLSearchParams(location.search);
+      const session = encodeURIComponent(query.get("session"));
 
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = `/e/{{ slug }}/rsvp/attendees?session=TODO`;
+      form.action = `/e/{{ slug }}/rsvp/attendees?session=${session}`;
 
       const input = document.createElement("input");
       input.type = "hidden";

@@ -6,18 +6,39 @@
 {% block title %}light and sound - RSVP{% endblock title %}
 
 {% block content %}
-  <div id="events/rsvp/contribution">
-    <h1>Checkout</h1>
-    <form id="form" class="ext/form" action="/login" method="post">
-      <div class="field">TODO: line items</div>
+  <section id="events/rsvp/contribution">
+    <h1>Summary</h1>
+    <form id="form" class="ext/form">
+      <div class="field">
+        <ul class="line-items">
+          {% for rsvp in rsvps %}
+            <li class="item">
+              <div class="contact">
+                <div class="title">{{ rsvp.spot_name }}</div>
+                <span class="attendee"
+                  >{{ rsvp.first_name }} {{ rsvp.last_name }} •
+                  {{ rsvp.email }}</span
+                >
+              </div>
+              <span class="price">${{ rsvp.contribution }}</span>
+            </li>
+          {% endfor %}
+          <li class="total">
+            <span class="left">Total</span>
+            <span id="total" class="right">$0</span>
+          </li>
+        </ul>
+      </div>
       <div class="field">
         <div id="stripe"></div>
       </div>
       <div class="field">
-        <button id="checkout" type="submit">Submit</button>
+        <button id="checkout" class="ext/button" type="submit">
+          Contribute
+        </button>
       </div>
     </form>
-  </div>
+  </section>
 {% endblock content %}
 
 {% block scripts %}
@@ -25,7 +46,13 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
+      email: $("email"),
+      total: $("total"),
     };
+
+    const rsvps = JSON.parse(`{{ rsvps | json | safe }}`);
+    const total = rsvps.reduce((sum, r) => sum + r.contribution, 0);
+    ui.total.textContent = `$${total}`;
 
     let checkout;
 
@@ -58,18 +85,14 @@
       paymentEl.mount("#stripe");
     })();
 
+    /* ---------- Submit: update email then confirm -------------------------- */
     ui.form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!ui.form.reportValidity()) return;
 
-      // TODO: get email from somewhere?
-      var { type, error } = await checkout.updateEmail(ui.email.value);
-      if (type == "error") {
-        alert(error.message);
-      }
-
-      var { type, error } = await checkout.confirm();
-      if (type == "error") {
-        alert(error.message);
+      res = await checkout.confirm();
+      if (res?.type === "error") {
+        alert(res.error.message);
       }
     });
   </script>

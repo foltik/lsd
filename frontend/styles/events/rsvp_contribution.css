@@ -1,8 +1,42 @@
 #events\/rsvp\/contribution {
-  @apply mx-auto mt-8 flex max-w-2xl flex-col px-12;
+  @apply mx-auto flex max-w-2xl flex-col px-12 py-8;
 
   h1 {
-    @apply border-lsd-white mb-6 border-b pb-4 text-4xl;
+    @apply border-lsd-white/20 border-b pb-4 text-4xl;
+  }
+
+  .line-items {
+    @apply m-0 list-none p-0;
+
+    .item,
+    .total {
+      @apply flex items-start justify-between py-2;
+    }
+
+    .item {
+      .contact {
+        @apply flex flex-col;
+        .title {
+          @apply text-xl;
+        }
+        .attendee {
+          @apply text-lsd-gray mt-1 text-sm;
+        }
+      }
+      .price {
+        @apply ml-4 text-base font-semibold;
+      }
+    }
+
+    .total {
+      @apply border-lsd-white/20 mt-2 border-t pt-3;
+      .left {
+        @apply text-xl;
+      }
+      .right {
+        @apply text-lg font-bold;
+      }
+    }
   }
 
   #stripe {

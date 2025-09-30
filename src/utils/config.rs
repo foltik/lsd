@@ -96,4 +96,5 @@ fn default_ratelimit() -> usize {
 pub struct StripeConfig {
     pub publishable_key: String,
     pub secret_key: String,
+    pub webhook_key: String,
 }
