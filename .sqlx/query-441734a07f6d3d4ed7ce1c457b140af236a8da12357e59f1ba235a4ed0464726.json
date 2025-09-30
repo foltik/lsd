@@ -19,38 +19,53 @@
         "type_info": "Integer"
       },
       {
-        "name": "contribution",
+        "name": "session_id",
         "ordinal": 3,
         "type_info": "Integer"
       },
       {
-        "name": "status",
+        "name": "contribution",
         "ordinal": 4,
-        "type_info": "Text"
-      },
-      {
-        "name": "session_id",
-        "ordinal": 5,
         "type_info": "Integer"
       },
       {
-        "name": "user_id",
+        "name": "status",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 9,
         "type_info": "Integer"
       },
       {
         "name": "created_at",
-        "ordinal": 7,
+        "ordinal": 10,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 8,
+        "ordinal": 11,
         "type_info": "Datetime"
       },
       {
         "name": "checkin_at",
-        "ordinal": 9,
+        "ordinal": 12,
         "type_info": "Datetime"
       }
     ],
@@ -64,6 +79,9 @@
       false,
       false,
       false,
+      true,
+      true,
+      true,
       true,
       false,
       false,

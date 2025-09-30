@@ -14,38 +14,63 @@
         "type_info": "Integer"
       },
       {
-        "name": "user_id",
-        "ordinal": 2,
-        "type_info": "Integer"
-      },
-      {
         "name": "token",
-        "ordinal": 3,
+        "ordinal": 2,
         "type_info": "Text"
       },
       {
         "name": "status",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "transaction_id",
+        "name": "last_name",
         "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "refund_id",
-        "ordinal": 6,
+        "name": "stripe_client_secret",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_charge_id",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_refund_id",
+        "ordinal": 11,
         "type_info": "Integer"
       },
       {
         "name": "created_at",
-        "ordinal": 7,
+        "ordinal": 12,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 8,
+        "ordinal": 13,
         "type_info": "Datetime"
       }
     ],
@@ -55,9 +80,14 @@
     "nullable": [
       false,
       false,
+      false,
+      false,
       true,
-      false,
-      false,
+      true,
+      true,
+      true,
+      true,
+      true,
       true,
       true,
       false,

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT spot_id, contribution FROM rsvps WHERE event_id = ?",
+  "query": "SELECT spot_id, contribution\n             FROM rsvps\n             WHERE event_id = ? AND session_id != ?",
   "describe": {
     "columns": [
       {
@@ -15,12 +15,12 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       false,
       false
     ]
   },
-  "hash": "561fae8c1b13a2c00649cb558ed80fe38f40b2430f0bafce89bcb58245865aeb"
+  "hash": "d525cda3b5e4bf80ea7b2d5915273600bd97d150ad9a63d5435dc60ec408aed9"
 }

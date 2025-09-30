@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM spots",
+  "query": "SELECT * FROM rsvp_sessions WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -9,57 +9,57 @@
         "type_info": "Integer"
       },
       {
-        "name": "name",
+        "name": "event_id",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "description",
+        "name": "token",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "qty_total",
+        "name": "status",
         "ordinal": 3,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "qty_per_person",
+        "name": "first_name",
         "ordinal": 4,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "kind",
+        "name": "last_name",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "sort",
+        "name": "email",
         "ordinal": 6,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "required_contribution",
+        "name": "user_id",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "min_contribution",
+        "name": "stripe_client_secret",
         "ordinal": 8,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "max_contribution",
+        "name": "stripe_payment_intent_id",
         "ordinal": 9,
         "type_info": "Integer"
       },
       {
-        "name": "suggested_contribution",
+        "name": "stripe_charge_id",
         "ordinal": 10,
         "type_info": "Integer"
       },
       {
-        "name": "required_notice_hours",
+        "name": "stripe_refund_id",
         "ordinal": 11,
         "type_info": "Integer"
       },
@@ -75,16 +75,16 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
       false,
       false,
       false,
-      false,
-      false,
-      false,
+      true,
+      true,
+      true,
       true,
       true,
       true,
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "04ebec329753cbb695ebc2f7e411f74aed91f71cc2063ba4fed809538a6a537a"
+  "hash": "beae8fe5b9443d004e595b7240d20ac75666b604db733e5b2b95ed027ea158b5"
 }
