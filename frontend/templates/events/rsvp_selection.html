@@ -120,11 +120,13 @@
       if (e.target.name != "quantity") return;
       updateQuantities();
     });
-    updateQuantities({
-      // {% for (spot_id, qty) in spot_qtys %}
-      {{ spot_id }}: {{ qty }},
-      // {% endfor %}
-    });
+    updateQuantities(
+      JSON.parse(`{
+      {% for (spot_id, qty) in spot_qtys %}
+        {{ spot_id }}: {{ qty }},
+      {% endfor %}
+    }`),
+    );
 
     /* ---------- Sync variable contribution inputs --------------------------- */
     ["input", "change"].forEach((ev) =>
