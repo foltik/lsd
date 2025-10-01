@@ -1,0 +1,99 @@
+{% extends "layout.html" %}
+{% block head %}
+  <script src="https://js.stripe.com/basil/stripe.js"></script>
+{% endblock head %}
+
+{% block title %}light and sound - RSVP{% endblock title %}
+
+{% block content %}
+  <section id="events/rsvp/contribution">
+    <h1>Summary</h1>
+    <form id="form" class="ext/form">
+      <div class="field">
+        <ul class="line-items">
+          {% for rsvp in rsvps %}
+            <li class="item">
+              <div class="contact">
+                <div class="title">{{ rsvp.spot_name }}</div>
+                <span class="attendee"
+                  >{{ rsvp.first_name }} {{ rsvp.last_name }} •
+                  {{ rsvp.email }}</span
+                >
+              </div>
+              <span class="price">${{ rsvp.contribution }}</span>
+            </li>
+          {% endfor %}
+          <li class="total">
+            <span class="left">Total</span>
+            <span id="total" class="right">$0</span>
+          </li>
+        </ul>
+      </div>
+      <div class="field">
+        <div id="stripe"></div>
+      </div>
+      <div class="field">
+        <button id="checkout" class="ext/button" type="submit">
+          Contribute
+        </button>
+      </div>
+    </form>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      email: $("email"),
+      total: $("total"),
+    };
+
+    const rsvps = JSON.parse(`{{ rsvps | json | safe }}`);
+    const total = rsvps.reduce((sum, r) => sum + r.contribution, 0);
+    ui.total.textContent = `$${total}`;
+
+    let checkout;
+
+    (async () => {
+      const stripe = Stripe(`{{ stripe_publishable_key }}`);
+      checkout = await stripe.initCheckout({
+        fetchClientSecret: async () => `{{ stripe_client_secret }}`,
+        elementsOptions: {
+          appearance: {
+            theme: "night",
+            variables: {
+              fontFamily: "Poppins, sans-serif",
+              colorPrimary: "#8ec6ff",
+              colorBackground: "#080504",
+              colorText: "#ebe3de",
+              colorDanger: "#c34346",
+            },
+            rules: {
+              ".Block, .Tab, .Input": {
+                borderColor: "color-mix(in oklab, #ebe3de 30%, transparent)",
+                borderWidth: "1px",
+                borderStyle: "solid",
+              },
+            },
+          },
+        },
+      });
+
+      const paymentEl = checkout.createPaymentElement();
+      paymentEl.mount("#stripe");
+    })();
+
+    /* ---------- Submit: update email then confirm -------------------------- */
+    ui.form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!ui.form.reportValidity()) return;
+
+      res = await checkout.confirm();
+      if (res?.type === "error") {
+        alert(res.error.message);
+      }
+    });
+  </script>
+{% endblock scripts %}

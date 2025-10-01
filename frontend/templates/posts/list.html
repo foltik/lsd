@@ -2,7 +2,7 @@
 {% block title %}light and sound{% endblock %}
 
 {% block content %}
-  <div id="posts/list" class="posts">
+  <div id="posts/list">
     <header>
       <h1 class="title">Posts</h1>
       <a class="ext/button :green" href="/posts/new">New Post</a>
@@ -11,7 +11,7 @@
       <div class="post">
         <div class="info">
           <h2 class="title">
-            <a href="/posts/{{ post.url }}">{{ post.title }}</a>
+            <a href="/p/{{ post.slug }}">{{ post.title }}</a>
           </h2>
           By {{ post.author }} &bull; Updated
           <time datetime="{{ post.updated_at }}">
@@ -19,7 +19,7 @@
           </time>
         </div>
         <div class="actions">
-          <a class="ext/button :icon" href="/posts/{{ post.url }}/edit">
+          <a class="ext/button :icon" href="/posts/{{ post.slug }}/edit">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"

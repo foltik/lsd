@@ -38,7 +38,7 @@ impl AppRouter {
             self.state.clone(),
             move |State(state): State<SharedAppState>, user: User, req: Request, next: Next| async move {
                 if !user.has_role(&state.db, role).await? {
-                    return Err(AppError::NotAuthorized);
+                    return Err(AppError::Unauthorized);
                 }
                 Ok(next.run(req).await)
             },
@@ -59,7 +59,7 @@ impl<S: Send + Sync> axum::extract::OptionalFromRequestParts<S> for User {
 impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
     type Rejection = AppError;
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let user = parts.extensions.get::<User>().cloned().ok_or(AppError::NotAuthorized)?;
+        let user = parts.extensions.get::<User>().cloned().ok_or(AppError::Unauthorized)?;
         Ok(user)
     }
 }

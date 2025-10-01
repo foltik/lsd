@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.*\n               FROM spots s\n               JOIN event_spots es ON es.spot_id = s.id\n               WHERE es.event_id = ?\n               ORDER BY s.sort\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "qty_total",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "qty_per_person",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "sort",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "required_contribution",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "min_contribution",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "max_contribution",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "suggested_contribution",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "required_notice_hours",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 12,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 13,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6116973b9fda9214835875fbfa0bb8bc892795a1e74d8a243a2f8398abe020ce"
+}
