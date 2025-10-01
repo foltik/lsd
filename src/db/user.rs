@@ -13,13 +13,6 @@ pub struct User {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct UserRole {
-    pub user_id: i64,
-    pub role: String,
-    pub created_at: NaiveDateTime,
-}
-
 #[derive(Debug, serde::Deserialize)]
 pub struct UpdateUser {
     pub first_name: String,
