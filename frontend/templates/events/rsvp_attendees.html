@@ -102,10 +102,16 @@
       const ticked = ui.isMeRadios().find((r) => r.checked);
       if (!ticked) return;
 
-      // First enable all fields
+      // Re-enable all fields, and clear out the previous "is_me"
       for (const a of ui.attendees()) {
+        const is_prev_me = ui.field(a, "email").value == user.email;
+
         for (const name of ["first_name", "last_name", "email"]) {
-          ui.field(a, name).disabled = false;
+          const field = ui.field(a, name);
+          field.disabled = false;
+          if (is_prev_me) {
+            field.value = null;
+          }
         }
       }
 
@@ -113,7 +119,7 @@
       const a = ticked.closest(".attendee");
       let first = ui.field(a, "first_name");
       let last = ui.field(a, "last_name");
-      let email = ui.field(a, "email_name");
+      let email = ui.field(a, "email");
       first.disabled = true;
       last.disabled = true;
       email.disabled = true;
