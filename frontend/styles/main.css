@@ -4,6 +4,9 @@
 @import "./extensions/fonts.css";
 @import "./extensions/form.css";
 
+/* Home */
+@import "./home.css";
+
 /* Auth */
 @import "./auth/login.css";
 @import "./auth/register.css";
@@ -11,7 +14,6 @@
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
-@import "./events/table.css";
 @import "./events/rsvp_selection.css";
 @import "./events/rsvp_attendees.css";
 @import "./events/rsvp_contribution.css";
@@ -54,20 +56,16 @@ body {
   @apply min-h-full;
 }
 
-body > header {
-  @apply border-lsd-white/10 flex flex-col items-center border-b px-6 py-4;
+header {
+  @apply border-lsd-white/10 flex items-center justify-between border-b px-6 py-4;
 
   nav {
-    @apply flex w-full max-w-6xl items-center gap-x-8;
-  }
-  nav .lsd {
-    @apply font-display text-lsd-bright font-bold;
-  }
-  nav .sep {
-    @apply h-4 border-r border-neutral-700;
+    @apply flex items-center gap-x-8;
+    .lsd {
+      @apply font-display text-lsd-bright font-bold;
+    }
   }
 }
-
-input {
+@media input {
   color-scheme: dark;
 }

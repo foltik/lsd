@@ -7,16 +7,17 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 }
 
 #[derive(Template, WebTemplate)]
-#[template(path = "index.html")]
-pub struct IndexHtml {
+#[template(path = "home.html")]
+pub struct HomeHtml {
     pub events: Vec<Event>,
+    pub past: bool,
 }
 
 /// Display the front page.
 async fn home_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-    Ok(IndexHtml { events: Event::list_upcoming(&state.db).await? })
+    Ok(HomeHtml { events: Event::list_upcoming(&state.db).await?, past: false })
 }
 
 async fn past_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-    Ok(IndexHtml { events: Event::list_past(&state.db).await? })
+    Ok(HomeHtml { events: Event::list_past(&state.db).await?, past: true })
 }

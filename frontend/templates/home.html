@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound{% endblock title %}
+
+{% block content %}
+  <section id="home">
+    <div class="links">
+      <a href="/">
+        <h2 class="heading {% if !past %}active{% endif %}">EVENTS</h2>
+      </a>
+      <span class="divider"></span>
+      <a href="/past">
+        <h2 class="heading {% if past %}active{% endif %}">PAST EVENTS</h2>
+      </a>
+      <span class="divider" aria-hidden="true"></span>
+      <a
+        class="newsletter"
+        href="/newsletter"
+        aria-label="Subscribe to newsletter"
+      >
+        <span>N</span><span>E</span><span>W</span><span>S</span><span>L</span
+        ><span>E</span><span>T</span><span>T</span><span>E</span><span>R</span>
+      </a>
+    </div>
+
+    <ul class="events">
+      {% for event in events %}
+        <li>
+          <a class="event" href="/e/{{ event.slug }}">
+            <span class="date"
+              >{{ event.start | format_datetime("%a %m.%d.%Y") }}</span
+            >
+            <span class="divider" aria-hidden="true"></span>
+            <span class="title">{{ event.title }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock content %}
