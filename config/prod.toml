@@ -25,4 +25,6 @@ from = "Light and Sound Design <studio@beta.lightandsound.design>"
 ratelimit = 10
 
 [stripe]
+publishable_key = "$STRIPE_PUBLISHABLE_KEY"
 secret_key = "$STRIPE_SECRET_KEY"
+webhook_key = "$STRIPE_WEBHOOK_KEY"
