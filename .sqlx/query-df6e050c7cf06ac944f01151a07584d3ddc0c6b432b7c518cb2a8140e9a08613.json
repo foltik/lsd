@@ -14,7 +14,7 @@
         "type_info": "Text"
       },
       {
-        "name": "url",
+        "name": "slug",
         "ordinal": 2,
         "type_info": "Text"
       },

@@ -7,16 +7,9 @@ use crate::utils::error::AppResult;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
+    pub first_name: String,
+    pub last_name: String,
     pub email: String,
-    pub created_at: NaiveDateTime,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct UserRole {
-    pub user_id: i64,
-    pub role: String,
     pub created_at: NaiveDateTime,
 }
 
@@ -48,12 +41,12 @@ impl User {
         Ok(row.last_insert_rowid())
     }
 
-    pub async fn add_role(db: &Db, user_id: i64, role: &str) -> AppResult<()> {
-        sqlx::query!(r#"INSERT INTO user_roles (user_id, role) VALUES (?, ?)"#, user_id, role)
-            .execute(db)
-            .await?;
-        Ok(())
-    }
+    // pub async fn add_role(db: &Db, user_id: i64, role: &str) -> AppResult<()> {
+    //     sqlx::query!(r#"INSERT INTO user_roles (user_id, role) VALUES (?, ?)"#, user_id, role)
+    //         .execute(db)
+    //         .await?;
+    //     Ok(())
+    // }
 
     /// Lookup a user by email address, if one exists.
     pub async fn lookup_by_email(db: &Db, email: &str) -> AppResult<Option<User>> {

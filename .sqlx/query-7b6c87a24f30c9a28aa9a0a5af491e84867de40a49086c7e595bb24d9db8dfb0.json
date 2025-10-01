@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT spot_id FROM event_spots WHERE event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "spot_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7b6c87a24f30c9a28aa9a0a5af491e84867de40a49086c7e595bb24d9db8dfb0"
+}

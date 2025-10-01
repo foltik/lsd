@@ -2,8 +2,8 @@ use lettre::message::{Mailbox, MessageBuilder};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
-use crate::prelude::*;
 use crate::EmailConfig;
+use crate::prelude::*;
 
 /// Email client.
 #[derive(Clone)]
@@ -44,7 +44,7 @@ impl Emailer {
         &self,
         state: SharedAppState,
         messages: Vec<Message>,
-    ) -> impl Stream<Item = AppResult<Progress>> {
+    ) -> impl Stream<Item = AppResult<Progress>> + use<> {
         async_stream::stream! {
             let mut progress = Progress { sent: 0, remaining: messages.len() as u32 };
 

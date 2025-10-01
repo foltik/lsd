@@ -6,7 +6,7 @@ session_expiry_days = 365
 
 [db]
 file = "db.sqlite"
-seed_data = "config/seed_data.toml"
+seed_data = "config/seed_data.sql"
 
 [net]
 http_addr = "[::]:8080"
@@ -15,3 +15,8 @@ https_addr = "[::]:4433"
 [email]
 smtp_addr = "smtp://localhost:1025"
 from = "Light and Sound Design <studio@beta.lightandsound.design>"
+
+[stripe]
+publishable_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+secret_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+webhook_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"

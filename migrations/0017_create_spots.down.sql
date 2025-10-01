@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS event_spots;
+DROP TABLE IF EXISTS spots;

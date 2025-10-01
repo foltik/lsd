@@ -44,10 +44,10 @@ async fn email_unsubscribe_form(
     State(state): State<SharedAppState>,
 ) -> AppResult<Response> {
     // TODO: Better error handling rather than silently eating
-    if let Some(email) = Email::lookup(&state.db, email_id).await? {
-        if let Some(list_id) = email.list_id {
-            List::remove_member(&state.db, list_id, &email.address).await?;
-        }
+    if let Some(email) = Email::lookup(&state.db, email_id).await?
+        && let Some(list_id) = email.list_id
+    {
+        List::remove_member(&state.db, list_id, &email.address).await?;
     }
     Ok("You have been unsubscribed.".into_response())
 }

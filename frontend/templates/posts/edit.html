@@ -6,7 +6,7 @@
     <form
       class="editor ext/form"
       method="POST"
-      action="/posts/{{ post.url }}/edit"
+      action="/posts/{{ post.slug }}/edit"
     >
       <div class="navbar">
         <a href="/posts">&larr; All Posts</a>
@@ -14,11 +14,11 @@
           <span id="status">No changes</span>
           <button type="button" onclick="savePost()">Save</button>
         </div>
-        <a class="ext/button :green" href="/posts/{{ post.url }}/send">Send</a>
+        <a class="ext/button :green" href="/posts/{{ post.slug }}/send">Send</a>
         <button
           _="on click
              if (confirm('Are you sure you want to delete this post?'))
-             then fetch '/posts/{{ post.url }}/delete' with method:'POST'
+             then fetch '/posts/{{ post.slug }}/delete' with method:'POST'
              then go to url '/posts'
            "
           type="button"
@@ -47,8 +47,8 @@
           />
         </div>
         <div class="field">
-          <label for="url">Slug</label>
-          <input type="text" id="url" name="url" value="{{ post.url }}" />
+          <label for="slug">Slug</label>
+          <input type="text" id="slug" name="slug" value="{{ post.slug }}" />
         </div>
         <div class="field">
           <label for="author">Author</label>
@@ -154,7 +154,7 @@
       // Save post via AJAX
       window.savePost = async () => {
         // Check for missing fields
-        for (const field of ["title", "url", "author"]) {
+        for (const field of ["title", "slug", "author"]) {
           if (!document.getElementById(field).value) {
             alert(`Missing ${field}.`);
             return;
@@ -177,19 +177,19 @@
           if (response.ok) {
             setSaved();
 
-            // If URL changed, update the URL without reloading the page
-            const newUrl = document.getElementById("url").value;
-            const currentUrl = window.location.pathname.split("/")[2];
-            if (newUrl !== currentUrl) {
-              history.pushState({}, "", `/posts/${newUrl}/edit`);
-              formEl.action = `/posts/${newUrl}/edit`;
+            // If slug changed, update the URL without reloading the page
+            const newSlug = document.getElementById("slug").value;
+            const currentSlug = window.location.pathname.split("/")[2];
+            if (newSlug !== currentSlug) {
+              history.pushState({}, "", `/posts/${newSlug}/edit`);
+              formEl.action = `/posts/${newSlug}/edit`;
             }
 
             if (postKey == "posts/0") {
               // Clear local changes on the "new post" page
               localStorage.removeItem(postKey);
               // Reload the page to pick up the new id
-              window.location.href = `/posts/${newUrl}/edit`;
+              window.location.href = `/posts/${newSlug}/edit`;
             }
           } else {
             setError();

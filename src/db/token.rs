@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use rand::rngs::OsRng;
 use rand::Rng;
+use rand::rngs::OsRng;
 
 use super::Db;
 use crate::utils::error::AppResult;
@@ -26,7 +26,7 @@ pub struct LoginToken {
 impl SessionToken {
     /// Create a new session token for a user.
     pub async fn create(db: &Db, user_id: i64) -> AppResult<String> {
-        let token = format!("{:08x}", OsRng.gen::<u64>());
+        let token = format!("{:08x}", OsRng.r#gen::<u64>());
 
         sqlx::query!("INSERT INTO session_tokens (user_id, token) VALUES (?, ?)", user_id, token)
             .execute(db)
@@ -39,7 +39,7 @@ impl SessionToken {
 impl LoginToken {
     /// Create a new login token for an email address.
     pub async fn create(db: &Db, email: &str) -> AppResult<String> {
-        let token = format!("{:08x}", OsRng.gen::<u64>());
+        let token = format!("{:08x}", OsRng.r#gen::<u64>());
 
         sqlx::query!("INSERT INTO login_tokens (email, token) VALUES (?, ?)", email, token)
             .execute(db)
