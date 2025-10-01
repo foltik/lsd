@@ -1,9 +1,33 @@
 #events\/list {
-  @apply mx-auto mt-8 flex max-w-4xl flex-col;
-  .title {
-    @apply mb-4 text-2xl;
+  @apply mx-auto mt-8 flex max-w-4xl flex-col px-6;
+
+  header {
+    @apply mb-8 flex items-end justify-between px-0 pb-4;
+    @apply border-lsd-white/20 border-b;
+    .title {
+      @apply text-2xl font-bold;
+    }
   }
-  .event a {
-    @apply hover:underline;
+
+  .event {
+    @apply mb-6 flex items-start justify-between;
+
+    .title {
+      @apply mb-1 text-2xl font-bold;
+      a {
+        @apply decoration-lsd-blue hover:text-lsd-blue underline;
+      }
+    }
+
+    .actions {
+      @apply flex;
+      a,
+      form {
+        @apply mr-2;
+      }
+      form {
+        @apply p-0;
+      }
+    }
   }
 }

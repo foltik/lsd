@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - Confirmation{% endblock title %}
+
+{% block content %}
+  <section id="events/rsvp/confirmation">
+    <h1>Thank you!</h1>
+    <p class="intro">
+      Your RSVP and contribution have been received. A confirmation email will
+      be sent to each listed attendee shortly.
+    </p>
+
+    <div class="summary">
+      <h2>Summary</h2>
+      <ul class="line-items">
+        {% for rsvp in rsvps %}
+          <li class="item">
+            <div class="contact">
+              <div class="title">{{ rsvp.spot_name }}</div>
+              <span class="attendee"
+                >{{ rsvp.first_name }} {{ rsvp.last_name }} •
+                {{ rsvp.email }}</span
+              >
+            </div>
+            <span class="price">${{ rsvp.contribution }}</span>
+          </li>
+        {% endfor %}
+        <li class="total">
+          <span class="left">Total</span>
+          <span id="total" class="right">$0</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const rsvps = JSON.parse(`{{ rsvps | json | safe }}`);
+    const total = rsvps.reduce((sum, r) => sum + r.contribution, 0);
+    document.getElementById("total").textContent = `$${total}`;
+  </script>
+{% endblock scripts %}

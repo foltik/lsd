@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM events WHERE slug = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "start",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "end",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "unlisted",
+        "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "71a23021623175a1fc41826a3fa6864f0ce11920d5926a5c87b16e94dbc3c116"
+}

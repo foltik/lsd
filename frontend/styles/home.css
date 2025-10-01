@@ -1,0 +1,100 @@
+@keyframes wave {
+  0%,
+  100% {
+    transform: translateY(4px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+#home {
+  @apply p-6 md:p-16;
+
+  .events {
+    @apply flex flex-col;
+
+    @media (min-width: 768px) {
+      .event {
+        @apply grid;
+        grid-template-columns: 14ch 1px 1fr;
+        &:hover {
+          @apply text-lsd-gray;
+          .divider {
+            @apply bg-lsd-gray;
+          }
+        }
+
+        .date {
+          @apply pb-2 font-mono text-base whitespace-nowrap tabular-nums;
+          grid-column: 1;
+        }
+        .divider {
+          grid-column: 2;
+          @apply bg-lsd-white h-full w-px;
+        }
+        .title {
+          @apply pb-2 pl-5 text-xl leading-snug;
+          grid-column: 3;
+        }
+      }
+    }
+    @media (max-width: 767px) {
+      .event {
+        @apply mb-6 flex flex-col;
+        .date {
+          @apply font-light;
+        }
+        .title {
+          @apply font-bold;
+        }
+      }
+    }
+  }
+
+  .links {
+    @apply mb-6 flex items-center text-xs font-extrabold tracking-wider sm:text-xl md:text-2xl;
+
+    .divider {
+      @apply border-lsd-white ml-6 h-4 w-6 border-l md:h-6;
+    }
+
+    .newsletter {
+      span {
+        @apply inline-block;
+        transform: translateY(4px);
+        animation: wave 2s ease-in-out infinite;
+      }
+      span:nth-child(1) {
+        animation-delay: 0s;
+      }
+      span:nth-child(2) {
+        animation-delay: 0.1s;
+      }
+      span:nth-child(3) {
+        animation-delay: 0.2s;
+      }
+      span:nth-child(4) {
+        animation-delay: 0.3s;
+      }
+      span:nth-child(5) {
+        animation-delay: 0.5s;
+      }
+      span:nth-child(6) {
+        animation-delay: 0.6s;
+      }
+      span:nth-child(7) {
+        animation-delay: 0.7s;
+      }
+      span:nth-child(8) {
+        animation-delay: 0.8s;
+      }
+      span:nth-child(9) {
+        animation-delay: 0.9s;
+      }
+      span:nth-child(10) {
+        animation-delay: 1s;
+      }
+    }
+  }
+}

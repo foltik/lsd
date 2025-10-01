@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM rsvps WHERE session_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "spot_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "session_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "status",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "checkin_at",
+        "ordinal": 12,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "441734a07f6d3d4ed7ce1c457b140af236a8da12357e59f1ba235a4ed0464726"
+}

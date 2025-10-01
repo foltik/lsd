@@ -1,15 +1,17 @@
-mod prelude;
+// No idea why this fires...
+#![allow(redundant_semicolons)]
 
 mod app;
 mod db;
+mod prelude;
 mod utils;
 
 use axum::handler::HandlerWithoutStateExt;
 use axum::response::Redirect;
 use axum_server::tls_rustls::RustlsConfig;
 use futures::StreamExt;
-use tracing::level_filters::LevelFilter;
 use tracing::Level;
+use tracing::level_filters::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use utils::config::*;

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvps\n               SET status = ?,\n                   first_name = ?,\n                   last_name = ?,\n                   email = ?,\n                   user_id = ?,\n                   checkin_at = ?,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "24e890e7428836c80f9c7b27b7b95357e4eb97f35b66c6cb45702218eb3382b7"
+}

@@ -1,8 +1,8 @@
 use axum::http::Request;
 use tower::ServiceBuilder;
+use tower_http::ServiceBuilderExt as _;
 use tower_http::request_id::{MakeRequestId, RequestId};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
-use tower_http::ServiceBuilderExt as _;
 use uuid::Uuid;
 
 use crate::prelude::*;

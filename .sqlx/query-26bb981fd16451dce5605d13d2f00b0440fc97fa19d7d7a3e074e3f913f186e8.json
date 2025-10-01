@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvp_sessions\n             SET status = ?,\n                 stripe_payment_intent_id = ?\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "26bb981fd16451dce5605d13d2f00b0440fc97fa19d7d7a3e074e3f913f186e8"
+}
