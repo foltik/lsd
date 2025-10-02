@@ -1,3 +1,6 @@
+use image::DynamicImage;
+
+use crate::db::event_flyer::EventFlyer;
 use crate::db::rsvp::Rsvp;
 use crate::db::spot::Spot;
 use crate::prelude::*;
@@ -78,8 +81,8 @@ impl Event {
     }
 
     // Create a new event.
-    pub async fn create(db: &Db, event: &UpdateEvent) -> AppResult<i64> {
-        let row = sqlx::query!(
+    pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> AppResult<i64> {
+        let event_id = sqlx::query!(
             r#"INSERT INTO events
                (title, slug, description, start, end, capacity, unlisted)
                VALUES (?, ?, ?, ?, ?, ?, ?)"#,
@@ -92,12 +95,23 @@ impl Event {
             event.unlisted,
         )
         .execute(db)
-        .await?;
-        Ok(row.last_insert_rowid())
+        .await?
+        .last_insert_rowid();
+
+        if let Some(image) = flyer {
+            EventFlyer::create_or_update(db, event_id, image).await?;
+        }
+
+        Ok(event_id)
     }
 
     // Update an event.
-    pub async fn update(db: &Db, id: i64, event: &UpdateEvent) -> AppResult<()> {
+    pub async fn update(
+        db: &Db,
+        id: i64,
+        event: &UpdateEvent,
+        flyer: &Option<DynamicImage>,
+    ) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE events
                 SET title = ?,
@@ -119,6 +133,11 @@ impl Event {
         )
         .execute(db)
         .await?;
+
+        if let Some(image) = flyer {
+            EventFlyer::create_or_update(db, id, image).await?;
+        }
+
         Ok(())
     }
 

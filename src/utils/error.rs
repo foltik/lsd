@@ -7,6 +7,8 @@ pub type AppResult<T> = Result<T, AppError>;
 pub enum AppError {
     #[error("bad request")]
     BadRequest,
+    #[error(transparent)]
+    BadMultipart(#[from] axum::extract::multipart::MultipartError),
     #[error("not authorized")]
     Unauthorized,
     #[error("not found")]
@@ -41,6 +43,7 @@ impl IntoResponse for AppError {
 
         let (status, message) = match self {
             AppError::BadRequest => error_400(),
+            AppError::BadMultipart(_) => error_400(),
             AppError::Unauthorized => error_401(),
             AppError::NotFound => error_404(),
             AppError::Database(_) => error_500(),

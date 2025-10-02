@@ -27,9 +27,9 @@
       {% for event in events %}
         <li>
           <a class="event" href="/e/{{ event.slug }}">
-            <span class="date"
-              >{{ event.start | format_datetime("%a %m.%d.%Y") }}</span
-            >
+            <span class="date" aria-label="date" datetime="{{ event.start }}">
+              {{ event.start | format_datetime("%a %m.%d.%Y") }}
+            </span>
             <span class="divider" aria-hidden="true"></span>
             <span class="title">{{ event.title }}</span>
           </a>
