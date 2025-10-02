@@ -1,5 +1,29 @@
 #events\/edit {
-  @apply mx-auto flex w-full max-w-3xl flex-col;
+  @apply mx-auto flex max-w-3xl flex-col py-8;
+
+  .flyer {
+    .wrapper {
+      @apply relative;
+      #flyer {
+        @apply absolute h-full w-full cursor-pointer opacity-0;
+      }
+      .display {
+        @apply bg-lsd-black border-lsd-white/30 flex w-full items-center justify-between rounded-md border px-3 py-2;
+      }
+      #flyer-text {
+        @apply text-lsd-white/70;
+      }
+      #flyer-filename {
+        @apply text-lsd-white;
+      }
+      .ext\/button {
+        @apply px-2 py-0.5;
+      }
+    }
+    #flyer-preview {
+      @apply mx-auto mt-8 max-h-144 max-w-xs;
+    }
+  }
 
   #spots {
     @apply mb-12 flex flex-col gap-10;
