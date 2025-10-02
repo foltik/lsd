@@ -1,31 +1,20 @@
 #events\/view {
-  @apply flex flex-col items-center px-6;
+  @apply mx-auto flex max-w-2xl flex-col items-center px-12 py-8;
 
-  > article {
-    @apply mt-6 lg:mt-12;
+  picture {
+    @apply mx-4 mb-12;
+  }
+
+  .title {
+    @apply mb-2 text-4xl font-extrabold;
   }
 
   .details {
-    @apply border-lsd-white/20 mb-6 border-b pb-6;
-
-    .title {
-      @apply mb-1 text-4xl;
-      font-weight: 1000;
-    }
+    @apply text-lsd-gray border-lsd-white/20 mb-4 flex w-full justify-between border-b pb-1 text-2xl;
   }
 
-  article {
-    @apply w-full max-w-2xl;
-
-    .content {
-      @apply text-lg leading-relaxed;
-      p a {
-        @apply decoration-lsd-blue hover:text-lsd-blue underline;
-      }
-      p img {
-        @apply mx-auto max-w-xl;
-      }
-    }
+  .description {
+    @apply text-lg leading-relaxed;
   }
 
   .rsvp {

@@ -9,6 +9,7 @@
       class="ext/form"
       action="/events/{{ event.id }}/update"
       method="post"
+      enctype="multipart/form-data"
     >
       <div class="field">
         <label for="title">Title</label>
@@ -24,6 +25,26 @@
           value="{{ event.slug }}"
           required
         />
+      </div>
+
+      <div class="field flyer">
+        <label for="flyer">Flyer</label>
+        <div class="wrapper">
+          <input
+            id="flyer"
+            type="file"
+            name="flyer"
+            accept="image/png,image/jpeg"
+          />
+          <div class="display">
+            <div>
+              <span id="flyer-text">No flyer chosen</span>
+              <span id="flyer-filename"></span>
+            </div>
+            <span class="ext/button">Choose File</span>
+          </div>
+        </div>
+        <img id="flyer-preview" class="hidden" />
       </div>
 
       <div class="field">
@@ -99,6 +120,12 @@
       list: $("spots"),
       add: $("add"),
       spots: () => [...ui.list.querySelectorAll(".spot")],
+      flyer: {
+        input: $("flyer"),
+        text: $("flyer-text"),
+        filename: $("flyer-filename"),
+        preview: $("flyer-preview"),
+      },
     };
     const KINDS = {
       free: "Free",
@@ -191,6 +218,35 @@
       if (e.target.name == "kind") render();
     });
 
+    /* ---------- Flyer preview handler ------------------------------------------ */
+    const hasExistingFlyer = JSON.parse(`{{ has_flyer | json | safe }}`);
+    const updateFlyerPreview = () => {
+      const flyer = ui.flyer.input.files[0];
+
+      if (flyer) {
+        ui.flyer.text.textContent = "Flyer to upload: ";
+        ui.flyer.filename.textContent = flyer.name;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          ui.flyer.preview.src = e.target.result;
+          ui.flyer.preview.classList.remove("hidden");
+        };
+        reader.readAsDataURL(flyer);
+      } else if (hasExistingFlyer) {
+        ui.flyer.text.textContent = "Flyer unchanged";
+        ui.flyer.filename.textContent = "";
+        ui.flyer.preview.src = `/e/{{ event.slug }}/flyer?size=md`;
+        ui.flyer.preview.classList.remove("hidden");
+      } else {
+        ui.flyer.text.textContent = "No flyer chosen";
+        ui.flyer.filename.textContent = "";
+        ui.flyer.preview.classList.add("hidden");
+      }
+    };
+    ui.flyer.input.addEventListener("change", () => updateFlyerPreview());
+    updateFlyerPreview();
+
     /* ---------- Form submit handler ------------------------------------------- */
     ui.form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -278,10 +334,17 @@
 
       const slug = value("slug");
       try {
+        const formData = new FormData();
+        formData.append("data", JSON.stringify(body));
+
+        const flyer = ui.flyer.input.files[0];
+        if (flyer) {
+          formData.append("flyer", flyer);
+        }
+
         const resp = await fetch(`/events/${slug}/edit`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: formData,
         });
 
         if (resp.ok) {

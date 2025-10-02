@@ -3,17 +3,42 @@
 {% block title %}{{ event.title }}{% endblock title %}
 
 {% block content %}
-  <div id="events/view">
-    <article>
-      <section class="details">
-        <h1 class="title">{{ event.title }}</h1>
-      </section>
-      <section class="content">
-        <section class="content">{{ event.description | safe }}</section>
-      </section>
-    </article>
+  <section id="events/view">
+    {% if has_flyer %}
+      <picture>
+        <source
+          media="(max-width: 400px)"
+          srcset="/e/{{ event.slug }}/flyer?size=sm"
+        />
+        <source
+          media="(max-width: 768px)"
+          srcset="/e/{{ event.slug }}/flyer?size=md"
+        />
+        <source
+          media="(max-width: 1200px)"
+          srcset="/e/{{ event.slug }}/flyer?size=lg"
+        />
+        <img src="/e/{{ event.slug }}/flyer" alt="event flyer" />
+      </picture>
+    {% endif %}
+    <h1 class="title">{{ event.title }}</h1>
+    <div class="details">
+      <time aria-label="date" datetime="{{ event.start }}"
+        >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
+      >
+      <div>
+        <time aria-label="start" datetime="{{ event.start }}"
+          >{{ event.start | format_datetime("%-I:%M%p") }}</time
+        >
+        -
+        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}"
+          >{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}???{% endif %}</time
+        >
+      </div>
+    </div>
+    <p class="description">{{ event.description | safe }}</p>
     <form method="POST" action="/e/{{ event.slug }}/rsvp">
-      <button type="submit" class="ext/button rsvp">RSVP</button>
+      <button type="submit" class="rsvp ext/button">RSVP</button>
     </form>
-  </div>
+  </section>
 {% endblock content %}
