@@ -6,11 +6,11 @@
   }
 
   .title {
-    @apply mb-2 text-4xl font-extrabold;
+    @apply mb-6 text-4xl font-extrabold;
   }
 
   .details {
-    @apply text-lsd-gray border-lsd-white/20 mb-4 flex w-full justify-between border-b pb-1 text-2xl;
+    @apply text-lsd-gray border-lsd-white/20 mb-4 flex w-full justify-between border-b pb-1 text-xl md:text-2xl;
   }
 
   .description {
