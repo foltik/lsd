@@ -1,4 +1,7 @@
+use image::DynamicImage;
+
 use crate::db::event::*;
+use crate::db::event_flyer::*;
 use crate::db::spot::*;
 use crate::prelude::*;
 
@@ -8,6 +11,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
+                .route("/e/{slug}/flyer", get(read::flyer))
                 .route("/e/{slug}/rsvp", post(rsvp::rsvp_form))
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
@@ -35,10 +39,11 @@ mod read {
         #[template(path = "events/view.html")]
         struct Html {
             event: Event,
+            has_flyer: bool,
         }
-        Ok(Html {
-            event: Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?,
-        })
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
+        Ok(Html { event, has_flyer })
     }
 
     // List all events.
@@ -51,6 +56,29 @@ mod read {
     pub async fn list_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
         Ok(ListHtml { events: Event::list(&state.db).await? })
     }
+
+    /// Serve an event flyer.
+    pub async fn flyer(
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Query(params): Query<std::collections::HashMap<String, String>>,
+    ) -> AppResult<impl IntoResponse> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+
+        let size = match params.get("size").map(|s| s.as_str()) {
+            Some("sm") => EventFlyerSize::Small,
+            Some("md") => EventFlyerSize::Medium,
+            Some("lg") => EventFlyerSize::Large,
+            Some(_) => return Err(AppError::BadRequest),
+            None => EventFlyerSize::Full,
+        };
+
+        let bytes = EventFlyer::lookup_for_event(&state.db, event.id, size)
+            .await?
+            .ok_or(AppError::NotFound)?;
+
+        Ok(([(header::CONTENT_TYPE, EventFlyer::CONTENT_TYPE)], bytes))
+    }
 }
 
 // Create and edit events.
@@ -62,6 +90,7 @@ mod edit {
     pub struct EditHtml {
         pub event: Event,
         pub spots: Vec<Spot>,
+        pub has_flyer: bool,
     }
 
     /// Display the form to create a new event.
@@ -83,6 +112,7 @@ mod edit {
                 updated_at: Utc::now().naive_utc(),
             },
             spots: vec![],
+            has_flyer: false,
         })
     }
 
@@ -93,7 +123,8 @@ mod edit {
     ) -> AppResult<impl IntoResponse> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
-        Ok(EditHtml { event, spots })
+        let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
+        Ok(EditHtml { event, spots, has_flyer })
     }
 
     // Handle edit submission.
@@ -106,11 +137,31 @@ mod edit {
     }
     pub async fn edit_form(
         State(state): State<SharedAppState>,
-        Json(form): Json<EditForm>,
+        mut multipart: axum::extract::Multipart,
     ) -> AppResult<impl IntoResponse> {
+        let mut form: Option<EditForm> = None;
+        let mut flyer: Option<DynamicImage> = None;
+
+        while let Some(field) = multipart.next_field().await? {
+            match field.name().unwrap_or("") {
+                "data" => {
+                    let text = field.text().await?;
+                    form = Some(serde_json::from_str(&text).map_err(|_| AppError::BadRequest)?);
+                }
+                "flyer" => {
+                    let data = field.bytes().await?;
+                    let img = crate::utils::image::decode(&data).await?;
+                    flyer = Some(img);
+                }
+                _ => {}
+            }
+        }
+
+        let form = form.ok_or(AppError::BadRequest)?;
+
         match form.id {
             Some(id) => {
-                Event::update(&state.db, id, &form.event).await?;
+                Event::update(&state.db, id, &form.event, &flyer).await?;
 
                 let mut to_add = vec![];
                 let mut to_delete = Spot::list_ids_for_event(&state.db, id).await?;
@@ -132,7 +183,7 @@ mod edit {
                 Spot::remove_from_event(&state.db, id, to_delete).await?;
             }
             None => {
-                let event_id = Event::create(&state.db, &form.event).await?;
+                let event_id = Event::create(&state.db, &form.event, &flyer).await?;
 
                 let mut spot_ids = vec![];
                 for spot in form.spots {
