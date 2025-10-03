@@ -44,4 +44,23 @@ pub mod filters {
             None => "".into(),
         })
     }
+
+    /// Livereload script enabled on debug builds.
+    /// Askama doesn't support plain global functions, so we have to take a dummy argument.
+    #[cfg(debug_assertions)]
+    pub fn livereload(_dummy: &str) -> Result<String, askama::Error> {
+        // Parse app url, split off port, switch to HTTP
+        let url = &CONFIG.get().unwrap().app.url;
+        let url = match url.rsplit_once(":") {
+            None => url,
+            Some((url, _port)) => url,
+        };
+        let url = url.replace("https", "http");
+
+        Ok(format!(r#"<script src="{url}:35729/livereload.js"></script>"#))
+    }
+    #[cfg(not(debug_assertions))]
+    pub fn livereload(_dummy: &str) -> Result<String, askama::Error> {
+        Ok("".into())
+    }
 }
