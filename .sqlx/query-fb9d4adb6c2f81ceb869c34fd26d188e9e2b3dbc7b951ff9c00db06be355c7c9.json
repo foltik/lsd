@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM events WHERE start > DATETIME(CURRENT_TIMESTAMP, '-24 hours') AND unlisted = FALSE",
+  "query": "SELECT * FROM events\n               WHERE start <= DATETIME(CURRENT_TIMESTAMP, '-24 hours')\n                 AND unlisted = FALSE\n               ORDER BY start DESC",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "275693a13e7632bbd4bbaa69168b0bd5f084f5e28e68115358684982178abfca"
+  "hash": "fb9d4adb6c2f81ceb869c34fd26d188e9e2b3dbc7b951ff9c00db06be355c7c9"
 }

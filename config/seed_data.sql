@@ -28,7 +28,9 @@ INSERT OR IGNORE INTO list_members (list_id, email) VALUES
 
 INSERT OR IGNORE INTO events (id, title, slug, description, start, end, capacity, unlisted) VALUES
     (1, 'An upcoming person will Present Sounds', 'upcoming-present-sounds', 'An upcoming person will present sounds.', '2026-07-31 23:00:00', '2026-08-01 03:00:00', 2, 0),
-    (2, 'A past person will Present Sounds', 'past-present-sounds', 'A past person will present sounds.', '2024-08-14 23:00:00', '2024-08-15 03:00:00', 2, 0);
+    (4, 'Another upcoming person will Present Sounds', 'upcoming-present-sounds-2', 'An upcoming person will present sounds.', '2026-08-31 23:00:00', '2026-09-01 03:00:00', 2, 0),
+    (3, 'A past person will Present Sounds', 'past-present-sounds', 'A past person will present sounds.', '2024-08-14 23:00:00', '2024-08-15 03:00:00', 2, 0),
+    (2, 'Another past person will Present Sounds', 'past-present-sounds-2', 'A past person will present sounds.', '2024-07-14 23:00:00', '2024-07-15 03:00:00', 2, 0);
 INSERT OR IGNORE INTO spots (id, name, description, qty_total, qty_per_person, kind, sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours) VALUES
     (1, 'Free!', 'Brand new cherry red ferrarri!', 1, 1, 'free', 0, NULL, NULL, NULL, NULL, NULL),
     (2, 'Accessibility Contribution', 'When I pay less, I know I am letting my community hold me and support me.', 2, 1, 'fixed', 1, 20, NULL, NULL, NULL, NULL),
