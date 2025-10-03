@@ -44,18 +44,16 @@ async fn contact_us_form(
 
     let mailbox = Mailbox::new(name, email);
 
-    let mut message = Message::builder()
+    let message = Message::builder()
         .from(mailbox.clone())
         .to(Mailbox::new(
             Some("Studio".to_owned()),
             "studio@lightandsound.design".parse().unwrap(),
         ))
-        .subject(form.subject);
+        .subject(form.subject)
+        .body(form.message)?;
 
-    if !form.email.is_empty() {
-        message = message.reply_to(mailbox);
-    }
-    state.mailer.send(&message.body(form.message)?).await?;
+    state.mailer.send(&message).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/message_sent.html")]
