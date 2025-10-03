@@ -5,7 +5,7 @@ edition = "2024"
 
 
 [dependencies]
-axum = { version = "0.8", default-features = false, features = ["query", "form", "json", "multipart"] }
+axum = { version = "0.8", default-features = false, features = ["http2", "query", "form", "json", "multipart"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
 askama = { version = "0.13", features = ["serde_json"] }
@@ -17,7 +17,7 @@ rustls-acme = { version = "0.12", features = ["axum"] }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
 tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "macros"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "request-id", "trace", "util"] }
+tower-http = { version = "0.6", features = ["fs", "compression-br", "request-id", "trace", "util"] }
 reqwest = { version = "0.12", default-features = false, features = ["http2", "charset", "json", "multipart", "rustls-tls"] }
 
 anyhow = "1"

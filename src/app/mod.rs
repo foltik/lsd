@@ -1,4 +1,5 @@
 use axum::extract::DefaultBodyLimit;
+use tower_http::compression::CompressionLayer;
 
 pub use crate::app::webhooks::Webhooks;
 use crate::prelude::*;
@@ -53,6 +54,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let r = auth::add_middleware(r, Arc::clone(&state));
     let r = crate::utils::tracing::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
+    let r = r.layer(CompressionLayer::new());
     let r = r.with_state(state);
 
     Ok(r)
