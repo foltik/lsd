@@ -2,7 +2,7 @@ config/*
 !config/prod.toml
 !config/dev.toml
 !config/seed_data.sql
-frontend/static/dist
+frontend/static/main.css
 
 Cargo.lock
 target/

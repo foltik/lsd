@@ -7,12 +7,22 @@ use lettre::message::Mailbox;
 
 impl Config {
     /// Load a `.toml` file from disk and parse it as a [`Config`].
+    #[allow(unused)]
     pub async fn load(file: &str) -> anyhow::Result<Config> {
         async fn load_inner(file: &str) -> anyhow::Result<Config> {
             let contents = tokio::fs::read_to_string(file).await?;
             Ok(toml::from_str(&contents)?)
         }
         load_inner(file).await.with_context(|| format!("loading config={file}"))
+    }
+
+    /// Parse a string as a [`Config`].
+    #[allow(unused)]
+    pub fn parse(contents: &str) -> anyhow::Result<Config> {
+        fn parse_inner(contents: &str) -> anyhow::Result<Config> {
+            Ok(toml::from_str(contents)?)
+        }
+        parse_inner(contents).context("loading config")
     }
 }
 
