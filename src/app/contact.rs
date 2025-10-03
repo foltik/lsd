@@ -36,11 +36,16 @@ async fn contact_us_form(
         Some(form.name)
     };
 
+    let email: lettre::Address = if form.email.is_empty() {
+        "noreply@lightandsound.design".parse().unwrap()
+    } else {
+        form.email.parse().map_err(|_| AppError::BadRequest)?
+    };
+
+    let mailbox = Mailbox::new(name, email);
+
     let mut message = Message::builder()
-        .from(Mailbox::new(
-            Some("Suggestion Box".to_owned()),
-            "noreply@lightandsound.design".parse().unwrap(),
-        ))
+        .from(mailbox.clone())
         .to(Mailbox::new(
             Some("Studio".to_owned()),
             "studio@lightandsound.design".parse().unwrap(),
@@ -48,7 +53,7 @@ async fn contact_us_form(
         .subject(form.subject);
 
     if !form.email.is_empty() {
-        message = message.reply_to(Mailbox::new(name, form.email.parse().map_err(|_| AppError::BadRequest)?));
+        message = message.reply_to(mailbox);
     }
     state.mailer.send(&message.body(form.message)?).await?;
 
