@@ -63,7 +63,10 @@ impl Event {
     pub async fn list_upcoming(db: &Db) -> AppResult<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,
-            "SELECT * FROM events WHERE start > DATETIME(CURRENT_TIMESTAMP, '-24 hours') AND unlisted = FALSE"
+            r#"SELECT * FROM events
+            WHERE start > DATETIME(CURRENT_TIMESTAMP, '-24 hours')
+              AND unlisted = FALSE
+            ORDER BY start DESC"#
         )
         .fetch_all(db)
         .await?;
@@ -73,7 +76,10 @@ impl Event {
     pub async fn list_past(db: &Db) -> AppResult<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,
-            "SELECT * FROM events WHERE start <= DATETIME(CURRENT_TIMESTAMP, '-24 hours') AND unlisted = FALSE"
+            r#"SELECT * FROM events
+               WHERE start <= DATETIME(CURRENT_TIMESTAMP, '-24 hours')
+                 AND unlisted = FALSE
+               ORDER BY start DESC"#
         )
         .fetch_all(db)
         .await?;

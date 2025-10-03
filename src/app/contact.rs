@@ -1,9 +1,7 @@
-use lettre::Message;
 use lettre::message::Mailbox;
 use serde::Deserialize;
 
 use crate::prelude::*;
-use crate::utils::emailer::Emailer;
 
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| r.route("/contact", get(contact_us_page).post(contact_us_form)))
