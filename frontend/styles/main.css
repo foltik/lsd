@@ -27,6 +27,8 @@
 @import "./posts/list.css";
 @import "./posts/send.css";
 @import "./posts/view.css";
+/* Contact */
+@import "./contact/send.css";
 
 @theme {
   --font-sans: DM Sans Variable, sans-serif;

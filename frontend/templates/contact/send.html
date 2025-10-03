@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Contact Us - light and sound
+{% endblock title %}
+
+{% block content %}
+  <div id="contact/send">
+    <form class="ext/form" method="post">
+      <input type="text" id="name" name="name" placeholder="Name (optional)" />
+      <input
+        type="email"
+        id="email"
+        name="email"
+        placeholder="Email (optional)"
+      />
+      <input
+        type="text"
+        id="subject"
+        name="subject"
+        placeholder="Subject"
+        required
+      />
+      <textarea
+        id="message"
+        name="message"
+        placeholder="Your message here..."
+        rows="12"
+        required
+      ></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+{% endblock content %}
