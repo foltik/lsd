@@ -28,36 +28,38 @@ async fn contact_us_form(
     State(state): State<SharedAppState>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
-    tracing::info!("Subitting contact form: {:?}", &form);
-
     let name = if form.name.is_empty() {
         Some("Anonymous".to_owned())
     } else {
         Some(form.name)
     };
 
-    let email: lettre::Address = if form.email.is_empty() {
+    let email = if form.email.is_empty() {
         "noreply@lightandsound.design".parse().unwrap()
     } else {
         form.email.parse().map_err(|_| AppError::BadRequest)?
     };
 
-    let mailbox = Mailbox::new(name, email);
-
     let message = Message::builder()
-        .from(mailbox.clone())
-        .to(Mailbox::new(
-            Some("Studio".to_owned()),
-            "studio@lightandsound.design".parse().unwrap(),
-        ))
+        .from(Mailbox::new(name, email))
+        .to(state.config.email.from.clone())
         .subject(form.subject)
-        .body(form.message)?;
-
-    state.mailer.send(&message).await?;
+        .body(form.message);
 
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/message_sent.html")]
-    struct MessageSentTemplate;
+    struct MessageSentTemplate {
+        leak_error: Option<String>,
+    }
 
-    Ok(MessageSentTemplate)
+    match message {
+        Ok(message) => {
+            if let Err(e) = state.mailer.send(&message).await {
+                return Ok(MessageSentTemplate { leak_error: Some(e.to_string()) });
+            }
+        }
+        Err(e) => return Ok(MessageSentTemplate { leak_error: Some(e.to_string()) }),
+    }
+
+    Ok(MessageSentTemplate { leak_error: None })
 }
