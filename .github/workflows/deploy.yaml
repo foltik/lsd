@@ -34,12 +34,24 @@ jobs:
           ssh-keyscan beta.lightandsound.design > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: deploy
-        run: scripts/deploy.sh ec2-user@beta.lightandsound.design
+      - name: Generate config
+        run: |
+          envsubst < config/prod.toml > config/prod.toml.subst
+          mv config/prod.toml.subst config/prod.toml
         env:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
           STRIPE_WEBHOOK_KEY: ${{ secrets.STRIPE_WEBHOOK_KEY }}
+
+      - name: Generate content hashes
+        run: |
+          sed -i "s/CSS_CONTENT_HASH/$(md5sum frontend/static/main.css | cut -d' ' -f1)/" frontend/templates/layout.html
+
+      - run: cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Deploy
+        run: scripts/deploy.sh ec2-user@beta.lightandsound.design
+        env:
           SQLX_OFFLINE: true
