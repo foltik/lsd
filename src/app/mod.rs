@@ -6,6 +6,7 @@ use crate::utils::emailer::Emailer;
 use crate::utils::stripe::Stripe;
 
 mod auth;
+mod contact;
 mod emails;
 mod events;
 mod home;
@@ -39,6 +40,7 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let r = lists::add_routes(r);
     let r = emails::add_routes(r);
     let r = webhooks::add_routes(r);
+    let r = contact::add_routes(r);
     let (r, state) = r.finish();
 
     // Register app-wide routes
