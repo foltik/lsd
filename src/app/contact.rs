@@ -43,7 +43,10 @@ async fn contact_us_form(
         .mailer
         .builder()
         .reply_to(Mailbox::new(name, email))
-        .to(state.config.email.from.clone())
+        .to(Mailbox::new(
+            Some("Light and Sound Design".to_owned()),
+            "studio@lightandsound.design".parse().unwrap(),
+        ))
         .subject(form.subject)
         .body(form.message)?;
 
