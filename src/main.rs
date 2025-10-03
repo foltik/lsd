@@ -37,8 +37,14 @@ async fn main() -> anyhow::Result<()> {
         .try_init()?;
 
     // Load the server config
-    let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
-    let config = Config::load(&file).await?;
+    #[cfg(debug_assertions)]
+    let config = {
+        let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
+        Config::load(&file).await?
+    };
+    #[cfg(not(debug_assertions))]
+    let config = Config::parse(include_str!("../config/prod.toml"))?;
+
     // Make it visible to our HTML templates
     utils::templates::CONFIG.set(config.clone()).unwrap();
 

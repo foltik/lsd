@@ -45,7 +45,16 @@ pub async fn build(config: Config) -> Result<axum::Router<()>> {
     let (r, state) = r.finish();
 
     // Register app-wide routes
+    #[cfg(debug_assertions)]
     let r = r.nest_service("/static", tower_http::services::ServeDir::new("frontend/static"));
+    #[rustfmt::skip]
+    #[cfg(not(debug_assertions))]
+    let r = {
+        use tower_serve_static::{ServeFile, include_file};
+        let r = r.nest_service("/static/main.css", ServeFile::new(include_file!("/frontend/static/main.css")));
+        let r = r.nest_service("/static/DM_Sans.woff2", ServeFile::new(include_file!("/frontend/static/DM_Sans.woff2")));
+        r
+    };
     // For non-HTML pages without a <link rel="icon">, this is where the browser looks
     let r = r.route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }));
     let r = r.fallback(|| async { AppError::NotFound });

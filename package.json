@@ -2,9 +2,9 @@
   "scripts": {
     "watch": "npm-run-all --parallel watch:styles reload:static",
     "reload:static": "npx livereload ./frontend/static",
-    "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --watch",
-    "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css",
-    "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/dist/main.css --minify",
+    "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/main.css --watch",
+    "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/main.css",
+    "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/main.css --minify",
     "format": "npx prettier ./frontend/templates ./frontend/styles --config frontend/prettier.config.cjs --write",
     "format:check": "npx prettier ./frontend/templates ./frontend/styles --config frontend/prettier.config.cjs --check"
   },

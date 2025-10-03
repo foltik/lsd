@@ -32,7 +32,6 @@
 
 @theme {
   --font-sans: DM Sans Variable, sans-serif;
-  --font-display: Poppins, sans-serif;
   /* CSS HEX */
   --color-lsd-black: #080504;
   --color-lsd-white: #ebe3de;
@@ -64,7 +63,7 @@ header {
   nav {
     @apply flex items-center gap-x-8;
     .lsd {
-      @apply font-display text-lsd-bright font-bold;
+      @apply text-lsd-bright text-lg font-extrabold;
     }
   }
 }
