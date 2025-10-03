@@ -1,8 +1,8 @@
 {
   "scripts": {
-    "watch": "npm-run-all --parallel watch:styles reload:static",
-    "reload:static": "npx livereload ./frontend/static",
+    "watch": "npm-run-all --parallel watch:styles watch:livereload",
     "watch:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/main.css --watch",
+    "watch:livereload": "npx livereload ./frontend/static",
     "build:styles": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/main.css",
     "build:styles.min": "npx tailwindcss -i ./frontend/styles/main.css -o ./frontend/static/main.css --minify",
     "format": "npx prettier ./frontend/templates ./frontend/styles --config frontend/prettier.config.cjs --write",

@@ -28,23 +28,20 @@ cargo install sqlx-cli --no-default-features --features sqlite
 cargo sqlx database setup
 ```
 
-To automatically recompile and rerun when you make changes, use `cargo-watch`:
-
-```sh
-cargo install cargo-watch
-cargo watch -x 'run config/dev.toml'
-```
-
-Run Tailwind CLI to compile styles via `npm`.
-You can optionally install the [livereload][https://www.npmjs.com/package/livereload] extension to reload the page on style changes.
+To auto rebuild CSS and live-reload changes to your browser, use the `watch` npm script:
 
 ```sh
 npm install
-# Watch for changes to ./frontend/styles/main.css, start livereload server
 npm run watch
-# Build styles minified
-npm run build:styles.min
 ```
+
+To auto recompile and restart the backend when you make changes, use `cargo-watch`:
+
+```sh
+cargo install cargo-watch
+cargo watch -x 'run config/dev.toml' -w src -w frontend/templates
+```
+
 
 Use [mailtutan](https://github.com/mailtutan/mailtutan) for local testing of email functionality:
 
