@@ -15,6 +15,15 @@
     @apply flex flex-col;
 
     @media (min-width: 768px) {
+      li {
+        @apply flex items-center;
+      }
+      li:last-child {
+        .title {
+          @apply pb-0;
+        }
+      }
+
       .event {
         @apply grid;
         grid-template-columns: 14ch 1px 1fr;
@@ -26,7 +35,7 @@
         }
 
         .date {
-          @apply pb-2 font-mono text-base whitespace-nowrap tabular-nums;
+          @apply pt-0.5 font-mono text-base whitespace-nowrap tabular-nums;
           grid-column: 1;
         }
         .divider {
