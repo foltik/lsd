@@ -1,0 +1,225 @@
+/* TODO(sam): use tailwind styling */
+
+:root {
+  --font-sans: DM Sans Variable, sans-serif;
+  --font-display: Poppins, sans-serif;
+  --color-lsd-black: #080504;
+  --color-lsd-white: #ebe3de;
+  --color-lsd-bright: #fcf3ee;
+  --color-lsd-blue: #8ec6ff;
+  --color-lsd-green: #6fd08c;
+  --color-lsd-red: #c34346;
+  --color-lsd-yellow: #eec643;
+}
+
+body {
+  overflow: hidden;
+  touch-action: none;
+}
+
+header {
+  position: absolute;
+  z-index: 999999999;
+  background-color: black;
+  width: 100%;
+}
+
+#board {
+  --center-x: 0px;
+  --center-y: 0px;
+  --scale: 1;
+  z-index: 0;
+  width: 200vw;
+  height: 200vh;
+  left: -50vw;
+  top: -50vh;
+  position: absolute;
+  background-image: url("/static/bulletin/corkboard.jpg");
+  background-position: calc(0px - var(--center-x)) calc(var(--center-y));
+  background-size: 800px 400px;
+  background-repeat: repeat;
+  transform: scale(var(--scale));
+}
+
+#board:active {
+  cursor: move;
+}
+
+.flyer {
+  --x: 0px;
+  --y: 0px;
+  --rotation: 0deg;
+  transform: translate3d(
+      calc(var(--x) - var(--center-x)),
+      calc(var(--center-y) - var(--y)),
+      0
+    )
+    rotate(var(--rotation));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid black;
+  padding: 5px;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  box-shadow: calc(3px * cos(45deg - var(--rotation)))
+    calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--color-lsd-white);
+}
+
+.flyer.editable {
+  cursor: grab;
+}
+
+.add-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background-color: var(--color-lsd-black);
+  font-weight: bold;
+  font-size: x-large;
+  --x: 0px;
+  --y: 0px;
+  transform: translate3d(
+    calc(var(--x) - var(--center-x)),
+    calc(var(--center-y) - var(--y)),
+    0
+  );
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  padding: 5px;
+  box-shadow: calc(3px * cos(45deg - var(--rotation)))
+    calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flyer.editable:active {
+  cursor: grabbing;
+}
+
+.flyer a {
+  text-decoration: none;
+  color: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.flyer img {
+  -webkit-user-drag: none;
+  max-width: 200px;
+  max-height: 200px;
+  user-select: none;
+  width: auto;
+  height: auto;
+}
+
+.flyer:has(> img.qr) {
+  padding: 0;
+}
+
+.rotate-dot {
+  top: -25px;
+  left: calc(50% - 6.5px);
+  height: 12px;
+  width: 12px;
+  background-color: var(--color-lsd-green);
+  position: absolute;
+  border-radius: 12px;
+  border: 1px solid var(--color-lsd-white);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rotate-link {
+  position: absolute;
+  width: 1px;
+  height: 11px;
+  background-color: var(--color-lsd-green);
+  top: -12px;
+  left: calc(50% - 1px);
+  border: 1px solid var(--color-lsd-white);
+  border-top: none;
+  border-bottom: none;
+}
+
+.edit-button {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  background: var(--color-lsd-white);
+  border-radius: 999px;
+  padding: 6px;
+  border: 1px solid #eee;
+}
+
+[popover] {
+  border: none;
+  background: none;
+}
+
+.outer-popover:has(> :popover-open) {
+  backdrop-filter: blur(3px);
+  z-index: 999999998;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.middle-popover {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.inner-popover {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  padding: 3rem;
+  align-items: center;
+  gap: 25px;
+  position: fixed;
+  width: fit-content;
+  height: fit-content;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--color-lsd-black);
+  color: var(--color-lsd-white);
+  cursor: default;
+}
+
+.flyer-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 10px;
+}
+
+footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 10px;
+}
+
+button {
+  all: unset;
+  cursor: pointer;
+}
