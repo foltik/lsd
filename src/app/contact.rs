@@ -7,12 +7,14 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| r.route("/contact", get(contact_us_page).post(contact_us_form)))
 }
 
-async fn contact_us_page() -> AppResult<impl IntoResponse> {
+async fn contact_us_page(user: Option<User>) -> AppResult<impl IntoResponse> {
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/send.html")]
-    struct ContactUsTemplate;
+    struct ContactUsTemplate {
+        user: Option<User>,
+    };
 
-    Ok(ContactUsTemplate)
+    Ok(ContactUsTemplate { user })
 }
 
 #[derive(Deserialize, Debug)]
@@ -24,6 +26,7 @@ struct ContactForm {
 }
 
 async fn contact_us_form(
+    user: Option<User>,
     State(state): State<SharedAppState>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
@@ -54,7 +57,9 @@ async fn contact_us_form(
 
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/message_sent.html")]
-    struct MessageSentTemplate;
+    struct MessageSentTemplate {
+        user: Option<User>,
+    };
 
-    Ok(MessageSentTemplate)
+    Ok(MessageSentTemplate { user })
 }

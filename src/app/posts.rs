@@ -24,19 +24,21 @@ mod read {
     use super::*;
 
     // Display a list of posts.
-    pub async fn list_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    pub async fn list_page(user: User, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
         let posts = Post::list(&state.db).await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/list.html")]
         struct Html {
-            pub posts: Vec<Post>,
+            user: Option<User>,
+            posts: Vec<Post>,
         }
-        Ok(Html { posts })
+        Ok(Html { user: Some(user), posts })
     }
 
     // Display a single post.
     pub async fn view_page(
+        user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
@@ -47,9 +49,10 @@ mod read {
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/view.html")]
         struct Html {
-            pub post: Post,
+            user: Option<User>,
+            post: Post,
         }
-        Ok(Html { post })
+        Ok(Html { user, post })
     }
 
     // Display a preview of a post as it would appear in an email.
@@ -64,10 +67,10 @@ mod read {
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/email.html")]
         struct EmailHtml {
-            pub post: Post,
-            pub post_url: String,
-            pub opened_url: String,
-            pub unsub_url: String,
+            post: Post,
+            post_url: String,
+            opened_url: String,
+            unsub_url: String,
         }
         Ok(EmailHtml {
             post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
@@ -84,13 +87,15 @@ mod edit {
 
     #[derive(Template, WebTemplate)]
     #[template(path = "posts/edit.html")]
-    pub struct EditHtml {
-        pub post: Post,
+    struct EditHtml {
+        user: Option<User>,
+        post: Post,
     }
 
     // New post page.
-    pub async fn new_page() -> AppResult<impl IntoResponse> {
+    pub async fn new_page(user: User) -> AppResult<impl IntoResponse> {
         Ok(EditHtml {
+            user: Some(user),
             post: Post {
                 id: 0,
                 title: "".into(),
@@ -105,13 +110,14 @@ mod edit {
 
     // Edit post page.
     pub async fn edit_page(
+        user: User,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
-        Ok(EditHtml { post })
+        Ok(EditHtml { user: Some(user), post })
     }
 
     // Edit post form.
@@ -156,6 +162,7 @@ mod send {
 
     /// Display the form to send a post.
     pub async fn page(
+        user: User,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
@@ -190,22 +197,23 @@ mod send {
 
         #[derive(Template, WebTemplate)]
         #[template(path = "posts/send.html")]
-        pub struct Html {
-            pub post: Post,
-            pub lists: Vec<ListExt>,
-            pub ratelimit: usize,
+        struct Html {
+            user: Option<User>,
+            post: Post,
+            lists: Vec<ListExt>,
+            ratelimit: usize,
         }
         let ratelimit = state.config.email.ratelimit;
-        Ok(Html { post, lists, ratelimit })
+        Ok(Html { user: Some(user), post, lists, ratelimit })
     }
 
     #[derive(Template, WebTemplate)]
     #[template(path = "posts/email.html")]
-    pub struct EmailHtml {
-        pub post: Post,
-        pub post_url: String,
-        pub opened_url: String,
-        pub unsub_url: String,
+    struct EmailHtml {
+        post: Post,
+        post_url: String,
+        opened_url: String,
+        unsub_url: String,
     }
 
     // Process the form and create or edit a post.
