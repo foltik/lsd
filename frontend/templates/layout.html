@@ -13,7 +13,9 @@
       <nav>
         <a class="lsd" href="/">lightandsound.design</a>
       </nav>
-      <div class="flex items-center gap-x-2 text-xl">
+      <div class="links">
+        {% if let Some(user) = user %}
+        {% endif %}
         <a href="/contact">?</a>
         <a
           class="icon"

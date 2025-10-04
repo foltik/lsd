@@ -59,10 +59,11 @@ impl IntoResponse for AppError {
         // * when disabled, respond with a generic error message that doesn't leak any details
         #[derive(Template, WebTemplate)]
         #[template(path = "error.html")]
-        pub struct Html {
-            pub message: String,
+        struct Html {
+            user: Option<User>,
+            message: String,
         }
-        let html = Html { message: message.to_string() };
+        let html = Html { user: None, message: message.to_string() };
 
         (status, html).into_response()
     }

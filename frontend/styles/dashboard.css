@@ -1,0 +1,3 @@
+#dashboard {
+  @apply mx-auto flex max-w-2xl flex-col px-12 py-8;
+}
