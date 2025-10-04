@@ -1,7 +1,7 @@
 #contact\/send {
-  @apply mx-auto flex max-w-2xl flex-col px-12 py-12;
+  @apply mx-auto flex max-w-2xl flex-col justify-center px-12 py-4;
 
   h1 {
-    @apply border-lsd-white/20 mb-6 border-b pb-3 text-4xl;
+    @apply border-lsd-white/20 mb-4 border-b pb-3 text-3xl;
   }
 }
