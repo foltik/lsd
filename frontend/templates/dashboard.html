@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound{% endblock title %}
+
+{% block content %}
+  <section id="dashboard">
+    {% let path = "/dash" %}
+    {% include "dashboard_nav.html" %}
+  </section>
+{% endblock content %}

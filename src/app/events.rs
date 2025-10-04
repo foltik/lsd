@@ -32,29 +32,35 @@ mod read {
 
     /// View an event.
     pub async fn view_page(
+        user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/view.html")]
         struct Html {
+            pub user: Option<User>,
             event: Event,
             has_flyer: bool,
         }
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
         let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
-        Ok(Html { event, has_flyer })
+        Ok(Html { user, event, has_flyer })
     }
 
     // List all events.
     #[derive(Template, WebTemplate)]
     #[template(path = "events/list.html")]
-    pub struct ListHtml {
-        pub events: Vec<Event>,
+    struct ListHtml {
+        user: Option<User>,
+        events: Vec<Event>,
     }
 
-    pub async fn list_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-        Ok(ListHtml { events: Event::list(&state.db).await? })
+    pub async fn list_page(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+    ) -> AppResult<impl IntoResponse> {
+        Ok(ListHtml { user, events: Event::list(&state.db).await? })
     }
 
     /// Serve an event flyer.
@@ -87,15 +93,17 @@ mod edit {
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/edit.html")]
-    pub struct EditHtml {
-        pub event: Event,
-        pub spots: Vec<Spot>,
-        pub has_flyer: bool,
+    struct EditHtml {
+        user: Option<User>,
+        event: Event,
+        spots: Vec<Spot>,
+        has_flyer: bool,
     }
 
     /// Display the form to create a new event.
-    pub async fn new_page() -> AppResult<impl IntoResponse> {
+    pub async fn new_page(user: User) -> AppResult<impl IntoResponse> {
         Ok(EditHtml {
+            user: Some(user),
             event: Event {
                 id: 0,
                 title: "".into(),
@@ -118,13 +126,14 @@ mod edit {
 
     /// Display the form to edit an event.
     pub async fn edit_page(
+        user: User,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
-        Ok(EditHtml { event, spots, has_flyer })
+        Ok(EditHtml { user: Some(user), event, spots, has_flyer })
     }
 
     // Handle edit submission.
@@ -232,6 +241,7 @@ mod rsvp {
 
     // Display the "Choose a contribution" page
     pub async fn selection_page(
+        user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
         Query(query): Query<SessionQuery>,
@@ -262,13 +272,14 @@ mod rsvp {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_selection.html")]
         struct SelectionHtml {
+            user: Option<User>,
             slug: String,
             spots: Vec<Spot>,
             spot_qtys: HashMap<i64, usize>,
             spot_contributions: HashMap<i64, i64>,
             stats: EventStats,
         }
-        Ok(SelectionHtml { slug, spots, spot_qtys, spot_contributions, stats }.into_response())
+        Ok(SelectionHtml { user, slug, spots, spot_qtys, spot_contributions, stats }.into_response())
     }
 
     // Handle submission of the "Choose a contribution" form
@@ -482,6 +493,7 @@ mod rsvp {
 
     // Display the "Make your contribution" page after submitting attendees
     pub async fn contribution_page(
+        user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
         Query(query): Query<SessionQuery>,
@@ -525,11 +537,13 @@ mod rsvp {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_contribution.html")]
         struct ContributionHtml {
+            user: Option<User>,
             rsvps: Vec<ContributionRsvp>,
             stripe_publishable_key: String,
             stripe_client_secret: String,
         }
         Ok(ContributionHtml {
+            user,
             rsvps,
             stripe_client_secret,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
@@ -538,6 +552,7 @@ mod rsvp {
     }
 
     pub async fn confirmation_page(
+        user: Option<User>,
         State(state): State<SharedAppState>,
         Query(query): Query<SessionQuery>,
     ) -> AppResult<impl IntoResponse> {
@@ -573,9 +588,10 @@ mod rsvp {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_confirmation.html")]
         struct ConfirmationHtml {
+            user: Option<User>,
             rsvps: Vec<ConfirmationRsvp>,
         }
-        Ok(ConfirmationHtml { rsvps }.into_response())
+        Ok(ConfirmationHtml { user, rsvps }.into_response())
     }
 
     pub struct ParsedSelection {
