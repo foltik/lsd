@@ -109,44 +109,56 @@ struct LoginQuery {
     redirect: Option<String>,
     token: Option<String>,
 }
+impl LoginQuery {
+    fn redirect(&self) -> Redirect {
+        Redirect::to(match &self.redirect {
+            Some(url) => url,
+            None => "/",
+        })
+    }
+}
 async fn login_link(
+    user: Option<User>,
     State(state): State<SharedAppState>,
     Query(query): Query<LoginQuery>,
 ) -> AppResult<Response> {
-    // If there's no query string with a login token, just show the login page.
-    let Some(token) = query.token else {
+    // If user is already logged in for some reason, just follow the redirect
+    if user.is_some() {
+        return Ok(query.redirect().into_response());
+    }
+
+    // If there's no token, just show the login page.
+    let Some(token) = &query.token else {
         #[derive(Template, WebTemplate)]
         #[template(path = "auth/login.html")]
-        pub struct Html {
+        struct Html {
+            user: Option<User>,
             #[allow(unused)]
             redirect: Option<String>,
         };
-        return Ok(Html { redirect: query.redirect }.into_response());
+        return Ok(Html { user, redirect: query.redirect }.into_response());
     };
 
     // Otherwise we're handling a login link. Valdiate the login token and create a new session.
-    let Some(user) = User::lookup_by_login_token(&state.db, &token).await? else {
+    let Some(user) = User::lookup_by_login_token(&state.db, token).await? else {
         return Err(AppError::Unauthorized);
     };
     let token = SessionToken::create(&state.db, user.id).await?;
     let cookie = session_cookie(&state.config, token);
 
     let headers = [(header::SET_COOKIE, cookie)];
-    let redirect = Redirect::to(&match query.redirect {
-        Some(url) => url,
-        None => "/".to_string(),
-    });
-    Ok((headers, redirect).into_response())
+    Ok((headers, query.redirect()).into_response())
 }
 
 /// Display the registration page.
-async fn register_link(Query(query): Query<RegisterQuery>) -> impl IntoResponse {
+async fn register_link(user: Option<User>, Query(query): Query<RegisterQuery>) -> impl IntoResponse {
     #[derive(Template, WebTemplate)]
     #[template(path = "auth/register.html")]
-    pub struct Html {
-        pub token: String,
+    struct Html {
+        user: Option<User>,
+        token: String,
     }
-    Html { token: query.token }
+    Html { user, token: query.token }
 }
 #[derive(serde::Deserialize)]
 struct RegisterQuery {

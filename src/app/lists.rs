@@ -20,25 +20,28 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 
 #[derive(Template, WebTemplate)]
 #[template(path = "lists/edit.html")]
-pub struct ListEditHtml {
-    pub list: List,
-    pub members: Vec<ListMember>,
+struct ListEditHtml {
+    user: Option<User>,
+    list: List,
+    members: Vec<ListMember>,
 }
 
 /// Display a list of all lists
-async fn list_lists_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+async fn list_lists_page(user: User, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
     let lists = List::list(&state.db).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/view.html")]
-    pub struct Html {
-        pub lists: Vec<List>,
+    struct Html {
+        user: Option<User>,
+        lists: Vec<List>,
     }
-    Ok(Html { lists })
+    Ok(Html { user: Some(user), lists })
 }
 
 /// Display the form to view and edit a list.
 async fn edit_list_page(
+    user: User,
     State(state): State<SharedAppState>,
     Path(id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
@@ -46,11 +49,11 @@ async fn edit_list_page(
 
     let members = List::list_members(&state.db, id).await?;
 
-    Ok(ListEditHtml { list, members })
+    Ok(ListEditHtml { user: Some(user), list, members })
 }
 
 /// Display the form to create a new list.
-async fn create_list_page() -> AppResult<impl IntoResponse> {
+async fn create_list_page(user: User) -> AppResult<impl IntoResponse> {
     let list = List {
         id: 0,
         name: "".into(),
@@ -59,7 +62,7 @@ async fn create_list_page() -> AppResult<impl IntoResponse> {
         updated_at: Utc::now().naive_utc(),
     };
 
-    Ok(ListEditHtml { list, members: vec![] })
+    Ok(ListEditHtml { user: Some(user), list, members: vec![] })
 }
 
 /// Process the form and create or edit a list.
@@ -99,12 +102,16 @@ async fn remove_list_member(
 
 /// Display the newsletter signup page.
 // XXX: Hard coded to list with id=1.
-pub async fn newsletter_signup_page(State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-    signup_page(State(state), Path(1)).await
+pub async fn newsletter_signup_page(
+    user: Option<User>,
+    State(state): State<SharedAppState>,
+) -> AppResult<impl IntoResponse> {
+    signup_page(user, State(state), Path(1)).await
 }
 
 /// Display the list signup page.
 async fn signup_page(
+    user: Option<User>,
     State(state): State<SharedAppState>,
     Path(list_id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
@@ -120,16 +127,18 @@ async fn signup_page(
 
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/signup.html")]
-    pub struct Html {
-        pub list: List,
+    struct Html {
+        user: Option<User>,
+        list: List,
     }
-    Ok(Html { list })
+    Ok(Html { user, list })
 }
 
 /// Process the list signup form.
 //
 // XXX: We really should rate limit this.
 async fn signup_form(
+    user: Option<User>,
     State(state): State<SharedAppState>,
     Form(form): Form<NewsletterForm>,
 ) -> AppResult<impl IntoResponse> {
@@ -146,11 +155,12 @@ async fn signup_form(
 
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/confirmation.html")]
-    pub struct Html {
-        pub list: List,
-        pub email: String,
+    struct Html {
+        user: Option<User>,
+        list: List,
+        email: String,
     }
-    Ok(Html { list, email: state.config.email.from.email.to_string() })
+    Ok(Html { user, list, email: state.config.email.from.email.to_string() })
 }
 #[derive(serde::Deserialize)]
 struct NewsletterForm {
