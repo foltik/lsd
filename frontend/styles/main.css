@@ -66,6 +66,10 @@ header {
       @apply text-lsd-bright text-lg font-extrabold;
     }
   }
+
+  #links {
+    @apply flex items-center gap-4;
+  }
 }
 @media input {
   color-scheme: dark;
