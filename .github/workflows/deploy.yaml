@@ -47,7 +47,9 @@ jobs:
 
       - name: Generate content hashes
         run: |
-          sed -i "s/CSS_CONTENT_HASH/$(md5sum frontend/static/main.css | cut -d' ' -f1)/" frontend/templates/layout.html
+          set -euo pipefail
+          find frontend/templates -type f -exec perl -i -pe \
+          's|(/[^?"]+)\?version=CONTENT_HASH|my $hash=`md5sum ./frontend/$1 \| cut -d" " -f1`; chomp($hash); "$1?version=$hash"|ge' {} \;
 
       - name: Cross compile
         run: cargo build --release --target aarch64-unknown-linux-gnu
