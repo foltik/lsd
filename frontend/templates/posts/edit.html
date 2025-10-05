@@ -130,16 +130,14 @@
         const cmdOrCtrl = (isMac ? e.metaKey : e.ctrlKey) && !e.shiftKey;
         const key = e.key.toLowerCase();
 
-        if (cmdOrCtrl && ["i", "b", "u"].includes(key)) {
+        const hotkeys = {
+          i: "italic",
+          b: "bold",
+          u: "underline",
+        };
+        if (cmdOrCtrl && key in hotkeys) {
           e.preventDefault();
-          switch (key) {
-            case "i":
-              document.execCommand("italic");
-            case "b":
-              document.execCommand("bold");
-            case "u":
-              document.execCommand("underline");
-          }
+          document.execCommand(hotkeys[key]);
         }
       });
 
