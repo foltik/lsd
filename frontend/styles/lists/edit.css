@@ -1,12 +1,18 @@
 #lists\/edit {
-  @apply flex flex-col items-center;
   form {
-    @apply mt-8 mb-12 w-full max-w-xl;
-    textarea {
+    .add-members {
       @apply min-h-52;
     }
-    li {
-      @apply flex justify-between;
+    .members {
+      label {
+        @apply text-lg;
+      }
+      li {
+        @apply mb-1 flex justify-between;
+        button {
+          @apply py-0.5 text-sm;
+        }
+      }
     }
   }
 }

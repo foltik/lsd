@@ -2,9 +2,9 @@
 {% block title %}light and sound{% endblock %}
 
 {% block content %}
-  <div id="posts/list">
+  <section id="posts/list" class="ext/layout standard">
     <header>
-      <h1 class="title">Posts</h1>
+      <h1>Posts</h1>
       <a class="ext/button :green" href="/posts/new">New Post</a>
     </header>
     {% for post in posts %}
@@ -38,5 +38,5 @@
         </div>
       </div>
     {% endfor %}
-  </div>
+  </section>
 {% endblock content %}

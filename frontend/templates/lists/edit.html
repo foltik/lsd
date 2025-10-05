@@ -4,7 +4,10 @@
 {% endblock %}
 
 {% block content %}
-  <div id="lists/edit">
+  <section id="lists/edit" class="ext/layout standard">
+    <header>
+      <h1>Edit List</h1>
+    </header>
     <form class="ext/form" method="POST" action="/lists/{{ list.id }}">
       {% if list.id != 0 %}
         <input type="hidden" name="id" value="{{ list.id }}" />
@@ -26,14 +29,14 @@
       <div class="field">
         <label for="emails">Add members</label>
         <textarea
-          class="emails"
+          class="add-members"
           name="emails"
           placeholder="Enter email addresses, one per line..."
         ></textarea>
       </div>
       <button type="submit">Save</button>
       {% if list.id != 0 %}
-        <div class="field">
+        <div class="field members">
           <label>Members</label>
           <ul>
             {% for member in members %}
@@ -63,5 +66,5 @@
         </div>
       {% endif %}
     </form>
-  </div>
+  </section>
 {% endblock %}

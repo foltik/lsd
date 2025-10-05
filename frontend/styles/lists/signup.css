@@ -1,9 +1,0 @@
-#lists\/signup {
-  @apply flex w-full flex-col items-center;
-  .container {
-    @apply mt-12 w-full max-w-sm;
-  }
-  h2 {
-    @apply mb-2 text-xl font-bold;
-  }
-}

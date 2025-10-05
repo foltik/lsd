@@ -1,0 +1,5 @@
+#lists\/list {
+  .lists {
+    @apply text-lg underline hover:decoration-blue-500;
+  }
+}

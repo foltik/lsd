@@ -1,0 +1,15 @@
+.ext\/layout {
+  @apply mx-auto flex w-full flex-col px-6 py-4;
+  header {
+    @apply border-lsd-white/20 mb-4 flex items-center justify-between border-b pb-3;
+    h1 {
+      @apply text-3xl;
+    }
+  }
+}
+.ext\/layout.standard {
+  @apply max-w-2xl;
+}
+.ext\/layout.thin {
+  @apply max-w-xl px-12;
+}

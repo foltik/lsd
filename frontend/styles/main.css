@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 /** Extensions **/
+@import "./extensions/layout.css";
 @import "./extensions/fonts.css";
 @import "./extensions/form.css";
+@import "./extensions/sidebar.css";
 
 /* Home */
 @import "./home.css";
+@import "./dashboard.css";
 
-/* Auth */
-@import "./auth/login.css";
-@import "./auth/register.css";
 /* Events */
 @import "./events/edit.css";
 @import "./events/list.css";
@@ -19,16 +19,13 @@
 @import "./events/rsvp_contribution.css";
 @import "./events/rsvp_confirmation.css";
 /* Lists */
+@import "./lists/list.css";
 @import "./lists/edit.css";
-@import "./lists/signup.css";
-@import "./lists/view.css";
 /* Posts */
 @import "./posts/edit.css";
 @import "./posts/list.css";
 @import "./posts/send.css";
 @import "./posts/view.css";
-/* Contact */
-@import "./contact/send.css";
 
 @theme {
   --font-sans: DM Sans Variable, sans-serif;
@@ -50,27 +47,22 @@
 
 :root,
 main {
-  @apply bg-lsd-black text-lsd-white h-full w-full font-sans;
+  @apply bg-lsd-black text-lsd-white flex h-full w-full flex-col font-sans;
 }
 
 body {
   @apply min-h-full;
 }
 
-header {
+nav {
   @apply border-lsd-white/10 flex items-center justify-between border-b px-6 py-4;
-
-  nav {
-    @apply flex items-center gap-x-8;
-    .lsd {
-      @apply text-lsd-bright text-lg font-extrabold;
+  .logo {
+    @apply text-lsd-bright text-lg font-extrabold;
+  }
+  .icons {
+    @apply flex items-center gap-7;
+    .contact {
+      @apply text-xl;
     }
   }
-
-  #links {
-    @apply flex items-center gap-7;
-  }
-}
-@media input {
-  color-scheme: dark;
 }

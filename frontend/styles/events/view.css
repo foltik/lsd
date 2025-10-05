@@ -1,12 +1,10 @@
 #events\/view {
-  @apply mx-auto flex max-w-2xl flex-col items-center px-12 py-8;
-
   picture {
     @apply mx-4 mb-12;
   }
 
   .title {
-    @apply mb-6 text-4xl font-extrabold;
+    @apply mb-6 text-2xl font-extrabold md:text-4xl;
   }
 
   .details {
@@ -17,8 +15,11 @@
     @apply text-lg leading-relaxed;
   }
 
-  .rsvp {
-    @apply mt-6 mb-12 px-24 py-3 text-4xl font-bold;
-    letter-spacing: 4px;
+  form {
+    @apply flex justify-center;
+    .rsvp {
+      @apply mt-6 mb-12 px-24 py-3 text-4xl font-bold;
+      letter-spacing: 4px;
+    }
   }
 }
