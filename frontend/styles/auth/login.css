@@ -1,9 +1,0 @@
-#auth\/login {
-  @apply flex flex-col items-center p-6;
-  > .container {
-    @apply mt-12 max-w-sm border border-neutral-900 bg-neutral-900/20 p-6;
-    h1 {
-      @apply mb-4 border-b border-neutral-800 pb-4 text-2xl;
-    }
-  }
-}

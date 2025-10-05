@@ -31,7 +31,7 @@ async fn list_lists_page(user: User, State(state): State<SharedAppState>) -> App
     let lists = List::list(&state.db).await?;
 
     #[derive(Template, WebTemplate)]
-    #[template(path = "lists/view.html")]
+    #[template(path = "lists/list.html")]
     struct Html {
         user: Option<User>,
         lists: Vec<List>,

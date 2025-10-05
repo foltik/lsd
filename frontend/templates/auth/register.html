@@ -3,23 +3,23 @@
 {% block title %}light and sound - register{% endblock title %}
 
 {% block content %}
-  <div id="auth/register">
-    <div class="container">
+  <section id="auth/register" class="ext/layout standard">
+    <header>
       <h1>Register</h1>
-      <form class="ext/form" action="/register" method="post">
-        <div class="field">
-          <label for="first_name">First Name</label>
-          <input type="text" name="first_name" />
-        </div>
+    </header>
+    <form class="ext/form" action="/register" method="post">
+      <div class="field">
+        <label for="first_name">First Name</label>
+        <input type="text" name="first_name" />
+      </div>
 
-        <div class="field">
-          <label for="last_name">Last Name</label>
-          <input type="text" name="last_name" />
-        </div>
+      <div class="field">
+        <label for="last_name">Last Name</label>
+        <input type="text" name="last_name" />
+      </div>
 
-        <input type="hidden" name="token" value="{{ token }}" />
-        <button type="submit">Register</button>
-      </form>
-    </div>
-  </div>
+      <input type="hidden" name="token" value="{{ token }}" />
+      <button type="submit">Register</button>
+    </form>
+  </section>
 {% endblock content %}

@@ -1,14 +1,4 @@
 #posts\/list {
-  @apply mx-auto mt-8 flex max-w-4xl flex-col px-6;
-
-  header {
-    @apply mb-8 flex items-end justify-between px-0 pb-4;
-    @apply border-lsd-white/20 border-b;
-    .title {
-      @apply text-2xl font-bold;
-    }
-  }
-
   .post {
     @apply mb-6 flex items-start justify-between pb-6;
 

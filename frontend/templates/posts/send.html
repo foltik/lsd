@@ -2,18 +2,16 @@
 {% block title %}Send post – {{ post.title }}{% endblock %}
 
 {% block content %}
-  <div id="posts/send">
+  <section id="posts/send" class="ext/layout standard">
+    <header>
+      <h1>Send {{ post.title }}</h1>
+    </header>
     <form
       id="form"
       class="ext/form"
       method="POST"
       action="/posts/{{ post.slug }}/send"
     >
-      <header>Send post</header>
-
-      <label>Title</label>
-      <h1 class="title">{{ post.title }}</h1>
-
       <div class="field">
         <label for="list_id">Send to list</label>
         <select id="list" class="ext/select" name="list_id">
@@ -28,24 +26,22 @@
           {% endfor %}
         </select>
       </div>
+      <div id="progress" class="field">
+        <ul class="counts">
+          <li>Sent<span id="sent">0</span></li>
+          <li>Remaining<span id="remaining">0</span></li>
+          <li>ETA<span id="eta"></span></li>
+        </ul>
 
+        <div class="bar-container">
+          <div id="bar"></div>
+        </div>
+        <p id="status"></p>
+        <pre id="errors"></pre>
+      </div>
       <button id="send" class="ext/button :green" type="submit">Send</button>
     </form>
-
-    <section id="progress">
-      <ul class="counts">
-        <li>Sent<span id="sent">0</span></li>
-        <li>Remaining<span id="remaining">0</span></li>
-        <li>ETA<span id="eta"></span></li>
-      </ul>
-
-      <div class="bar-container">
-        <div id="bar"></div>
-      </div>
-      <p id="status"></p>
-      <pre id="errors"></pre>
-    </section>
-  </div>
+  </section>
 {% endblock content %}
 
 {% block scripts %}
@@ -116,7 +112,6 @@
 
       // Update progress
       ui.list.disabled = state.status == 'sending';
-      ui.prog.classList.toggle('visible', state.status != null);
       ui.sent.textContent   = state.progress.sent;
       ui.remain.textContent = state.progress.remaining;
       ui.eta.textContent    = state.progress.eta();

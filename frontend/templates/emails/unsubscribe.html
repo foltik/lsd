@@ -1,24 +1,14 @@
 {% extends "layout.html" %}
 {% block title %}light and sound - Unsubscribe{% endblock title %}
-{% block head %}
-  {% call super() %}
-  <style>
-    div {
-      padding: 2rem;
-    }
-    button {
-      max-width: 200px;
-    }
-  </style>
-{% endblock head %}
 
 {% block content %}
-  <div>
-    <p>Are you sure you want to unsubscribe from our mailing list?</p>
+  <section class="ext/layout standard">
+    <header>
+      <h1>Unsubscribe from {{ list.name }}</h1>
+    </header>
+    <p>Are you sure you want to unsubscribe from this mailing list?</p>
     <form method="POST" action="/emails/{{ email_id }}/unsubscribe">
-      <button class="ext/button" type="submit">
-        Unsubscribe {{ email_address }}
-      </button>
+      <button class="ext/button" type="submit">Unsubscribe</button>
     </form>
-  </div>
+  </section>
 {% endblock %}
