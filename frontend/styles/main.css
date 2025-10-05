@@ -68,7 +68,7 @@ header {
   }
 
   #links {
-    @apply flex items-center gap-4;
+    @apply flex items-center gap-7;
   }
 }
 @media input {

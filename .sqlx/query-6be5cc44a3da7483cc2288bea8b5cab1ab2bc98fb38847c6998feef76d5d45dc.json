@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT u.*, GROUP_CONCAT(r.role) AS roles\n            FROM users u\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            LEFT JOIN session_tokens t ON t.user_id = u.id\n            WHERE t.token = ?\n            GROUP BY u.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "roles",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6be5cc44a3da7483cc2288bea8b5cab1ab2bc98fb38847c6998feef76d5d45dc"
+}
