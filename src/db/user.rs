@@ -11,6 +11,7 @@ pub struct User {
     pub last_name: String,
     pub email: String,
     pub created_at: NaiveDateTime,
+    pub roles: Vec<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -18,6 +19,25 @@ pub struct UpdateUser {
     pub first_name: String,
     pub last_name: String,
     pub email: String,
+}
+
+macro_rules! map_row {
+    ($row:ident) => {
+        $row.map(|row| User {
+            id: row.id,
+            first_name: row.first_name,
+            last_name: row.last_name,
+            email: row.email,
+            created_at: row.created_at,
+            roles: row
+                .roles
+                .unwrap_or_default()
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .collect(),
+        })
+    };
 }
 
 impl User {
@@ -50,10 +70,19 @@ impl User {
 
     /// Lookup a user by email address, if one exists.
     pub async fn lookup_by_email(db: &Db, email: &str) -> AppResult<Option<User>> {
-        let row = sqlx::query_as!(Self, "SELECT * FROM users WHERE email = ?", email)
-            .fetch_optional(db)
-            .await?;
-        Ok(row)
+        let row = sqlx::query!(
+            r#"
+            SELECT u.*, GROUP_CONCAT(r.role) AS roles
+            FROM users u
+            LEFT JOIN user_roles r ON r.user_id = u.id
+            WHERE u.email = ?
+            GROUP BY u.id
+            "#,
+            email
+        )
+        .fetch_optional(db)
+        .await?;
+        Ok(map_row!(row))
     }
     /// Lookup a user by a login token, if it's valid.
     pub async fn lookup_by_login_token(db: &Db, token: &str) -> AppResult<Option<User>> {
@@ -61,42 +90,46 @@ impl User {
         // not sure why this is needed here and not below
         // use the "!" syntax to force the column to be interpreted as non-null
         // https://github.com/launchbadge/sqlx/issues/2127
-        let row = sqlx::query_as!(
-            User,
-            r#"SELECT u.id as "id!", u.first_name as "first_name!", u.last_name as "last_name!", u.email as "email!", u.created_at as "created_at!"
-               FROM login_tokens t
-               JOIN users u on u.email = t.email
-               WHERE token = ?"#,
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                u.*,
+                GROUP_CONCAT(r.role) AS "roles: String"
+            FROM users u
+            LEFT JOIN user_roles r ON r.user_id = u.id
+            LEFT JOIN login_tokens t ON t.email = u.email
+            WHERE t.token = ?
+            GROUP BY u.id"#,
             token
         )
         .fetch_optional(db)
         .await?;
-        Ok(row)
+
+        Ok(map_row!(row))
     }
     /// Lookup a user by a session token, if it's valid.
     pub async fn lookup_by_session_token(db: &Db, token: &str) -> AppResult<Option<User>> {
-        let user = sqlx::query_as!(
-            Self,
-            r#"SELECT u.*
-               FROM session_tokens t
-               JOIN users u on u.id = t.user_id
-               WHERE token = ?"#,
+        let row = sqlx::query!(
+            r#"
+            SELECT u.*, GROUP_CONCAT(r.role) AS roles
+            FROM users u
+            LEFT JOIN user_roles r ON r.user_id = u.id
+            LEFT JOIN session_tokens t ON t.user_id = u.id
+            WHERE t.token = ?
+            GROUP BY u.id
+            "#,
             token
         )
         .fetch_optional(db)
         .await?;
-        Ok(user)
+        Ok(map_row!(row))
     }
 
-    pub async fn has_role(&self, db: &Db, role: &str) -> AppResult<bool> {
-        let row = sqlx::query!(
-            "SELECT * FROM user_roles WHERE user_id = ? AND role = ? OR role = ?",
-            self.id,
-            role,
-            User::ADMIN,
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(row.is_some())
+    pub fn has_role(&self, role: &str) -> bool {
+        self.roles.iter().any(|r| r == role)
+    }
+
+    pub fn has_staff_role(&self) -> bool {
+        self.roles.iter().any(|r| [Self::ADMIN, Self::WRITER].contains(&&**r))
     }
 }

@@ -36,8 +36,8 @@ impl AppRouter {
         let subrouter = func(AxumRouter::new());
         let subrouter = subrouter.route_layer(axum::middleware::from_fn_with_state(
             self.state.clone(),
-            move |State(state): State<SharedAppState>, user: User, req: Request, next: Next| async move {
-                if !user.has_role(&state.db, role).await? {
+            move |user: User, req: Request, next: Next| async move {
+                if !user.has_role(role) {
                     return Err(AppError::Unauthorized);
                 }
                 Ok(next.run(req).await)
