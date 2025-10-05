@@ -151,14 +151,22 @@ async fn login_link(
 }
 
 /// Display the registration page.
-async fn register_link(user: Option<User>, Query(query): Query<RegisterQuery>) -> impl IntoResponse {
+async fn register_link(
+    State(state): State<SharedAppState>,
+    user: Option<User>,
+    Query(query): Query<RegisterQuery>,
+) -> AppResult<impl IntoResponse> {
+    let Some(_) = LoginToken::lookup_email(&state.db, &query.token).await? else {
+        return Err(AppError::Unauthorized);
+    };
+
     #[derive(Template, WebTemplate)]
     #[template(path = "auth/register.html")]
     struct Html {
         user: Option<User>,
         token: String,
     }
-    Html { user, token: query.token }
+    Ok(Html { user, token: query.token })
 }
 #[derive(serde::Deserialize)]
 struct RegisterQuery {
