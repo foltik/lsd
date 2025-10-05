@@ -16,6 +16,16 @@ pub mod filters {
 
     use super::*;
 
+    /// Check if a user is logged in and has a role.
+    pub fn has_role(user: &Option<User>, role: &str) -> Result<bool, askama::Error> {
+        Ok(user.as_ref().is_some_and(|u| u.has_role(role)))
+    }
+
+    /// Check if a user is logged in and has a staff role.
+    pub fn has_staff_role(user: &Option<User>) -> Result<bool, askama::Error> {
+        Ok(user.as_ref().is_some_and(|u| u.has_staff_role()))
+    }
+
     /// Format a datetime with a `strftime` format string.
     pub fn format_datetime(dt: &NaiveDateTime, format: &str) -> Result<String, askama::Error> {
         let tz = CONFIG.get().unwrap().app.tz;
