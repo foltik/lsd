@@ -2,15 +2,10 @@
 {% block title %}{{ post.title }}{% endblock title %}
 
 {% block content %}
-  <div id="posts/view">
-    <article>
-      <section class="details">
-        <h1 class="title">{{ post.title }}</h1>
-        <time class="date" datetime="{{ post.created_at }}">
-          {{ post.created_at | format_datetime("%b %d, %Y") }}
-        </time>
-      </section>
-      <section class="content">{{ post.content | safe }}</section>
-    </article>
-  </div>
+  <section id="posts/view" class="ext/layout standard">
+    <header>
+      <h1>{{ post.title }}</h1>
+    </header>
+    <article>{{ post.content | safe }}</article>
+  </section>
 {% endblock %}

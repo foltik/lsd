@@ -1,6 +1,4 @@
 #events\/edit {
-  @apply mx-auto flex max-w-3xl flex-col px-12 py-8;
-
   .flyer {
     .wrapper {
       @apply relative;

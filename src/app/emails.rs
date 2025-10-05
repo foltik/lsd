@@ -25,20 +25,29 @@ async fn email_unsubscribe_view(
     Path(email_id): Path<i64>,
     State(state): State<SharedAppState>,
 ) -> AppResult<Response> {
-    #[derive(Template, WebTemplate)]
-    #[template(path = "emails/unsubscribe.html")]
-    struct Html {
-        user: Option<User>,
-        email_id: i64,
-        email_address: String,
-    }
-
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await? {
-        return Ok(Html { user, email_id, email_address: email.address }.into_response());
-    }
+        let list_id = email.list_id.ok_or(AppError::BadRequest)?;
+        let list = List::lookup_by_id(&state.db, list_id).await?.ok_or(AppError::BadRequest)?;
 
-    Ok("You have been unsubscribed.".into_response())
+        #[derive(Template, WebTemplate)]
+        #[template(path = "emails/unsubscribe.html")]
+        struct UnsubscribeHtml {
+            user: Option<User>,
+            list: List,
+            email_id: i64,
+        }
+        Ok(UnsubscribeHtml { user, list, email_id }.into_response())
+    } else {
+        // XXX: Use a unique unsubscribe id instead of sequential email ids.
+        // TODO: Record unsubscription, rather than assuming no match means you already unsubscribed.
+        #[derive(Template, WebTemplate)]
+        #[template(path = "emails/already_unsubscribed.html")]
+        struct AlreadyUnsubscribedHtml {
+            user: Option<User>,
+        }
+        Ok(AlreadyUnsubscribedHtml { user }.into_response())
+    }
 }
 
 async fn email_unsubscribe_form(

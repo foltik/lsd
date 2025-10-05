@@ -3,17 +3,17 @@
 {% block title %}light and sound - Sign Up{% endblock title %}
 
 {% block content %}
-  <div id="lists/signup">
-    <div class="container">
-      <h2>Sign up for {{ list.description }}</h2>
-      <form class="ext/form" action="/lists/{{ list.id }}/signup" method="post">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" name="email" />
-        </div>
-        <input type="hidden" name="list_id" value="{{ list.id }}" />
-        <button type="submit">Sign Up</button>
-      </form>
-    </div>
-  </div>
+  <section id="lists/signup" class="ext/layout standard">
+    <header>
+      <h1>Sign up for {{ list.description }}</h1>
+    </header>
+    <form class="ext/form" action="/lists/{{ list.id }}/signup" method="post">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" name="email" />
+      </div>
+      <input type="hidden" name="list_id" value="{{ list.id }}" />
+      <button type="submit">Sign Up</button>
+    </form>
+  </section>
 {% endblock content %}

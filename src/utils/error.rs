@@ -33,13 +33,17 @@ pub enum AppError {
 /// This allows us to return `AppResult from `axum::Handler` functions, and
 /// tells the framework how to deal with errors.
 impl IntoResponse for AppError {
+    #[rustfmt::skip]
     fn into_response(self) -> Response {
         tracing::error!("{self:#}");
 
-        let error_400 = || (StatusCode::BAD_REQUEST, "Bad request");
-        let error_401 = || (StatusCode::UNAUTHORIZED, "You do not have permission to view this page");
-        let error_404 = || (StatusCode::NOT_FOUND, "Page not found");
-        let error_500 = || (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong :( Please try again");
+        let error_400 = || (StatusCode::BAD_REQUEST, "Invalid request.");
+        let error_401 = || (StatusCode::UNAUTHORIZED, "You do not have permission to view this page.");
+        let error_404 = || (StatusCode::NOT_FOUND, "Page not found.");
+        let error_500 = || (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Something went wrong on our end. Please try again, or contact us if the issue persists."
+        );
 
         let (status, message) = match self {
             AppError::BadRequest => error_400(),
