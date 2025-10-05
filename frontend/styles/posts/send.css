@@ -1,22 +1,6 @@
 #posts\/send {
-  @apply mt-12 flex flex-col items-center;
-
-  form {
-    @apply border-lsd-white/10 w-full max-w-md rounded-md border p-6;
-    header {
-      @apply border-lsd-white/10 mb-6 w-full max-w-md border-b pb-4 text-lg font-bold;
-    }
-    .title {
-      @apply mb-4 text-2xl font-bold;
-    }
-  }
-
   #progress {
-    @apply border-lsd-white/10 mt-6 hidden w-full max-w-md rounded-md border p-4;
-
-    &.visible {
-      @apply block;
-    }
+    @apply border-lsd-white/30 mb-8 rounded-md border px-6 py-4;
 
     .counts {
       @apply mb-4 grid grid-cols-3 text-sm;

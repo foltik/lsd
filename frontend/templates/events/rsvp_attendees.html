@@ -3,9 +3,10 @@
 {% block title %}light and sound - RSVP{% endblock title %}
 
 {% block content %}
-  <section id="events/rsvp/attendees">
-    <h1>Who will be attending?</h1>
-
+  <section id="events/rsvp/attendees" class="ext/layout standard">
+    <header>
+      <h1>Who will be attending?</h1>
+    </header>
     <form id="form" class="ext/form">
       {% for rsvp in rsvps %}
         <div class="attendee" data-rsvp-id="{{ rsvp.id }}">

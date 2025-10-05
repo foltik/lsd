@@ -3,18 +3,18 @@
 {% block title %}light and sound - login{% endblock title %}
 
 {% block content %}
-  <div id="auth/login">
-    <div class="container">
+  <section class="ext/layout standard">
+    <header>
       <h1>Login</h1>
-      <form class="ext/form" action="/login" method="post">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" name="email" />
-        </div>
-        <div class="field">
-          <button type="submit">Login</button>
-        </div>
-      </form>
-    </div>
-  </div>
+    </header>
+    <form class="ext/form" action="/login" method="post">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" name="email" />
+      </div>
+      <div class="field">
+        <button type="submit">Login</button>
+      </div>
+    </form>
+  </section>
 {% endblock content %}

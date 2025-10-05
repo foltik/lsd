@@ -9,6 +9,7 @@
   &:disabled {
     @apply cursor-not-allowed opacity-50;
   }
+  color-scheme: dark;
 }
 
 .ext\/form label,
