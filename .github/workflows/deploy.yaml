@@ -44,6 +44,9 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
           STRIPE_WEBHOOK_KEY: ${{ secrets.STRIPE_WEBHOOK_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_CONTACT_TO: ${{ secrets.EMAIL_CONTACT_TO }}
+          EMAIL_NEWSLETTER_REPLY_TO: ${{ secrets.EMAIL_NEWSLETTER_REPLY_TO }}
 
       - name: Generate content hashes
         run: |
