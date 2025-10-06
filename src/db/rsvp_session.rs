@@ -31,7 +31,7 @@ impl RsvpSession {
     pub const PENDING: &str = "pending";
     pub const PAID: &str = "paid";
 
-    pub const EXPIRY_SQL: &str = "-1 minutes";
+    pub const EXPIRY_SQL: &str = "-5 minutes";
 
     pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE id = ?"#, id)
