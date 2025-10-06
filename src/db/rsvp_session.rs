@@ -41,6 +41,23 @@ impl RsvpSession {
             .fetch_optional(db)
             .await?)
     }
+    pub async fn lookup_conflicts(
+        db: &Db,
+        event_id: i64,
+        session_id: i64,
+        email: &str,
+    ) -> AppResult<Option<Self>> {
+        Ok(sqlx::query_as!(
+            Self,
+            r"SELECT * FROM rsvp_sessions
+              WHERE event_id = ? AND id != ? AND email = ?",
+            event_id,
+            session_id,
+            email
+        )
+        .fetch_optional(db)
+        .await?)
+    }
     pub async fn lookup_status(db: &Db, id: i64) -> AppResult<Option<String>> {
         #[derive(sqlx::FromRow)]
         pub struct RsvpStatus {
@@ -78,6 +95,13 @@ impl RsvpSession {
         .await?;
 
         Ok(token)
+    }
+
+    pub async fn delete(&self, db: &Db) -> AppResult<()> {
+        sqlx::query!("DELETE FROM rsvp_sessions WHERE id = ?", self.id)
+            .execute(db)
+            .await?;
+        Ok(())
     }
 
     pub async fn set_contact(
