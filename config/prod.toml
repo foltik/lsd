@@ -13,7 +13,7 @@ https_addr = "[::]:443"
 
 [acme]
 domain = "beta.lightandsound.design"
-email = "studio@beta.lightandsound.design"
+email = "$EMAIL_FROM"
 dir = "acme"
 prod = true
 
@@ -21,8 +21,10 @@ prod = true
 smtp_addr = "smtp://email-smtp.us-east-1.amazonaws.com?tls=required"
 smtp_username = "$SMTP_USERNAME"
 smtp_password = "$SMTP_PASSWORD"
-from = "Light and Sound Design <studio@beta.lightandsound.design>"
 ratelimit = 10
+from = "Light and Sound Design <$EMAIL_FROM>"
+newsletter_reply_to = "$EMAIL_NEWSLETTER_REPLY_TO"
+contact_to = "$EMAIL_CONTACT_TO"
 
 [stripe]
 publishable_key = "$STRIPE_PUBLISHABLE_KEY"

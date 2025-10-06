@@ -30,36 +30,32 @@ async fn contact_us_form(
     State(state): State<SharedAppState>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
-    let name = if form.name.is_empty() {
-        Some("Anonymous".to_owned())
-    } else {
-        Some(form.name)
+    let name = Some(form.name).filter(|n| !n.is_empty());
+    let email = Some(form.email).filter(|e| !e.is_empty());
+
+    let to = state.config.email.contact_to.clone();
+    let from = state.config.email.from.clone();
+    let subject = match &name {
+        Some(name) => format!("[{name}]: {}", form.subject),
+        None => format!("[Anonymous]: {}", form.subject),
+    };
+    let reply_to = match email {
+        Some(e) => Some(Mailbox::new(name, e.parse().map_err(|_| AppError::BadRequest)?)),
+        None => None,
     };
 
-    let email = if form.email.is_empty() {
-        "noreply@lightandsound.design".parse().unwrap()
-    } else {
-        form.email.parse().map_err(|_| AppError::BadRequest)?
-    };
-
-    let message = state
-        .mailer
-        .builder()
-        .reply_to(Mailbox::new(name, email))
-        .to(Mailbox::new(
-            Some("Light and Sound Design".to_owned()),
-            "studio@lightandsound.design".parse().unwrap(),
-        ))
-        .subject(form.subject)
-        .body(form.message)?;
+    let mut message = state.mailer.builder().to(to.unwrap_or(from)).subject(subject);
+    if let Some(reply_to) = reply_to {
+        message = message.reply_to(reply_to);
+    }
+    let message = message.body(form.message)?;
 
     state.mailer.send(&message).await?;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/message_sent.html")]
-    struct MessageSentTemplate {
+    struct Html {
         user: Option<User>,
     };
-
-    Ok(MessageSentTemplate { user })
+    Ok(Html { user })
 }
