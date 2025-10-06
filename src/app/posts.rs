@@ -252,7 +252,7 @@ mod send {
             email_template.unsub_url = format!("{}/emails/{id}/unsubscribe", &state.config.app.url);
 
             let from = &state.config.email.from;
-            let reply_to = state.config.email.reply_to.as_ref().unwrap_or(from);
+            let reply_to = state.config.email.newsletter_reply_to.as_ref().unwrap_or(from);
             let message = state
                 .mailer
                 .builder()

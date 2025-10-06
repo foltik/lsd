@@ -89,14 +89,15 @@ pub struct EmailConfig {
     pub smtp_username: Option<String>,
     /// SMTP password.
     pub smtp_password: Option<String>,
-    /// Mailbox to send email from.
-    pub from: Mailbox,
-    /// Mailbox to put as ReplyTo.
-    pub reply_to: Option<Mailbox>,
     /// Maximum number of emails to send per second.
-
     #[serde(default = "default_ratelimit")]
     pub ratelimit: usize,
+    /// Mailbox to send email from.
+    pub from: Mailbox,
+    /// Mailbox to list as ReplyTo for the newsletter.
+    pub newsletter_reply_to: Option<Mailbox>,
+    /// Mailbox to send contact form submissions to.
+    pub contact_to: Option<Mailbox>,
 }
 fn default_ratelimit() -> usize {
     10
