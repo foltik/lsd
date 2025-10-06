@@ -34,8 +34,21 @@
       <div class="field">
         <div id="stripe"></div>
       </div>
-      <div class="field">
-        <button id="checkout" class="ext/button" type="submit">
+      <div class="actions field">
+        {% if rsvps.len() == 1 %}
+          <a
+            href="/e/{{ slug }}/rsvp/selection?session={{ session.token }}"
+            class="ext/button"
+            >&larr; Change Contribution</a
+          >
+        {% else %}
+          <a
+            href="/e/{{ slug }}/rsvp/attendees?session={{ session.token }}"
+            class="ext/button"
+            >&larr; Change Attendees</a
+          >
+        {% endif %}
+        <button id="checkout" class="ext/button :green" type="submit">
           Contribute
         </button>
       </div>
@@ -45,6 +58,13 @@
 
 {% block scripts %}
   <script>
+    /* ---------- Save session ------------------------------------------------ */
+    const queryString = new URLSearchParams(location.search);
+    const token = encodeURIComponent(queryString.get("session"));
+    const key = `rsvps/{{ session.event_id }}`;
+    localStorage[key] = JSON.stringify({ token, page: "contribution" });
+
+    /* ---------- UI ---------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
