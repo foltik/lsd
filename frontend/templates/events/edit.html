@@ -7,6 +7,16 @@
     <header>
       <h1>Edit Event</h1>
     </header>
+    <div class="field">
+      <label for="external-event">
+        <input
+          type="checkbox"
+          id="external-event"
+          {% if event.external_event_url.is_some() %}checked{% endif %}
+        />
+        External event?
+      </label>
+    </div>
     <form
       id="form"
       class="ext/form"
@@ -27,6 +37,18 @@
           name="slug"
           value="{{ event.slug }}"
           required
+        />
+      </div>
+
+      <div class="field">
+        <label for="external-event-url">External Event URL</label>
+        <input
+          type="url"
+          id="external-event-url"
+          name="external_event_url"
+          {% if let Some(url) = event.external_event_url %}
+            value="{{ url }}"
+          {% endif %}
         />
       </div>
 
@@ -143,11 +165,26 @@
       list: $("spots"),
       add: $("add"),
       spots: () => [...ui.list.querySelectorAll(".spot")],
+      externalEvent: $("external-event"),
       flyer: {
         input: $("flyer"),
         text: $("flyer-text"),
         filename: $("flyer-filename"),
         preview: $("flyer-preview"),
+        field: document.querySelector(".field.flyer"),
+      },
+      fields: {
+        externalUrl: document
+          .querySelector('input[name="external_event_url"]')
+          .closest(".field"),
+        description: document
+          .querySelector('input[name="description"]')
+          .closest(".field"),
+        capacity: document
+          .querySelector('input[name="capacity"]')
+          .closest(".field"),
+        end: document.querySelector('input[name="end"]').closest(".field"),
+        spots: $("spots"),
       },
     };
     const KINDS = {
@@ -163,6 +200,42 @@
       suggested_contribution: "variable",
       required_notice_hours: "work",
     };
+
+    function toggleInternalExternal() {
+      const isExternal = ui.externalEvent.checked;
+
+      ui.fields.externalUrl.hidden = !isExternal;
+      const externalUrlInput = ui.fields.externalUrl.querySelector(
+        'input[name="external_event_url"]',
+      );
+      externalUrlInput.required = isExternal;
+
+      ui.flyer.field.hidden = isExternal;
+
+      ui.fields.description.hidden = isExternal;
+      const descriptionInput = ui.fields.description.querySelector(
+        'input[name="description"]',
+      );
+      descriptionInput.required = !isExternal;
+
+      ui.fields.capacity.hidden = isExternal;
+      const capacityInput = ui.fields.capacity.querySelector(
+        'input[name="capacity"]',
+      );
+      capacityInput.required = !isExternal;
+
+      ui.fields.end.hidden = isExternal;
+
+      ui.fields.spots.hidden = isExternal;
+    }
+
+    /* ---------- External Event Toggle ----------------------------------------- */
+    ui.externalEvent.addEventListener("change", () => {
+      toggleInternalExternal();
+    });
+
+    // Set initial state based on checkbox
+    toggleInternalExternal();
 
     /* ---------- Rendering ----------------------------------------------------- */
     const template = (t) => `
@@ -273,7 +346,11 @@
     /* ---------- Form submit handler ------------------------------------------- */
     ui.form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (ui.spots().length == 0) {
+
+      const isExternal = ui.externalEvent.checked;
+
+      // Only check for spots if it's not an external event
+      if (!isExternal && ui.spots().length == 0) {
         alert("Add at least one reservation!");
         return;
       }
@@ -330,6 +407,7 @@
         capacity: value("capacity"),
         unlisted: value("unlisted"),
         guest_list_id: value("guest_list_id"),
+        external_event_url: isExternal ? value("external_event_url") : null,
         spots: ui.spots().map((t, i) => {
           const kind = value("kind", t);
           const spot = {

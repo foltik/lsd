@@ -18,6 +18,7 @@ pub struct Event {
     pub capacity: i64,
     pub unlisted: bool,
     pub guest_list_id: Option<i64>,
+    pub external_event_url: Option<String>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -35,6 +36,7 @@ pub struct UpdateEvent {
     pub capacity: i64,
     pub unlisted: bool,
     pub guest_list_id: Option<i64>,
+    pub external_event_url: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize)]

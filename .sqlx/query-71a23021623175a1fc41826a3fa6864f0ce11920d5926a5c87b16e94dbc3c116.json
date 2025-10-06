@@ -57,6 +57,11 @@
         "name": "guest_list_id",
         "ordinal": 10,
         "type_info": "Integer"
+      },
+      {
+        "name": "external_event_url",
+        "ordinal": 11,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -73,6 +78,7 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
