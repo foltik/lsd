@@ -14,7 +14,7 @@ https_addr = "[::]:4433"
 
 [email]
 smtp_addr = "smtp://localhost:1025"
-from = "Light and Sound Design <studio@beta.lightandsound.design>"
+from = "Light and Sound Design <studio@beta.lightandsound.design.local>"
 
 [stripe]
 publishable_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
