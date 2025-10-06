@@ -8,23 +8,23 @@
       <h1>Who will be attending?</h1>
     </header>
     <form id="form" class="ext/form">
-      {% for rsvp in rsvps %}
-        <div class="attendee" data-rsvp-id="{{ rsvp.id }}">
+      {% for attendee in attendees %}
+        <div class="attendee" data-rsvp-id="{{ attendee.rsvp_id }}">
           <div class="header">
             <h2 class="name">
-              {{ rsvp.spot_name }}
-              {% if rsvps.len() > 1 %}({{ loop.index }}){% endif %}
+              {{ attendee.spot_name }}
+              {% if attendees.len() > 1 %}({{ loop.index }}){% endif %}
             </h2>
 
-            {% if rsvps.len() > 1 %}
+            {% if attendees.len() > 1 %}
               <label class="is-me">
                 <input
                   class="ext/input radio"
                   type="radio"
                   name="is_me"
-                  value="{{ rsvp.id }}"
+                  value="{{ attendee.rsvp_id }}"
                   {% if session.email.is_some() %}
-                    {% if session.email == rsvp.email %}
+                    {% if session.email == attendee.email %}
                       checked
                     {% endif %}
                   {% endif %}
@@ -42,7 +42,7 @@
                 name="first_name"
                 class="ext/input"
                 type="text"
-                value="{{ rsvp.first_name | unwrap_or_empty }}"
+                value="{{ attendee.first_name | unwrap_or_empty }}"
                 autocomplete="given-name"
                 required
               />
@@ -54,7 +54,7 @@
                 name="last_name"
                 class="ext/input"
                 type="text"
-                value="{{ rsvp.last_name | unwrap_or_empty }}"
+                value="{{ attendee.last_name | unwrap_or_empty }}"
                 autocomplete="family-name"
                 required
               />
@@ -66,7 +66,7 @@
                 name="email"
                 class="ext/input"
                 type="email"
-                value="{{ rsvp.email | unwrap_or_empty }}"
+                value="{{ attendee.email | unwrap_or_empty }}"
                 autocomplete="email"
                 required
               />
@@ -80,7 +80,7 @@
       <a
         href="/e/{{ slug }}/rsvp/selection?session={{ session.token }}"
         class="ext/button"
-        >&larr; Change Contribution{% if rsvps.len() > 1 %}s{% endif %}</a
+        >&larr; Change Contribution{% if attendees.len() > 1 %}s{% endif %}</a
       >
       <button id="continue" class="ext/button :green" type="submit">
         Continue
