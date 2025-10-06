@@ -60,4 +60,9 @@ jobs:
           SQLX_OFFLINE: true
 
       - name: Deploy
+        id: deploy
         run: scripts/deploy.sh ec2-user@beta.lightandsound.design
+
+      - name: Rollback on failure
+        if: ${{ failure() && steps.deploy.conclusion == 'failure' }}
+        run: scripts/rollback.sh ec2-user@beta.lightandsound.design

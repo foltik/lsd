@@ -15,6 +15,9 @@ if ! id lsd &>/dev/null; then
     sudo adduser lsd
 fi
 
+# create dirs
+mkdir -p /home/lsd/backups
+
 # setup service
 sudo tee /etc/systemd/system/lsd.service <<EOF >/dev/null
 [Unit]
@@ -25,7 +28,7 @@ After=network.target
 Type=simple
 User=lsd
 WorkingDirectory=/home/lsd
-ExecStart=/home/lsd/lsd /home/lsd/config/prod.toml
+ExecStart=/home/lsd/lsd
 Restart=always
 
 [Install]
