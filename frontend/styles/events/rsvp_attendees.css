@@ -33,4 +33,8 @@
       }
     }
   }
+
+  .actions {
+    @apply flex flex-row items-center justify-between;
+  }
 }
