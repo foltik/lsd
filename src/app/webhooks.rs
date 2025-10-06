@@ -134,7 +134,7 @@ pub mod stripe {
         match event.payment_status.as_str() {
             "paid" => {
                 tracing::info!("STRIPE PAID: session={session:?} intent={:?}", event.payment_intent);
-                session.set_paid(&state.db, &event.payment_intent).await?
+                session.set_paid(&state.db, Some(&event.payment_intent)).await?
             }
             status => {
                 tracing::error!("Stripe: unknown payment_status={status} for rsvp_session={session_id}")
