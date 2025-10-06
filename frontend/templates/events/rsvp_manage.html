@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 
-{% block title %}light and sound - Confirmation{% endblock title %}
+{% block title %}light and sound - Manage{% endblock title %}
 
 {% block content %}
-  <section id="events/rsvp/confirmation" class="ext/layout standard">
+  <section id="events/rsvp/manage" class="ext/layout standard">
     <header>
       <h1>Thank you!</h1>
     </header>
@@ -38,6 +38,13 @@
 
 {% block scripts %}
   <script>
+    /* ---------- Save session ------------------------------------------------ */
+    const queryString = new URLSearchParams(location.search);
+    const token = encodeURIComponent(queryString.get("session"));
+    const key = `rsvps/{{ session.event_id }}`;
+    localStorage[key] = JSON.stringify({ token, page: "manage" });
+
+    /* ---------- Populate total ---------------------------------------------- */
     const rsvps = JSON.parse(`{{ rsvps | json | safe }}`);
     const total = rsvps.reduce((sum, r) => sum + r.contribution, 0);
     document.getElementById("total").textContent = `$${total}`;
