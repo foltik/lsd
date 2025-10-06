@@ -130,7 +130,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_paid(&self, db: &Db, payment_intent_id: &str) -> AppResult<()> {
+    pub async fn set_paid(&self, db: &Db, payment_intent_id: Option<&str>) -> AppResult<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET status = ?,
