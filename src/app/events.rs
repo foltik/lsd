@@ -229,6 +229,13 @@ mod rsvp {
         session: String,
     }
 
+    #[derive(Template, WebTemplate)]
+    #[template(path = "error.html")]
+    struct ErrorHtml {
+        user: Option<User>,
+        message: String,
+    }
+
     /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
         user: Option<User>,
@@ -327,6 +334,31 @@ mod rsvp {
             && rsvps.len() == 1
         {
             // In the case of a logged in user buying a single ticket, we can skip attendee selection.
+            let email = &user.email;
+
+            // Handle RsvpSession conflicts. If another session exists for this email, delete it.
+            // We expect this to happen when a user starts a session on one device and switches to another.
+            let session_conflict =
+                RsvpSession::lookup_conflicts(&state.db, session.event_id, session.id, email).await?;
+            // If another pending session exists matching the `is_me` email, delete it.
+            // We expect this to happen when a user starts a session on one device and switches to another.
+            // Note: a PAID session will be caught when we check for Rsvp conflicts.
+            if let Some(other_session) = session_conflict
+                && other_session.status == RsvpSession::PENDING
+            {
+                other_session.delete(&state.db).await?;
+                Rsvp::delete_for_session(&state.db, other_session.id).await?;
+            }
+            if let Some(status) =
+                Rsvp::lookup_conflicts(&state.db, session.event_id, session.id, email).await?
+            {
+                let message = match status.as_str() {
+                    RsvpSession::PAID => format!("Someone has already RSVPed for {email}."),
+                    RsvpSession::PENDING => format!("Someone is currently RSVPing for {email}."),
+                    _ => unreachable!(),
+                };
+                return Ok(ErrorHtml { user: Some(user), message }.into_response());
+            }
 
             // unwrap(): we've just validated in `parse_selection()`.
             let rsvp = rsvps.first().unwrap();
@@ -403,22 +435,24 @@ mod rsvp {
         let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
 
         #[derive(serde::Serialize)]
-        struct AttendeesRsvp {
-            pub id: i64,
+        struct Attendee {
+            pub rsvp_id: i64,
             pub spot_name: String,
             pub first_name: Option<String>,
             pub last_name: Option<String>,
             pub email: Option<String>,
+            pub error: Option<String>,
         }
-        // unwrap(): we've already validated `spot_id` must exist in `parse_contributions()`.
-        let rsvps = rsvps
+        let attendees = rsvps
             .into_iter()
-            .map(|r| AttendeesRsvp {
-                id: r.id,
+            .map(|r| Attendee {
+                rsvp_id: r.id,
+                // unwrap(): we've already validated `spot_id` must exist in `parse_contributions()`.
                 spot_name: spots.iter().find(|s| s.id == r.spot_id).unwrap().name.clone(),
                 first_name: r.first_name,
                 last_name: r.last_name,
                 email: r.email,
+                error: None,
             })
             .collect::<Vec<_>>();
 
@@ -428,9 +462,9 @@ mod rsvp {
             slug: String,
             user: Option<User>,
             session: RsvpSession,
-            rsvps: Vec<AttendeesRsvp>,
+            attendees: Vec<Attendee>,
         }
-        Ok(AttendeesHtml { slug, user, session, rsvps }.into_response())
+        Ok(AttendeesHtml { slug, user, session, attendees }.into_response())
     }
 
     // Handle submission of the "Who will be attending?" form
@@ -457,29 +491,55 @@ mod rsvp {
         let spots = Spot::list_for_event(&state.db, session.event_id).await?;
         let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
 
-        let attendees = parse_attendees(&state.db, &rsvps, &form.attendees)
+        // Parse form data
+        let (is_me_attendee, attendees) = parse_attendees(&state.db, &rsvps, &form.attendees)
             .await
             .map_err(|_| AppError::BadRequest)?;
 
-        for a in attendees {
-            // Record the info of the "is_me" attendee in the session
-            if a.is_me && user.is_none() {
-                session
-                    .set_contact(&state.db, a.first_name.clone(), a.last_name.clone(), a.email.clone())
-                    .await?;
-            }
+        // Handle RsvpSession conflicts.
+        let session_conflict =
+            RsvpSession::lookup_conflicts(&state.db, session.event_id, session.id, &is_me_attendee.email)
+                .await?;
+        // If another pending session exists matching the `is_me` email, delete it.
+        // We expect this to happen when a user starts a session on one device and switches to another.
+        // Note: a PAID session will be caught when we check for Rsvp conflicts.
+        if let Some(other_session) = session_conflict
+            && other_session.status == RsvpSession::PENDING
+        {
+            other_session.delete(&state.db).await?;
+            Rsvp::delete_for_session(&state.db, other_session.id).await?;
+        }
+        // Handle Rsvp conflicts.
+        for ParsedAttendee { email, .. } in &attendees {
+            let Some(status) = Rsvp::lookup_conflicts(&state.db, session.event_id, session.id, email).await?
+            else {
+                continue;
+            };
 
-            // unwrap(): parse_attendees verified attendees and rsvps correspond 1:1.
-            let rsvp = rsvps.iter().find(|r| r.id == a.rsvp_id).unwrap();
+            let message = match status.as_str() {
+                RsvpSession::PAID => format!("Someone has already RSVPed for {email}."),
+                RsvpSession::PENDING => format!("Someone is currently RSVPing for {email}."),
+                _ => unreachable!(),
+            };
+            return Ok(ErrorHtml { user, message }.into_response());
+        }
+
+        // Store is_me contact info in the RsvpSession entry
+        let ParsedAttendee { first_name, last_name, email, .. } = is_me_attendee.clone();
+        session.set_contact(&state.db, first_name, last_name, email).await?;
+
+        // Store all contact info (including is_me) in the individual Rsvp entries
+        for attendee in attendees {
+            let ParsedAttendee { rsvp, first_name, last_name, email, user_id, .. } = attendee;
             Rsvp::update(
                 &state.db,
                 rsvp.id,
                 UpdateRsvp {
                     status: RsvpSession::PENDING.into(),
-                    first_name: Some(a.first_name),
-                    last_name: Some(a.last_name),
-                    email: Some(a.email),
-                    user_id: a.user_id,
+                    first_name: Some(first_name),
+                    last_name: Some(last_name),
+                    email: Some(email),
+                    user_id,
                     checkin_at: None,
                 },
             )
@@ -488,8 +548,6 @@ mod rsvp {
 
         let line_items = session.line_items(&spots, &rsvps)?;
         let return_url = format!("/e/{slug}/rsvp/manage?session={}", session.token);
-        // unwrap(): parse_attendees verified at least one attendee has `is_me: true`,
-        // and we've written their email to `session.email` above.
         let stripe_client_secret = state
             .stripe
             .create_session(session.id, &session.email.unwrap(), line_items, return_url)
@@ -701,15 +759,14 @@ mod rsvp {
         Ok(parsed)
     }
 
-    struct ParsedAttendee {
-        rsvp_id: i64,
+    #[derive(Clone)]
+    struct ParsedAttendee<'a> {
+        rsvp: &'a Rsvp,
 
         first_name: String,
         last_name: String,
         email: String,
         user_id: Option<i64>,
-
-        is_me: bool,
     }
     #[derive(thiserror::Error, Debug)]
     pub enum ParseAttendeesError {
@@ -720,15 +777,19 @@ mod rsvp {
         UnknownRsvp { rsvp_id: i64 },
         #[error("missing attendee for rsvp_id={rsvp_id}")]
         MissingAttendee { rsvp_id: i64 },
+        #[error("missing attendee with is_me=true")]
+        MissingIsMe,
+        #[error("multiple attendees with is_me=true")]
+        MultipleIsMe,
 
         #[error("{0}")]
         AppError(#[from] AppError),
     }
-    async fn parse_attendees(
+    async fn parse_attendees<'a>(
         db: &Db,
-        rsvps: &[Rsvp],
+        rsvps: &'a [Rsvp],
         attendees: &str,
-    ) -> Result<Vec<ParsedAttendee>, ParseAttendeesError> {
+    ) -> Result<(ParsedAttendee<'a>, Vec<ParsedAttendee<'a>>), ParseAttendeesError> {
         type Error = ParseAttendeesError;
 
         #[derive(Debug, serde::Deserialize)]
@@ -742,26 +803,40 @@ mod rsvp {
             is_me: bool,
         }
 
-        let attendees: Vec<AttendeeForm> = serde_json::from_str(attendees).map_err(|_| Error::Parse)?;
-        let mut parsed = vec![];
+        let form: Vec<AttendeeForm> = serde_json::from_str(attendees).map_err(|_| Error::Parse)?;
+
+        let mut attendees = vec![];
+        let mut is_me_attendee = None;
 
         for rsvp in rsvps {
             // Ensure all RSVPs have an attendee specified
-            if !attendees.iter().any(|a| a.rsvp_id == rsvp.id) {
+            if !form.iter().any(|a| a.rsvp_id == rsvp.id) {
                 return Err(Error::MissingAttendee { rsvp_id: rsvp.id });
             }
         }
 
-        for AttendeeForm { rsvp_id, first_name, last_name, email, is_me } in attendees {
+        for AttendeeForm { rsvp_id, first_name, last_name, email, is_me } in form {
             // Ensure all attendees correspond to a valid RSVP
-            if !rsvps.iter().any(|r| r.id == rsvp_id) {
+            let Some(rsvp) = rsvps.iter().find(|r| r.id == rsvp_id) else {
                 return Err(Error::UnknownRsvp { rsvp_id });
-            }
+            };
 
             let user_id = User::lookup_by_email(db, &email).await?.map(|u| u.id);
-            parsed.push(ParsedAttendee { rsvp_id, first_name, last_name, email, user_id, is_me })
+            let attendee = ParsedAttendee { rsvp, first_name, last_name, email, user_id };
+
+            if is_me {
+                match is_me_attendee {
+                    Some(_) => return Err(Error::MultipleIsMe),
+                    None => is_me_attendee = Some(attendee.clone()),
+                }
+            }
+            attendees.push(attendee);
         }
 
-        Ok(parsed)
+        let Some(is_me_attendee) = is_me_attendee else {
+            return Err(Error::MissingIsMe);
+        };
+
+        Ok((is_me_attendee, attendees))
     }
 }

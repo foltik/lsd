@@ -122,10 +122,24 @@ impl Rsvp {
         Ok(())
     }
 
-    // pub async fn delete(db: &Db, id: i64) -> AppResult<()> {
-    //     sqlx::query!(r#"DELETE FROM rsvps WHERE id = ?"#, id).execute(db).await?;
-    //     Ok(())
-    // }
+    pub async fn lookup_conflicts(
+        db: &Db,
+        event_id: i64,
+        session_id: i64,
+        email: &str,
+    ) -> AppResult<Option<String>> {
+        let row = sqlx::query!(
+            "SELECT status FROM rsvps
+                WHERE event_id = ? AND session_id != ? AND email = ?",
+            event_id,
+            session_id,
+            email
+        )
+        .fetch_optional(db)
+        .await?;
+        Ok(row.map(|r| r.status))
+    }
+
     pub async fn delete_for_session(db: &Db, session_id: i64) -> AppResult<()> {
         sqlx::query!(r#"DELETE FROM rsvps WHERE session_id = ?"#, session_id)
             .execute(db)
