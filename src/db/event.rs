@@ -17,6 +17,7 @@ pub struct Event {
 
     pub capacity: i64,
     pub unlisted: bool,
+    pub external_event_url: Option<String>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

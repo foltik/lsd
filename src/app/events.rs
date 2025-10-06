@@ -36,7 +36,7 @@ mod read {
         user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> AppResult<Response> {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/view.html")]
         struct Html {
@@ -45,8 +45,15 @@ mod read {
             has_flyer: bool,
         }
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
-        Ok(Html { user, event, has_flyer })
+
+        if let Some(external_url) = &event.external_event_url
+            && !external_url.is_empty()
+        {
+            return Ok(Redirect::to(external_url).into_response());
+        } else {
+            let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
+            Ok(Html { user, event, has_flyer }.into_response())
+        }
     }
 
     // List all events.
@@ -116,6 +123,8 @@ mod edit {
 
                 capacity: 0,
                 unlisted: false,
+
+                external_event_url: None,
 
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),

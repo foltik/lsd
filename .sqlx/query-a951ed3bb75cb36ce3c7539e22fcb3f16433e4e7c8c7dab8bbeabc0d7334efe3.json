@@ -52,6 +52,11 @@
         "name": "updated_at",
         "ordinal": 9,
         "type_info": "Datetime"
+      },
+      {
+        "name": "external_event_url",
+        "ordinal": 10,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -67,7 +72,8 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "a951ed3bb75cb36ce3c7539e22fcb3f16433e4e7c8c7dab8bbeabc0d7334efe3"
