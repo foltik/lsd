@@ -1,6 +1,8 @@
 {% extends "layout.html" %}
 {% block head %}
-  <script src="https://js.stripe.com/basil/stripe.js"></script>
+  {% if total > 0 %}
+    <script src="https://js.stripe.com/basil/stripe.js"></script>
+  {% endif %}
 {% endblock head %}
 
 {% block title %}light and sound - RSVP{% endblock title %}
@@ -10,7 +12,12 @@
     <header>
       <h1>Summary</h1>
     </header>
-    <form id="form" class="ext/form">
+    <form
+      id="form"
+      class="ext/form"
+      method="POST"
+      action="/e/{{ slug }}/rsvp/contribution?session={{ session.token }}"
+    >
       <div class="field">
         <ul class="line-items">
           {% for rsvp in rsvps %}
@@ -27,13 +34,15 @@
           {% endfor %}
           <li class="total">
             <span class="left">Total</span>
-            <span id="total" class="right">$0</span>
+            <span id="total" class="right">${{ total }}</span>
           </li>
         </ul>
       </div>
-      <div class="field">
-        <div id="stripe"></div>
-      </div>
+      {% if total > 0 %}
+        <div class="field">
+          <div id="stripe"></div>
+        </div>
+      {% endif %}
       <div class="actions field">
         {% if rsvps.len() == 1 %}
           <a
@@ -49,7 +58,11 @@
           >
         {% endif %}
         <button id="checkout" class="ext/button :green" type="submit">
-          Contribute
+          {% if total > 0 %}
+            Contribute
+          {% else %}
+            RSVP
+          {% endif %}
         </button>
       </div>
     </form>
@@ -63,59 +76,59 @@
     const token = encodeURIComponent(queryString.get("session"));
     const key = `rsvps/{{ session.event_id }}`;
     localStorage[key] = JSON.stringify({ token, page: "contribution" });
+  </script>
+  {% if total > 0 %}
+    <script>
+      /* ---------- UI ---------------------------------------------------------- */
+      const $ = (id) => document.getElementById(id);
+      const ui = {
+        form: $("form"),
+        email: $("email"),
+        total: $("total"),
+      };
 
-    /* ---------- UI ---------------------------------------------------------- */
-    const $ = (id) => document.getElementById(id);
-    const ui = {
-      form: $("form"),
-      email: $("email"),
-      total: $("total"),
-    };
+      let checkout;
 
-    const rsvps = JSON.parse(`{{ rsvps | json | safe }}`);
-    const total = rsvps.reduce((sum, r) => sum + r.contribution, 0);
-    ui.total.textContent = `$${total}`;
-
-    let checkout;
-
-    (async () => {
-      const stripe = Stripe(`{{ stripe_publishable_key }}`);
-      checkout = await stripe.initCheckout({
-        fetchClientSecret: async () => `{{ stripe_client_secret }}`,
-        elementsOptions: {
-          appearance: {
-            theme: "night",
-            variables: {
-              fontFamily: "Poppins, sans-serif",
-              colorPrimary: "#8ec6ff",
-              colorBackground: "#080504",
-              colorText: "#ebe3de",
-              colorDanger: "#c34346",
-            },
-            rules: {
-              ".Block, .Tab, .Input": {
-                borderColor: "color-mix(in oklab, #ebe3de 30%, transparent)",
-                borderWidth: "1px",
-                borderStyle: "solid",
+      (async () => {
+        const stripe = Stripe(`{{ stripe_publishable_key }}`);
+        checkout = await stripe.initCheckout({
+          fetchClientSecret: async () =>
+            `{{ session.stripe_client_secret.as_ref().unwrap() }}`,
+          elementsOptions: {
+            appearance: {
+              theme: "night",
+              variables: {
+                fontFamily: "Poppins, sans-serif",
+                colorPrimary: "#8ec6ff",
+                colorBackground: "#080504",
+                colorText: "#ebe3de",
+                colorDanger: "#c34346",
+              },
+              rules: {
+                ".Block, .Tab, .Input": {
+                  borderColor: "color-mix(in oklab, #ebe3de 30%, transparent)",
+                  borderWidth: "1px",
+                  borderStyle: "solid",
+                },
               },
             },
           },
-        },
+        });
+
+        const paymentEl = checkout.createPaymentElement();
+        paymentEl.mount("#stripe");
+      })();
+
+      /* ---------- Submit: update email then confirm -------------------------- */
+      ui.form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!ui.form.reportValidity()) return;
+
+        res = await checkout.confirm();
+        if (res?.type === "error") {
+          alert(res.error.message);
+        }
       });
-
-      const paymentEl = checkout.createPaymentElement();
-      paymentEl.mount("#stripe");
-    })();
-
-    /* ---------- Submit: update email then confirm -------------------------- */
-    ui.form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!ui.form.reportValidity()) return;
-
-      res = await checkout.confirm();
-      if (res?.type === "error") {
-        alert(res.error.message);
-      }
-    });
-  </script>
+    </script>
+  {% endif %}
 {% endblock scripts %}

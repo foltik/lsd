@@ -15,7 +15,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/e/{slug}/rsvp", post(rsvp::rsvp_form))
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
-                .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page))
+                .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page).post(rsvp::contribution_form))
                 .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page))
                 .route("/e/{slug}/rsvp/status", get(rsvp::status))
         })
@@ -573,11 +573,6 @@ mod rsvp {
                 Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)).into_response()
             );
         }
-        let Some(stripe_client_secret) = session.stripe_client_secret.clone() else {
-            return Ok(
-                Redirect::to(&format!("/e/{slug}/rsvp/attendees?session={}", query.session)).into_response()
-            );
-        };
 
         let spots = Spot::list_for_event(&state.db, session.event_id).await?;
         let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
@@ -602,6 +597,13 @@ mod rsvp {
             })
             .collect::<Vec<_>>();
 
+        let total = rsvps.iter().map(|r| r.contribution).sum();
+        if total > 0 && session.stripe_client_secret.is_none() {
+            return Ok(
+                Redirect::to(&format!("/e/{slug}/rsvp/attendees?session={}", query.session)).into_response()
+            );
+        }
+
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_contribution.html")]
         struct ContributionHtml {
@@ -609,18 +611,39 @@ mod rsvp {
             slug: String,
             session: RsvpSession,
             rsvps: Vec<ContributionRsvp>,
+            total: i64,
             stripe_publishable_key: String,
-            stripe_client_secret: String,
         }
         Ok(ContributionHtml {
             user,
             slug,
             session,
             rsvps,
-            stripe_client_secret,
+            total,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
         }
         .into_response())
+    }
+
+    // Handle submission of $0 RSVPs.
+    pub async fn contribution_form(
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Query(query): Query<SessionQuery>,
+    ) -> AppResult<Redirect> {
+        let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
+            return Ok(Redirect::to(&format!("/e/{slug}")));
+        };
+
+        let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
+        let total: i64 = rsvps.iter().map(|r| r.contribution).sum();
+        if total > 0 {
+            return Err(AppError::BadRequest);
+        }
+
+        session.set_paid(&state.db, None).await?;
+
+        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)))
     }
 
     pub async fn manage_page(
