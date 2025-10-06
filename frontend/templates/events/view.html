@@ -37,8 +37,36 @@
       </div>
     </div>
     <p class="description">{{ event.description | safe }}</p>
-    <form method="POST" action="/e/{{ event.slug }}/rsvp">
-      <button type="submit" class="rsvp ext/button">RSVP</button>
+    <form id="form" method="POST" action="/e/{{ event.slug }}/rsvp">
+      <button id="button" type="submit" class="rsvp ext/button">RSVP</button>
     </form>
   </section>
 {% endblock content %}
+
+{% block scripts %}
+  <script>
+    (async () => {
+      const form = document.getElementById("form");
+      const button = document.getElementById("button");
+
+      const key = `rsvps/{{ event.id }}`;
+      let session = key in localStorage && JSON.parse(localStorage[key]);
+      if (session) {
+        const res = await fetch(
+          `/e/{{ event.slug }}/rsvp/status?session=${session.token}`,
+        );
+        if (res.status == 200) {
+          if (session.page == "manage") {
+            button.innerText = "Manage RSVP";
+          }
+          form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            window.location = `/e/{{ event.slug }}/rsvp/${session.page}?session=${session.token}`;
+          });
+        } else {
+          localStorage.removeItem(key);
+        }
+      }
+    })();
+  </script>
+{% endblock scripts %}

@@ -76,12 +76,28 @@
       {% endfor %}
     </form>
 
-    <button id="continue" class="ext/button">Continue</button>
+    <div class="actions">
+      <a
+        href="/e/{{ slug }}/rsvp/selection?session={{ session.token }}"
+        class="ext/button"
+        >&larr; Change Contribution{% if rsvps.len() > 1 %}s{% endif %}</a
+      >
+      <button id="continue" class="ext/button :green" type="submit">
+        Continue
+      </button>
+    </div>
   </section>
 {% endblock content %}
 
 {% block scripts %}
   <script>
+    /* ---------- Save session ------------------------------------------------ */
+    const queryString = new URLSearchParams(location.search);
+    const token = encodeURIComponent(queryString.get("session"));
+    const key = `rsvps/{{ session.event_id }}`;
+    localStorage[key] = JSON.stringify({ token, page: "attendees" });
+
+    /* ---------- UI ---------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
 
     const ui = {

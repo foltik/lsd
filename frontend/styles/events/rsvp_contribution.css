@@ -39,4 +39,8 @@
     border: 1px solid
       color-mix(in oklab, var(--color-lsd-white) 30%, transparent);
   }
+
+  .actions {
+    @apply flex flex-row items-center justify-between;
+  }
 }

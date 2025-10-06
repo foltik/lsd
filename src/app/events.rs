@@ -16,7 +16,8 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
                 .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page))
-                .route("/e/{slug}/rsvp/confirmation", get(rsvp::confirmation_page))
+                .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page))
+                .route("/e/{slug}/rsvp/status", get(rsvp::status))
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
@@ -250,8 +251,9 @@ mod rsvp {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
         if session.status == RsvpSession::PAID {
-            return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
-                .into_response());
+            return Ok(
+                Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)).into_response()
+            );
         }
 
         let event = Event::lookup_by_id(&state.db, session.event_id)
@@ -274,12 +276,16 @@ mod rsvp {
         struct SelectionHtml {
             user: Option<User>,
             slug: String,
+            session: RsvpSession,
             spots: Vec<Spot>,
             spot_qtys: HashMap<i64, usize>,
             spot_contributions: HashMap<i64, i64>,
             stats: EventStats,
         }
-        Ok(SelectionHtml { user, slug, spots, spot_qtys, spot_contributions, stats }.into_response())
+        Ok(
+            SelectionHtml { user, slug, session, spots, spot_qtys, spot_contributions, stats }
+                .into_response(),
+        )
     }
 
     // Handle submission of the "Choose a contribution" form
@@ -298,8 +304,9 @@ mod rsvp {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
         if session.status == RsvpSession::PAID {
-            return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
-                .into_response());
+            return Ok(
+                Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)).into_response()
+            );
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
@@ -342,7 +349,7 @@ mod rsvp {
 
             let line_item =
                 stripe::LineItem { name: spot.name.clone(), quantity: 1, price: rsvp.contribution };
-            let return_url = format!("/e/{slug}/rsvp/confirmation?session={}", session.token);
+            let return_url = format!("/e/{slug}/rsvp/manage?session={}", session.token);
             let stripe_client_secret = state
                 .stripe
                 .create_session(session.id, &user.email, vec![line_item], return_url)
@@ -387,8 +394,9 @@ mod rsvp {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
         if session.status == RsvpSession::PAID {
-            return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
-                .into_response());
+            return Ok(
+                Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)).into_response()
+            );
         }
 
         let spots = Spot::list_for_event(&state.db, session.event_id).await?;
@@ -441,8 +449,9 @@ mod rsvp {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
         if session.status == RsvpSession::PAID {
-            return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
-                .into_response());
+            return Ok(
+                Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)).into_response()
+            );
         }
 
         let spots = Spot::list_for_event(&state.db, session.event_id).await?;
@@ -478,7 +487,7 @@ mod rsvp {
         }
 
         let line_items = session.line_items(&spots, &rsvps)?;
-        let return_url = format!("/e/{slug}/rsvp/confirmation?session={}", session.token);
+        let return_url = format!("/e/{slug}/rsvp/manage?session={}", session.token);
         // unwrap(): parse_attendees verified at least one attendee has `is_me: true`,
         // and we've written their email to `session.email` above.
         let stripe_client_secret = state
@@ -502,10 +511,11 @@ mod rsvp {
             return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
         };
         if session.status == RsvpSession::PAID {
-            return Ok(Redirect::to(&format!("/e/{slug}/rsvp/confirmation?session={}", query.session))
-                .into_response());
+            return Ok(
+                Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", query.session)).into_response()
+            );
         }
-        let Some(stripe_client_secret) = session.stripe_client_secret else {
+        let Some(stripe_client_secret) = session.stripe_client_secret.clone() else {
             return Ok(
                 Redirect::to(&format!("/e/{slug}/rsvp/attendees?session={}", query.session)).into_response()
             );
@@ -538,12 +548,16 @@ mod rsvp {
         #[template(path = "events/rsvp_contribution.html")]
         struct ContributionHtml {
             user: Option<User>,
+            slug: String,
+            session: RsvpSession,
             rsvps: Vec<ContributionRsvp>,
             stripe_publishable_key: String,
             stripe_client_secret: String,
         }
         Ok(ContributionHtml {
             user,
+            slug,
+            session,
             rsvps,
             stripe_client_secret,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
@@ -551,32 +565,37 @@ mod rsvp {
         .into_response())
     }
 
-    pub async fn confirmation_page(
+    pub async fn manage_page(
         user: Option<User>,
         State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
         Query(query): Query<SessionQuery>,
     ) -> AppResult<impl IntoResponse> {
-        let session = RsvpSession::lookup_by_token(&state.db, &query.session)
-            .await?
-            .ok_or(AppError::BadRequest)?;
+        let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
+            return Ok(Redirect::to(&format!("/e/{slug}")).into_response());
+        };
 
-        Stripe::wait_for_payment(&state.db, &state.webhooks, session.id).await?;
+        match session.status.as_str() {
+            RsvpSession::PENDING => Stripe::wait_for_payment(&state.db, &state.webhooks, session.id).await?,
+            RsvpSession::PAID => {}
+            _ => unreachable!(),
+        };
 
         let spots = Spot::list_for_event(&state.db, session.event_id).await?;
         let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
 
         #[derive(serde::Serialize)]
-        struct ConfirmationRsvp {
-            pub spot_name: String,
-            pub first_name: String,
-            pub last_name: String,
-            pub email: String,
-            pub contribution: i64,
+        struct ManageRsvp {
+            spot_name: String,
+            first_name: String,
+            last_name: String,
+            email: String,
+            contribution: i64,
         }
         // unwrap(): we've already validated these fields must exist in `attendees_form()`.
         let rsvps = rsvps
             .into_iter()
-            .map(|r| ConfirmationRsvp {
+            .map(|r| ManageRsvp {
                 spot_name: spots.iter().find(|s| s.id == r.spot_id).unwrap().name.clone(),
                 first_name: r.first_name.unwrap().clone(),
                 last_name: r.last_name.unwrap().clone(),
@@ -586,12 +605,24 @@ mod rsvp {
             .collect::<Vec<_>>();
 
         #[derive(Template, WebTemplate)]
-        #[template(path = "events/rsvp_confirmation.html")]
-        struct ConfirmationHtml {
+        #[template(path = "events/rsvp_manage.html")]
+        struct ManageHtml {
             user: Option<User>,
-            rsvps: Vec<ConfirmationRsvp>,
+            session: RsvpSession,
+            rsvps: Vec<ManageRsvp>,
         }
-        Ok(ConfirmationHtml { user, rsvps }.into_response())
+        Ok(ManageHtml { user, session, rsvps }.into_response())
+    }
+
+    /// Query existence of an RSVP session. Used by frontend to invalidate localStorage.
+    pub async fn status(
+        State(state): State<SharedAppState>,
+        Query(query): Query<SessionQuery>,
+    ) -> AppResult<StatusCode> {
+        Ok(match RsvpSession::lookup_by_token(&state.db, &query.session).await? {
+            Some(_) => StatusCode::OK,
+            None => StatusCode::NOT_FOUND,
+        })
     }
 
     pub struct ParsedSelection {

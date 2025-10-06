@@ -58,12 +58,22 @@
         </div>
       {% endfor %}
     </form>
-    <button id="continue" class="ext/button">Continue</button>
+    <div class="actions">
+      <a href="/e/{{ slug }}" class="ext/button">&larr; Back</a>
+      <button id="continue" class="ext/button :green">Continue</button>
+    </div>
   </section>
 {% endblock content %}
 
 {% block scripts %}
   <script>
+    /* ---------- Save session ------------------------------------------------ */
+    const queryString = new URLSearchParams(location.search);
+    const token = encodeURIComponent(queryString.get("session"));
+    const key = `rsvps/{{ session.event_id }}`;
+    localStorage[key] = JSON.stringify({ token, page: "selection" });
+
+    /* ---------- UI ---------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
@@ -127,6 +137,7 @@
       {% for (spot_id, qty) in spot_qtys %}
         "{{ spot_id }}": {{ qty }},
       {% endfor %}
+      "dummy": 0
     }`),
     );
 
@@ -167,12 +178,9 @@
         }
       }
 
-      const query = new URLSearchParams(location.search);
-      const session = encodeURIComponent(query.get("session"));
-
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = `/e/{{ slug }}/rsvp/selection?session=${session}`;
+      form.action = `/e/{{ slug }}/rsvp/selection?session=${token}`;
 
       const input = document.createElement("input");
       input.type = "hidden";
