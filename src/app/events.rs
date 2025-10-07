@@ -43,11 +43,11 @@ mod read {
         struct Html {
             pub user: Option<User>,
             event: Event,
-            has_flyer: bool,
+            flyer: Option<EventFlyer>,
         }
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
-        Ok(Html { user, event, has_flyer })
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+        Ok(Html { user, event, flyer })
     }
 
     // List all events.
@@ -81,11 +81,15 @@ mod read {
             None => EventFlyerSize::Full,
         };
 
-        let bytes = EventFlyer::lookup_for_event(&state.db, event.id, size)
-            .await?
-            .ok_or(AppError::NotFound)?;
+        let bytes = EventFlyer::serve(&state.db, event.id, size).await?.ok_or(AppError::NotFound)?;
 
-        Ok(([(header::CONTENT_TYPE, EventFlyer::CONTENT_TYPE)], bytes))
+        Ok((
+            [
+                (header::CONTENT_TYPE, EventFlyer::CONTENT_TYPE),
+                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+            ],
+            bytes,
+        ))
     }
 }
 

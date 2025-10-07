@@ -1,6 +1,9 @@
 #events\/view {
-  picture {
-    @apply mx-4 mb-12;
+  .flyer {
+    @apply relative mx-4 mb-12 bg-cover bg-center;
+    img {
+      @apply block h-auto w-full;
+    }
   }
 
   .title {

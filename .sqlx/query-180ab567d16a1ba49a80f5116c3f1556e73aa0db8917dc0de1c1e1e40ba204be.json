@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT width, height, image_thumb, strftime('%s', updated_at) as \"version!: i64\"\n               FROM event_flyers WHERE event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "width",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "height",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "image_thumb",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "version!: i64",
+        "ordinal": 3,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "180ab567d16a1ba49a80f5116c3f1556e73aa0db8917dc0de1c1e1e40ba204be"
+}
