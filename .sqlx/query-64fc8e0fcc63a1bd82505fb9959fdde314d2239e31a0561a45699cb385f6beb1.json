@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT EXISTS(\n                SELECT 1\n                FROM list_members AS m\n                LEFT JOIN users AS u ON m.user_id = u.id\n                WHERE\n                    list_id = ?\n                    AND (m.email = ? OR m.user_id IS NULL AND m.email = ?)\n            ) AS \"exists!: bool\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "64fc8e0fcc63a1bd82505fb9959fdde314d2239e31a0561a45699cb385f6beb1"
+}

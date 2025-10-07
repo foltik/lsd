@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT EXISTS(\n                SELECT 1\n                FROM list_members\n                WHERE list_id = ? AND user_id = ?\n            ) AS \"exists!: bool\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3cc70a5dcbf66851e4c64b95c64c7bc98821b95da14ea2dbfd2086190a3dece4"
+}

@@ -14,6 +14,7 @@
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
+@import "./events/rsvp_guestlist.css";
 @import "./events/rsvp_selection.css";
 @import "./events/rsvp_attendees.css";
 @import "./events/rsvp_contribution.css";

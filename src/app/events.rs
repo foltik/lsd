@@ -13,6 +13,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
             r.route("/e/{slug}", get(read::view_page))
                 .route("/e/{slug}/flyer", get(read::flyer))
                 .route("/e/{slug}/rsvp", post(rsvp::rsvp_form))
+                .route("/e/{slug}/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
                 .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page).post(rsvp::contribution_form))
@@ -91,6 +92,7 @@ mod read {
 // Create and edit events.
 mod edit {
     use super::*;
+    use crate::db::list::{List, ListWithCount};
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/edit.html")]
@@ -99,10 +101,12 @@ mod edit {
         event: Event,
         spots: Vec<Spot>,
         has_flyer: bool,
+        lists: Vec<ListWithCount>,
     }
 
     /// Display the form to create a new event.
-    pub async fn new_page(user: User) -> AppResult<impl IntoResponse> {
+    pub async fn new_page(user: User, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+        let lists = List::list_with_counts(&state.db).await?;
         Ok(EditHtml {
             user: Some(user),
             event: Event {
@@ -116,12 +120,14 @@ mod edit {
 
                 capacity: 0,
                 unlisted: false,
+                guest_list_id: None,
 
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),
             },
             spots: vec![],
             has_flyer: false,
+            lists,
         })
     }
 
@@ -134,7 +140,8 @@ mod edit {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
-        Ok(EditHtml { user: Some(user), event, spots, has_flyer })
+        let lists = List::list_with_counts(&state.db).await?;
+        Ok(EditHtml { user: Some(user), event, spots, has_flyer, lists })
     }
 
     // Handle edit submission.
@@ -219,6 +226,7 @@ mod edit {
 
 mod rsvp {
     use super::*;
+    use crate::db::list::List;
     use crate::db::rsvp::{CreateRsvp, Rsvp, UpdateRsvp};
     use crate::db::rsvp_session::RsvpSession;
     use crate::utils::stripe;
@@ -241,10 +249,73 @@ mod rsvp {
         user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> AppResult<Response> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let token = RsvpSession::create(&state.db, event.id, &user).await?;
-        Ok(Redirect::to(&format!("/e/{slug}/rsvp/selection?session={token}")))
+
+        Ok(match event.guest_list_id {
+            // If no guest list, create the session
+            None => {
+                let token = RsvpSession::create(&state.db, event.id, &user).await?;
+                Redirect::to(&format!("/e/{slug}/rsvp/selection?session={token}")).into_response()
+            }
+            // When there's a guest list...
+            Some(list_id) => match user {
+                Some(user) => match List::has_user(&state.db, list_id, &user).await? {
+                    // If logged in and on the list, direct them straight to ticket selection
+                    true => {
+                        let token = RsvpSession::create(&state.db, event.id, &Some(user)).await?;
+                        Redirect::to(&format!("/e/{slug}/rsvp/selection?session={token}")).into_response()
+                    }
+                    // If logged in and not on the list, show an error page
+                    false => ErrorHtml { user: Some(user), message: "Sorry, you're not on the list!".into() }
+                        .into_response(),
+                },
+                // If not logged in, direct them to the guestlist gate
+                None => Redirect::to(&format!("/e/{slug}/guestlist")).into_response(),
+            },
+        })
+    }
+
+    // Display the "Are you on the list?" page
+    pub async fn guestlist_page(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+    ) -> AppResult<Response> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let _guest_list_id = event.guest_list_id.ok_or(AppError::BadRequest)?;
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/rsvp_guestlist.html")]
+        struct GuestlistHtml {
+            user: Option<User>,
+            slug: String,
+        }
+        Ok(GuestlistHtml { user, slug }.into_response())
+    }
+
+    // Handle submission of the "Are you on the  list?" form
+    #[derive(Debug, serde::Deserialize)]
+    pub struct GuestlistForm {
+        email: String,
+    }
+    pub async fn guestlist_form(
+        user: Option<User>,
+        State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
+        Form(form): Form<GuestlistForm>,
+    ) -> AppResult<Response> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let guest_list_id = event.guest_list_id.ok_or(AppError::BadRequest)?;
+
+        Ok(match List::has_email(&state.db, guest_list_id, &form.email).await? {
+            // If on the list, direct them to ticket selection
+            true => {
+                let token = RsvpSession::create(&state.db, event.id, &user).await?;
+                Redirect::to(&format!("/e/{slug}/rsvp/selection?session={token}")).into_response()
+            }
+            // If not on the list, show an error page
+            false => ErrorHtml { user, message: "Sorry, you're not on the list!".into() }.into_response(),
+        })
     }
 
     // Display the "Choose a contribution" page

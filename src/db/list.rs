@@ -26,15 +26,15 @@ pub struct UpdateList {
     pub emails: String,
 }
 
-// #[derive(serde::Serialize)]
-// pub struct ListWithCount {
-//     pub id: i64,
-//     pub name: String,
-//     pub description: String,
-//     pub created_at: NaiveDateTime,
-//     pub updated_at: NaiveDateTime,
-//     pub count: i64,
-// }
+#[derive(serde::Serialize)]
+pub struct ListWithCount {
+    pub id: i64,
+    pub name: String,
+    pub description: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub count: i64,
+}
 
 impl List {
     /// List all lists.
@@ -43,19 +43,19 @@ impl List {
         Ok(lists)
     }
 
-    // /// List all lists, and count the number of members in each list via list_members join.
-    // pub async fn list_with_counts(db: &Db) -> AppResult<Vec<ListWithCount>> {
-    //     let lists = sqlx::query_as!(
-    //         ListWithCount,
-    //         "SELECT l.*, COUNT(m.list_id) AS count
-    //          FROM lists l
-    //          LEFT JOIN list_members m ON l.id = m.list_id
-    //          GROUP BY l.id"
-    //     )
-    //     .fetch_all(db)
-    //     .await?;
-    //     Ok(lists)
-    // }
+    /// List all lists, and count the number of members in each list via list_members join.
+    pub async fn list_with_counts(db: &Db) -> AppResult<Vec<ListWithCount>> {
+        let lists = sqlx::query_as!(
+            ListWithCount,
+            "SELECT l.*, COUNT(m.list_id) AS count
+             FROM lists l
+             LEFT JOIN list_members m ON l.id = m.list_id
+             GROUP BY l.id"
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(lists)
+    }
 
     /// Create a list.
     pub async fn create(db: &Db, event: &UpdateList) -> AppResult<i64> {
@@ -114,6 +114,45 @@ impl List {
         .fetch_all(db)
         .await?;
         Ok(members)
+    }
+
+    pub async fn has_user(db: &Db, id: i64, user: &User) -> AppResult<bool> {
+        let exists = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM list_members
+                WHERE list_id = ? AND user_id = ?
+            ) AS "exists!: bool"
+            "#,
+            id,
+            user.id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(exists)
+    }
+
+    pub async fn has_email(db: &Db, id: i64, email: &str) -> AppResult<bool> {
+        let exists = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM list_members AS m
+                LEFT JOIN users AS u ON m.user_id = u.id
+                WHERE
+                    list_id = ?
+                    AND (m.email = ? OR m.user_id IS NULL AND m.email = ?)
+            ) AS "exists!: bool"
+            "#,
+            id,
+            email,
+            email
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(exists)
     }
 
     /// Add members to a guest list.
