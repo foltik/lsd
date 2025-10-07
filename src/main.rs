@@ -20,7 +20,10 @@ use utils::config::*;
 use crate::prelude::*;
 
 #[tokio::main]
+#[allow(unused)]
 async fn main() -> anyhow::Result<()> {
+    panic!("boom");
+
     // TODO(sam) is it possible to filter the logs from ServeDir?
     let log_filter = tracing_subscriber::filter::Targets::default()
         .with_target("h2", LevelFilter::OFF)
