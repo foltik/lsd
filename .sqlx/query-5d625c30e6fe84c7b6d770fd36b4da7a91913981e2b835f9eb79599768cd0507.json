@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO event_flyers  (event_id, width, height, image_full, image_lg, image_md, image_sm, image_thumb, updated_at)\n               VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)\n               ON CONFLICT(event_id) DO UPDATE SET\n                width = excluded.width,\n                height = excluded.height,\n                image_full = excluded.image_full,\n                image_lg = excluded.image_lg,\n                image_md = excluded.image_md,\n                image_sm = excluded.image_sm,\n                image_thumb = excluded.image_thumb,\n                updated_at = CURRENT_TIMESTAMP",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "5d625c30e6fe84c7b6d770fd36b4da7a91913981e2b835f9eb79599768cd0507"
+}

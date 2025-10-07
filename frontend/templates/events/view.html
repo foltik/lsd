@@ -2,24 +2,42 @@
 
 {% block title %}{{ event.title }}{% endblock title %}
 
+{% block preload %}
+  {% if let Some(flyer) = flyer %}
+    <link
+      rel="preload"
+      as="image"
+      href="/e/{{ event.slug }}/flyer?size=sm"
+      imagesrcset="/e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm 400w,
+                    /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md 768w,
+                    /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=lg 1200w"
+      imagesizes="(max-width: 768px) 40vw, 100vw"
+    />
+  {% endif %}
+{% endblock %}
+
 {% block content %}
   <section id="events/view" class="ext/layout standard">
-    {% if has_flyer %}
-      <picture>
-        <source
-          media="(max-width: 400px)"
-          srcset="/e/{{ event.slug }}/flyer?size=sm"
+    {% if let Some(flyer) = flyer %}
+      <div
+        class="flyer"
+        style="background-image:url('{{ flyer.thumb_base64 }}')"
+      >
+        <img
+          src="/e/{{ event.slug }}/flyer?size=sm"
+          srcset="
+            /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm  400w,
+            /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md  768w,
+            /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=lg 1200w
+          "
+          sizes="(max-width: 768px) 40vw, 100vw"
+          width="{{ flyer.width }}"
+          height="{{ flyer.height }}"
+          decoding="async"
+          fetchpriority="high"
+          alt="event flyer"
         />
-        <source
-          media="(max-width: 768px)"
-          srcset="/e/{{ event.slug }}/flyer?size=md"
-        />
-        <source
-          media="(max-width: 1200px)"
-          srcset="/e/{{ event.slug }}/flyer?size=lg"
-        />
-        <img src="/e/{{ event.slug }}/flyer" alt="event flyer" />
-      </picture>
+      </div>
     {% endif %}
     <h1 class="title">{{ event.title }}</h1>
     <div class="details">
