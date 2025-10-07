@@ -1,0 +1,3 @@
+ALTER TABLE events
+  ADD COLUMN guest_list_id INTEGER
+  REFERENCES lists(id) ON DELETE SET NULL;
