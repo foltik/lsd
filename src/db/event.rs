@@ -17,6 +17,7 @@ pub struct Event {
 
     pub capacity: i64,
     pub unlisted: bool,
+    pub guest_list_id: Option<i64>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -33,6 +34,7 @@ pub struct UpdateEvent {
 
     pub capacity: i64,
     pub unlisted: bool,
+    pub guest_list_id: Option<i64>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -54,9 +56,7 @@ pub struct SpotStat {
 
 impl Event {
     pub async fn list(db: &Db) -> AppResult<Vec<Event>> {
-        let events = sqlx::query_as!(Self, "SELECT * FROM events WHERE unlisted = FALSE")
-            .fetch_all(db)
-            .await?;
+        let events = sqlx::query_as!(Self, "SELECT * FROM events").fetch_all(db).await?;
         Ok(events)
     }
 
@@ -90,8 +90,8 @@ impl Event {
     pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> AppResult<i64> {
         let event_id = sqlx::query!(
             r#"INSERT INTO events
-               (title, slug, description, start, end, capacity, unlisted)
-               VALUES (?, ?, ?, ?, ?, ?, ?)"#,
+               (title, slug, description, start, end, capacity, unlisted, guest_list_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
             event.title,
             event.slug,
             event.description,
@@ -99,6 +99,7 @@ impl Event {
             event.end,
             event.capacity,
             event.unlisted,
+            event.guest_list_id,
         )
         .execute(db)
         .await?
@@ -126,7 +127,8 @@ impl Event {
                     start = ?,
                     end = ?,
                     capacity = ?,
-                    unlisted = ?
+                    unlisted = ?,
+                    guest_list_id = ?
                 WHERE id = ?"#,
             event.title,
             event.slug,
@@ -135,6 +137,7 @@ impl Event {
             event.end,
             event.capacity,
             event.unlisted,
+            event.guest_list_id,
             id
         )
         .execute(db)

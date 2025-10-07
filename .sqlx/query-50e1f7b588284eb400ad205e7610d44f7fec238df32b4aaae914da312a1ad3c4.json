@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT u.*, GROUP_CONCAT(r.role) AS roles\n            FROM users u\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            WHERE u.email = ?\n            GROUP BY u.id\n            ",
+  "query": "SELECT l.*, COUNT(m.list_id) AS count\n             FROM lists l\n             LEFT JOIN list_members m ON l.id = m.list_id\n             GROUP BY l.id",
   "describe": {
     "columns": [
       {
@@ -9,33 +9,33 @@
         "type_info": "Integer"
       },
       {
-        "name": "first_name",
+        "name": "name",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "last_name",
+        "name": "description",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "email",
+        "name": "created_at",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Datetime"
       },
       {
-        "name": "created_at",
+        "name": "updated_at",
         "ordinal": 4,
         "type_info": "Datetime"
       },
       {
-        "name": "roles",
+        "name": "count",
         "ordinal": 5,
-        "type_info": "Text"
+        "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       false,
@@ -43,8 +43,8 @@
       false,
       false,
       false,
-      true
+      false
     ]
   },
-  "hash": "72e77ee29e7d255f696be3fd6d2399d8f07a2561a577a000688821cca7c44087"
+  "hash": "50e1f7b588284eb400ad205e7610d44f7fec238df32b4aaae914da312a1ad3c4"
 }

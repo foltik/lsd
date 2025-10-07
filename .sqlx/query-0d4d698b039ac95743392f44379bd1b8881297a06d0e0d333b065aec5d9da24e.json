@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM events WHERE unlisted = FALSE",
+  "query": "SELECT * FROM events",
   "describe": {
     "columns": [
       {
@@ -52,6 +52,11 @@
         "name": "updated_at",
         "ordinal": 9,
         "type_info": "Datetime"
+      },
+      {
+        "name": "guest_list_id",
+        "ordinal": 10,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -67,8 +72,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "a951ed3bb75cb36ce3c7539e22fcb3f16433e4e7c8c7dab8bbeabc0d7334efe3"
+  "hash": "0d4d698b039ac95743392f44379bd1b8881297a06d0e0d333b065aec5d9da24e"
 }

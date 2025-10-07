@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                u.*,\n                GROUP_CONCAT(r.role) AS \"roles: String\"\n            FROM users u\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            LEFT JOIN login_tokens t ON t.email = u.email\n            WHERE t.token = ?\n            GROUP BY u.id",
+  "query": "\n            SELECT\n                u.*,\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM users u\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            LEFT JOIN session_tokens t ON t.user_id = u.id\n            WHERE t.token = ?\n            GROUP BY u.id\n            ",
   "describe": {
     "columns": [
       {
@@ -29,9 +29,9 @@
         "type_info": "Datetime"
       },
       {
-        "name": "roles: String",
+        "name": "roles!: String",
         "ordinal": 5,
-        "type_info": "Null"
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -43,8 +43,8 @@
       false,
       false,
       false,
-      null
+      false
     ]
   },
-  "hash": "54a894bd0e73b52282aa238655d9cebc4b641236dadbdb7b4a1016e23b73a842"
+  "hash": "69b8eadcb3ac3696f72731a7ad7e606f4e9c076fe4042ec01e9535ade339cbd0"
 }

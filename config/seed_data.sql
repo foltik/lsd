@@ -19,12 +19,13 @@ INSERT OR IGNORE INTO session_tokens (user_id, token) VALUES
 
 INSERT OR IGNORE INTO lists (id, name, description) VALUES
     (1, 'Newsletter', 'the Studio newsletter!');
-INSERT OR IGNORE INTO list_members (list_id, email) VALUES
-    (1, 'admin@beta.lightandsound.design'),
-    (1, 'writer@beta.lightandsound.design'),
-    (1, 'user1@beta.lightandsound.design'),
-    (1, 'user2@beta.lightandsound.design'),
-    (1, 'user3@beta.lightandsound.design');
+INSERT OR IGNORE INTO list_members (list_id, user_id, email) VALUES
+    (1, 1, 'admin@beta.lightandsound.design'),
+    (1, 2, 'writer@beta.lightandsound.design'),
+    (1, 3, 'user1@beta.lightandsound.design'),
+    (1, 4, 'user2@beta.lightandsound.design'),
+    (1, 5, 'user3@beta.lightandsound.design'),
+    (1, NULL, 'unknown@beta.lightandsound.design');
 
 INSERT OR IGNORE INTO events (id, title, slug, description, start, end, capacity, unlisted) VALUES
     (1, 'An upcoming person will Present Sounds', 'upcoming-present-sounds', 'An upcoming person will present sounds.', '2026-07-31 23:00:00', '2026-08-01 03:00:00', 2, 0),

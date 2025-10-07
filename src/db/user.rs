@@ -29,13 +29,7 @@ macro_rules! map_row {
             last_name: row.last_name,
             email: row.email,
             created_at: row.created_at,
-            roles: row
-                .roles
-                .unwrap_or_default()
-                .split(',')
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect(),
+            roles: row.roles.split(',').filter(|s| !s.is_empty()).map(|s| s.to_string()).collect(),
         })
     };
 }
@@ -72,7 +66,9 @@ impl User {
     pub async fn lookup_by_email(db: &Db, email: &str) -> AppResult<Option<User>> {
         let row = sqlx::query!(
             r#"
-            SELECT u.*, GROUP_CONCAT(r.role) AS roles
+            SELECT
+                u.*,
+                COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN user_roles r ON r.user_id = u.id
             WHERE u.email = ?
@@ -94,7 +90,7 @@ impl User {
             r#"
             SELECT
                 u.*,
-                GROUP_CONCAT(r.role) AS "roles: String"
+                COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN user_roles r ON r.user_id = u.id
             LEFT JOIN login_tokens t ON t.email = u.email
@@ -111,7 +107,9 @@ impl User {
     pub async fn lookup_by_session_token(db: &Db, token: &str) -> AppResult<Option<User>> {
         let row = sqlx::query!(
             r#"
-            SELECT u.*, GROUP_CONCAT(r.role) AS roles
+            SELECT
+                u.*,
+                COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN user_roles r ON r.user_id = u.id
             LEFT JOIN session_tokens t ON t.user_id = u.id
