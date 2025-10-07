@@ -34,9 +34,9 @@
           placeholder="Enter email addresses, one per line..."
         ></textarea>
       </div>
-      <button type="submit">Save</button>
+      <button class="ext/button :green" type="submit">Save</button>
       {% if list.id != 0 %}
-        <div class="field members">
+        <div class="members">
           <label>Members</label>
           <ul>
             {% for member in members %}
