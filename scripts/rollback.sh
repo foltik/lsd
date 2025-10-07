@@ -18,5 +18,6 @@ sudo cp -aL /home/lsd/backups/lsd.latest /home/lsd/lsd
 sudo cp -aL /home/lsd/backups/db.latest.sqlite /home/lsd/db.sqlite
 
 sudo systemctl start lsd
+sleep 1
 sudo systemctl is-active --quiet lsd
 EOS
