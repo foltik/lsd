@@ -17,6 +17,7 @@ sudo cp /home/lsd/db.sqlite /home/lsd/backups/db.rollback.$TS.sqlite
 sudo cp -aL /home/lsd/backups/lsd.latest /home/lsd/lsd
 sudo cp -aL /home/lsd/backups/db.latest.sqlite /home/lsd/db.sqlite
 
+sudo systemctl reset-failed lsd || true
 sudo systemctl start lsd
 sleep 1
 sudo systemctl is-active --quiet lsd
