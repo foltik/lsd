@@ -18,7 +18,7 @@ sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
 tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "macros"] }
 tokio_schedule = "0.3"
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "compression-br", "request-id", "trace", "util"] }
+tower-http = { version = "0.6", features = ["fs", "set-header", "compression-br", "request-id", "trace", "util"] }
 tower-serve-static = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "charset", "json", "multipart", "rustls-tls"] }
 
@@ -38,6 +38,7 @@ uuid = { version = "1", features = ["v7"] }
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
+base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 jpeg-encoder = "0.6"
 

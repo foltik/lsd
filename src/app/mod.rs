@@ -1,5 +1,7 @@
+use axum::Router;
 use axum::extract::DefaultBodyLimit;
-use tower_http::compression::CompressionLayer;
+use tower::ServiceBuilder;
+use tower_http::compression::{self, CompressionLayer, Predicate};
 
 pub use crate::app::webhooks::Webhooks;
 use crate::prelude::*;
@@ -23,7 +25,7 @@ pub struct AppState {
     pub webhooks: Webhooks,
 }
 
-pub async fn build(config: Config) -> Result<(axum::Router<()>, SharedAppState)> {
+pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let state = Arc::new(AppState {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
@@ -46,13 +48,33 @@ pub async fn build(config: Config) -> Result<(axum::Router<()>, SharedAppState)>
 
     // Register app-wide routes
     #[cfg(debug_assertions)]
-    let r = r.nest_service("/static", tower_http::services::ServeDir::new("frontend/static"));
+    let r = {
+        use tower_http::services::ServeDir;
+        r.nest_service("/static", ServiceBuilder::new().service(ServeDir::new("frontend/static")))
+    };
     #[rustfmt::skip]
     #[cfg(not(debug_assertions))]
     let r = {
         use tower_serve_static::{ServeFile, include_file};
-        let r = r.nest_service("/static/main.css", ServeFile::new(include_file!("/frontend/static/main.css")));
-        let r = r.nest_service("/static/DM_Sans.woff2", ServeFile::new(include_file!("/frontend/static/DM_Sans.woff2")));
+        use tower_http::set_header::SetResponseHeaderLayer;
+        use axum::http::{HeaderName, HeaderValue};
+
+        let nest_static = |r: Router<Arc<AppState>>, urgency: u8, filename: &str, file: tower_serve_static::File| -> Router<SharedAppState> {
+            let service = ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::overriding(
+                    header::CACHE_CONTROL,
+                    HeaderValue::from_static("public, max-age=31536000, immutable"),
+                ))
+                .layer(SetResponseHeaderLayer::overriding(
+                    HeaderName::from_static("priority"),
+                    HeaderValue::from_str(&format!("u={urgency}")).unwrap(),
+                ))
+                .service(ServeFile::new(file));
+            r.nest_service(&format!("/static/{filename}"), service)
+        };
+
+        let r = nest_static(r, 0, "main.css", include_file!("/frontend/static/main.css"));
+        let r = nest_static(r, 4, "favicon.ico", include_file!("/frontend/static/favicon.ico"));
         r
     };
     // For non-HTML pages without a <link rel="icon">, this is where the browser looks
@@ -63,7 +85,13 @@ pub async fn build(config: Config) -> Result<(axum::Router<()>, SharedAppState)>
     let r = auth::add_middleware(r, Arc::clone(&state));
     let r = crate::utils::tracing::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
-    let r = r.layer(CompressionLayer::new());
+    let r = r.layer(
+        CompressionLayer::new().compress_when(
+            compression::DefaultPredicate::new()
+                .and(compression::predicate::NotForContentType::new("image/jpeg"))
+                .and(compression::predicate::NotForContentType::new("font/woff2")),
+        ),
+    );
     let r = r.with_state(Arc::clone(&state));
 
     Ok((r, state))
