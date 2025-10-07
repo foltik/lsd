@@ -1,3 +1,4 @@
+use axum::http::HeaderName;
 use image::DynamicImage;
 
 use crate::db::event::*;
@@ -87,6 +88,7 @@ mod read {
             [
                 (header::CONTENT_TYPE, EventFlyer::CONTENT_TYPE),
                 (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+                (HeaderName::from_static("priority"), "u=1"), // urgency below main.css (u=0) and above default (u=3)
             ],
             bytes,
         ))
