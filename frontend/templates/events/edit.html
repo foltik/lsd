@@ -75,6 +75,26 @@
       </div>
 
       <div class="field">
+        <label for="guest_list_id">Guest List</label>
+        <select name="guest_list_id" id="guest_list_id" data-type="number">
+          <option
+            value=""
+            {% if event.guest_list_id.is_none() %}selected{% endif %}
+          >
+            None (Public)
+          </option>
+          {% for list in lists %}
+            <option
+              value="{{ list.id }}"
+              {% if event.guest_list_id == Some(*list.id) %}selected{% endif %}
+            >
+              {{ list.name }} ({{ list.count }} members)
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
         <label for="date">Date</label>
         <input
           type="date"
@@ -309,6 +329,7 @@
         end,
         capacity: value("capacity"),
         unlisted: value("unlisted"),
+        guest_list_id: value("guest_list_id"),
         spots: ui.spots().map((t, i) => {
           const kind = value("kind", t);
           const spot = {

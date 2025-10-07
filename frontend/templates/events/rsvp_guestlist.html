@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - RSVP{% endblock title %}
+
+{% block content %}
+  <section id="events/rsvp/guestlist" class="ext/layout thin">
+    <header>
+      <h1>Are you on the list?</h1>
+    </header>
+    <form
+      id="form"
+      class="ext/form"
+      method="POST"
+      action="/e/{{ slug }}/guestlist"
+    >
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" name="email" />
+      </div>
+      <div class="actions">
+        <a href="/e/{{ slug }}" class="ext/button">&larr; Back</a>
+        <button id="continue" class="ext/button :green" type="submit">
+          Continue
+        </button>
+      </div>
+    </form>
+  </section>
+{% endblock content %}
