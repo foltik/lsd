@@ -1,5 +1,23 @@
 #lists\/list {
-  .lists {
-    @apply text-lg underline hover:decoration-blue-500;
+  .list {
+    @apply mb-2 flex items-start justify-between;
+
+    .title {
+      @apply mb-1 text-2xl font-bold;
+      a {
+        @apply decoration-lsd-blue hover:text-lsd-blue underline;
+      }
+    }
+
+    .actions {
+      @apply flex;
+      a,
+      form {
+        @apply mr-2;
+      }
+      form {
+        @apply p-0;
+      }
+    }
   }
 }

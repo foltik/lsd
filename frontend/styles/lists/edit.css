@@ -5,7 +5,7 @@
     }
     .members {
       label {
-        @apply text-lg;
+        @apply border-lsd-white/30 mt-6 border-b pb-1 text-2xl;
       }
       li {
         @apply mb-1 flex justify-between;
