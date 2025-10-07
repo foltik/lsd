@@ -52,6 +52,11 @@
         "name": "updated_at",
         "ordinal": 9,
         "type_info": "Datetime"
+      },
+      {
+        "name": "guest_list_id",
+        "ordinal": 10,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -67,7 +72,8 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "71a23021623175a1fc41826a3fa6864f0ce11920d5926a5c87b16e94dbc3c116"
