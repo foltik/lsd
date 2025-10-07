@@ -22,5 +22,6 @@ sudo mv /home/lsd/lsd.next /home/lsd/lsd
 sudo setcap 'cap_net_bind_service=+ep' /home/lsd/lsd
 
 sudo systemctl start lsd
+sleep 1
 sudo systemctl is-active --quiet lsd
 EOS
