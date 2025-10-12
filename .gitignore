@@ -13,3 +13,4 @@ deno.lock
 node_modules/
 venv/
 worktree/
+.env.local

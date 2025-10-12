@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, user_id, flyer_name, x, y, rotation, image_url, remove_after_time FROM flyers",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "flyer_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "x",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "y",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rotation",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "image_url",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "remove_after_time",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0c519d3a3eea44373ecfe7d896bddbdecae8f956c253b481f0578e36b584ec1f"
+}
