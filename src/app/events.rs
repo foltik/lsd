@@ -38,7 +38,7 @@ mod read {
         user: Option<User>,
         State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> AppResult<Response> {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/view.html")]
         struct Html {
@@ -47,8 +47,17 @@ mod read {
             flyer: Option<EventFlyer>,
         }
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-        Ok(Html { user, event, flyer })
+
+        tracing::info!("event view: {:?}", event);
+
+        if let Some(external_url) = &event.external_event_url
+            && !external_url.is_empty()
+        {
+            return Ok(Redirect::to(external_url).into_response());
+        } else {
+            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+            Ok(Html { user, event, flyer }.into_response())
+        }
     }
 
     // List all events.
@@ -128,6 +137,8 @@ mod edit {
                 unlisted: false,
                 guest_list_id: None,
 
+                external_event_url: None,
+
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),
             },
@@ -169,7 +180,11 @@ mod edit {
             match field.name().unwrap_or("") {
                 "data" => {
                     let text = field.text().await?;
-                    form = Some(serde_json::from_str(&text).map_err(|_| AppError::BadRequest)?);
+                    let res = serde_json::from_str(&text);
+                    if let Err(e) = res.as_ref() {
+                        tracing::error!("form parse error: {text} -> {e}");
+                    }
+                    form = Some(res.map_err(|_| AppError::BadRequest)?);
                 }
                 "flyer" => {
                     let data = field.bytes().await?;

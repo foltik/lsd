@@ -5,7 +5,7 @@ edition = "2024"
 
 
 [dependencies]
-axum = { version = "0.8", default-features = false, features = ["http2", "query", "form", "json", "multipart"] }
+axum = { version = "0.8", default-features = false, features = ["http2", "query", "form", "json", "multipart", "tracing"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
 askama = { version = "0.13", features = ["serde_json"] }
