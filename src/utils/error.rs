@@ -47,7 +47,10 @@ impl IntoResponse for AppError {
 
         let (status, message) = match self {
             AppError::BadRequest => error_400(),
-            AppError::BadMultipart(_) => error_400(),
+            AppError::BadMultipart(e) => {
+                tracing::error!("multipart error: {e}");
+                error_400()
+            },
             AppError::Unauthorized => error_401(),
             AppError::NotFound => error_404(),
             AppError::Database(_) => error_500(),

@@ -48,6 +48,8 @@ mod read {
         }
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
 
+        tracing::info!("event view: {:?}", event);
+
         if let Some(external_url) = &event.external_event_url
             && !external_url.is_empty()
         {
@@ -178,7 +180,11 @@ mod edit {
             match field.name().unwrap_or("") {
                 "data" => {
                     let text = field.text().await?;
-                    form = Some(serde_json::from_str(&text).map_err(|_| AppError::BadRequest)?);
+                    let res = serde_json::from_str(&text);
+                    if let Err(e) = res.as_ref() {
+                        tracing::error!("form parse error: {text} -> {e}");
+                    }
+                    form = Some(res.map_err(|_| AppError::BadRequest)?);
                 }
                 "flyer" => {
                     let data = field.bytes().await?;

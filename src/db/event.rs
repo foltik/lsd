@@ -130,7 +130,8 @@ impl Event {
                     end = ?,
                     capacity = ?,
                     unlisted = ?,
-                    guest_list_id = ?
+                    guest_list_id = ?,
+                    external_event_url = ?
                 WHERE id = ?"#,
             event.title,
             event.slug,
@@ -140,6 +141,7 @@ impl Event {
             event.capacity,
             event.unlisted,
             event.guest_list_id,
+            event.external_event_url,
             id
         )
         .execute(db)

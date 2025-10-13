@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE events\n                SET title = ?,\n                    slug = ?,\n                    description = ?,\n                    start = ?,\n                    end = ?,\n                    capacity = ?,\n                    unlisted = ?,\n                    guest_list_id = ?,\n                    external_event_url = ?\n                WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "499f1423909a4331b5770a31452785b30b52ec6c32198e7af6ef1c2bf5b69ba6"
+}

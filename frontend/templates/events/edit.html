@@ -8,17 +8,17 @@
       <h1>Edit Event</h1>
     </header>
     <div class="field">
-      <label for="external-event">
+      <label for="external-event-checkbox">
         <input
           type="checkbox"
-          id="external-event"
+          id="external-event-checkbox"
           {% if event.external_event_url.is_some() %}checked{% endif %}
         />
         External event?
       </label>
     </div>
     <form
-      id="form"
+      id="internal-event-form"
       class="ext/form"
       action="/events/{{ event.id }}/update"
       method="post"
@@ -37,18 +37,6 @@
           name="slug"
           value="{{ event.slug }}"
           required
-        />
-      </div>
-
-      <div class="field">
-        <label for="external-event-url">External Event URL</label>
-        <input
-          type="url"
-          id="external-event-url"
-          name="external_event_url"
-          {% if let Some(url) = event.external_event_url %}
-            value="{{ url }}"
-          {% endif %}
         />
       </div>
 
@@ -152,6 +140,122 @@
         </div>
       </div>
 
+      <input
+        type="hidden"
+        name="external_event_url"
+        {% if let Some(external_event_url) = event.external_event_url %}value="{{ external_event_url }}"{% else %}value=""{% endif %}
+      />
+
+      <button type="submit">
+        {% if event.title.is_empty() %}Create{% else %}Update{% endif %} event
+      </button>
+    </form>
+
+    <form
+      id="external-event-form"
+      class="ext/form"
+      action="/events/{{ event.id }}/update"
+      method="post"
+      enctype="multipart/form-data"
+    >
+      <div class="field">
+        <label for="title">Title</label>
+        <input type="text" name="title" value="{{ event.title }}" required />
+      </div>
+
+      <div class="field">
+        <label for="slug">Slug</label>
+        <input
+          type="text"
+          id="slug"
+          name="slug"
+          value="{{ event.slug }}"
+          required
+        />
+      </div>
+
+      <div class="field flyer">
+        <label for="flyer">Flyer</label>
+        <div class="wrapper">
+          <input
+            id="flyer"
+            type="file"
+            name="flyer"
+            accept="image/png,image/jpeg"
+          />
+          <div class="display">
+            <div>
+              <span id="flyer-text">No flyer chosen</span>
+              <span id="flyer-filename"></span>
+            </div>
+            <span class="ext/button">Choose File</span>
+          </div>
+        </div>
+        <img id="flyer-preview" class="hidden" />
+      </div>
+
+      <div class="field">
+        <label for="external_event_url">Event URL</label>
+        <input
+          type="url"
+          name="external_event_url"
+          {% if let Some(external_event_url) = event.external_event_url %}
+            value="{{ external_event_url }}"
+          {% else %}
+            value=""
+          {% endif %}
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="date">Date</label>
+        <input
+          type="date"
+          name="date"
+          value="{{ event.start | format_datetime("%Y-%m-%d") }}"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="start">Start</label>
+        <input
+          type="time"
+          name="start"
+          value="{{ event.start | format_datetime("%H:%M") }}"
+          required
+        />
+      </div>
+
+      <input type="hidden" name="description" value="{{ event.description }}" />
+      <input
+        type="hidden"
+        name="capacity"
+        data-type="number"
+        value="{{ event.capacity }}"
+      />
+      <input
+        type="hidden"
+        name="unlisted"
+        data-type="boolean"
+        value="{% if event.unlisted %}true{% else %}false{% endif %}"
+      />
+      <input
+        type="hidden"
+        name="guest_list_id"
+        {% if let Some(guest_list_id) = event.guest_list_id %}
+          value="{{ guest_list_id }}"
+        {% else %}
+          value=""
+        {% endif %}
+      />
+      <input
+        type="hidden"
+        name="end"
+        value="{{ event.end | format_optional_datetime("%H:%M") }}"
+      />
+
       <button type="submit">
         {% if event.title.is_empty() %}Create{% else %}Update{% endif %} event
       </button>
@@ -161,30 +265,18 @@
     /* ---------- DOM ----------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
     const ui = {
-      form: $("form"),
+      internalEventForm: $("internal-event-form"),
+      externalEventForm: $("external-event-form"),
       list: $("spots"),
       add: $("add"),
       spots: () => [...ui.list.querySelectorAll(".spot")],
-      externalEvent: $("external-event"),
+      externalEventCheckBox: $("external-event-checkbox"),
       flyer: {
         input: $("flyer"),
         text: $("flyer-text"),
         filename: $("flyer-filename"),
         preview: $("flyer-preview"),
         field: document.querySelector(".field.flyer"),
-      },
-      fields: {
-        externalUrl: document
-          .querySelector('input[name="external_event_url"]')
-          .closest(".field"),
-        description: document
-          .querySelector('input[name="description"]')
-          .closest(".field"),
-        capacity: document
-          .querySelector('input[name="capacity"]')
-          .closest(".field"),
-        end: document.querySelector('input[name="end"]').closest(".field"),
-        spots: $("spots"),
       },
     };
     const KINDS = {
@@ -202,35 +294,14 @@
     };
 
     function toggleInternalExternal() {
-      const isExternal = ui.externalEvent.checked;
+      const isExternal = ui.externalEventCheckBox.checked;
 
-      ui.fields.externalUrl.hidden = !isExternal;
-      const externalUrlInput = ui.fields.externalUrl.querySelector(
-        'input[name="external_event_url"]',
-      );
-      externalUrlInput.required = isExternal;
-
-      ui.flyer.field.hidden = isExternal;
-
-      ui.fields.description.hidden = isExternal;
-      const descriptionInput = ui.fields.description.querySelector(
-        'input[name="description"]',
-      );
-      descriptionInput.required = !isExternal;
-
-      ui.fields.capacity.hidden = isExternal;
-      const capacityInput = ui.fields.capacity.querySelector(
-        'input[name="capacity"]',
-      );
-      capacityInput.required = !isExternal;
-
-      ui.fields.end.hidden = isExternal;
-
-      ui.fields.spots.hidden = isExternal;
+      ui.internalEventForm.style.display = isExternal ? "none" : "block";
+      ui.externalEventForm.style.display = isExternal ? "block" : "none";
     }
 
     /* ---------- External Event Toggle ----------------------------------------- */
-    ui.externalEvent.addEventListener("change", () => {
+    ui.externalEventCheckBox.addEventListener("change", () => {
       toggleInternalExternal();
     });
 
@@ -344,25 +415,33 @@
     updateFlyerPreview();
 
     /* ---------- Form submit handler ------------------------------------------- */
-    ui.form.addEventListener("submit", async (e) => {
+    const handleFormSubmit = async (e) => {
       e.preventDefault();
 
-      const isExternal = ui.externalEvent.checked;
+      const isExternal = ui.externalEventCheckBox.checked;
+      const activeForm = isExternal
+        ? ui.externalEventForm
+        : ui.internalEventForm;
 
-      // Only check for spots if it's not an external event
       if (!isExternal && ui.spots().length == 0) {
         alert("Add at least one reservation!");
         return;
       }
 
       // Retrieve the value of an input, with adjustments for HTML input type weirdness
-      let value = (name, root = ui.form) => {
+      let value = (name, root = activeForm) => {
         const el = root.querySelector(`[name="${name}"]`);
+        if (!el) {
+          console.warn(`Element with name "${name}" not found in form`);
+          return null;
+        }
         const type = el.dataset?.type || el.type;
         if (type == "number") {
           return el.value == "" ? null : +el.value;
         } else if (type == "checkbox") {
           return el.checked;
+        } else if (type == "boolean") {
+          return el.value === "true";
         } else {
           return el.value == "" ? null : el.value;
         }
@@ -397,41 +476,48 @@
         return [start, end];
       })();
 
+      console.log(value("external_event_url"));
+
       const body = {
         id: parseInt("{{ event.id }}") || undefined,
         title: value("title"),
         slug: value("slug"),
-        description: value("description"),
+        description: value("description") || "",
         start,
         end,
-        capacity: value("capacity"),
+        capacity: value("capacity") || 0,
         unlisted: value("unlisted"),
         guest_list_id: value("guest_list_id"),
-        external_event_url: isExternal ? value("external_event_url") : null,
-        spots: ui.spots().map((t, i) => {
-          const kind = value("kind", t);
-          const spot = {
-            id: value("id", t),
-            name: value("name", t),
-            description: value("description", t),
-            qty_total: value("qty_total", t),
-            qty_per_person: value("qty_per_person", t),
-            kind,
-            sort: i,
-          };
+        external_event_url: value("external_event_url"),
+        spots: isExternal
+          ? []
+          : ui.spots().map((t, i) => {
+              const kind = value("kind", t);
+              const spot = {
+                id: value("id", t),
+                name: value("name", t),
+                description: value("description", t),
+                qty_total: value("qty_total", t),
+                qty_per_person: value("qty_per_person", t),
+                kind,
+                sort: i,
+              };
 
-          if (kind == "fixed") {
-            spot.required_contribution = value("required_contribution", t);
-          } else if (kind == "variable") {
-            spot.min_contribution = value("min_contribution", t);
-            spot.max_contribution = value("max_contribution", t);
-            spot.suggested_contribution = value("suggested_contribution", t);
-          } else if (kind == "work") {
-            spot.required_notice_hours = value("required_notice_hours", t);
-          }
+              if (kind == "fixed") {
+                spot.required_contribution = value("required_contribution", t);
+              } else if (kind == "variable") {
+                spot.min_contribution = value("min_contribution", t);
+                spot.max_contribution = value("max_contribution", t);
+                spot.suggested_contribution = value(
+                  "suggested_contribution",
+                  t,
+                );
+              } else if (kind == "work") {
+                spot.required_notice_hours = value("required_notice_hours", t);
+              }
 
-          return spot;
-        }),
+              return spot;
+            }),
       };
 
       const slug = value("slug");
@@ -457,7 +543,11 @@
       } catch (e) {
         alert(`Error: ${e}`);
       }
-    });
+    };
+
+    // Apply the submit handler to both forms
+    ui.internalEventForm.addEventListener("submit", handleFormSubmit);
+    ui.externalEventForm.addEventListener("submit", handleFormSubmit);
 
     // Populate existing spots from the backend
     let spots = JSON.parse(`{{ spots | json | safe }}`);
