@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 use chrono_tz::Tz;
 use lettre::message::Mailbox;
+use secrecy::SecretString;
 
 impl Config {
     /// Load a `.toml` file from disk and parse it as a [`Config`].
@@ -48,6 +49,10 @@ pub struct AppConfig {
     pub tz: Tz,
     /// How long until a login session expires.
     pub session_expiry_days: u32,
+    /// Cloudflare turnstile site key
+    pub turnstile_site_key: String,
+    /// Cloudflare turnstile secret key
+    pub turnstile_secret_key: SecretString,
 }
 
 /// Database configuration.
@@ -106,6 +111,6 @@ fn default_ratelimit() -> usize {
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct StripeConfig {
     pub publishable_key: String,
-    pub secret_key: String,
+    pub secret_key: SecretString,
     pub webhook_key: String,
 }

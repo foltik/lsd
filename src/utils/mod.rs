@@ -6,4 +6,5 @@ pub mod routing;
 pub mod stripe;
 pub mod templates;
 pub mod tracing;
+pub mod turnstile;
 pub mod types;
