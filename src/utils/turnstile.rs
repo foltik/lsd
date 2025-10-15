@@ -64,40 +64,40 @@ pub async fn validate_turnstile(
 
     // Skip hostname/action validation for test keys since they return fixed values
     if !is_test_key {
-        if let Some(actual_action) = &result.action {
-            if expected_action != actual_action {
-                tracing::warn!(
-                    "Turnstile action mismatch. Expected: {}, Got: {}",
-                    expected_action,
-                    actual_action
-                );
-                return Ok(false);
-            }
+        if let Some(actual_action) = &result.action
+            && expected_action != actual_action
+        {
+            tracing::warn!(
+                "Turnstile action mismatch. Expected: {}, Got: {}",
+                expected_action,
+                actual_action
+            );
+            return Ok(false);
         }
 
-        if let Some(actual_hostname) = &result.hostname {
-            if expected_hostname != actual_hostname {
-                tracing::warn!(
-                    "Turnstile hostname mismatch. Expected: {}, Got: {}",
-                    expected_hostname,
-                    actual_hostname
-                );
-                return Ok(false);
-            }
+        if let Some(actual_hostname) = &result.hostname
+            && expected_hostname != actual_hostname
+        {
+            tracing::warn!(
+                "Turnstile hostname mismatch. Expected: {}, Got: {}",
+                expected_hostname,
+                actual_hostname
+            );
+            return Ok(false);
         }
     } else {
         tracing::debug!("Using Turnstile test key, skipping hostname/action validation");
     }
 
-    if let Some(challenge_ts) = &result.challenge_ts {
-        if let Ok(challenge_time) = chrono::DateTime::parse_from_rfc3339(challenge_ts) {
-            let now = Utc::now();
-            let age = now.signed_duration_since(challenge_time);
-            let age_minutes = age.num_minutes();
+    if let Some(challenge_ts) = &result.challenge_ts
+        && let Ok(challenge_time) = chrono::DateTime::parse_from_rfc3339(challenge_ts)
+    {
+        let now = Utc::now();
+        let age = now.signed_duration_since(challenge_time);
+        let age_minutes = age.num_minutes();
 
-            if age_minutes > 4 {
-                tracing::warn!("Turnstile token is {} minutes old", age_minutes);
-            }
+        if age_minutes > 4 {
+            tracing::warn!("Turnstile token is {} minutes old", age_minutes);
         }
     }
 
