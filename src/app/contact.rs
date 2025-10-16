@@ -1,3 +1,6 @@
+use std::net::SocketAddr;
+
+use axum::extract::ConnectInfo;
 use axum::http::HeaderMap;
 use lettre::message::Mailbox;
 use secrecy::ExposeSecret;
@@ -39,23 +42,25 @@ async fn contact_us_form(
     user: Option<User>,
     State(state): State<SharedAppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
+    let fallback_ip = addr.ip().to_string();
     // Extract client IP: prefer CF-Connecting-IP, fallback to X-Forwarded-For
-    // Note: If neither header exists, we pass None and rely on Turnstile's server-side detection
     let remote_ip = headers
-        .get("cf-connecting-ip")
-        .or_else(|| headers.get("x-forwarded-for"))
+        .get("CF-Connecting-IP")
+        .or_else(|| headers.get("X-Forwarded-For"))
         .and_then(|h| h.to_str().ok())
         .and_then(|s| s.split(',').next()) // take first IP if multiple
-        .map(|s| s.trim());
+        .map(|s| s.trim())
+        .or(Some(fallback_ip.as_str()));
 
     let is_valid = validate_turnstile(
         &form.turnstile_token,
         state.config.app.turnstile_secret_key.expose_secret(),
         remote_ip,
         &state.config.app.domain,
-        "/contact",
+        "contact",
     )
     .await?;
 

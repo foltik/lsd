@@ -41,15 +41,14 @@
         ></textarea>
       </div>
 
-      <div class="field items-center">
-        <div
-          class="cf-turnstile"
-          data-sitekey="{{ turnstile_site_key }}"
-          data-callback="onTurnstileSuccess"
-          data-error-callback="onTurnstileError"
-          data-expired-callback="onTurnstileExpired"
-        ></div>
-      </div>
+      <div
+        class="cf-turnstile"
+        data-sitekey="{{ turnstile_site_key }}"
+        data-action="contact"
+        data-callback="onTurnstileSuccess"
+        data-error-callback="onTurnstileError"
+        data-expired-callback="onTurnstileExpired"
+      ></div>
 
       <button type="submit" class="ext/button" disabled>Send</button>
     </form>
@@ -59,7 +58,6 @@
 {% block scripts %}
   <script>
     function onTurnstileSuccess(token) {
-      console.log("Turnstile success:", token);
       document.querySelector("button[type='submit']").disabled = false;
     }
 

@@ -19,9 +19,9 @@ struct TurnstileResponse {
 /// # Arguments
 /// * `token` - The Turnstile response token from the client
 /// * `secret` - The Turnstile secret key
-/// * `remote_ip` - Optional client IP address for enhanced validation
-/// * `expected_hostname` - Optional expected hostname to validate against
-/// * `expected_action` - Optional expected action to validate against
+/// * `remote_ip` - client IP address
+/// * `expected_hostname` - expected hostname to validate against
+/// * `expected_action` - expected action to validate against (from `data-action` HTML attribute)
 ///
 /// # Returns
 /// Returns `Ok(true)` if validation succeeds, `Ok(false)` if validation fails,

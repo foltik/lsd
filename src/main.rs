@@ -7,6 +7,8 @@ mod jobs;
 mod prelude;
 mod utils;
 
+use std::net::SocketAddr;
+
 use axum::handler::HandlerWithoutStateExt;
 use axum::response::Redirect;
 use axum_server::tls_rustls::RustlsConfig;
@@ -50,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     utils::templates::CONFIG.set(config.clone()).unwrap();
 
     let (router, state) = app::build(config.clone()).await?;
-    let app = router.into_make_service();
+    let app = router.into_make_service_with_connect_info::<SocketAddr>();
     tracing::info!("Live at {}", &config.app.url);
 
     // Spawn periodic jobs
