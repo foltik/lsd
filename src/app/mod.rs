@@ -5,6 +5,7 @@ use tower_http::compression::{self, CompressionLayer, Predicate};
 
 pub use crate::app::webhooks::Webhooks;
 use crate::prelude::*;
+use crate::utils::cloudflare::Cloudflare;
 use crate::utils::emailer::Emailer;
 use crate::utils::stripe::Stripe;
 
@@ -20,8 +21,9 @@ mod webhooks;
 pub struct AppState {
     pub config: Config,
     pub db: Db,
-    pub mailer: Emailer,
     pub stripe: Stripe,
+    pub cloudflare: Cloudflare,
+    pub mailer: Emailer,
     pub webhooks: Webhooks,
 }
 
@@ -30,6 +32,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
         stripe: Stripe::new(&config),
+        cloudflare: Cloudflare::new(&config)?,
         mailer: Emailer::connect(config.email).await?,
         webhooks: Webhooks::default(),
     });

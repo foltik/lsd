@@ -3,11 +3,6 @@ domain = "localhost"
 url = "https://localhost:4433"
 tz = "America/New_York"
 session_expiry_days = 365
-# https://developers.cloudflare.com/turnstile/troubleshooting/testing/
-# This site key will always display the challenge
-turnstile_site_key = "1x00000000000000000000BB"
-# This secret key will always validate success
-turnstile_secret_key = "1x0000000000000000000000000000000AA"
 
 [db]
 file = "db.sqlite"
@@ -25,3 +20,8 @@ from = "Light and Sound Design <studio@beta.lightandsound.design.local>"
 publishable_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 secret_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 webhook_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+[cloudflare]
+# Test keys (see https://developers.cloudflare.com/turnstile/troubleshooting/testing)
+turnstile_site_key = "1x00000000000000000000BB"
+turnstile_secret_key = "1x0000000000000000000000000000000AA"

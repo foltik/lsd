@@ -1,17 +1,11 @@
-use secrecy::ExposeSecret;
-
 use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
-
-// do we need to track stripe session ids locally
-// they contain user emails
-// what do we do with user first/last name?
 
 const API_VERSION: &str = "2025-07-30.basil";
 
 pub struct Stripe {
     app_url: String,
-    secret_key: secrecy::SecretString,
+    secret_key: String,
     http: reqwest::Client,
 }
 
@@ -84,7 +78,7 @@ impl Stripe {
         let res: Response = self.http
             .post("https://api.stripe.com/v1/checkout/sessions")
             .header("Stripe-Version", API_VERSION)
-            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key.expose_secret()))
+            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(form_data)
             .send().await?.json().await?;

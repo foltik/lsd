@@ -1,3 +1,4 @@
+pub mod cloudflare;
 pub mod config;
 pub mod emailer;
 pub mod error;
@@ -6,5 +7,4 @@ pub mod routing;
 pub mod stripe;
 pub mod templates;
 pub mod tracing;
-pub mod turnstile;
 pub mod types;

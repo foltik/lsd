@@ -1,34 +1,31 @@
 use std::net::SocketAddr;
 
 use axum::extract::ConnectInfo;
-use axum::http::HeaderMap;
 use lettre::message::Mailbox;
-use secrecy::ExposeSecret;
-use serde::Deserialize;
 
 use crate::prelude::*;
-use crate::utils::turnstile::validate_turnstile;
 
 pub fn add_routes(router: AppRouter) -> AppRouter {
-    router.public_routes(|r| r.route("/contact", get(contact_us_page).post(contact_us_form)))
+    router.public_routes(|r| r.route("/contact", get(contact_page).post(contact_form)))
 }
 
-#[axum::debug_handler]
-async fn contact_us_page(
+async fn contact_page(
     user: Option<User>,
     State(state): State<SharedAppState>,
 ) -> AppResult<impl IntoResponse> {
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/send.html")]
-    struct ContactUsTemplate {
+    struct Html {
         user: Option<User>,
         turnstile_site_key: String,
     };
-
-    Ok(ContactUsTemplate { user, turnstile_site_key: state.config.app.turnstile_site_key.clone() })
+    Ok(Html {
+        user,
+        turnstile_site_key: state.config.cloudflare.turnstile_site_key.clone(),
+    })
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug)]
 struct ContactForm {
     name: String,
     email: String,
@@ -37,35 +34,13 @@ struct ContactForm {
     #[serde(rename = "cf-turnstile-response")]
     turnstile_token: String,
 }
-
-async fn contact_us_form(
+async fn contact_form(
     user: Option<User>,
     State(state): State<SharedAppState>,
-    headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    ConnectInfo(client): ConnectInfo<SocketAddr>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
-    let fallback_ip = addr.ip().to_string();
-    // Extract client IP: prefer CF-Connecting-IP, fallback to X-Forwarded-For
-    let remote_ip = headers
-        .get("CF-Connecting-IP")
-        .or_else(|| headers.get("X-Forwarded-For"))
-        .and_then(|h| h.to_str().ok())
-        .and_then(|s| s.split(',').next()) // take first IP if multiple
-        .map(|s| s.trim())
-        .or(Some(fallback_ip.as_str()));
-
-    let is_valid = validate_turnstile(
-        &form.turnstile_token,
-        state.config.app.turnstile_secret_key.expose_secret(),
-        remote_ip,
-        &state.config.app.domain,
-        "contact",
-    )
-    .await?;
-
-    if !is_valid {
-        tracing::warn!("Contact form submission rejected due to failed Turnstile validation");
+    if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {
         return Err(AppError::BadRequest);
     }
 
