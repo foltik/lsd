@@ -27,7 +27,7 @@ impl Config {
 }
 
 /// Bag of app configuration values, parsed from a TOML file with serde.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct Config {
     pub app: AppConfig,
     pub db: DbConfig,
@@ -35,10 +35,11 @@ pub struct Config {
     pub acme: Option<AcmeConfig>,
     pub email: EmailConfig,
     pub stripe: StripeConfig,
+    pub cloudflare: CloudflareConfig,
 }
 
 /// Webapp configuration.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct AppConfig {
     /// Public facing domain, e.g. `site.com`.
     pub domain: String,
@@ -51,7 +52,7 @@ pub struct AppConfig {
 }
 
 /// Database configuration.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct DbConfig {
     /// Path to sqlite3 database file.
     pub file: PathBuf,
@@ -59,7 +60,7 @@ pub struct DbConfig {
 }
 
 /// Networking configuration.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct NetConfig {
     /// HTTP server bind address.
     pub http_addr: SocketAddr,
@@ -68,7 +69,7 @@ pub struct NetConfig {
 }
 
 /// LetsEncrypt ACME TLS certificate configuration.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct AcmeConfig {
     /// Domain to request a cert for.
     pub domain: String,
@@ -81,7 +82,7 @@ pub struct AcmeConfig {
 }
 
 /// Email configuration.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct EmailConfig {
     /// SMTP address, starting with `smtp://`.
     pub smtp_addr: String,
@@ -103,9 +104,15 @@ fn default_ratelimit() -> usize {
     10
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct StripeConfig {
     pub publishable_key: String,
     pub secret_key: String,
     pub webhook_key: String,
+}
+
+#[derive(Clone, serde::Deserialize)]
+pub struct CloudflareConfig {
+    pub turnstile_site_key: String,
+    pub turnstile_secret_key: String,
 }
