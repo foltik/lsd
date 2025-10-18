@@ -30,3 +30,7 @@ contact_to = "$EMAIL_CONTACT_TO"
 publishable_key = "$STRIPE_PUBLISHABLE_KEY"
 secret_key = "$STRIPE_SECRET_KEY"
 webhook_key = "$STRIPE_WEBHOOK_KEY"
+
+[cloudflare]
+turnstile_site_key = "$CF_TURNSTILE_SITE_KEY"
+turnstile_secret_key = "$CF_TURNSTILE_SECRET_KEY"

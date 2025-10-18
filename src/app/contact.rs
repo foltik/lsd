@@ -1,35 +1,49 @@
+use std::net::SocketAddr;
+
+use axum::extract::ConnectInfo;
 use lettre::message::Mailbox;
-use serde::Deserialize;
 
 use crate::prelude::*;
 
 pub fn add_routes(router: AppRouter) -> AppRouter {
-    router.public_routes(|r| r.route("/contact", get(contact_us_page).post(contact_us_form)))
+    router.public_routes(|r| r.route("/contact", get(contact_page).post(contact_form)))
 }
 
-async fn contact_us_page(user: Option<User>) -> AppResult<impl IntoResponse> {
+async fn contact_page(
+    user: Option<User>,
+    State(state): State<SharedAppState>,
+) -> AppResult<impl IntoResponse> {
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/send.html")]
-    struct ContactUsTemplate {
+    struct Html {
         user: Option<User>,
+        turnstile_site_key: String,
     };
-
-    Ok(ContactUsTemplate { user })
+    Ok(Html {
+        user,
+        turnstile_site_key: state.config.cloudflare.turnstile_site_key.clone(),
+    })
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug)]
 struct ContactForm {
     name: String,
     email: String,
     subject: String,
     message: String,
+    #[serde(rename = "cf-turnstile-response")]
+    turnstile_token: String,
 }
-
-async fn contact_us_form(
+async fn contact_form(
     user: Option<User>,
     State(state): State<SharedAppState>,
+    ConnectInfo(client): ConnectInfo<SocketAddr>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
+    if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {
+        return Err(AppError::BadRequest);
+    }
+
     let name = Some(form.name).filter(|n| !n.is_empty());
     let email = Some(form.email).filter(|e| !e.is_empty());
 

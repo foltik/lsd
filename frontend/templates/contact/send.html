@@ -4,6 +4,14 @@
   Suggestion Box - light and sound
 {% endblock title %}
 
+{% block head %}
+  <script
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+    async
+    defer
+  ></script>
+{% endblock head %}
+
 {% block content %}
   <section class="ext/layout standard">
     <header>
@@ -32,7 +40,33 @@
           required
         ></textarea>
       </div>
-      <button type="submit">Send</button>
+
+      <div
+        class="cf-turnstile"
+        data-sitekey="{{ turnstile_site_key }}"
+        data-callback="onTurnstileSuccess"
+        data-error-callback="onTurnstileError"
+        data-expired-callback="onTurnstileError"
+      ></div>
+
+      <button id="submit" type="submit" class="ext/button" disabled>
+        Verifying...
+      </button>
     </form>
   </section>
 {% endblock content %}
+
+{% block scripts %}
+  <script>
+    const btn = document.getElementById("submit");
+    function onTurnstileSuccess(token) {
+      btn.innerText = "Send";
+      btn.disabled = false;
+    }
+    function onTurnstileError() {
+      btn.classList.add(":red");
+      btn.innerText = "Captcha Failed";
+      btn.disabled = true;
+    }
+  </script>
+{% endblock scripts %}

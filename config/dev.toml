@@ -20,3 +20,8 @@ from = "Light and Sound Design <studio@beta.lightandsound.design.local>"
 publishable_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 secret_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 webhook_key = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+[cloudflare]
+# Test keys (see https://developers.cloudflare.com/turnstile/troubleshooting/testing)
+turnstile_site_key = "1x00000000000000000000BB"
+turnstile_secret_key = "1x0000000000000000000000000000000AA"

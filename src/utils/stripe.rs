@@ -1,10 +1,6 @@
 use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
 
-// do we need to track stripe session ids locally
-// they contain user emails
-// what do we do with user first/last name?
-
 const API_VERSION: &str = "2025-07-30.basil";
 
 pub struct Stripe {

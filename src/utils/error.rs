@@ -14,17 +14,17 @@ pub enum AppError {
     #[error("not found")]
     NotFound,
 
-    #[error(transparent)]
+    #[error("Stripe: {0}")]
     Stripe(#[from] crate::utils::stripe::StripeError),
-    #[error(transparent)]
+    #[error("Email: {0}")]
     Email(#[from] lettre::error::Error),
-    #[error(transparent)]
+    #[error("SMTP: {0}")]
     Smtp(#[from] lettre::transport::smtp::Error),
-    #[error(transparent)]
+    #[error("Template: {0}")]
     Render(#[from] askama::Error),
-    #[error(transparent)]
+    #[error("Sqlx: {0}")]
     Database(#[from] sqlx::Error),
-    #[error(transparent)]
+    #[error("Reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
 }
 
