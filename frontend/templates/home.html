@@ -49,12 +49,13 @@
     });
 
     const state = localStorage.getItem("newsletter");
-    if (!state) return;
-    let { t, phase } = JSON.parse(state);
-    const dt = Date.now() - t;
-    phase = (phase + dt) % 2000;
-    document.querySelectorAll(".newsletter span").forEach((el, i) => {
-      el.style.animationDelay = `-${(phase + i * 100) % 2000}ms`;
-    });
+    if (state) {
+      let { t, phase } = JSON.parse(state);
+      const dt = Date.now() - t;
+      phase = (phase + dt) % 2000;
+      document.querySelectorAll(".newsletter span").forEach((el, i) => {
+        el.style.animationDelay = `-${(phase + i * 100) % 2000}ms`;
+      });
+    }
   </script>
 {% endblock scripts %}
