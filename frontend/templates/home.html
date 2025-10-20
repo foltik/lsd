@@ -38,3 +38,23 @@
     </ul>
   </section>
 {% endblock content %}
+
+{% block scripts %}
+  <script>
+    window.addEventListener("beforeunload", () => {
+      const el = document.querySelector(".newsletter span");
+      const t = Date.now();
+      const phase = t % 2000;
+      localStorage.setItem("newsletter", JSON.stringify({ t, phase }));
+    });
+
+    const state = localStorage.getItem("newsletter");
+    if (!state) return;
+    let { t, phase } = JSON.parse(state);
+    const dt = Date.now() - t;
+    phase = (phase + dt) % 2000;
+    document.querySelectorAll(".newsletter span").forEach((el, i) => {
+      el.style.animationDelay = `-${(phase + i * 100) % 2000}ms`;
+    });
+  </script>
+{% endblock scripts %}
