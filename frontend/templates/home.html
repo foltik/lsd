@@ -41,11 +41,13 @@
 
 {% block scripts %}
   <script>
-    window.addEventListener("beforeunload", () => {
-      const el = document.querySelector(".newsletter span");
-      const t = Date.now();
-      const phase = t % 2000;
-      localStorage.setItem("newsletter", JSON.stringify({ t, phase }));
+    window.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        const el = document.querySelector(".newsletter span");
+        const t = Date.now();
+        const phase = t % 2000;
+        localStorage.setItem("newsletter", JSON.stringify({ t, phase }));
+      }
     });
 
     const state = localStorage.getItem("newsletter");
