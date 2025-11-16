@@ -175,19 +175,29 @@ mod send {
             id: i64,
             name: String,
             count: i64,
-            skip: i64,
+            sent: i64,
         }
         let lists = sqlx::query_as!(
             ListExt,
             r#"
-            SELECT l.id, l.name, COUNT(m.email) as count, COUNT(e.sent_at) as skip
+            SELECT
+                l.id,
+                l.name,
+                COUNT(m.email) AS count,
+                SUM(
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM emails e
+                        WHERE e.address = m.email
+                          AND e.list_id = l.id
+                          AND e.post_id = ?
+                          AND e.sent_at IS NOT NULL
+                    )
+                    THEN 1 ELSE 0 END
+                ) AS sent
             FROM lists l
-            LEFT JOIN list_members m ON m.list_id = l.id
-            LEFT JOIN emails e
-                ON e.address = m.email
-                AND e.post_id = ?
-                AND e.list_id = l.id
-                AND e.sent_at IS NOT NULL
+            LEFT JOIN list_members m
+                ON m.list_id = l.id
             GROUP BY l.id;
             "#,
             post.id,
@@ -220,6 +230,7 @@ mod send {
     #[derive(serde::Deserialize)]
     pub struct SendForm {
         list_id: i64,
+        resend: bool,
     }
     pub async fn send_form(
         State(state): State<SharedAppState>,
@@ -233,7 +244,10 @@ mod send {
             return Err(AppError::NotFound);
         };
 
-        let emails = Email::create_posts(&state.db, post.id, list.id).await?;
+        let emails = match form.resend {
+            false => Email::create_send_posts(&state.db, post.id, list.id).await?,
+            true => Email::create_resend_posts(&state.db, post.id, list.id).await?,
+        };
 
         let mut email_template = EmailHtml {
             post: post.clone(),
