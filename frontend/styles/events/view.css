@@ -11,7 +11,7 @@
   }
 
   .details {
-    @apply text-lsd-gray border-lsd-white/20 mb-4 flex w-full justify-between border-b pb-1 text-xl md:text-2xl;
+    @apply text-lsd-gray border-lsd-white/20 mb-4 flex w-full justify-between border-b pb-1 text-lg md:text-2xl;
   }
 
   .description {

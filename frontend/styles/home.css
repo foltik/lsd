@@ -32,7 +32,7 @@
 
       .event {
         @apply grid;
-        grid-template-columns: 14ch 1px 1fr;
+        grid-template-columns: 15ch 1px 1fr;
         &:hover {
           @apply text-lsd-gray;
           .divider {
@@ -49,7 +49,7 @@
           @apply bg-lsd-white h-full w-px;
         }
         .title {
-          @apply pb-2 pl-5 text-xl leading-snug;
+          @apply pb-2 pl-4 text-xl leading-snug;
           grid-column: 3;
         }
       }
