@@ -55,6 +55,10 @@
     @apply border-lsd-green/30 bg-lsd-green/20 hover:bg-lsd-green/30;
   }
 
+  &.\:yellow {
+    @apply border-lsd-yellow/30 bg-lsd-yellow/20 hover:bg-lsd-yellow/30;
+  }
+
   &.\:red {
     @apply border-lsd-red/30 bg-lsd-red/20 hover:bg-lsd-red/30;
   }

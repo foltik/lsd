@@ -1,4 +1,8 @@
 #posts\/send {
+  #send {
+    @apply mb-4;
+  }
+
   #progress {
     @apply border-lsd-white/30 mb-8 rounded-md border px-6 py-4;
 
@@ -44,7 +48,12 @@
             transparent 100%
           );
           transform: translateX(-100%);
-          animation: shimmer 1.6s linear infinite;
+          animation: none;
+        }
+        &.sending {
+          &::before {
+            animation: shimmer 1.6s linear infinite;
+          }
         }
         &.ok {
           @apply bg-[var(--color-lsd-green)]/80;
