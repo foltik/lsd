@@ -42,26 +42,109 @@ impl Email {
         Ok(res.last_insert_rowid())
     }
 
-    /// Create email entries for the given post for all users on the given list if they don't already exist.
-    pub async fn create_posts(db: &Db, post_id: i64, list_id: i64) -> AppResult<Vec<Email>> {
-        let emails = sqlx::query_as!(
+    /// Create email entries for sending the given post to all users on the given list.
+    /// Returns rows with `sent_at` set if the post was already emailed to a user.
+    pub async fn create_send_posts(db: &Db, post_id: i64, list_id: i64) -> AppResult<Vec<Email>> {
+        let existing = sqlx::query_as!(
             Email,
             r#"
-            INSERT INTO emails (kind, address, post_id, list_id)
-                SELECT ?, email, ?, list_id
-                FROM list_members
-                WHERE list_id = ?
-            ON CONFLICT(address, post_id, list_id) DO UPDATE
-                SET kind = emails.kind -- no-op so the rows are still returned
-            RETURNING *;
+            SELECT e.* FROM emails e
+            WHERE e.post_id = ? AND e.list_id = ?
+                AND ifnull(e.sent_at, '') = (
+                    SELECT ifnull(MAX(ee.sent_at), '')
+                    FROM emails ee
+                    WHERE ee.address = e.address
+                    AND ee.post_id = e.post_id
+                    AND ee.list_id = e.list_id
+                );
             "#,
+            post_id,
+            list_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        let new = sqlx::query_as!(
+            Email,
+            r#"
+             INSERT INTO emails (kind, address, post_id, list_id)
+                 SELECT ?, lm.email, ?, lm.list_id
+                 FROM list_members lm
+                 WHERE lm.list_id = ?
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM emails e
+                       WHERE e.address = lm.email
+                         AND e.post_id = ?
+                         AND e.list_id = lm.list_id
+                   )
+             RETURNING *
+             "#,
             Email::POST,
+            post_id,
+            list_id,
+            post_id,
+        )
+        .fetch_all(db)
+        .await?;
+
+        let mut all = existing;
+        all.extend(new);
+        Ok(all)
+    }
+
+    /// Create email entries for resending the given post to all users on the given list.
+    pub async fn create_resend_posts(db: &Db, post_id: i64, list_id: i64) -> AppResult<Vec<Email>> {
+        let existing_unsent = sqlx::query_as!(
+            Email,
+            r#"
+            SELECT e.*
+            FROM emails e
+            WHERE e.post_id = ? AND e.list_id = ?
+              AND e.sent_at IS NULL
+              AND e.id = (
+                  SELECT MAX(ee.id)
+                  FROM emails ee
+                  WHERE ee.address = e.address
+                    AND ee.post_id = e.post_id
+                    AND ee.list_id = e.list_id
+                    AND ee.sent_at IS NULL
+              );
+            "#,
             post_id,
             list_id,
         )
         .fetch_all(db)
         .await?;
-        Ok(emails)
+
+        let new = sqlx::query_as!(
+            Email,
+            r#"
+            INSERT INTO emails (kind, address, post_id, list_id)
+                SELECT ?, lm.email, ?, lm.list_id
+                FROM list_members lm
+                WHERE lm.list_id = ?
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM emails e
+                      WHERE e.address = lm.email
+                        AND e.post_id = ?
+                        AND e.list_id = lm.list_id
+                        AND e.sent_at IS NULL
+                  )
+            RETURNING *;
+            "#,
+            Email::POST,
+            post_id,
+            list_id,
+            post_id,
+        )
+        .fetch_all(db)
+        .await?;
+
+        let mut all = existing_unsent;
+        all.extend(new);
+        Ok(all)
     }
 
     /// Mark an email as sent.

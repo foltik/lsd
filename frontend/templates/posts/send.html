@@ -19,7 +19,7 @@
             <option
               value="{{ list.id }}"
               data-count="{{ list.count }}"
-              data-skip="{{ list.skip }}"
+              data-sent="{{ list.sent }}"
             >
               {{ list.name }}
             </option>
@@ -39,7 +39,8 @@
         <p id="status"></p>
         <pre id="errors"></pre>
       </div>
-      <button id="send" class="ext/button :green" type="submit">Send</button>
+      <button id="send" class="ext/button :green">Send</button>
+      <button id="resend" class="ext/button :yellow">Resend</button>
     </form>
   </section>
 {% endblock content %}
@@ -53,6 +54,7 @@
       form:   $('form'),
       list:   $('list'),
       send:   $('send'),
+      resend: $('resend'),
 
       sent:   $('sent'),
       remain: $('remaining'),
@@ -78,9 +80,9 @@
 
       list: {
         count: 0,
-        skip: 0,
-        toSend() {
-          return this.count - this.skip;
+        sent: 0,
+        remaining() {
+          return this.count - this.sent;
         }
       },
 
@@ -119,27 +121,32 @@
       ui.errors.textContent = state.errors.join('\n');
 
       // Update send button
-      ui.send.disabled = state.status == 'sending' || state.list.toSend() == 0;
-      ui.send.textContent = state.list.toSend() == 0
-        ? `Already sent ${state.list.skip} emails`
-        : `Send ${state.list.toSend()} emails`
-          + (state.list.skip > 0 ? ` (${state.list.skip} already sent)` : '');
+      ui.send.style.display = state.list.remaining() > 0 ? 'block' : 'none';
+      ui.send.disabled = state.status == 'sending';
+      ui.send.textContent = `Send ${state.list.remaining()}${state.list.sent > 0 ? ' remaining' : ''} email${state.list.remaining() > 1 ? 's' : ''}`;
+
+      // Update resend button
+      ui.resend.style.display = state.list.sent > 0 ? 'block' : 'none';
+      ui.resend.disabled = state.status == 'sending';
+      ui.resend.textContent = `Resend ${state.list.count} email${state.list.count > 1 ? 's' : ''}`;
     }
 
     /* ---------- List change handler ------------------------------------------- */
     ui.list.addEventListener("change", () => {
-      const { count, skip } = ui.list.selectedOptions[0].dataset;
+      const { count, sent } = ui.list.selectedOptions[0].dataset;
       state.list.count = +count;
-      state.list.skip = +skip;
+      state.list.sent = +sent;
+      state.progress.sent = state.list.sent;
+      state.progress.remaining = state.list.remaining();
       state.status = null;
       render();
     });
     ui.list.dispatchEvent(new Event("change"));
 
     /* ---------- Form submit handler ------------------------------------------- */
-    ui.form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    const submit = async (resend) => {
       const body = new URLSearchParams(new FormData(ui.form));
+      body.append("resend", resend);
 
       state.status = 'sending';
       state.progress.start = Date.now();
@@ -153,7 +160,7 @@
         if (!resp.ok) throw new Error(await resp.text());
 
         // The server streams us messages of the form:
-        // * {sent: 1, remaining: 2, skipped: 3}
+        // * {sent: 1, remaining: 2}
         // * {error: "..."}
         for await (const msg of streamJson(resp.body)) {
           if (msg.error) {
@@ -163,13 +170,15 @@
 
           state.progress.sent = msg.sent;
           state.progress.remaining = msg.remaining;
+          console.log(`progress.sent=${state.progress.sent} progress.remaining=${state.progress.remaining}`);
           render();
         }
 
-        // Stash new skip count back into the <option> now that we've sent some emails
+        // Stash new sent count back into the <option> now that we've sent some emails
         const opt = ui.list.selectedOptions[0];
-        state.list.skip = +opt.dataset.skip + state.progress.sent;
-        opt.dataset.skip = state.list.skip;
+        console.log(`resend=${resend} progress.sent=${state.progress.sent} data.sent=${opt.dataset.sent}`);
+        state.list.sent = resend ? state.progress.sent : +opt.dataset.sent + state.progress.sent;
+        opt.dataset.sent = state.list.sent;
 
         state.status = "ok";
       } catch (e) {
@@ -177,7 +186,9 @@
         state.status = 'error';
       }
       render();
-    });
+    };
+    ui.send.addEventListener("click", async (e) => (e.preventDefault(), await submit(false)));
+    ui.resend.addEventListener("click", async (e) => (e.preventDefault(), await submit(true)));
 
     /* ---------- Stream JSON from request body --------------------------------- */
     async function* streamJson(body) {
