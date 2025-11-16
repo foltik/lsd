@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO emails (kind, address, post_id, list_id)\n                SELECT ?, lm.email, ?, lm.list_id\n                FROM list_members lm\n                WHERE lm.list_id = ?\n                  AND NOT EXISTS (\n                      SELECT 1\n                      FROM emails e\n                      WHERE e.address = lm.email\n                        AND e.post_id = ?\n                        AND e.list_id = lm.list_id\n                        AND e.sent_at IS NULL\n                  )\n            RETURNING *;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "address",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "post_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "list_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "sent_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "opened_at",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notification_id",
+        "ordinal": 11,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0757e49032e195e57037eb7a1509c460a964bd920cd4a1a67b0d6a073dc8c2c1"
+}
