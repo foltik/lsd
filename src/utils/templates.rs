@@ -55,6 +55,11 @@ pub mod filters {
         })
     }
 
+    /// Returns the site URL
+    pub fn url(_dummy: &str) -> Result<String, askama::Error> {
+        Ok(CONFIG.get().unwrap().app.url.clone())
+    }
+
     /// Livereload script enabled on debug builds.
     /// Askama doesn't support plain global functions, so we have to take a dummy argument.
     #[cfg(debug_assertions)]

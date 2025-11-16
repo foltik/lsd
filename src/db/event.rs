@@ -66,7 +66,7 @@ impl Event {
             r#"SELECT * FROM events
             WHERE start > DATETIME(CURRENT_TIMESTAMP, '-24 hours')
               AND unlisted = FALSE
-            ORDER BY start DESC"#
+            ORDER BY start ASC"#
         )
         .fetch_all(db)
         .await?;
