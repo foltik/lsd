@@ -43,7 +43,6 @@
             id="title"
             name="title"
             value="{{ post.title }}"
-            oninput="updatePreview()"
           />
         </div>
         <div class="field">
@@ -191,11 +190,14 @@
             }
           } else {
             setError();
-            console.error(response.statusText);
+            const errorText = await response.text();
+            console.error(response.statusText, errorText);
+            alert(`Error saving post: ${errorText || `${response.status} ${response.statusText}`}`);
           }
         } catch (error) {
           setError();
           console.error(error);
+          alert(`Error saving post: ${error.message}`);
         }
       };
     })();
