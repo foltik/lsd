@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                l.id,\n                l.name,\n                COUNT(lm.user_id) AS count,\n                SUM(\n                    CASE WHEN EXISTS (\n                        SELECT 1\n                        FROM emails e\n                        WHERE e.user_id = u.id\n                          AND e.list_id = l.id\n                          AND e.post_id = ?\n                          AND e.sent_at IS NOT NULL\n                    )\n                    THEN 1 ELSE 0 END\n                ) AS sent\n            FROM lists l\n            LEFT JOIN list_members lm ON lm.list_id = l.id\n            LEFT JOIN users u ON u.id = lm.user_id\n            GROUP BY l.id;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "count",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sent",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "681f195e9c1bc39e22a362e4612d936a00555a5d345ffbf71e0b03219d36d93f"
+}

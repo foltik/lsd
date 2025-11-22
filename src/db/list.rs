@@ -11,13 +11,6 @@ pub struct List {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
-pub struct ListMember {
-    pub email: String,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-}
-
 #[derive(serde::Deserialize)]
 pub struct UpdateList {
     pub id: Option<i64>,
@@ -101,22 +94,15 @@ impl List {
     }
 
     /// Lookup the members of a list.
-    pub async fn list_members(db: &Db, list_id: i64) -> AppResult<Vec<ListMember>> {
-        let members = sqlx::query_as!(
-            ListMember,
-            r#"SELECT e.email, u.first_name, u.last_name
-               FROM list_members e
-               LEFT JOIN users u ON u.email = e.email
-               WHERE e.list_id = ?
-               ORDER BY e.created_at"#,
-            list_id
-        )
-        .fetch_all(db)
-        .await?;
-        Ok(members)
+    pub async fn list_members(db: &Db, list_id: i64) -> AppResult<Vec<User>> {
+        User::lookup_by_list_id(db, list_id).await
     }
 
     pub async fn has_user(db: &Db, id: i64, user: &User) -> AppResult<bool> {
+        Self::has_user_id(db, id, user.id).await
+    }
+
+    pub async fn has_user_id(db: &Db, id: i64, user_id: i64) -> AppResult<bool> {
         let exists = sqlx::query_scalar!(
             r#"
             SELECT EXISTS(
@@ -126,7 +112,7 @@ impl List {
             ) AS "exists!: bool"
             "#,
             id,
-            user.id,
+            user_id,
         )
         .fetch_one(db)
         .await?;
@@ -136,22 +122,19 @@ impl List {
     pub async fn has_email(db: &Db, id: i64, email: &str) -> AppResult<bool> {
         let exists = sqlx::query_scalar!(
             r#"
-            SELECT EXISTS(
+            SELECT EXISTS (
                 SELECT 1
-                FROM list_members AS m
-                LEFT JOIN users AS u ON m.user_id = u.id
-                WHERE
-                    list_id = ?
-                    AND (m.email = ? OR m.user_id IS NULL AND m.email = ?)
+                FROM list_members lm
+                LEFT JOIN users u ON u.id = lm.user_id
+                WHERE lm.list_id = ?
+                  AND u.email = ?
             ) AS "exists!: bool"
             "#,
             id,
             email,
-            email
         )
         .fetch_one(db)
         .await?;
-
         Ok(exists)
     }
 
@@ -168,12 +151,12 @@ impl List {
         Ok(())
     }
 
-    pub async fn remove_member(db: &Db, list_id: i64, email: &str) -> AppResult<()> {
+    pub async fn remove_member(db: &Db, list_id: i64, user_id: i64) -> AppResult<()> {
         sqlx::query!(
             r#"DELETE FROM list_members
-               WHERE list_id = ? AND email = ?"#,
+               WHERE list_id = ? AND user_id = ?"#,
             list_id,
-            email
+            user_id
         )
         .execute(db)
         .await?;

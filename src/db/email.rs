@@ -1,19 +1,19 @@
-use chrono::NaiveDateTime;
-
-use super::Db;
-use crate::utils::error::AppResult;
+use crate::prelude::*;
 
 /// A record of a an email which has been sent.
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Email {
     pub id: i64,
     pub kind: String,
+    pub user_id: i64,
+    pub user_version: i64,
     pub address: String,
+
     pub post_id: Option<i64>,
     pub list_id: Option<i64>,
-    pub user_id: Option<i64>,
     pub event_id: Option<i64>,
     pub notification_id: Option<i64>,
+
     pub error: Option<String>,
     pub created_at: NaiveDateTime,
     pub sent_at: Option<NaiveDateTime>,
@@ -28,17 +28,29 @@ impl Email {
 
     /// Lookup an email by id.
     pub async fn lookup(db: &Db, id: i64) -> AppResult<Option<Email>> {
-        let res = sqlx::query_as!(Self, r#"SELECT * FROM emails WHERE id = ?"#, id)
-            .fetch_optional(db)
-            .await?;
+        let res = sqlx::query_as!(
+            Self,
+            r#"SELECT e.*, u.email as address FROM emails e
+               JOIN users u ON u.id = e.user_id
+               WHERE e.id = ?
+            "#,
+            id
+        )
+        .fetch_optional(db)
+        .await?;
         Ok(res)
     }
 
     /// Create a new email record.
-    pub async fn create_login(db: &Db, address: &str) -> AppResult<i64> {
-        let res = sqlx::query!("INSERT INTO emails (kind, address) VALUES (?, ?)", Email::LOGIN, address)
-            .execute(db)
-            .await?;
+    pub async fn create_login(db: &Db, user: &User) -> AppResult<i64> {
+        let res = sqlx::query!(
+            "INSERT INTO emails (kind, user_id, user_version) VALUES (?, ?, ?)",
+            Email::LOGIN,
+            user.id,
+            user.version
+        )
+        .execute(db)
+        .await?;
         Ok(res.last_insert_rowid())
     }
 
@@ -48,12 +60,13 @@ impl Email {
         let existing = sqlx::query_as!(
             Email,
             r#"
-            SELECT e.* FROM emails e
+            SELECT e.*, u.email as address FROM emails e
+            JOIN users u ON u.id = e.user_id
             WHERE e.post_id = ? AND e.list_id = ?
                 AND ifnull(e.sent_at, '') = (
                     SELECT ifnull(MAX(ee.sent_at), '')
                     FROM emails ee
-                    WHERE ee.address = e.address
+                    WHERE ee.user_id = e.user_id
                     AND ee.post_id = e.post_id
                     AND ee.list_id = e.list_id
                 );
@@ -67,18 +80,22 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, address, post_id, list_id)
-                 SELECT ?, lm.email, ?, lm.list_id
+             INSERT INTO emails (kind, user_id, post_id, list_id)
+                 SELECT ?, u.email, ?, lm.list_id
                  FROM list_members lm
+                 JOIN users u ON u.id = lm.user_id
                  WHERE lm.list_id = ?
                    AND NOT EXISTS (
                        SELECT 1
-                       FROM emails e
-                       WHERE e.address = lm.email
-                         AND e.post_id = ?
-                         AND e.list_id = lm.list_id
+                       FROM emails ee
+                       WHERE ee.user_id = u.id
+                         AND ee.post_id = ?
+                         AND ee.list_id = lm.list_id
                    )
-             RETURNING *
+             RETURNING *, (
+                SELECT u.email FROM users u
+                WHERE u.id = emails.user_id
+             ) AS address
              "#,
             Email::POST,
             post_id,
@@ -98,14 +115,15 @@ impl Email {
         let existing_unsent = sqlx::query_as!(
             Email,
             r#"
-            SELECT e.*
+            SELECT e.*, u.email as address
             FROM emails e
+            JOIN users u ON u.id = e.user_id
             WHERE e.post_id = ? AND e.list_id = ?
               AND e.sent_at IS NULL
               AND e.id = (
                   SELECT MAX(ee.id)
                   FROM emails ee
-                  WHERE ee.address = e.address
+                  WHERE ee.user_id = e.user_id
                     AND ee.post_id = e.post_id
                     AND ee.list_id = e.list_id
                     AND ee.sent_at IS NULL
@@ -120,19 +138,23 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-            INSERT INTO emails (kind, address, post_id, list_id)
-                SELECT ?, lm.email, ?, lm.list_id
+            INSERT INTO emails (kind, user_id, post_id, list_id)
+                SELECT ?, u.id, ?, lm.list_id
                 FROM list_members lm
+                JOIN users u ON u.id = lm.user_id
                 WHERE lm.list_id = ?
                   AND NOT EXISTS (
                       SELECT 1
                       FROM emails e
-                      WHERE e.address = lm.email
+                      WHERE e.user_id = u.id
                         AND e.post_id = ?
                         AND e.list_id = lm.list_id
                         AND e.sent_at IS NULL
                   )
-            RETURNING *;
+            RETURNING *, (
+                SELECT u.email FROM users u
+                WHERE u.id = emails.user_id
+            ) as address
             "#,
             Email::POST,
             post_id,

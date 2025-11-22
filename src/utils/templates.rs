@@ -1,11 +1,6 @@
-use std::sync::OnceLock;
-
 use chrono::NaiveDateTime;
 
 use crate::prelude::*;
-
-/// Global app config for reference from askama filters, set once at startup.
-pub static CONFIG: OnceLock<Config> = OnceLock::new();
 
 /// Askama implicitly looks for a `filters` module to be in the same scope as
 /// the `#[derive(Template)]` to provide extra functions to templates.
@@ -28,7 +23,7 @@ pub mod filters {
 
     /// Format a datetime with a `strftime` format string.
     pub fn format_datetime(dt: &NaiveDateTime, format: &str) -> Result<String, askama::Error> {
-        let tz = CONFIG.get().unwrap().app.tz;
+        let tz = config().app.tz;
 
         let fmt = dt.and_utc().with_timezone(&tz).format(format);
         Ok(fmt.to_string())
@@ -37,8 +32,7 @@ pub mod filters {
     /// Format an optional datetime with a `strftime` format string where None maps to the empty string.
     /// Useful for `<input value="...">` where everything is a string and "" is null.
     pub fn format_optional_datetime(
-        dt: &Option<NaiveDateTime>,
-        format: &str,
+        dt: &Option<NaiveDateTime>, format: &str,
     ) -> Result<String, askama::Error> {
         match dt {
             Some(dt) => format_datetime(dt, format),
@@ -57,7 +51,7 @@ pub mod filters {
 
     /// Returns the site URL
     pub fn url(_dummy: &str) -> Result<String, askama::Error> {
-        Ok(CONFIG.get().unwrap().app.url.clone())
+        Ok(config().app.url.clone())
     }
 
     /// Livereload script enabled on debug builds.
@@ -65,7 +59,7 @@ pub mod filters {
     #[cfg(debug_assertions)]
     pub fn livereload(_dummy: &str) -> Result<String, askama::Error> {
         // Parse app url, split off port, switch to HTTP
-        let url = &CONFIG.get().unwrap().app.url;
+        let url = &config().app.url;
         let url = match url.rsplit_once(":") {
             None => url,
             Some((url, _port)) => url,
