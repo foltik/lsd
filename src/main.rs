@@ -47,9 +47,8 @@ async fn main() -> anyhow::Result<()> {
     };
     #[cfg(not(debug_assertions))]
     let config = Config::parse(include_str!("../config/prod.toml"))?;
-
-    // Make it visible to our HTML templates
-    utils::templates::CONFIG.set(config.clone()).unwrap_or_else(|_| unreachable!());
+    // Make it visible globally
+    CONFIG.set(config.clone()).unwrap_or_else(|_| unreachable!());
 
     let (router, state) = app::build(config.clone()).await?;
     let app = router.into_make_service_with_connect_info::<SocketAddr>();

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT spot_id, contribution\n             FROM rsvps r\n             JOIN rsvp_sessions s ON s.id = r.session_id\n             WHERE s.event_id = ? AND s.id != ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "spot_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "14b726219a2f45b942eb6c86952397842f8b0e01c436c77ff93edbc83f73a088"
+}

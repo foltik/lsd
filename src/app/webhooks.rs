@@ -44,9 +44,7 @@ pub mod stripe {
     type HmacSha256 = Hmac<Sha256>;
 
     pub async fn webhook(
-        State(state): State<SharedAppState>,
-        headers: HeaderMap,
-        body: String,
+        State(state): State<SharedAppState>, headers: HeaderMap, body: String,
     ) -> AppResult<impl IntoResponse> {
         let signature = headers
             .get("stripe-signature")
@@ -124,8 +122,7 @@ pub mod stripe {
         payment_status: String,
     }
     async fn checkout_session_completed(
-        state: SharedAppState,
-        event: CheckoutSessionCompleted,
+        state: SharedAppState, event: CheckoutSessionCompleted,
     ) -> AppResult<()> {
         // unwrap(): we assume Stripe won't send us bogus data. RsvpSessions are never deleted.
         let session_id: i64 = event.client_reference_id.parse().unwrap();
@@ -140,7 +137,7 @@ pub mod stripe {
                     "Stripe[checkout.session.completed]: session={session:?} intent={:?}",
                     event.payment_intent
                 );
-                session.set_paid(&state.db, Some(&event.payment_intent)).await?
+                session.set_confirmed(&state.db, Some(&event.payment_intent)).await?
             }
             status => {
                 tracing::error!(

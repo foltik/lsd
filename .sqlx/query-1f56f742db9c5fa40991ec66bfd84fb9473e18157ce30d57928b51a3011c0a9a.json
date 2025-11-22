@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.status\n             FROM rsvps r\n             JOIN rsvp_sessions s ON s.id = r.session_id\n             LEFT JOIN users u ON u.id = s.user_id\n             WHERE s.event_id = ?\n               AND s.id != ?\n               AND u.email = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "status",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1f56f742db9c5fa40991ec66bfd84fb9473e18157ce30d57928b51a3011c0a9a"
+}
