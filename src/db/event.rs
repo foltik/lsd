@@ -114,10 +114,7 @@ impl Event {
 
     // Update an event.
     pub async fn update(
-        db: &Db,
-        id: i64,
-        event: &UpdateEvent,
-        flyer: &Option<DynamicImage>,
+        db: &Db, id: i64, event: &UpdateEvent, flyer: &Option<DynamicImage>,
     ) -> AppResult<()> {
         sqlx::query!(
             r#"UPDATE events

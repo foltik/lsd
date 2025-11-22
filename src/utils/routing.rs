@@ -1,5 +1,4 @@
-use axum::http::request::Parts;
-
+use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
 
 pub type AxumRouter = axum::Router<SharedAppState>;
@@ -29,9 +28,7 @@ impl AppRouter {
 
     /// Add some routes which require authorization and a specific role.
     pub fn restricted_routes(
-        mut self,
-        role: &'static str,
-        func: impl FnOnce(AxumRouter) -> AxumRouter,
+        mut self, role: &'static str, func: impl FnOnce(AxumRouter) -> AxumRouter,
     ) -> Self {
         let subrouter = func(AxumRouter::new());
         let subrouter = subrouter.route_layer(axum::middleware::from_fn_with_state(
@@ -45,21 +42,5 @@ impl AppRouter {
         ));
         self.router = self.router.merge(subrouter);
         self
-    }
-}
-
-/// Enable extracting an `Option<User>` in a handler.
-impl<S: Send + Sync> axum::extract::OptionalFromRequestParts<S> for User {
-    type Rejection = Infallible;
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Option<Self>, Self::Rejection> {
-        Ok(parts.extensions.get::<User>().cloned())
-    }
-}
-/// Enable extracting a `User` in a handler, returning UNAUTHORIZED if not logged in.
-impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
-    type Rejection = AppError;
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let user = parts.extensions.get::<User>().cloned().ok_or(AppError::Unauthorized)?;
-        Ok(user)
     }
 }

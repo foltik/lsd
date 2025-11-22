@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvp_sessions\n              WHERE event_id = ? AND id != ? AND email = ?",
+  "query": "SELECT s.* FROM rsvp_sessions s\n              JOIN users u ON u.id = s.user_id\n              WHERE s.event_id = ?\n                AND s.id != ?\n                AND u.email = ?",
   "describe": {
     "columns": [
       {
@@ -24,53 +24,43 @@
         "type_info": "Text"
       },
       {
-        "name": "first_name",
-        "ordinal": 4,
-        "type_info": "Text"
-      },
-      {
-        "name": "last_name",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
-        "name": "email",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
         "name": "user_id",
-        "ordinal": 7,
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_version",
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "stripe_client_secret",
-        "ordinal": 8,
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "stripe_payment_intent_id",
-        "ordinal": 9,
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "stripe_charge_id",
-        "ordinal": 10,
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "stripe_refund_id",
-        "ordinal": 11,
+        "ordinal": 9,
         "type_info": "Integer"
       },
       {
         "name": "created_at",
-        "ordinal": 12,
+        "ordinal": 10,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 13,
+        "ordinal": 11,
         "type_info": "Datetime"
       }
     ],
@@ -88,11 +78,9 @@
       true,
       true,
       true,
-      true,
-      true,
       false,
       false
     ]
   },
-  "hash": "0676de724728aaf38019ed7262aa861f9d718e63b25f902c685e94f306802769"
+  "hash": "a72255be6f06c8e76f77c9facbbb5d3d919377fd00a675f738c527abe2199f6f"
 }

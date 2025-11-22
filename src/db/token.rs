@@ -1,34 +1,31 @@
-use chrono::{DateTime, Utc};
 use rand::Rng;
 use rand::rngs::OsRng;
 
-use super::Db;
-use crate::utils::error::AppResult;
+use crate::prelude::*;
 
 /// A token which can be used to authenticate as a user.
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct SessionToken {
-    pub id: i64,
     pub user_id: i64,
     pub token: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
 }
 
-/// A token which can be used to login or register.
+/// A token which can be used to login as a user.
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct LoginToken {
-    pub id: i64,
-    pub email: String,
+    pub user_id: i64,
     pub token: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub used_at: Option<NaiveDateTime>,
 }
 
 impl SessionToken {
     /// Create a new session token for a user.
-    pub async fn create(db: &Db, user_id: i64) -> AppResult<String> {
+    pub async fn create(db: &Db, user: &User) -> AppResult<String> {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
 
-        sqlx::query!("INSERT INTO session_tokens (user_id, token) VALUES (?, ?)", user_id, token)
+        sqlx::query!("INSERT INTO session_tokens (user_id, token) VALUES (?, ?)", user.id, token)
             .execute(db)
             .await?;
 
@@ -38,21 +35,13 @@ impl SessionToken {
 
 impl LoginToken {
     /// Create a new login token for an email address.
-    pub async fn create(db: &Db, email: &str) -> AppResult<String> {
+    pub async fn create(db: &Db, user: &User) -> AppResult<String> {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
 
-        sqlx::query!("INSERT INTO login_tokens (email, token) VALUES (?, ?)", email, token)
+        sqlx::query!("INSERT INTO login_tokens (user_id, token) VALUES (?, ?)", user.id, token)
             .execute(db)
             .await?;
 
         Ok(token)
-    }
-
-    /// Lookup the email address for the given login token, if it's valid.
-    pub async fn lookup_email(db: &Db, token: &str) -> AppResult<Option<String>> {
-        let row = sqlx::query_scalar!("SELECT email FROM login_tokens WHERE token = ?", token)
-            .fetch_optional(db)
-            .await?;
-        Ok(row)
     }
 }

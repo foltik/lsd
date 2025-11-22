@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rsvps AS r\n             WHERE NOT EXISTS (\n                SELECT 1 FROM rsvp_sessions s\n                WHERE s.id = r.session_id\n            )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "cc37470ea4e4e8198253e29291b3174372b5a7b561ffbdc5cc6c1c08e7bcb38e"
+}

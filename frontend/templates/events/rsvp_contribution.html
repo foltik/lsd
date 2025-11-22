@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block head %}
-  {% if total > 0 %}
+  {% if price > 0 %}
     <script src="https://js.stripe.com/basil/stripe.js"></script>
   {% endif %}
 {% endblock head %}
@@ -25,20 +25,19 @@
               <div class="contact">
                 <div class="title">{{ rsvp.spot_name }}</div>
                 <span class="attendee"
-                  >{{ rsvp.first_name }} {{ rsvp.last_name }} •
-                  {{ rsvp.email }}</span
-                >
+                  >{{ rsvp.first_name }} {{ rsvp.last_name }} • {{ rsvp.email }}
+                </span>
               </div>
               <span class="price">${{ rsvp.contribution }}</span>
             </li>
           {% endfor %}
-          <li class="total">
+          <li class="price">
             <span class="left">Total</span>
-            <span id="total" class="right">${{ total }}</span>
+            <span id="price" class="right">${{ price }}</span>
           </li>
         </ul>
       </div>
-      {% if total > 0 %}
+      {% if price > 0 %}
         <div class="field">
           <div id="stripe"></div>
         </div>
@@ -58,7 +57,7 @@
           >
         {% endif %}
         <button id="checkout" class="ext/button :green" type="submit">
-          {% if total > 0 %}
+          {% if price > 0 %}
             Contribute
           {% else %}
             RSVP
@@ -70,21 +69,14 @@
 {% endblock content %}
 
 {% block scripts %}
-  <script>
-    /* ---------- Save session ------------------------------------------------ */
-    const queryString = new URLSearchParams(location.search);
-    const token = encodeURIComponent(queryString.get("session"));
-    const key = `rsvps/{{ session.event_id }}`;
-    localStorage[key] = JSON.stringify({ token, page: "contribution" });
-  </script>
-  {% if total > 0 %}
+  {% if price > 0 %}
     <script>
       /* ---------- UI ---------------------------------------------------------- */
       const $ = (id) => document.getElementById(id);
       const ui = {
         form: $("form"),
         email: $("email"),
-        total: $("total"),
+        price: $("price"),
       };
 
       let checkout;
@@ -123,15 +115,6 @@
       ui.form.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!ui.form.reportValidity()) return;
-
-        const res = await fetch(
-          `/e/{{ slug }}/rsvp/status?session={{ session.token }}`,
-        );
-        if (res.status != 200) {
-          alert("Session expired");
-          localStorage.removeItem(`rsvps/{{ session.event_id }}`);
-          window.location = `/e/{{ slug }}`;
-        }
 
         res = await checkout.confirm();
         if (res?.type === "error") {

@@ -29,11 +29,7 @@ impl Stripe {
 
     /// Begin a stripe transaction, returning the client secret.
     pub async fn create_session(
-        &self,
-        session_id: i64,
-        email: &str,
-        line_items: Vec<LineItem>,
-        return_path: String,
+        &self, session_id: i64, email: &str, line_items: Vec<LineItem>, return_path: String,
     ) -> AppResult<String> {
         let return_url = format!("{}{}", self.app_url, return_path);
 
@@ -84,32 +80,6 @@ impl Stripe {
             .send().await?.json().await?;
 
         Ok(res.client_secret)
-    }
-
-    pub async fn wait_for_payment(db: &Db, webhooks: &Webhooks, session_id: i64) -> Result<(), AppError> {
-        const TIMEOUT: Duration = Duration::from_secs(3);
-        const WEBHOOK_TIMEOUT: Duration = Duration::from_secs(3);
-
-        let start = Instant::now();
-        loop {
-            let webhook = webhooks.wait(Webhooks::STRIPE_CHECKOUT_SESSION_COMPLETED, WEBHOOK_TIMEOUT);
-
-            let status = RsvpSession::lookup_status(db, session_id).await?.unwrap();
-            if status == "paid" {
-                return Ok(());
-            }
-
-            let _ = webhook.await;
-
-            let status = RsvpSession::lookup_status(db, session_id).await?.unwrap();
-            if status == "paid" {
-                return Ok(());
-            }
-
-            if start.elapsed() > TIMEOUT {
-                return Err(StripeError::PaymentTimeout { session_id, timeout: TIMEOUT }.into());
-            }
-        }
     }
 }
 

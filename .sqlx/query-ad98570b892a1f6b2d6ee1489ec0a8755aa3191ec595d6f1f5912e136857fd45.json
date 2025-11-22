@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO rsvps\n               (session_id, spot_id, contribution, user_id, user_version)\n               VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "ad98570b892a1f6b2d6ee1489ec0a8755aa3191ec595d6f1f5912e136857fd45"
+}
