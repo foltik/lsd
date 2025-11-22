@@ -18,13 +18,10 @@
 //!    - `/register`: The user is prompted to enter their first/last name.
 //!      Upon submission, the user gets a new session cookie and is redirected home.
 
-use axum_extra::extract::CookieJar;
-use cookie::Cookie;
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
 
 use crate::db::token::{LoginToken, SessionToken};
-use crate::db::user::UpdateUser;
 use crate::prelude::*;
 
 /// Add all `auth` routes to the router.
@@ -32,60 +29,75 @@ use crate::prelude::*;
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| {
         r.route("/login", post(login_form).get(login_link))
-         .route("/register", post(register_form).get(register_link))
     })
 }
 
 /// Add all `auth` middleware to the router.
 pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
-    router.layer(axum::middleware::from_fn_with_state(state, auth_middleware))
-}
-
-/// Middleware layer to lookup add a `User` to the request if a session token is present.
-pub async fn auth_middleware(
-    State(state): State<SharedAppState>,
-    mut cookies: CookieJar,
-    mut request: Request,
-    next: Next,
-) -> AppResult<(CookieJar, Response)> {
-    if let Some(token) = cookies.get("session") {
-        match User::lookup_by_session_token(&state.db, token.value()).await? {
-            Some(user) => {
-                request.extensions_mut().insert(user);
+    /// Middleware layer to lookup add a `User` to the request if a session token is present.
+    pub async fn session_middleware(
+        State(state): State<SharedAppState>, mut cookies: CookieJar, mut request: Request, next: Next,
+    ) -> AppResult<(CookieJar, Response)> {
+        if let Some(token) = cookies.get("session") {
+            match User::lookup_by_session_token(&state.db, token.value()).await? {
+                Some(user) => {
+                    request.extensions_mut().insert(user);
+                }
+                None => {
+                    tracing::error!("No session for token {:?}", token.value());
+                    cookies = cookies.remove("session")
+                }
             }
-            None => cookies = cookies.remove("session"),
+        }
+        let response = next.run(request).await;
+        Ok((cookies, response))
+    }
+    router.layer(axum::middleware::from_fn_with_state(state, session_middleware))
+}
+/// Enable extracting an `Option<User>` in a handler.
+impl<S: Send + Sync> axum::extract::OptionalFromRequestParts<S> for User {
+    type Rejection = Infallible;
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Option<Self>, Self::Rejection> {
+        Ok(parts.extensions.get::<User>().cloned())
+    }
+}
+/// Enable extracting a `User` in a handler, returning UNAUTHORIZED if not logged in.
+impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
+    type Rejection = AppError;
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        match parts.extensions.get::<User>().cloned() {
+            Some(user) => Ok(user),
+            None => Err(AppError::Unauthorized),
         }
     }
-    let response = next.run(request).await;
-    Ok((cookies, response))
 }
 
 /// Process a login form and send either a login or registration link via email.
 async fn login_form(
-    State(state): State<SharedAppState>,
-    Form(form): Form<LoginForm>,
+    State(state): State<SharedAppState>, Form(form): Form<LoginForm>,
 ) -> AppResult<impl IntoResponse> {
     let email = form.email.email.to_string();
-    let login_token = LoginToken::create(&state.db, &email).await?;
-
-    let email_id = Email::create_login(&state.db, &email).await?;
-
-    let domain = &state.config.app.domain;
-    let base_url = &state.config.app.url;
-    let msg = state.mailer.builder().header(ContentType::TEXT_PLAIN).to(form.email);
-
-    let msg = match User::lookup_by_email(&state.db, &email).await? {
-        Some(_) => {
-            let url = format!("{base_url}/login?token={login_token}");
-            msg.subject(format!("Login to {domain}"))
-                .body(format!("Click here to login: {url}"))?
-        }
-        None => {
-            let url = format!("{base_url}/register?token={login_token}");
-            msg.subject(format!("Register at {domain}"))
-                .body(format!("Click here to complete your registration: {url}"))?
-        }
+    let Some(user) = User::lookup_by_email(&state.db, &email).await? else {
+        return Err(AppError::Unauthorized);
     };
+
+    let email_id = Email::create_login(&state.db, &user).await?;
+
+    let login_token = LoginToken::create(&state.db, &user).await?;
+    let base_url = &state.config.app.url;
+    let url = match form.redirect {
+        Some(redirect) => format!("{base_url}/login?token={login_token}&redirect={redirect}"),
+        None => format!("{base_url}/login?token={login_token}"),
+    };
+    let domain = &state.config.app.domain;
+
+    let msg = state
+        .mailer
+        .builder()
+        .header(ContentType::TEXT_PLAIN)
+        .to(form.email)
+        .subject(format!("Login to {domain}"))
+        .body(format!("Click here to login: {url}"))?;
 
     match state.mailer.send(&msg).await {
         Ok(_) => {
@@ -101,6 +113,7 @@ async fn login_form(
 #[derive(serde::Deserialize)]
 struct LoginForm {
     email: Mailbox,
+    redirect: Option<String>,
 }
 
 /// Show the login page or handle a login link
@@ -118,9 +131,7 @@ impl LoginQuery {
     }
 }
 async fn login_link(
-    user: Option<User>,
-    State(state): State<SharedAppState>,
-    Query(query): Query<LoginQuery>,
+    user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<LoginQuery>,
 ) -> AppResult<Response> {
     // If user is already logged in for some reason, just follow the redirect
     if user.is_some() {
@@ -143,58 +154,11 @@ async fn login_link(
     let Some(user) = User::lookup_by_login_token(&state.db, token).await? else {
         return Err(AppError::Unauthorized);
     };
-    let token = SessionToken::create(&state.db, user.id).await?;
+    let token = SessionToken::create(&state.db, &user).await?;
     let cookie = session_cookie(&state.config, token);
 
     let headers = [(header::SET_COOKIE, cookie)];
     Ok((headers, query.redirect()).into_response())
-}
-
-/// Display the registration page.
-async fn register_link(
-    State(state): State<SharedAppState>,
-    user: Option<User>,
-    Query(query): Query<RegisterQuery>,
-) -> AppResult<impl IntoResponse> {
-    let Some(_) = LoginToken::lookup_email(&state.db, &query.token).await? else {
-        return Err(AppError::Unauthorized);
-    };
-
-    #[derive(Template, WebTemplate)]
-    #[template(path = "auth/register.html")]
-    struct Html {
-        user: Option<User>,
-        token: String,
-    }
-    Ok(Html { user, token: query.token })
-}
-#[derive(serde::Deserialize)]
-struct RegisterQuery {
-    token: String,
-}
-
-/// Process the registration form and create a new user.
-async fn register_form(
-    State(state): State<SharedAppState>,
-    Form(form): Form<RegisterForm>,
-) -> AppResult<Response> {
-    let Some(email) = LoginToken::lookup_email(&state.db, &form.token).await? else {
-        return Err(AppError::Unauthorized);
-    };
-
-    let form = UpdateUser { first_name: form.first_name, last_name: form.last_name, email };
-    let user_id = User::create(&state.db, &form).await?;
-
-    let token = SessionToken::create(&state.db, user_id).await?;
-    let cookie = session_cookie(&state.config, token);
-
-    Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/")).into_response())
-}
-#[derive(serde::Deserialize)]
-struct RegisterForm {
-    token: String,
-    first_name: String,
-    last_name: String,
 }
 
 fn session_cookie(config: &Config, token: String) -> String {

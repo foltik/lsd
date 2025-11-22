@@ -5,6 +5,9 @@ pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum AppError {
+    #[error("redirect")]
+    Redirect(String),
+
     #[error("bad request")]
     BadRequest,
     #[error(transparent)]
@@ -38,7 +41,7 @@ impl IntoResponse for AppError {
         tracing::error!("{self:#}");
 
         let error_400 = || (StatusCode::BAD_REQUEST, "Invalid request.");
-        let error_401 = || (StatusCode::UNAUTHORIZED, "You do not have permission to view this page.");
+        let error_401 = || (StatusCode::UNAUTHORIZED, "Unauthorized.");
         let error_404 = || (StatusCode::NOT_FOUND, "Page not found.");
         let error_500 = || (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -46,6 +49,7 @@ impl IntoResponse for AppError {
         );
 
         let (status, message) = match self {
+            AppError::Redirect(url) => return Redirect::to(&url).into_response(),
             AppError::BadRequest => error_400(),
             AppError::BadMultipart(_) => error_400(),
             AppError::Unauthorized => error_401(),

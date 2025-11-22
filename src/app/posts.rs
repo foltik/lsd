@@ -38,9 +38,7 @@ mod read {
 
     // Display a single post.
     pub async fn view_page(
-        user: Option<User>,
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
@@ -57,8 +55,7 @@ mod read {
 
     // Display a preview of a post as it would appear in an email.
     pub async fn preview_page(
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
@@ -110,13 +107,26 @@ mod edit {
 
     // Edit post page.
     pub async fn edit_page(
-        user: User,
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
         };
+
+        #[rustfmt::skip]
+        #[allow(unused)]
+        {
+            struct EditorHtml {
+                save_url: String,
+                back_url: String,
+            }
+
+            let x = EditorHtml {
+                save_url: format!("/posts/{}/edit", post.id),
+                back_url: format!("/posts"),
+            };
+        }
+
         Ok(EditHtml { user: Some(user), post })
     }
 
@@ -128,8 +138,7 @@ mod edit {
         post: UpdatePost,
     }
     pub async fn edit_form(
-        State(state): State<SharedAppState>,
-        Form(form): Form<EditForm>,
+        State(state): State<SharedAppState>, Form(form): Form<EditForm>,
     ) -> AppResult<impl IntoResponse> {
         match form.id {
             Some(id) => Post::update(&state.db, id, &form.post).await?,
@@ -142,8 +151,7 @@ mod edit {
 
     // Delete post form.
     pub async fn delete_form(
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
@@ -162,9 +170,7 @@ mod send {
 
     /// Display the form to send a post.
     pub async fn page(
-        user: User,
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);
@@ -183,12 +189,12 @@ mod send {
             SELECT
                 l.id,
                 l.name,
-                COUNT(m.email) AS count,
+                COUNT(lm.user_id) AS count,
                 SUM(
                     CASE WHEN EXISTS (
                         SELECT 1
                         FROM emails e
-                        WHERE e.address = m.email
+                        WHERE e.user_id = u.id
                           AND e.list_id = l.id
                           AND e.post_id = ?
                           AND e.sent_at IS NOT NULL
@@ -196,8 +202,8 @@ mod send {
                     THEN 1 ELSE 0 END
                 ) AS sent
             FROM lists l
-            LEFT JOIN list_members m
-                ON m.list_id = l.id
+            LEFT JOIN list_members lm ON lm.list_id = l.id
+            LEFT JOIN users u ON u.id = lm.user_id
             GROUP BY l.id;
             "#,
             post.id,
@@ -233,9 +239,7 @@ mod send {
         resend: bool,
     }
     pub async fn send_form(
-        State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
-        Form(form): Form<SendForm>,
+        State(state): State<SharedAppState>, Path(slug): Path<String>, Form(form): Form<SendForm>,
     ) -> AppResult<impl IntoResponse> {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
             return Err(AppError::NotFound);

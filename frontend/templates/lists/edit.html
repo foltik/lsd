@@ -52,7 +52,7 @@
                 <button
                   class="remove"
                   type="button"
-                  onclick="fetch(`/lists/{{ list.id }}/{{ member.email }}`,
+                  onclick="fetch(`/lists/{{ list.id }}/{{ member.id }}`,
                 {method: 'DELETE'}
               ).then(res => res.ok && document.querySelector(`#member-{{ loop.index }}`).remove())"
                 >

@@ -21,9 +21,7 @@ async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppSt
 }
 
 async fn email_unsubscribe_view(
-    user: Option<User>,
-    Path(email_id): Path<i64>,
-    State(state): State<SharedAppState>,
+    user: Option<User>, Path(email_id): Path<i64>, State(state): State<SharedAppState>,
 ) -> AppResult<Response> {
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await? {
@@ -51,14 +49,13 @@ async fn email_unsubscribe_view(
 }
 
 async fn email_unsubscribe_form(
-    Path(email_id): Path<i64>,
-    State(state): State<SharedAppState>,
+    Path(email_id): Path<i64>, State(state): State<SharedAppState>,
 ) -> AppResult<Response> {
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await?
         && let Some(list_id) = email.list_id
     {
-        List::remove_member(&state.db, list_id, &email.address).await?;
+        List::remove_member(&state.db, list_id, email.user_id).await?;
     }
     Ok("You have been unsubscribed.".into_response())
 }

@@ -1,6 +1,6 @@
 use lettre::message::Mailbox;
 
-use crate::db::list::{List, ListMember, UpdateList};
+use crate::db::list::{List, UpdateList};
 use crate::prelude::*;
 
 /// Add all `lists` routes to the router.
@@ -14,7 +14,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         r.route("/lists", get(list_lists_page))
          .route("/lists/new", get(create_list_page))
          .route("/lists/{id}", get(edit_list_page).post(edit_list_form))
-         .route("/lists/{id}/{email}", delete(remove_list_member))
+         .route("/lists/{id}/{user_id}", delete(remove_list_member))
     })
 }
 
@@ -23,7 +23,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 struct ListEditHtml {
     user: Option<User>,
     list: List,
-    members: Vec<ListMember>,
+    members: Vec<User>,
 }
 
 /// Display a list of all lists
@@ -41,9 +41,7 @@ async fn list_lists_page(user: User, State(state): State<SharedAppState>) -> App
 
 /// Display the form to view and edit a list.
 async fn edit_list_page(
-    user: User,
-    State(state): State<SharedAppState>,
-    Path(id): Path<i64>,
+    user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
     let list = List::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
 
@@ -67,8 +65,7 @@ async fn create_list_page(user: User) -> AppResult<impl IntoResponse> {
 
 /// Process the form and create or edit a list.
 async fn edit_list_form(
-    State(state): State<SharedAppState>,
-    Form(form): Form<UpdateList>,
+    State(state): State<SharedAppState>, Form(form): Form<UpdateList>,
 ) -> AppResult<Response> {
     let id = match form.id {
         Some(id) => {
@@ -93,27 +90,23 @@ async fn edit_list_form(
 }
 
 async fn remove_list_member(
-    State(state): State<SharedAppState>,
-    Path((id, email)): Path<(i64, String)>,
+    State(state): State<SharedAppState>, Path((id, user_id)): Path<(i64, i64)>,
 ) -> AppResult<()> {
-    List::remove_member(&state.db, id, &email).await?;
+    List::remove_member(&state.db, id, user_id).await?;
     Ok(())
 }
 
 /// Display the newsletter signup page.
 // XXX: Hard coded to list with id=1.
 pub async fn newsletter_signup_page(
-    user: Option<User>,
-    State(state): State<SharedAppState>,
+    user: Option<User>, State(state): State<SharedAppState>,
 ) -> AppResult<impl IntoResponse> {
     signup_page(user, State(state), Path(1)).await
 }
 
 /// Display the list signup page.
 async fn signup_page(
-    user: Option<User>,
-    State(state): State<SharedAppState>,
-    Path(list_id): Path<i64>,
+    user: Option<User>, State(state): State<SharedAppState>, Path(list_id): Path<i64>,
 ) -> AppResult<impl IntoResponse> {
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
@@ -138,9 +131,7 @@ async fn signup_page(
 //
 // XXX: We really should rate limit this.
 async fn signup_form(
-    user: Option<User>,
-    State(state): State<SharedAppState>,
-    Form(form): Form<NewsletterForm>,
+    user: Option<User>, State(state): State<SharedAppState>, Form(form): Form<NewsletterForm>,
 ) -> AppResult<impl IntoResponse> {
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.

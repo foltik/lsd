@@ -38,12 +38,7 @@
         {% endif %}
         <div class="field">
           <label for="title">Title</label>
-          <input
-            type="text"
-            id="title"
-            name="title"
-            value="{{ post.title }}"
-          />
+          <input type="text" id="title" name="title" value="{{ post.title }}" />
         </div>
         <div class="field">
           <label for="slug">Slug</label>
@@ -192,7 +187,9 @@
             setError();
             const errorText = await response.text();
             console.error(response.statusText, errorText);
-            alert(`Error saving post: ${errorText || `${response.status} ${response.statusText}`}`);
+            alert(
+              `Error saving post: ${errorText || `${response.status} ${response.statusText}`}`,
+            );
           }
         } catch (error) {
           setError();

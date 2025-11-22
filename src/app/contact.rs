@@ -10,8 +10,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 }
 
 async fn contact_page(
-    user: Option<User>,
-    State(state): State<SharedAppState>,
+    user: Option<User>, State(state): State<SharedAppState>,
 ) -> AppResult<impl IntoResponse> {
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/send.html")]
@@ -35,9 +34,7 @@ struct ContactForm {
     turnstile_token: String,
 }
 async fn contact_form(
-    user: Option<User>,
-    State(state): State<SharedAppState>,
-    ConnectInfo(client): ConnectInfo<SocketAddr>,
+    user: Option<User>, State(state): State<SharedAppState>, ConnectInfo(client): ConnectInfo<SocketAddr>,
     Form(form): Form<ContactForm>,
 ) -> AppResult<impl IntoResponse> {
     if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {

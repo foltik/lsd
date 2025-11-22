@@ -41,9 +41,7 @@ impl Emailer {
     }
 
     pub async fn send_batch(
-        &self,
-        state: SharedAppState,
-        messages: Vec<Message>,
+        &self, state: SharedAppState, messages: Vec<Message>,
     ) -> impl Stream<Item = AppResult<Progress>> + use<> {
         async_stream::stream! {
             let mut progress = Progress { sent: 0, remaining: messages.len() as u32 };

@@ -23,11 +23,6 @@
                   type="radio"
                   name="is_me"
                   value="{{ attendee.rsvp_id }}"
-                  {% if session.email.is_some() %}
-                    {% if session.email == attendee.email %}
-                      checked
-                    {% endif %}
-                  {% endif %}
                   required
                 />
                 <span>This is me!</span>
@@ -69,6 +64,18 @@
                 value="{{ attendee.email | unwrap_or_empty }}"
                 autocomplete="email"
                 required
+              />
+            </label>
+
+            <label class="field">
+              <span class="label">Phone (1234567890)</span>
+              <input
+                name="phone"
+                class="ext/input"
+                type="tel"
+                value="{{ attendee.phone | unwrap_or_empty }}"
+                pattern="[0-9]{3}[0-9]{3}[0-9]{4}"
+                autocomplete="tel"
               />
             </label>
           </div>
@@ -137,12 +144,15 @@
       let first = ui.field(a, "first_name");
       let last = ui.field(a, "last_name");
       let email = ui.field(a, "email");
+      let phone = ui.field(a, "phone");
       first.disabled = true;
       last.disabled = true;
       email.disabled = true;
+      phone.disabled = phone != null;
       first.value = user.first_name;
       last.value = user.last_name;
       email.value = user.email;
+      phone.value = user.phone;
     });
 
     /* ---------- Continue button -------------------------------------------- */
@@ -156,12 +166,13 @@
         const first_name = ui.field(a, "first_name").value.trim();
         const last_name = ui.field(a, "last_name").value.trim();
         const email = ui.field(a, "email").value.trim();
+        const phone = ui.field(a, "phone").value.trim();
 
         // When there's only a single RSVP, is_me is always true
         let is_me_radio = a.querySelector('input[name="is_me"]');
         const is_me = is_me_radio ? is_me_radio.checked : true;
 
-        attendees.push({ rsvp_id, first_name, last_name, email, is_me });
+        attendees.push({ rsvp_id, first_name, last_name, email, phone, is_me });
       }
 
       const query = new URLSearchParams(location.search);

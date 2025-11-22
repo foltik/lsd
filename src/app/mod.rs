@@ -86,6 +86,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
 
     // Register middleware
     let r = auth::add_middleware(r, Arc::clone(&state));
+    let r = events::add_middleware(r, Arc::clone(&state));
     let r = crate::utils::tracing::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
     let r = r.layer(

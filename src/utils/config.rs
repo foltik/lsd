@@ -1,9 +1,16 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use anyhow::Context as _;
 use chrono_tz::Tz;
 use lettre::message::Mailbox;
+
+/// Global app config, set once at startup.
+pub static CONFIG: OnceLock<Config> = OnceLock::new();
+pub fn config() -> &'static Config {
+    CONFIG.get().unwrap()
+}
 
 impl Config {
     /// Load a `.toml` file from disk and parse it as a [`Config`].

@@ -5,6 +5,10 @@ INSERT OR IGNORE INTO users (id, email, first_name, last_name) VALUES
     (4, 'user2@beta.lightandsound.design', 'User2', 'Two'),
     (5, 'user3@beta.lightandsound.design', 'User3', 'Three');
 
+INSERT OR IGNORE INTO user_history (user_id, version, email, first_name, last_name, phone)
+    SELECT id AS user_id, 0 AS version, email, first_name, last_name, phone
+    FROM users;
+
 INSERT OR IGNORE INTO user_roles (user_id, role) VALUES
     (1, 'admin'),
     (1, 'writer'),
@@ -21,22 +25,16 @@ INSERT OR IGNORE INTO lists (id, name, description) VALUES
     (1, 'Newsletter', 'the Studio newsletter!'),
     (2, 'Test Group 1', 'the Studio test group 1!'),
     (3, 'Test Group 2', 'the Studio test group 2!');
-INSERT OR IGNORE INTO list_members (list_id, user_id, email) VALUES
-    (1, 1, 'admin@beta.lightandsound.design'),
-    (1, 2, 'writer@beta.lightandsound.design'),
-    (1, 3, 'user1@beta.lightandsound.design'),
-    (1, 4, 'user2@beta.lightandsound.design'),
-    (1, 5, 'user3@beta.lightandsound.design'),
-    (1, NULL, 'unknown@beta.lightandsound.design'),
-    (2, 3, 'user1@beta.lightandsound.design'),
-    (2, 4, 'user2@beta.lightandsound.design'),
-    (2, 5, 'user3@beta.lightandsound.design'),
-    (3, NULL, 'unknown1@beta.lightandsound.design'),
-    (3, NULL, 'unknown2@beta.lightandsound.design'),
-    (3, NULL, 'unknown3@beta.lightandsound.design'),
-    (3, NULL, 'unknown4@beta.lightandsound.design'),
-    (3, NULL, 'unknown5@beta.lightandsound.design');
-
+INSERT OR IGNORE INTO list_members (list_id, user_id) VALUES
+    (1, 1),
+    (1, 2),
+    (1, 3),
+    (1, 4),
+    (1, 5),
+    (2, 3),
+    (2, 4),
+    (2, 5),
+    (3, 1);
 
 INSERT OR IGNORE INTO events (id, title, slug, description, start, end, capacity, unlisted) VALUES
     (1, 'An upcoming person will Present Sounds', 'upcoming-present-sounds', 'An upcoming person will present sounds.', '2026-07-31 23:00:00', '2026-08-01 03:00:00', 2, 0),

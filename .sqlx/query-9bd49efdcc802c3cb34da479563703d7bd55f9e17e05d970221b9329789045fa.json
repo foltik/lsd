@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvps WHERE session_id = ?",
+  "query": "SELECT e.*, u.email as address FROM emails e\n               JOIN users u ON u.id = e.user_id\n               WHERE e.id = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -9,64 +9,64 @@
         "type_info": "Integer"
       },
       {
-        "name": "event_id",
+        "name": "kind",
         "ordinal": 1,
-        "type_info": "Integer"
-      },
-      {
-        "name": "spot_id",
-        "ordinal": 2,
-        "type_info": "Integer"
-      },
-      {
-        "name": "session_id",
-        "ordinal": 3,
-        "type_info": "Integer"
-      },
-      {
-        "name": "contribution",
-        "ordinal": 4,
-        "type_info": "Integer"
-      },
-      {
-        "name": "status",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
-        "name": "first_name",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
-        "name": "last_name",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
-        "name": "email",
-        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "user_id",
-        "ordinal": 9,
+        "ordinal": 2,
         "type_info": "Integer"
       },
       {
+        "name": "user_version",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "post_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "list_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notification_id",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
         "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "sent_at",
         "ordinal": 10,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "opened_at",
         "ordinal": 11,
         "type_info": "Datetime"
       },
       {
-        "name": "checkin_at",
+        "name": "address",
         "ordinal": 12,
-        "type_info": "Datetime"
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -77,16 +77,16 @@
       false,
       false,
       false,
-      false,
-      false,
       true,
       true,
       true,
       true,
+      true,
       false,
-      false,
-      true
+      true,
+      true,
+      false
     ]
   },
-  "hash": "441734a07f6d3d4ed7ce1c457b140af236a8da12357e59f1ba235a4ed0464726"
+  "hash": "9bd49efdcc802c3cb34da479563703d7bd55f9e17e05d970221b9329789045fa"
 }
