@@ -1,162 +1,211 @@
-{% extends "layout.html" %}
+{% extends "events/rsvp_layout.html" %}
 
 {% block title %}light and sound - RSVP{% endblock title %}
 
+{% block progress %}
+  <div class="tick filled"></div>
+  <div class="tick"></div>
+  <div class="tick"></div>
+{% endblock progress %}
+
+{% block back %}
+  <a id="back" href="/e/{{ event.slug }}">
+    <span>&larr;</span>
+  </a>
+{% endblock back %}
+
 {% block content %}
-  <section id="events/rsvp/selection" class="ext/layout standard">
+  <section id="events/rsvp/selection" class="events/rsvp/layout">
     <header>
-      <h1>Choose a contribution</h1>
+      <h1>What will you <em>contribute</em>?</h1>
     </header>
     <form id="form" class="ext/form">
       {% for spot in spots %}
-        <div class="spot" data-id="{{ spot.id }}" data-kind="{{ spot.kind }}">
+        <div
+          class="spot"
+          data-id="{{ spot.id }}"
+          data-kind="{{ spot.kind }}"
+          data-price="{{ spot.required_contribution.unwrap_or(0) }}"
+          data-qty="{{ spot_qtys.get(spot.id).unwrap_or(&0) }}"
+          data-limit="{{ spot.qty_per_person }}"
+        >
           <h2 class="name">{{ spot.name }}</h2>
           <p class="description">{{ spot.description }}</p>
-          <div class="contribution">
-            {% if spot.kind == "fixed" %}
-              ${{ spot.required_contribution.unwrap() }}
-            {% elif spot.kind == "variable" %}
-              <div class="range">
-                <div class="number">
-                  <label for="contribution">$</label>
-                  <input
-                    class="ext/input"
-                    type="number"
-                    name="contribution"
-                    value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
-                    min="{{ spot.min_contribution.unwrap() }}"
-                    max="{{ spot.max_contribution.unwrap() }}"
-                  />
+          <div class="split">
+            <div class="contribution">
+              {% if spot.kind == "fixed" %}
+                ${{ spot.required_contribution.unwrap() }}
+              {% elif spot.kind == "variable" %}
+                <div class="range">
+                  <div class="number">
+                    <label>$</label>
+                    <input
+                      class="ext/input"
+                      type="number"
+                      name="contribution"
+                      value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
+                      min="{{ spot.min_contribution.unwrap() }}"
+                      max="{{ spot.max_contribution.unwrap() }}"
+                    />
+                  </div>
+                  <div class="slider">
+                    <input
+                      class="ext/input"
+                      type="range"
+                      name="contribution"
+                      value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
+                      min="{{ spot.min_contribution.unwrap() }}"
+                      max="{{ spot.max_contribution.unwrap() }}"
+                      step="1"
+                    />
+                    {% for stat in stats.spot_stats.get(spot.id).into_iter().flatten() %}
+                      <span
+                        class="stat"
+                        style="--i: {{ loop.index - 1 }}; --val: {{ stat.value }}; --min: {{ spot.min_contribution.unwrap() }}; --max: {{ spot.max_contribution.unwrap() }}"
+                      >
+                        <span class="label">{{ stat.name }}</span>
+                      </span>
+                    {% endfor %}
+                  </div>
                 </div>
-                <div class="slider">
-                  <input
-                    class="ext/input"
-                    type="range"
-                    name="contribution"
-                    value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
-                    min="{{ spot.min_contribution.unwrap() }}"
-                    max="{{ spot.max_contribution.unwrap() }}"
-                    step="1"
-                  />
-                  {% for stat in stats.spot_stats.get(spot.id).into_iter().flatten() %}
-                    <span
-                      class="stat"
-                      style="--i: {{ loop.index - 1 }}; --val: {{ stat.value }}; --min: {{ spot.min_contribution.unwrap() }}; --max: {{ spot.max_contribution.unwrap() }}"
-                    >
-                      <span class="label">{{ stat.name }}</span>
-                    </span>
-                  {% endfor %}
-                </div>
-              </div>
-            {% elif spot.kind == "free" || spot.kind == "work" %}
-              $0
-            {% endif %}
+              {% elif spot.kind == "free" || spot.kind == "work" %}
+                $0
+              {% endif %}
+            </div>
+            <div class="quantity">
+              <svg
+                class="sub"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 12 12"
+              >
+                <path
+                  fill="currentColor"
+                  d="M1 6a5 5 0 1 1 10 0A5 5 0 0 1 1 6Zm3-.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1H4Z"
+                />
+              </svg>
+              <span class="value"
+                >{{ spot_qtys.get(spot.id).unwrap_or(&0) }}</span
+              >
+              <svg
+                class="add"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 12 12"
+              >
+                <path
+                  fill="currentColor"
+                  d="M1 6a5 5 0 1 1 10 0A5 5 0 0 1 1 6Zm5-2.5a.417.417 0 0 0-.417.417v1.666H3.917a.417.417 0 0 0 0 .834h1.666v1.666a.417.417 0 0 0 .834 0V6.417h1.666a.417.417 0 0 0 0-.834H6.417V3.917A.417.417 0 0 0 6 3.5Z"
+                />
+              </svg>
+            </div>
           </div>
-          <select class="ext/input quantity" name="quantity" disabled>
-            <option value="0">0</option>
-          </select>
         </div>
       {% endfor %}
     </form>
-    <div class="actions">
-      <a href="/e/{{ slug }}" class="ext/button">&larr; Back</a>
-      <button id="continue" class="ext/button :green">Continue</button>
+    <div id="events/rsvp/actions">
+      <button class="share">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 48 48"
+        >
+          <path
+            fill="currentColor"
+            d="M37.75 20.25a1.75 1.75 0 0 1 1.744 1.606L39.5 22v14.25a5.75 5.75 0 0 1-5.53 5.745l-.22.005h-19.5a5.75 5.75 0 0 1-5.746-5.53l-.004-.22V22a1.75 1.75 0 0 1 3.494-.144L12 22v14.25a2.25 2.25 0 0 0 2.096 2.244l.154.006h19.5a2.25 2.25 0 0 0 2.245-2.096L36 36.25V22c0-.967.783-1.75 1.75-1.75ZM23.499 6.267l.149-.014l.175-.002l.154.013l.178.032l.069.018c.195.054.383.143.553.267l.12.095l.093.086l7.778 7.778a1.75 1.75 0 0 1-2.35 2.589l-.125-.114l-4.793-4.793V31.5a1.75 1.75 0 0 1-1.607 1.744l-.143.006a1.75 1.75 0 0 1-1.744-1.607L22 31.5V12.226l-4.788 4.79a1.75 1.75 0 0 1-2.35.113l-.125-.114a1.75 1.75 0 0 1-.114-2.35l.114-.125l7.752-7.754a1.83 1.83 0 0 1 .179-.162l.113-.08c.038-.027.077-.051.118-.074l.019-.009a1.72 1.72 0 0 1 .58-.194Z"
+          />
+        </svg>
+      </button>
+      <button id="next" class="next">
+        <span>Next</span>
+        <div class="right">
+          <em id="total">$0</em>
+          <span>&rarr;</span>
+        </div>
+      </button>
     </div>
+    <div id="events/rsvp/fade"></div>
   </section>
 {% endblock content %}
 
 {% block scripts %}
   <script>
-    /* ---------- Save session ------------------------------------------------ */
-    const queryString = new URLSearchParams(location.search);
-    const token = encodeURIComponent(queryString.get("session"));
-    const key = `rsvps/{{ session.event_id }}`;
-    localStorage[key] = JSON.stringify({ token, page: "selection" });
-
     /* ---------- UI ---------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
-      continue: $("continue"),
+      next: $("next"),
+      total: $("total"),
       spots: () => [...ui.form.querySelectorAll(".spot")],
-      qty: (spot) => spot.querySelector('[name="quantity"]'),
-      totalQty: (init = {}) => {
-        let total = 0;
-        for (const spot of ui.spots()) {
-          const id = +spot.dataset.id;
-          total += init[id] || +ui.qty(spot).value;
-        }
-        return total;
-      },
+      spotQty: (spot) => spot.querySelector(".value"),
+      spotAdd: (spot) => spot.querySelector(".add"),
+      spotSub: (spot) => spot.querySelector(".sub"),
+      spotContribution: (spot) =>
+        spot.querySelector('input[name="contribution"]').value,
     };
     const stats = JSON.parse(`{{ stats | json | safe }}`);
+    const userMaxSpots = +`{{ user_max_spots.unwrap_or(0) }}` || Infinity;
 
-    /* ---------- Update available spot quantities on change ------------------ */
-    const updateQuantities = (init = {}) => {
-      let totalQty = ui.totalQty(init);
+    /* ---------- Update spot limits and total ------------------ */
+    const updateSpots = () => {
+      let totalQty = 0;
+      let totalPrice = 0;
       for (const spot of ui.spots()) {
-        const id = +spot.dataset.id;
-        const qty = ui.qty(spot);
+        totalQty += +spot.dataset.qty;
+        totalPrice +=
+          +spot.dataset.qty *
+          (spot.dataset.kind == "variable"
+            ? +ui.spotContribution(spot).value
+            : +spot.dataset.price);
+      }
+      ui.total.innerText = `$${totalPrice}`;
 
-        const ourQty = init[id] || +(qty.value || 0);
-        const otherQty = totalQty - ourQty;
-        const remainingCapacity = stats.remaining_capacity - otherQty;
-        const remainingForSpot = stats.remaining_spots[id];
-        const ourLimit = Math.min(remainingForSpot, remainingCapacity);
+      const remainingEventCapacity = stats.remaining_capacity - totalQty;
+      for (const spot of ui.spots()) {
+        const currQty = +spot.dataset.qty;
+        const remainingSpotCapacity = stats.remaining_spots[+spot.dataset.id];
+        const remainingSpotLimitPerPerson = +spot.dataset.limit - currQty;
+        const remainingLimitForUser = userMaxSpots - totalQty;
+        const remainingQty = Math.max(
+          0,
+          Math.min(
+            remainingLimitForUser,
+            remainingSpotLimitPerPerson,
+            remainingSpotCapacity,
+            remainingEventCapacity,
+          ),
+        );
 
-        // Add new options
-        for (let i = 0; i <= ourLimit; i++) {
-          if (qty.querySelector(`option[value="${i}"]`)) continue;
-
-          const option = document.createElement("option");
-          option.value = i;
-          option.textContent = i;
-          qty.appendChild(option);
-        }
-        // Remove old options
-        for (const option of qty.querySelectorAll("option")) {
-          if (+option.value > ourLimit) {
-            option.remove();
-          }
-        }
-        // Disable if limit is zero
-        qty.disabled = ourLimit == 0;
-
-        // Select on init
-        if (id in init) {
-          qty.value = ourQty;
-        }
+        ui.spotAdd(spot).classList.toggle("disabled", remainingQty == 0);
+        ui.spotSub(spot).classList.toggle("disabled", currQty == 0);
+        ui.spotQty(spot).innerText = currQty;
       }
     };
-    ui.form.addEventListener("change", (e) => {
-      if (e.target.name != "quantity") return;
-      updateQuantities();
-    });
-    updateQuantities(
-      JSON.parse(`{
-      {% for (spot_id, qty) in spot_qtys %}
-        "{{ spot_id }}": {{ qty }},
-      {% endfor %}
-      "dummy": 0
-    }`),
-    );
+    /* ---------- On click +/- ------------------------------------------------ */
+    for (const spot of ui.spots()) {
+      const addQty = (el, n) => {
+        if (el.classList.contains("disabled")) return;
+        spot.dataset.qty = +spot.dataset.qty + n;
+        updateSpots();
+      };
+      ui.spotAdd(spot).addEventListener("click", (e) =>
+        addQty(e.currentTarget, +1),
+      );
+      ui.spotSub(spot).addEventListener("click", (e) =>
+        addQty(e.currentTarget, -1),
+      );
+    }
+    updateSpots();
 
-    /* ---------- Sync variable contribution inputs --------------------------- */
-    ["input", "change"].forEach((ev) =>
-      ui.form.addEventListener(ev, (e) => {
-        if (e.target.name != "contribution") return;
-
-        const spot = e.target.closest(".spot");
-        const inputs = spot.querySelectorAll('input[name="contribution"]');
-        for (const input of inputs) {
-          input.value = e.target.value;
-        }
-      }),
-    );
-
-    /* ---------- Continue button --------------------------------------------- */
-    ui.continue.addEventListener("click", async () => {
-      const totalQty = ui.totalQty();
+    /* ---------- Next button ------------------------------------------------- */
+    ui.next.addEventListener("click", async () => {
+      let totalQty = 0;
+      for (const spot of ui.spots()) {
+        totalQty += +spot.dataset.qty;
+      }
       if (totalQty == 0) {
         alert("Select at least one spot!");
         return;
@@ -165,7 +214,7 @@
       const rsvps = [];
       for (const spot of ui.spots()) {
         const spot_id = +spot.dataset.id;
-        const qty = +ui.qty(spot).value;
+        const qty = +spot.dataset.qty;
 
         if (qty > 0) {
           const rsvp = { spot_id, qty };
@@ -180,7 +229,7 @@
 
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = `/e/{{ slug }}/rsvp/selection?session=${token}`;
+      form.action = `/e/{{ event.slug }}/rsvp/selection`;
 
       const input = document.createElement("input");
       input.type = "hidden";
