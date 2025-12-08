@@ -195,6 +195,7 @@ mod edit {
                 }
 
                 Spot::add_to_event(&state.db, id, to_add).await?;
+                // TODO: Disallow??
                 Spot::remove_from_event(&state.db, id, to_delete).await?;
             }
             None => {
@@ -327,21 +328,29 @@ mod rsvp {
             spot_contributions.insert(rsvp.spot_id, rsvp.contribution);
         }
 
+        let user_spots = Some(4);
+
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_selection.html")]
         struct SelectionHtml {
             user: Option<User>,
-            slug: String,
-            session: RsvpSession,
+            event: Event,
+            user_max_spots: Option<u64>,
             spots: Vec<Spot>,
             spot_qtys: HashMap<i64, usize>,
             spot_contributions: HashMap<i64, i64>,
             stats: EventStats,
         }
-        Ok(
-            SelectionHtml { user, slug, session, spots, spot_qtys, spot_contributions, stats }
-                .into_response(),
-        )
+        Ok(SelectionHtml {
+            user,
+            event,
+            user_max_spots: user_spots,
+            spots,
+            spot_qtys,
+            spot_contributions,
+            stats,
+        }
+        .into_response())
     }
 
     // Handle submission of the "Choose a contribution" form
@@ -350,7 +359,7 @@ mod rsvp {
         rsvps: String,
     }
     pub async fn selection_form(
-        session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
         Form(form): Form<SelectionForm>,
     ) -> AppResult<Response> {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
@@ -376,6 +385,7 @@ mod rsvp {
             )
             .await?;
         }
+        session.clear_stripe_client_secret(&state.db).await?;
 
         // TODO: skip to /contribution if only one spot and RsvpSession already has an associated user
         goto_attendees_page(&event)
@@ -390,17 +400,20 @@ mod rsvp {
         user: Option<User>, session: RsvpSession, State(state): State<SharedAppState>,
         Path(slug): Path<String>,
     ) -> AppResult<Response> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
         let rsvps = Rsvp::list_for_attendees(&state.db, session.id).await?;
+        let price = rsvps.iter().map(|r| r.contribution).sum::<i64>();
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_attendees.html")]
         struct AttendeesHtml {
-            slug: String,
+            event: Event,
             user: Option<User>,
             session: RsvpSession,
             attendees: Vec<AttendeeRsvp>,
+            price: i64,
         }
-        Ok(AttendeesHtml { slug, user, session, attendees: rsvps }.into_response())
+        Ok(AttendeesHtml { event, user, session, attendees: rsvps, price }.into_response())
     }
 
     // Handle submission of the "Who will be attending?" form
@@ -490,6 +503,8 @@ mod rsvp {
     pub async fn contribution_page(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> AppResult<Response> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+
         // A user is guaranteed to exist, since either:
         // * There already was one in rsvp_form() and we redirected straight here (TODO, we don't redirect yet)
         // * We've collected their info and just linked one in attendees_form()
@@ -499,24 +514,23 @@ mod rsvp {
         let price = rsvps.iter().map(|r| r.contribution).sum();
         if price > 0 {
             let line_items = session.line_items(&rsvps)?;
-            let return_url = format!("/e/{slug}/rsvp/manage?session={}", session.token);
-            let stripe_client_secret = state
-                .stripe
-                .create_session(session.id, &user.email, line_items, return_url)
-                .await?;
+            let return_url = format!("/e/{slug}/rsvp/manage?order={}", session.token);
 
-            session
-                .set_stripe_client_secret(&state.db, session.id, &stripe_client_secret)
-                .await?;
+            if session.stripe_client_secret.is_none() {
+                let stripe_client_secret = state
+                    .stripe
+                    .create_session(session.id, &user.email, line_items, return_url)
+                    .await?;
 
-            session.set_awaiting_payment(&state.db).await?;
+                session.set_stripe_client_secret(&state.db, &stripe_client_secret).await?;
+            }
         }
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_contribution.html")]
         struct ContributionHtml {
             user: Option<User>,
-            slug: String,
+            event: Event,
             session: RsvpSession,
             rsvps: Vec<ContributionRsvp>,
             price: i64,
@@ -524,7 +538,7 @@ mod rsvp {
         }
         Ok(ContributionHtml {
             user: Some(user),
-            slug,
+            event,
             session,
             rsvps,
             price,
@@ -543,38 +557,47 @@ mod rsvp {
             0 => session.set_confirmed(&state.db, None).await?,
             _ => return Err(AppError::BadRequest),
         }
-        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?session={}", &session.token)))
+        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?order={}", &session.token)))
     }
 
     #[derive(serde::Deserialize)]
     pub struct SessionQuery {
-        session: String,
+        order: String,
     }
     // Show the "Manage your RSVP" page.
     pub async fn manage_page(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
+        Path(slug): Path<String>,
     ) -> AppResult<impl IntoResponse> {
-        tracing::info!("{:?}", query.session);
-        let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.session).await? else {
+        let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.order).await? else {
             // A nonexistant session should never reach /manage, and a confirmed session should never be deleted.
             return Err(AppError::BadRequest)?;
         };
 
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+
         if session.status == RsvpSession::DRAFT {
-            // A draft session should never reach /manage
-            return Err(AppError::BadRequest);
+            // If you get here, we hold your spot and assume payment is coming later via webhook.
+            //
+            // This is technically exploitable, but we could check for still unpaid rsvps at event start.
+            session.set_awaiting_payment(&state.db).await?;
         }
 
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
+        let price = rsvps.iter().map(|r| r.contribution).sum::<i64>();
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_manage.html")]
         struct ManageHtml {
             user: Option<User>,
             session: RsvpSession,
+            event: Event,
+            flyer: Option<EventFlyer>,
             rsvps: Vec<ContributionRsvp>,
+            price: i64,
         }
-        Ok(ManageHtml { user, session, rsvps }.into_response())
+        Ok(ManageHtml { user, session, event, flyer, rsvps, price }.into_response())
     }
 
     pub struct ParsedSelection {
@@ -789,7 +812,7 @@ impl axum::extract::FromRequestParts<SharedAppState> for RsvpSession {
                     match parts.uri.path().contains("manage") {
                         true => Ok(session), // avoid redirect loop
                         false => Err(Redirect::to(&format!(
-                            "{}/e/{slug}/rsvp/manage?session={}",
+                            "{}/e/{slug}/rsvp/manage?order={}",
                             config().app.url,
                             session.token
                         ))),

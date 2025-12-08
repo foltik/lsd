@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                r.id AS rsvp_id,\n                s.name AS spot_name,\n                u.first_name,\n                u.last_name,\n                u.email,\n                u.phone\n               FROM rsvps r\n               JOIN spots s ON s.id = r.spot_id\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               LEFT JOIN users u ON u.id = r.user_id\n               WHERE rs.id = ?\n            ",
+  "query": "SELECT\n                r.id AS rsvp_id,\n                s.name AS spot_name,\n                u.first_name,\n                u.last_name,\n                u.email,\n                u.phone,\n                r.contribution\n               FROM rsvps r\n               JOIN spots s ON s.id = r.spot_id\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               LEFT JOIN users u ON u.id = r.user_id\n               WHERE rs.id = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,11 @@
         "name": "phone",
         "ordinal": 5,
         "type_info": "Text"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 6,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -43,8 +48,9 @@
       true,
       true,
       true,
-      true
+      true,
+      false
     ]
   },
-  "hash": "3b21769601466c6171c405ae8f0ea59711dce010c0fa96fff8eb1f0e69bd7802"
+  "hash": "5be516584ba4d325e9849520fd1ac731cea1ae2a06daf4216cd2dae3c1947386"
 }

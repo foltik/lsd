@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                u.*,\n                h.version,\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM users u\n            JOIN user_history h ON h.user_id = u.id\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            LEFT JOIN session_tokens t ON t.user_id = u.id\n            WHERE t.token = ?\n            GROUP BY u.id\n            ",
+  "query": "\n            SELECT\n                u.*,\n                h.version,\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM users u\n            LEFT JOIN session_tokens t ON t.user_id = u.id\n            JOIN user_history h ON h.user_id = u.id\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            WHERE t.token = ?\n            GROUP BY u.id\n            ",
   "describe": {
     "columns": [
       {
@@ -64,5 +64,5 @@
       null
     ]
   },
-  "hash": "b5fef683537c0872c49872c4ae75a63eee4f2f42b8a42da3825a01bcd7eb7626"
+  "hash": "5a8042bc584bbd4b702a5ed4e074d86024e9ae6032b14399fd4808f214843946"
 }

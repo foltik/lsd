@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT s.* FROM rsvp_sessions s\n              JOIN users u ON u.id = s.user_id\n              WHERE s.event_id = ?\n                AND s.id != ?\n                AND u.email = ?",
+  "query": "SELECT * FROM rsvp_sessions\n               WHERE user_id = ? AND event_id = ?",
   "describe": {
     "columns": [
       {
@@ -65,7 +65,7 @@
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 2
     },
     "nullable": [
       false,
@@ -82,5 +82,5 @@
       false
     ]
   },
-  "hash": "a72255be6f06c8e76f77c9facbbb5d3d919377fd00a675f738c527abe2199f6f"
+  "hash": "1927b57fbd4ea64ef6ff720aaa77bc5fc4ea9fd3738820b77dcc3e3611d5ddc0"
 }

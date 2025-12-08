@@ -8,7 +8,7 @@ CREATE TABLE login_tokens (
 
 ALTER TABLE session_tokens RENAME TO session_tokens_old;
 CREATE TABLE session_tokens (
-    user_id INTEGER PRIMARY KEY NOT NULL,
+    user_id INTEGER NOT NULL,
     token TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -82,11 +82,27 @@ mod read {
 mod edit {
     use super::*;
 
+    struct EditorContent {
+        html: String,
+        updated_at: NaiveDateTime,
+    }
+    struct Editor {
+        /// Where the content gets POSTed to.
+        /// The string "{id}" is replaced with the current entity id.
+        /// Returns JSON, either {id: 123} or {error: ""}
+        url: &'static str,
+        snapshot_prefix: &'static str,
+
+        entity_id: Option<i64>,
+        content: Option<EditorContent>,
+    }
+
     #[derive(Template, WebTemplate)]
     #[template(path = "posts/edit.html")]
     struct EditHtml {
         user: Option<User>,
         post: Post,
+        editor: Editor,
     }
 
     // New post page.
@@ -102,6 +118,12 @@ mod edit {
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),
             },
+            editor: Editor {
+                url: "/posts/{id}/edit",
+                snapshot_prefix: "post",
+                entity_id: None,
+                content: None,
+            },
         })
     }
 
@@ -113,40 +135,42 @@ mod edit {
             return Err(AppError::NotFound);
         };
 
-        #[rustfmt::skip]
-        #[allow(unused)]
-        {
-            struct EditorHtml {
-                save_url: String,
-                back_url: String,
-            }
-
-            let x = EditorHtml {
-                save_url: format!("/posts/{}/edit", post.id),
-                back_url: format!("/posts"),
-            };
-        }
-
-        Ok(EditHtml { user: Some(user), post })
+        Ok(EditHtml {
+            user: Some(user),
+            editor: Editor {
+                url: "/posts/{id}/edit",
+                snapshot_prefix: "post",
+                entity_id: Some(post.id),
+                content: Some(EditorContent { html: post.content.clone(), updated_at: post.updated_at }),
+            },
+            post,
+        })
     }
 
     // Edit post form.
     #[derive(serde::Deserialize)]
     pub struct EditForm {
-        id: Option<i64>,
+        id: i64,
         #[serde(flatten)]
         post: UpdatePost,
     }
+    #[derive(serde::Serialize)]
+    pub struct EditResponse {
+        error: Option<String>,
+        id: Option<i64>,
+    }
     pub async fn edit_form(
         State(state): State<SharedAppState>, Form(form): Form<EditForm>,
-    ) -> AppResult<impl IntoResponse> {
-        match form.id {
-            Some(id) => Post::update(&state.db, id, &form.post).await?,
-            None => {
-                Post::create(&state.db, &form.post).await?;
-            }
-        }
-        Ok(())
+    ) -> Json<EditResponse> {
+        let res = match form.id {
+            0 => Post::create(&state.db, &form.post).await.map(|id| id),
+            id => Post::update(&state.db, id, &form.post).await.map(|_| id),
+        };
+
+        Json(match res {
+            Ok(id) => EditResponse { id: Some(id), error: None },
+            Err(e) => EditResponse { id: None, error: Some(format!("{e:#}")) },
+        })
     }
 
     // Delete post form.
