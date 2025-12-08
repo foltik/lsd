@@ -172,23 +172,6 @@ impl Spot {
             .execute(db)
             .await?;
 
-        // Remove any now unused spots
-        QueryBuilder::new(
-            r#"DELETE FROM spots
-               WHERE NOT EXISTS (
-                   SELECT 1 FROM reservations r
-                   WHERE r.spot_id = spots.id
-                   AND r.event_id = "#,
-        )
-        .push_bind(event_id)
-        .push(") AND id IN ")
-        .push_tuples(&spot_ids, |mut b, spot_id| {
-            b.push_bind(spot_id);
-        })
-        .build()
-        .execute(db)
-        .await?;
-
         Ok(())
     }
 }

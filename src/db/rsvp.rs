@@ -47,6 +47,7 @@ pub struct AttendeeRsvp {
     pub last_name: Option<String>,
     pub email: Option<String>,
     pub phone: Option<String>,
+    pub contribution: i64,
 }
 
 #[derive(serde::Serialize)]
@@ -88,7 +89,8 @@ impl Rsvp {
                 u.first_name,
                 u.last_name,
                 u.email,
-                u.phone
+                u.phone,
+                r.contribution
                FROM rsvps r
                JOIN spots s ON s.id = r.spot_id
                JOIN rsvp_sessions rs ON rs.id = r.session_id
