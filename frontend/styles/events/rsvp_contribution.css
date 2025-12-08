@@ -1,46 +1,11 @@
 #events\/rsvp\/contribution {
-  .line-items {
-    @apply m-0 list-none p-0;
+  @apply pt-0;
 
-    .item,
-    .total {
-      @apply flex items-start justify-between py-2;
+  .payment {
+    #stripe {
+      @apply rounded-md;
+      /* stripe elements is weird and doesn't work when using border-lsd-white/30 */
+      border: 1px solid var(--color-lsd-white);
     }
-
-    .item {
-      .contact {
-        @apply flex flex-col;
-        .title {
-          @apply text-xl;
-        }
-        .attendee {
-          @apply text-lsd-gray mt-1 text-sm;
-        }
-      }
-      .price {
-        @apply ml-4 text-base font-semibold;
-      }
-    }
-
-    .total {
-      @apply border-lsd-white/20 mt-2 border-t pt-3;
-      .left {
-        @apply text-xl;
-      }
-      .right {
-        @apply text-lg font-bold;
-      }
-    }
-  }
-
-  #stripe {
-    @apply rounded-md;
-    /* stripe elements is weird and doesn't work when using border-lsd-white/30 */
-    border: 1px solid
-      color-mix(in oklab, var(--color-lsd-white) 30%, transparent);
-  }
-
-  .actions {
-    @apply flex flex-row items-center justify-between;
   }
 }

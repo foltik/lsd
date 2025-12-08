@@ -1,243 +1,29 @@
-{% extends "layout.html" %}
+{% extends "editor.html" %}
 {% block title %}Edit post - {{ post.title }}{% endblock title %}
 
-{% block content %}
-  <section id="posts/edit">
-    <form
-      class="editor ext/form"
-      method="POST"
-      action="/posts/{{ post.slug }}/edit"
-    >
-      <div class="navbar">
-        <a href="/posts">&larr; All Posts</a>
-        <div class="save">
-          <span id="status">No changes</span>
-          <button type="button" onclick="savePost()">Save</button>
-        </div>
-        <a class="ext/button :green" href="/posts/{{ post.slug }}/send">Send</a>
-        <button
-          _="on click
-             if (confirm('Are you sure you want to delete this post?'))
-             then fetch '/posts/{{ post.slug }}/delete' with method:'POST'
-             then go to url '/posts'
-           "
-          type="button"
-          class="ext/button :red"
-        >
-          Delete
-        </button>
-      </div>
-      <div class="content">
-        <div class="pell-wrapper">
-          <article class="pell"></article>
-        </div>
-      </div>
-      <div class="details">
-        {% if post.id != 0 %}
-          <input type="hidden" name="id" value="{{ post.id }}" />
-        {% endif %}
-        <div class="field">
-          <label for="title">Title</label>
-          <input type="text" id="title" name="title" value="{{ post.title }}" />
-        </div>
-        <div class="field">
-          <label for="slug">Slug</label>
-          <input type="text" id="slug" name="slug" value="{{ post.slug }}" />
-        </div>
-        <div class="field">
-          <label for="author">Author</label>
-          <input
-            type="text"
-            id="author"
-            name="author"
-            value="{{ post.author }}"
-          />
-        </div>
-      </div>
-    </form>
-  </section>
-{% endblock content %}
+{% block back %}
+  <a href="/posts">&larr; All Posts</a>
+{% endblock back %}
 
-{% block scripts %}
-  <script src="https://unpkg.com/pell"></script>
-  <script>
-    // Editor setup
-    (() => {
-      window.pell.init({
-        element: document.querySelector(".pell"),
-        defaultParagraphSeparator: "p",
-        actions: ["bold", "italic", "underline", "quote", "link", "image"],
-        onChange: () => {},
-      });
+{% block actions %}
+  <a class="ext/button" href="/posts/{{ post.slug }}/send">Send</a>
+{% endblock actions %}
 
-      // Add the status bar
+{% block form %}
+  {% if post.id != 0 %}
+    <input type="hidden" name="id" value="{{ post.id }}" />
+  {% endif %}
 
-      // Fill in post content
-      document.querySelector(".pell-content").innerHTML =
-        `{{ post.content | safe }}`;
-    })();
-
-    // AJAX saving with status indicator
-    (() => {
-      const editor = document.querySelector(".pell-content");
-      const status = document.querySelector("#status");
-
-      const postKey = "posts/{{ post.id }}";
-      const postUpdatedAt = new Date(
-        '{{ post.updated_at | format_datetime("%m-%d-%Y %H:%M:%S %Z") }}',
-      );
-      let modified = false;
-
-      const setStatus = (text, clazz, mod) => {
-        status.textContent = text;
-        status.className = clazz;
-        modified = mod;
-      };
-      const setModified = () =>
-        setStatus("Changes saved locally", "unsaved", true);
-      const setRestored = () => setStatus("Changes restored", "unsaved", true);
-      const setSaved = () => setStatus("Changes saved", "", false);
-      const setError = () => setStatus("Error saving changes", "error", true);
-
-      // Load any saved local changes
-      let saved = postKey in localStorage && JSON.parse(localStorage[postKey]);
-      if (saved) {
-        const updatedAt = new Date(saved.updatedAt);
-        if (postKey == "posts/0" || updatedAt > postUpdatedAt) {
-          editor.innerHTML = saved.content;
-          setRestored();
-        }
-      }
-
-      // Save local changes
-      editor.addEventListener("input", (e) => {
-        localStorage[postKey] = JSON.stringify({
-          updatedAt: Date.now(),
-          content: editor.innerHTML,
-        });
-        setModified();
-      });
-
-      const isMac = navigator.platform.toUpperCase().includes("MAC");
-
-      editor.addEventListener("keydown", (e) => {
-        const cmdOrCtrl = (isMac ? e.metaKey : e.ctrlKey) && !e.shiftKey;
-        const key = e.key.toLowerCase();
-
-        const hotkeys = {
-          i: "italic",
-          b: "bold",
-          u: "underline",
-        };
-        if (cmdOrCtrl && key in hotkeys) {
-          e.preventDefault();
-          document.execCommand(hotkeys[key]);
-        }
-      });
-
-      // Warn before leaving if modified
-      window.addEventListener("beforeunload", (e) => {
-        if (modified) {
-          e.preventDefault();
-          e.returnValue = "";
-        }
-      });
-
-      // Save post via AJAX
-      window.savePost = async () => {
-        // Check for missing fields
-        for (const field of ["title", "slug", "author"]) {
-          if (!document.getElementById(field).value) {
-            alert(`Missing ${field}.`);
-            return;
-          }
-        }
-
-        try {
-          const formEl = document.querySelector("form");
-          let form = new FormData(formEl);
-
-          const content = document.querySelector(".pell-content").innerHTML;
-          form.append("content", content);
-
-          const response = await fetch(formEl.getAttribute("action"), {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams(form),
-          });
-
-          if (response.ok) {
-            setSaved();
-
-            // If slug changed, update the URL without reloading the page
-            const newSlug = document.getElementById("slug").value;
-            const currentSlug = window.location.pathname.split("/")[2];
-            if (newSlug !== currentSlug) {
-              history.pushState({}, "", `/posts/${newSlug}/edit`);
-              formEl.action = `/posts/${newSlug}/edit`;
-            }
-
-            if (postKey == "posts/0") {
-              // Clear local changes on the "new post" page
-              localStorage.removeItem(postKey);
-              // Reload the page to pick up the new id
-              window.location.href = `/posts/${newSlug}/edit`;
-            }
-          } else {
-            setError();
-            const errorText = await response.text();
-            console.error(response.statusText, errorText);
-            alert(
-              `Error saving post: ${errorText || `${response.status} ${response.statusText}`}`,
-            );
-          }
-        } catch (error) {
-          setError();
-          console.error(error);
-          alert(`Error saving post: ${error.message}`);
-        }
-      };
-    })();
-
-    // // Resize handles
-    // (() => {
-    //   const container = document.querySelector(".content");
-    //   const article = document.querySelector("article");
-    //
-    //   function startResize(e) {
-    //     e.preventDefault();
-    //     const x0 = e.clientX;
-    //     const w0 = article.offsetWidth;
-    //     const right = e.target.classList.contains("right");
-    //
-    //     function doResize(e) {
-    //       let dx = (e.clientX - x0) * (right ? 1 : -1);
-    //       const w = w0 + dx * 2;
-    //       if (w >= 768 && w <= container.clientWidth) {
-    //         article.style.width = `${w}px`;
-    //       }
-    //     }
-    //
-    //     function stopResize() {
-    //       document.removeEventListener("mousemove", doResize);
-    //       document.removeEventListener("mouseup", stopResize);
-    //     }
-    //     document.addEventListener("mousemove", doResize);
-    //     document.addEventListener("mouseup", stopResize);
-    //   }
-    //   document
-    //     .querySelectorAll(".resize")
-    //     .forEach((e) => e.addEventListener("mousedown", startResize));
-    // })();
-
-    // Clear formatting when pasting into the editor
-    (() => {
-      const editor = document.querySelector(".pell-content");
-      editor.addEventListener("paste", (e) => {
-        e.preventDefault();
-        const text = e.clipboardData.getData("text/plain");
-        document.execCommand("insertText", false, text);
-      });
-    })();
-  </script>
-{% endblock scripts %}
+  <div class="field">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="{{ post.title }}" />
+  </div>
+  <div class="field">
+    <label for="slug">Slug</label>
+    <input type="text" id="slug" name="slug" value="{{ post.slug }}" />
+  </div>
+  <div class="field">
+    <label for="author">Author</label>
+    <input type="text" id="author" name="author" value="{{ post.author }}" />
+  </div>
+{% endblock form %}

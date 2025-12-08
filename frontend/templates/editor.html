@@ -1,0 +1,328 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <section id="ext/editor">
+    <form id="form" class="editor ext/form">
+      <div class="navbar">
+        <div class="left">
+          {% block back %}
+          {% endblock back %}
+        </div>
+        <div class="right">
+          <span id="status">No changes</span>
+          <button id="save" class="ext/button :green" type="button">
+            Save
+          </button>
+          <button id="revert" disabled class="ext/button :red" type="button">
+            Revert
+          </button>
+          {% block actions %}
+          {% endblock actions %}
+        </div>
+      </div>
+      <div class="split">
+        <div class="center">
+          <div class="editor">
+            <div id="actions"></div>
+            <div id="content" contenteditable></div>
+          </div>
+        </div>
+        <div class="sidebar">
+          {% block form %}
+          {% endblock form %}
+        </div>
+      </div>
+    </form>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script src="https://unpkg.com/pell"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      editor: $("content"),
+      status: $("status"),
+      save: $("save"),
+      revert: $("revert"),
+      actions: $("actions"),
+    };
+
+    const state = {
+      // Changes are saved in localstorage via a disambiguating prefix and a unique entity id for that prefix.
+      // If we're creating a new entity and thus entity_id.is_none(), we use an id of 0.
+      // Examples: `post/0`, `post/123`, `event/invite/456`, `event/guide/456`
+      entityId: parseInt(`{{ editor.entity_id.unwrap_or(0) }}`),
+      localstorageKey: () => `{{ editor.snapshot_prefix }}/${state.entityId}`,
+      url: () => `{{ editor.url }}`.replace("{id}", state.entityId),
+
+      localUpdatedAt: null,
+
+      // {% if let Some(content) = editor.content %}
+      persistedHtml: `{{ content.html | safe }}`,
+      persistedUpdatedAt: new Date(
+        `{{ content.updated_at | format_datetime("%m-%d-%Y %H:%M:%S %Z") }}`,
+      ),
+      // {% else %}
+      persistedHtml: null,
+      persistedUpdatedAt: null,
+      // {% endif %}
+    };
+
+    /* ---------- "X days/hours/minutes/seconds ago" ---------------- */
+    const plural = (word, n) => (n == 1 ? word : `${word}s`);
+    const ago = (now, updatedAt) => {
+      const secondsSinceRestored = Math.floor((now - updatedAt) / 1000);
+      const minsSinceRestored = Math.floor(secondsSinceRestored / 60);
+      const hoursSinceRestored = Math.floor(minsSinceRestored / 60);
+      const daysSinceRestored = Math.floor(hoursSinceRestored / 24);
+
+      let ago;
+      if (daysSinceRestored > 0)
+        ago = `${daysSinceRestored} ${plural("day", daysSinceRestored)} ago`;
+      else if (hoursSinceRestored > 0)
+        ago = `${hoursSinceRestored} ${plural("hour", hoursSinceRestored)} ago`;
+      else if (minsSinceRestored > 0)
+        ago = `${minsSinceRestored} ${plural("minute", minsSinceRestored)} ago`;
+      else
+        ago = `${secondsSinceRestored} ${plural("second", secondsSinceRestored)} ago`;
+
+      return ago;
+    };
+
+    const maybeRestoreSnapshot = () => {
+      const haveSnapshot = state.localstorageKey() in localStorage;
+      if (haveSnapshot) {
+        const snapshot = JSON.parse(localStorage[state.localstorageKey()]);
+        const snapshotHtml = snapshot.html;
+        const snapshotUpdatedAt = new Date(snapshot.updatedAt);
+
+        // Restore this snapshot if we have local changes, but the snapshot is newer.
+        // This can happen if there were changes made in a separate tab.
+        const haveLocal = state.localUpdatedAt != null;
+        const isNewerThanLocal =
+          haveLocal && snapshotUpdatedAt > state.localUpdatedAt;
+
+        // Restore this snapshot if we have no local changes, have persisted changes, and the snapshot is newer than what's persisted.
+        // This happens if you make some local changes, then refresh the page.
+        // Otherwise, restore if the localstorage changes
+        const havePersisted = state.persistedUpdatedAt != null;
+        const isNewerThanPersisted =
+          havePersisted && snapshotUpdatedAt > state.persistedUpdatedAt;
+
+        // Otherwise, restore this snapshot if we have no local changes and no persisted changes.
+        const haveNothing = !haveLocal && !havePersisted;
+
+        if (
+          isNewerThanLocal ||
+          (!haveLocal && isNewerThanPersisted) ||
+          haveNothing
+        ) {
+          ui.status.textContent = `Unsaved changes restored from ${ago(Date.now(), snapshotUpdatedAt)}`;
+          ui.revert.disabled = false;
+          ui.editor.innerHTML = snapshotHtml;
+          state.localUpdatedAt = snapshotUpdatedAt;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    /* ---------- On initial load --------------------- */
+    if (!maybeRestoreSnapshot()) {
+      ui.editor.innerHTML = state.persistedHtml;
+    }
+    /* ---------- On change ------------------------ */
+    ui.editor.addEventListener("input", (e) => {
+      if (maybeRestoreSnapshot()) {
+        return;
+      }
+
+      state.localUpdatedAt = Date.now();
+      localStorage[state.localstorageKey()] = JSON.stringify({
+        html: ui.editor.innerHTML,
+        updatedAt: state.localUpdatedAt,
+      });
+      ui.status.textContent = "Unsaved changes stored locally";
+      ui.revert.disabled = false;
+    });
+    /* ---------- On focus ------------------------- */
+    window.onfocus = function () {
+      maybeRestoreSnapshot();
+    };
+
+    /* ---------- Save button -------------------------- */
+    ui.save.addEventListener("click", async () => {
+      if (maybeRestoreSnapshot()) {
+        alert(
+          "Newer unsaved changes in another tab detected. Restoring those instead of saving.",
+        );
+        return;
+      }
+
+      let response;
+      try {
+        // Create a FormData from whatever fields have been added to the form.
+        // Templates that extend this page could add some, for example post title/slug/author.
+        let form = new FormData(ui.form);
+        // Plus tack on `content` field for the editor html itself.
+        // If there's no extra fields added, this will be the only thing in the form data.
+        form.append("content", ui.editor.innerHTML);
+
+        response = await (
+          await fetch(state.url(), {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams(form),
+          })
+        ).json();
+      } catch (e) {
+        response = { error: e.message };
+      }
+
+      if (!response.error) {
+        // Only clear localStorage for entites not yet persisted.
+        // Otherwise, we keep it around so other tabs know there were local changes without a reload.
+        if (state.persistedUpdatedAt == null) {
+          localStorage.removeItem(state.localstorageKey());
+        }
+
+        state.entityId = response.id;
+        state.persistedHtml = ui.editor.innerHTML;
+        state.persistedUpdatedAt = state.localUpdatedAt;
+        state.localUpdatedAt = null;
+        ui.status.textContent = "Changes saved";
+        ui.revert.disabled = true;
+      } else {
+        alert(`Error saving: ${response.error}`);
+      }
+    });
+
+    /* ---------- Revert button ------------------------ */
+    ui.revert.addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to discard ALL local changes?"))
+        return;
+
+      localStorage.removeItem(state.localstorageKey());
+      ui.editor.innerHTML = state.persistedHtml;
+      state.localUpdatedAt = null;
+      ui.status.textContent = "No changes";
+      ui.revert.disabled = true;
+    });
+
+    /* ============================= EDITOR =============================== */
+
+    // Yes these are "deprecated", no there is no alternative.
+    // This API still works just fine, and browser vendors are pretty much stuck supporting it.
+    const exec = (command, value = null) =>
+      document.execCommand(command, false, value);
+    // TODO: REMOVE THESE UNUSED
+    // const queryState = command => document.queryCommandState(command);
+    // const queryValue = command => document.queryCommandValue(command);
+    const query = (command) => document.queryCommandValue(command);
+
+    /* ---------- Actions ------------------------------ */
+    const actions = [
+      {
+        title: "Bold",
+        innerHTML: "<b>B</b>",
+        hotkey: "b",
+        state: () => query("bold") == "true",
+        apply: () => exec("bold"),
+      },
+      {
+        title: "Italic",
+        innerHTML: "<i>I</i>",
+        hotkey: "i",
+        state: () => query("italic") == "true",
+        apply: () => exec("italic"),
+      },
+      {
+        title: "Underline",
+        innerHTML: "<u>U</u>",
+        hotkey: "u",
+        state: () => query("underline") == "true",
+        apply: () => exec("underline"),
+      },
+      {
+        title: "Strikethrough",
+        innerHTML: "<strike>S</strike>",
+        state: () => query("strikeThrough") == "true",
+        apply: () => exec("strikeThrough"),
+      },
+      {
+        title: "Quote",
+        innerHTML: "&#8220; &#8221;",
+        state: () => query("formatBlock") == "blockquote",
+        apply: () =>
+          exec(
+            "formatBlock",
+            query("formatBlock") == "blockquote" ? "<p>" : "<blockquote>",
+          ),
+      },
+      {
+        title: "Link",
+        innerHTML: "&#128279;",
+        apply: () => {
+          const url = window.prompt("Enter link URL");
+          if (url) exec("createLink", url);
+        },
+      },
+      {
+        title: "Image",
+        innerHTML: "&#128247;",
+        apply: () => {
+          const url = window.prompt("Enter image URL");
+          if (url) exec("insertImage", url);
+        },
+      },
+    ];
+    for (let action of actions) {
+      const button = document.createElement("button");
+      button.title = action.title;
+      button.innerHTML = action.innerHTML;
+      button.setAttribute("type", "button");
+
+      button.addEventListener("click", () => {
+        action.apply() && ui.editor.focus();
+        if (action.state) {
+          button.classList[action.state() ? "add" : "remove"]("active");
+        }
+      });
+
+      ui.actions.appendChild(button);
+    }
+
+    /* ---------- Hotkeys ------------------------------ */
+    const hotkeys = Object.fromEntries(
+      actions.filter((a) => a.hotkey).map((a) => [a.hotkey, a]),
+    );
+    ui.editor.addEventListener("keydown", (e) => {
+      // Hotkeys use Cmd on mac, Ctrl otherwise.
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+      const key = e.key.toLowerCase();
+      if (modKey && !e.shiftKey && key in hotkeys) {
+        e.preventDefault();
+
+        const action = hotkeys[key];
+        action.apply(); // && ui.editor.focus();
+        if (action.state) {
+          const button = document.querySelector(
+            `#actions button[title="${action.title}"]`,
+          );
+          button.classList[action.state() ? "add" : "remove"]("active");
+        }
+      }
+    });
+
+    /* ---------- Paste w/o formatting ----------------- */
+    ui.editor.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData("text/plain");
+      document.execCommand("insertText", false, text);
+    });
+  </script>
+{% endblock scripts %}

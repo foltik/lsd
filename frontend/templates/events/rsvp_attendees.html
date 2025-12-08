@@ -1,21 +1,29 @@
-{% extends "layout.html" %}
+{% extends "events/rsvp_layout.html" %}
 
 {% block title %}light and sound - RSVP{% endblock title %}
 
+{% block progress %}
+  <div class="tick filled"></div>
+  <div class="tick filled"></div>
+  <div class="tick"></div>
+{% endblock progress %}
+
+{% block back %}
+  <a id="back" href="/e/{{ event.slug }}/rsvp/selection">
+    <span>&larr;</span>
+  </a>
+{% endblock back %}
+
 {% block content %}
-  <section id="events/rsvp/attendees" class="ext/layout standard">
+  <section id="events/rsvp/attendees" class="events/rsvp/layout">
     <header>
-      <h1>Who will be attending?</h1>
+      <h1>Who will be <em>attending</em>?</h1>
     </header>
     <form id="form" class="ext/form">
       {% for attendee in attendees %}
         <div class="attendee" data-rsvp-id="{{ attendee.rsvp_id }}">
           <div class="header">
-            <h2 class="name">
-              {{ attendee.spot_name }}
-              {% if attendees.len() > 1 %}({{ loop.index }}){% endif %}
-            </h2>
-
+            <p class="index">Guest #{{ loop.index }}</p>
             {% if attendees.len() > 1 %}
               <label class="is-me">
                 <input
@@ -24,14 +32,20 @@
                   name="is_me"
                   value="{{ attendee.rsvp_id }}"
                   required
+                  {% if loop.index == 1 %}
+                    checked
+                  {% endif %}
                 />
-                <span>This is me!</span>
+                <span>Me</span>
               </label>
             {% endif %}
           </div>
-
-          <div class="fields">
-            <label class="field">
+          <div class="subtext">
+            <p class="spot">{{ attendee.spot_name }}</p>
+            <p class="price">$0</p>
+          </div>
+          <div class="name">
+            <label class="first field">
               <span class="label">First name</span>
               <input
                 name="first_name"
@@ -42,8 +56,7 @@
                 required
               />
             </label>
-
-            <label class="field">
+            <label class="last field">
               <span class="label">Last name</span>
               <input
                 name="last_name"
@@ -54,7 +67,8 @@
                 required
               />
             </label>
-
+          </div>
+          <div>
             <label class="field email">
               <span class="label">Email</span>
               <input
@@ -66,7 +80,8 @@
                 required
               />
             </label>
-
+          </div>
+          <div>
             <label class="field">
               <span class="label">Phone (1234567890)</span>
               <input
@@ -82,17 +97,29 @@
         </div>
       {% endfor %}
     </form>
-
-    <div class="actions">
-      <a
-        href="/e/{{ slug }}/rsvp/selection?session={{ session.token }}"
-        class="ext/button"
-        >&larr; Change Contribution{% if attendees.len() > 1 %}s{% endif %}</a
-      >
-      <button id="continue" class="ext/button :green" type="submit">
-        Continue
+    <div id="events/rsvp/actions">
+      <button class="share">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 48 48"
+        >
+          <path
+            fill="currentColor"
+            d="M37.75 20.25a1.75 1.75 0 0 1 1.744 1.606L39.5 22v14.25a5.75 5.75 0 0 1-5.53 5.745l-.22.005h-19.5a5.75 5.75 0 0 1-5.746-5.53l-.004-.22V22a1.75 1.75 0 0 1 3.494-.144L12 22v14.25a2.25 2.25 0 0 0 2.096 2.244l.154.006h19.5a2.25 2.25 0 0 0 2.245-2.096L36 36.25V22c0-.967.783-1.75 1.75-1.75ZM23.499 6.267l.149-.014l.175-.002l.154.013l.178.032l.069.018c.195.054.383.143.553.267l.12.095l.093.086l7.778 7.778a1.75 1.75 0 0 1-2.35 2.589l-.125-.114l-4.793-4.793V31.5a1.75 1.75 0 0 1-1.607 1.744l-.143.006a1.75 1.75 0 0 1-1.744-1.607L22 31.5V12.226l-4.788 4.79a1.75 1.75 0 0 1-2.35.113l-.125-.114a1.75 1.75 0 0 1-.114-2.35l.114-.125l7.752-7.754a1.83 1.83 0 0 1 .179-.162l.113-.08c.038-.027.077-.051.118-.074l.019-.009a1.72 1.72 0 0 1 .58-.194Z"
+          />
+        </svg>
+      </button>
+      <button id="next" class="next">
+        <span>Next</span>
+        <div class="right">
+          <em id="total">${{ price }}</em>
+          <span>&rarr;</span>
+        </div>
       </button>
     </div>
+    <div id="events/rsvp/fade"></div>
   </section>
 {% endblock content %}
 
@@ -109,7 +136,7 @@
 
     const ui = {
       form: $("form"),
-      continue: $("continue"),
+      next: $("next"),
       attendees: () => [...ui.form.querySelectorAll(".attendee")],
       field: (a, name) => a.querySelector(`[name="${name}"]`),
       isMeRadios: () => [...ui.form.querySelectorAll('input[name="is_me"]')],
@@ -130,7 +157,7 @@
       for (const a of ui.attendees()) {
         const is_prev_me = ui.field(a, "email").value == user.email;
 
-        for (const name of ["first_name", "last_name", "email"]) {
+        for (const name of ["first_name", "last_name", "email", "phone"]) {
           const field = ui.field(a, name);
           field.disabled = false;
           if (is_prev_me) {
@@ -155,8 +182,8 @@
       phone.value = user.phone;
     });
 
-    /* ---------- Continue button -------------------------------------------- */
-    ui.continue.addEventListener("click", async () => {
+    /* ---------- Next button ------------------------------------------------ */
+    ui.next.addEventListener("click", async () => {
       // Let the browser run built-in HTML validation first.
       if (!ui.form.reportValidity()) return;
 
@@ -180,7 +207,7 @@
 
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = `/e/{{ slug }}/rsvp/attendees?session=${session}`;
+      form.action = `/e/{{ event.slug }}/rsvp/attendees?session=${session}`;
 
       const input = document.createElement("input");
       input.type = "hidden";

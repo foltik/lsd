@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}light and sound design{% endblock title %}</title>
+    {% block preload %}
+    {% endblock preload %}
+    <link rel="stylesheet" href="/static/main.css?version=CONTENT_HASH" />
+    <link rel="icon" href="/static/favicon.ico?version=CONTENT_HASH" />
+    {% block head %}
+    {% endblock head %}
+  </head>
+  <body>
+    {% block nav %}
+    {% endblock nav %}
+    <main>{% block content %}{% endblock content %}</main>
+    {% block footer %}
+    {% endblock footer %}
+    {% block scripts %}
+    {% endblock scripts %}
+    {{ "" | livereload | safe }}
+  </body>
+</html>

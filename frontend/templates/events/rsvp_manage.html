@@ -2,51 +2,100 @@
 
 {% block title %}light and sound - Manage{% endblock title %}
 
-{% block content %}
-  <section id="events/rsvp/manage" class="ext/layout standard">
-    <header>
-      <h1>Thank you!</h1>
-    </header>
-    <p class="intro">
-      Your RSVP and contribution have been received. A confirmation email will
-      be sent to each listed attendee shortly.
-    </p>
+{% block preload %}
+  {% if let Some(flyer) = flyer %}
+    <link
+      rel="preload"
+      as="image"
+      href="/e/{{ event.slug }}/flyer?size=sm"
+      imagesrcset="/e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm 400w,
+                    /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md 768w,
+                    /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=lg 1200w"
+      imagesizes="(max-width: 768px) 40vw, 100vw"
+    />
+  {% endif %}
+{% endblock %}
 
-    <div class="summary">
-      <h2>Summary</h2>
-      <ul class="line-items">
-        {% for rsvp in rsvps %}
-          <li class="item">
-            <div class="contact">
-              <div class="title">{{ rsvp.spot_name }}</div>
-              <span class="attendee"
-                >{{ rsvp.first_name }} {{ rsvp.last_name }} •
-                {{ rsvp.email }}</span
-              >
+{% block content %}
+  {% if let Some(flyer) = flyer %}
+    <div
+      id="events/rsvp/manage/flyer"
+      style="background-image:url('{{ flyer.thumb_base64 }}')"
+    >
+      <img
+        src="/e/{{ event.slug }}/flyer?size=sm"
+        srcset="
+          /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm  400w,
+          /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md  768w,
+          /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=lg 1200w
+        "
+        sizes="(max-width: 768px) 40vw, 100vw"
+        width="{{ flyer.width }}"
+        height="{{ flyer.height }}"
+        decoding="async"
+        fetchpriority="high"
+        alt="event flyer"
+      />
+    </div>
+  {% endif %}
+  <section id="events/rsvp/manage">
+    <header>
+      <h1>Thank you.</h1>
+      <p>
+        Your contribution has been received. A confirmation email will be sent
+        to you{% if rsvps.len() > 1 %}and your guests{% endif %} shortly.
+      </p>
+    </header>
+    <div id="events/rsvp/summary">
+      <div class="info">
+        <p class="title">Summary</p>
+        <div class="line-items">
+          {% for rsvp in rsvps %}
+            <div class="item">
+              <div class="spot">
+                <div class="name">{{ rsvp.spot_name }}</div>
+                <span class="price">${{ rsvp.contribution }}</span>
+              </div>
+              <span class="email">{{ rsvp.email }}</span>
             </div>
-            <span class="price">${{ rsvp.contribution }}</span>
-          </li>
-        {% endfor %}
-        <li class="total">
-          <span class="left">Total</span>
-          <span id="total" class="right">$0</span>
-        </li>
-      </ul>
+          {% endfor %}
+        </div>
+        <div class="total">
+          <p>Total</p>
+          <p id="price">${{ price }}</p>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="zigzag">
+        <div class="stroke"></div>
+        <div class="fill"></div>
+      </div>
+    </div>
+    <div class="buttons">
+      {% if rsvps.len() > 1 %}
+        <button class="edit">Edit guests</button>
+      {% endif %}
+      <button class="contact">Contact us</button>
     </div>
   </section>
 {% endblock content %}
 
 {% block scripts %}
   <script>
-    /* ---------- Save session ------------------------------------------------ */
-    const queryString = new URLSearchParams(location.search);
-    const token = encodeURIComponent(queryString.get("session"));
-    const key = `rsvps/{{ session.event_id }}`;
-    localStorage[key] = JSON.stringify({ token, page: "manage" });
+    const flyer = document.getElementById("events/rsvp/manage/flyer");
+    const img = flyer.querySelector("img");
 
-    /* ---------- Populate total ---------------------------------------------- */
-    const rsvps = JSON.parse(`{{ rsvps | json | safe }}`);
-    const total = rsvps.reduce((sum, r) => sum + r.contribution, 0);
-    document.getElementById("total").textContent = `$${total}`;
+    const openedH = +flyer.clientHeight;
+    const w = +img.getAttribute("width");
+    const h = +img.getAttribute("height");
+    const aspect = h / w;
+
+    let open = false;
+    flyer.addEventListener("click", () => {
+      open = !open;
+      flyer.style.height = open
+        ? `${flyer.offsetWidth * aspect}px`
+        : `${openedH}px`;
+    });
   </script>
 {% endblock scripts %}
