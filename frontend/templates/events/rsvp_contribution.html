@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends "events/rsvp_layout.html" %}
 {% block head %}
   {% if price > 0 %}
     <script src="https://js.stripe.com/basil/stripe.js"></script>
@@ -7,64 +7,70 @@
 
 {% block title %}light and sound - RSVP{% endblock title %}
 
+{% block progress %}
+  <div class="tick filled"></div>
+  <div class="tick filled"></div>
+  <div class="tick filled"></div>
+{% endblock progress %}
+
+{% block back %}
+  <a id="back" href="/e/{{ event.slug }}/rsvp/attendees">
+    <span>&larr;</span>
+  </a>
+{% endblock back %}
+
 {% block content %}
-  <section id="events/rsvp/contribution" class="ext/layout standard">
-    <header>
-      <h1>Summary</h1>
-    </header>
-    <form
-      id="form"
-      class="ext/form"
-      method="POST"
-      action="/e/{{ slug }}/rsvp/contribution?session={{ session.token }}"
-    >
-      <div class="field">
-        <ul class="line-items">
+  <section id="events/rsvp/contribution" class="events/rsvp/layout nofloat">
+    <div id="events/rsvp/summary">
+      <div class="info">
+        <p class="title">Summary</p>
+        <div class="line-items">
           {% for rsvp in rsvps %}
-            <li class="item">
-              <div class="contact">
-                <div class="title">{{ rsvp.spot_name }}</div>
-                <span class="attendee"
-                  >{{ rsvp.first_name }} {{ rsvp.last_name }} • {{ rsvp.email }}
-                </span>
+            <div class="item">
+              <div class="spot">
+                <div class="name">{{ rsvp.spot_name }}</div>
+                <span class="price">${{ rsvp.contribution }}</span>
               </div>
-              <span class="price">${{ rsvp.contribution }}</span>
-            </li>
+              <span class="email">{{ rsvp.email }}</span>
+            </div>
           {% endfor %}
-          <li class="price">
-            <span class="left">Total</span>
-            <span id="price" class="right">${{ price }}</span>
-          </li>
-        </ul>
-      </div>
-      {% if price > 0 %}
-        <div class="field">
-          <div id="stripe"></div>
         </div>
-      {% endif %}
-      <div class="actions field">
-        {% if rsvps.len() == 1 %}
-          <a
-            href="/e/{{ slug }}/rsvp/selection?session={{ session.token }}"
-            class="ext/button"
-            >&larr; Change Contribution</a
-          >
-        {% else %}
-          <a
-            href="/e/{{ slug }}/rsvp/attendees?session={{ session.token }}"
-            class="ext/button"
-            >&larr; Change Attendees</a
-          >
-        {% endif %}
-        <button id="checkout" class="ext/button :green" type="submit">
-          {% if price > 0 %}
-            Contribute
-          {% else %}
-            RSVP
-          {% endif %}
-        </button>
+        <div class="total">
+          <p>Total</p>
+          <p id="price">${{ price }}</p>
+        </div>
       </div>
-    </form>
+      <div class="spacer"></div>
+      <div class="zigzag">
+        <div class="stroke"></div>
+        <div class="fill"></div>
+      </div>
+    </div>
+    {% if price > 0 %}
+      <div class="payment">
+        <div id="stripe"></div>
+      </div>
+    {% endif %}
+    <div id="events/rsvp/actions" class="nofloat">
+      {% if price > 0 %}
+        <button id="next" class="next">
+          <span>Pay now</span>
+          <div class="right">
+            <em id="total">${{ price }}</em>
+            <span>&rarr;</span>
+          </div>
+        </button>
+      {% else %}
+        <form action="/e/{{ event.slug }}/rsvp/confirm" method="POST">
+          <button class="next" type="submit">
+            <span>Confirm</span>
+            <div class="right">
+              <span>&rarr;</span>
+            </div>
+          </button>
+        </form>
+      {% endif %}
+    </div>
   </section>
 {% endblock content %}
 
@@ -74,13 +80,12 @@
       /* ---------- UI ---------------------------------------------------------- */
       const $ = (id) => document.getElementById(id);
       const ui = {
-        form: $("form"),
         email: $("email"),
         price: $("price"),
+        next: $("next"),
       };
 
       let checkout;
-
       (async () => {
         const stripe = Stripe(`{{ stripe_publishable_key }}`);
         checkout = await stripe.initCheckout({
@@ -111,12 +116,11 @@
         paymentEl.mount("#stripe");
       })();
 
-      /* ---------- Submit: update email then confirm -------------------------- */
-      ui.form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        if (!ui.form.reportValidity()) return;
-
+      /* ---------- Submit ----------------------------------------------------- */
+      ui.next.addEventListener("click", async (e) => {
+        ui.next.classList.add("disabled");
         res = await checkout.confirm();
+        ui.next.classList.remove("disabled");
         if (res?.type === "error") {
           alert(res.error.message);
         }

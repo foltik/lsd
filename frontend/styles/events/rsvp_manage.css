@@ -1,46 +1,53 @@
-#events\/rsvp\/manage {
-  .intro {
-    @apply text-lsd-gray mb-10 text-lg;
+#events\/rsvp\/manage\/flyer {
+  @apply relative w-full cursor-pointer overflow-hidden bg-cover bg-center;
+
+  height: 240px;
+  transition: height 0.15s ease;
+  @media (min-width: 768px) {
+    @apply w-full max-w-3xl;
+    height: 384px;
   }
 
-  .summary {
-    @apply text-left;
+  img {
+    @apply block h-full w-full object-cover object-center;
+  }
+  &::after {
+    @apply pointer-events-none absolute w-full;
+    content: "";
+    height: 140px;
+    top: calc(100% - 140px);
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(in oklab, var(--color-lsd-black) 80%, transparent) 60%,
+      color-mix(in oklab, var(--color-lsd-black) 90%, transparent) 70%,
+      var(--color-lsd-black) 100%
+    );
+  }
+}
 
-    h2 {
-      @apply mb-4 text-2xl;
+#events\/rsvp\/manage {
+  @apply mx-auto w-full max-w-3xl px-6;
+
+  header {
+    @apply mb-6;
+    h1 {
+      @apply mb-2 text-2xl italic;
     }
+    p {
+      @apply text-lsd-gray text-sm leading-tight;
+    }
+  }
 
-    .line-items {
-      @apply m-0 list-none p-0;
-
-      .item,
-      .total {
-        @apply flex items-start justify-between py-2;
+  .buttons {
+    @apply mb-6 flex flex-col gap-4;
+    button {
+      @apply grow rounded-lg py-4 text-center;
+      &.edit {
+        @apply bg-lsd-charcoal;
       }
-
-      .item {
-        .contact {
-          @apply flex flex-col;
-          .title {
-            @apply text-base;
-          }
-          .attendee {
-            @apply text-lsd-gray mt-1 text-sm;
-          }
-        }
-        .price {
-          @apply ml-4 text-base font-semibold;
-        }
-      }
-
-      .total {
-        @apply border-lsd-white/20 mt-2 border-t pt-3;
-        .left {
-          @apply text-lg;
-        }
-        .right {
-          @apply text-lg font-bold;
-        }
+      &.contact {
+        @apply border-lsd-charcoal border;
       }
     }
   }

@@ -1,17 +1,35 @@
 #events\/rsvp\/selection {
   .spot {
-    @apply mb-16 grid grid-cols-[auto_60px] grid-rows-[auto_auto_auto];
+    @apply mt-6 flex flex-col p-6;
+
+    @apply border-lsd-charcoal rounded-lg border;
+    &:nth-child(1) {
+      @apply border-lsd-white;
+    }
+
     .name {
-      @apply row-start-1 pr-4 text-2xl;
+      @apply mb-2 text-2xl;
     }
     .description {
-      @apply text-lsd-gray row-start-2;
+      @apply text-lsd-gray mb-4;
     }
-    .contribution {
-      @apply col-span-2 row-start-3 text-xl font-bold;
-    }
-    .quantity {
-      @apply col-start-2 min-w-[60px];
+    .split {
+      @apply flex justify-between;
+      .contribution {
+        @apply text-xl;
+      }
+      .quantity {
+        @apply flex;
+        .value {
+          @apply mx-4;
+        }
+        svg {
+          transition: color 0.08s linear;
+          &.disabled {
+            color: var(--color-lsd-charcoal);
+          }
+        }
+      }
     }
   }
 

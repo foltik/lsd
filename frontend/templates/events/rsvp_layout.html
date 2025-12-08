@@ -1,0 +1,13 @@
+{% extends "layout_no_nav.html" %}
+
+{% block nav %}
+  <nav id="events/rsvp/nav">
+    {% block back %}
+    {% endblock back %}
+    <span class="title">{{ event.title }}</span>
+  </nav>
+  <div id="events/rsvp/progress">
+    {% block progress %}
+    {% endblock progress %}
+  </div>
+{% endblock nav %}

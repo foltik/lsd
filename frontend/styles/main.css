@@ -4,6 +4,7 @@
 @import "./extensions/layout.css";
 @import "./extensions/form.css";
 @import "./extensions/sidebar.css";
+@import "./extensions/editor.css";
 
 /* Home */
 @import "./home.css";
@@ -13,6 +14,7 @@
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
+@import "./events/rsvp_layout.css";
 @import "./events/rsvp_guestlist.css";
 @import "./events/rsvp_selection.css";
 @import "./events/rsvp_attendees.css";
@@ -30,10 +32,12 @@
 @theme {
   --font-sans: system-ui;
   /* CSS HEX */
-  --color-lsd-black: #080504;
-  --color-lsd-white: #ebe3de;
   --color-lsd-bright: #fcf3ee;
+  --color-lsd-white: #ebe3de;
   --color-lsd-gray: #878787;
+  --color-lsd-charcoal: #1e1b19;
+  --color-lsd-black: #080504;
+
   --color-lsd-blue: #8ec6ff;
   --color-lsd-green: #6fd08c;
   --color-lsd-red: #c34346;
@@ -50,19 +54,19 @@ main {
   @apply bg-lsd-black text-lsd-white flex w-full flex-col font-sans;
 }
 
+main {
+  @apply items-center;
+}
+
 body {
   @apply min-h-full;
 }
 
-nav {
-  @apply border-lsd-white/10 flex items-center justify-between border-b px-6 py-4;
-  .logo {
-    @apply text-lsd-bright text-lg font-extrabold;
-  }
-  .icons {
-    @apply flex items-center gap-7;
-    .contact {
-      @apply text-xl;
-    }
-  }
+blockquote {
+  @apply bg-lsd-black;
+  font-style: italic;
+  margin: 2rem 0;
+  padding: 1.5rem 2rem;
+  background: var(--color-lsd);
+  border-left: 4px solid #333;
 }

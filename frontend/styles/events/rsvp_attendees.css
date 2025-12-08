@@ -1,13 +1,25 @@
 #events\/rsvp\/attendees {
   .attendee {
-    @apply mb-12 grid grid-cols-1 gap-y-2;
+    @apply mt-4 flex flex-col p-6;
+
+    @apply border-lsd-charcoal rounded-lg border;
+
+    &:has(input[name="is_me"]:checked) {
+      @apply border-lsd-white;
+    }
+
+    div {
+      @apply flex items-center justify-between;
+    }
 
     .header {
-      @apply mb-1 flex items-center justify-between;
-      .name {
-        @apply mr-4 flex-1 text-xl;
+      .index {
+        @apply mb-2 text-2xl;
       }
       .is-me {
+        @apply flex items-center gap-2;
+      }
+      /*.is-me {
         @apply mb-0 flex items-center gap-2 text-sm;
         .radio {
           @apply h-4 w-4;
@@ -15,10 +27,32 @@
         span {
           @apply select-none;
         }
+      }*/
+    }
+
+    .subtext {
+      @apply text-lsd-gray mb-6 text-xl;
+    }
+
+    .field {
+      @apply m-0 grow p-0;
+    }
+    .label {
+      @apply mb-2 p-0;
+    }
+
+    .name {
+      @apply mb-4;
+      .first {
+        @apply mr-4;
       }
     }
 
-    .fields {
+    .email {
+      @apply mb-4;
+    }
+
+    /*.fields {
       @apply grid grid-cols-1 gap-4 md:grid-cols-2;
 
       .field {
@@ -31,7 +65,7 @@
       .email {
         @apply md:col-span-2;
       }
-    }
+    }*/
   }
 
   .actions {

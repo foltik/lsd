@@ -1,0 +1,62 @@
+body:has(#ext\/editor) > header {
+  @apply hidden;
+}
+
+#ext\/editor {
+  @apply w-full;
+}
+
+#ext\/editor #form {
+  @apply relative flex h-full w-full flex-col;
+
+  .navbar {
+    @apply sticky top-0 flex items-center justify-between gap-x-4 px-8 py-2;
+    @apply border-lsd-white/10 bg-lsd-black border-b;
+
+    div {
+      @apply flex items-center gap-x-4;
+    }
+  }
+
+  .split {
+    @apply grid min-h-screen w-full;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto;
+
+    .center {
+      @apply col-span-3 pt-4;
+      @apply flex w-full justify-center;
+      .editor {
+        @apply w-full max-w-3xl overflow-y-auto;
+      }
+    }
+
+    .sidebar {
+      @apply col-span-1 px-4 pt-4;
+      @apply border-lsd-white/10 border-l;
+    }
+  }
+}
+
+#ext\/editor .editor {
+  #actions {
+    @apply bg-lsd-black sticky top-0 mt-4 py-2.5;
+    @apply flex items-center gap-2.5;
+
+    button {
+      @apply bg-lsd-white/10 hover:bg-lsd-white/20 h-8 w-10 p-1;
+    }
+
+    button.active {
+      @apply bg-lsd-white/20;
+    }
+  }
+  #content {
+    @apply text-lg leading-relaxed;
+    @apply bg-lsd-white/5 grow overflow-y-auto p-8 focus:outline-none;
+    @apply mt-4;
+    a {
+      @apply decoration-lsd-blue underline;
+    }
+  }
+}
