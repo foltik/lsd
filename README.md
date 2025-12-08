@@ -54,3 +54,10 @@ mailtutan
 
 - Make commits in a separate branch, and open a PR against `main`
 - When new commits land in `main`, a github action will automatically deploy the app to https://beta.lightandsound.design
+
+
+# Special thanks
+
+This project was made possible by open source software.
+
+* Our rich text editor was built with inspiration from [https://github.com/jaredreich/pell](pell.js).

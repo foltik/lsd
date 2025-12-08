@@ -41,6 +41,12 @@ impl RsvpSession {
             .to_string()
     }
 
+    pub async fn temp_delete_all(db: &Db) -> AppResult<()> {
+        sqlx::query!("DELETE from rsvps").execute(db).await?;
+        sqlx::query!("DELETE from rsvp_sessions").execute(db).await?;
+        Ok(())
+    }
+
     pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE id = ?"#, id)
             .fetch_optional(db)
@@ -162,19 +168,30 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_stripe_client_secret(
-        &mut self, db: &Db, id: i64, stripe_client_secret: &str,
-    ) -> AppResult<()> {
+    pub async fn set_stripe_client_secret(&mut self, db: &Db, stripe_client_secret: &str) -> AppResult<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET stripe_client_secret = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
             stripe_client_secret,
-            id
+            self.id
         )
         .execute(db)
         .await?;
         self.stripe_client_secret = Some(stripe_client_secret.into());
+        Ok(())
+    }
+
+    pub async fn clear_stripe_client_secret(&mut self, db: &Db) -> AppResult<()> {
+        sqlx::query!(
+            "UPDATE rsvp_sessions
+             SET stripe_client_secret = NULL, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?",
+            self.id
+        )
+        .execute(db)
+        .await?;
+        self.stripe_client_secret = None;
         Ok(())
     }
 
