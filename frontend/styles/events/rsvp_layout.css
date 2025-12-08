@@ -1,0 +1,154 @@
+#events\/rsvp\/nav {
+  @apply flex items-center px-6 py-4;
+
+  @media (max-width: 768px) {
+    @apply bg-lsd-black sticky top-0;
+  }
+
+  #back {
+    @apply cursor-pointer text-2xl;
+  }
+  .title {
+    @apply mx-auto overflow-hidden text-sm text-ellipsis whitespace-nowrap;
+    max-width: 80%;
+  }
+}
+
+#events\/rsvp\/progress {
+  @apply bg-lsd-charcoal mb-6 flex h-2 w-full;
+
+  @media (max-width: 768px) {
+    @apply sticky top-16;
+  }
+
+  .tick {
+    @apply border-lsd-black grow border-l;
+    &:nth-child(1) {
+      @apply border-none;
+    }
+    &.filled {
+      @apply bg-lsd-white;
+    }
+  }
+}
+
+.events\/rsvp\/layout {
+  @apply mx-auto w-full max-w-3xl px-6;
+
+  &:not(.nofloat) {
+    @apply mb-24;
+  }
+
+  header {
+    h1 {
+      @apply text-2xl;
+    }
+    p {
+      @apply text-lsd-gray mt-1;
+    }
+  }
+}
+
+#events\/rsvp\/actions {
+  @apply mt-6 flex;
+
+  @media (max-width: 768px) {
+    &:not(.nofloat) {
+      @apply fixed right-0 bottom-4 left-0 z-1 mx-6 max-w-3xl;
+    }
+  }
+  @media (min-width: 769px) {
+    @apply w-full;
+  }
+
+  button {
+    @apply bg-lsd-charcoal rounded-lg p-4;
+  }
+
+  .share {
+    @apply mr-6;
+  }
+
+  .next {
+    @apply flex grow cursor-pointer justify-between;
+    #total {
+      @apply mr-1;
+    }
+    &.disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+#events\/rsvp\/fade {
+  @apply hidden;
+
+  @media (max-width: 768px) {
+    &:not(.nofloat) {
+      @apply fixed right-0 bottom-0 left-0 mx-6 flex h-32 w-full;
+      content: "";
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        color-mix(in oklab, var(--color-lsd-black) 80%, transparent)
+          calc(100% - var(--spacing) * 16),
+        var(--color-lsd-black) calc(100% - var(--spacing) * 4)
+      );
+    }
+  }
+}
+
+#events\/rsvp\/summary {
+  @apply mb-6 border-t border-r border-l;
+
+  .info {
+    @apply flex flex-col p-6 pb-0;
+    .title {
+      @apply text-2xl;
+    }
+    .line-items {
+      @apply mt-4 mb-2 flex flex-col;
+      .item {
+        @apply mb-4 flex flex-col;
+        .spot {
+          @apply mb-0.5 flex justify-between;
+        }
+        .email {
+          @apply text-lsd-gray text-xs;
+        }
+      }
+    }
+    .total {
+      @apply flex justify-between text-xl;
+    }
+  }
+
+  .spacer {
+    aspect-ratio: 32;
+  }
+
+  .zigzag {
+    @apply relative h-6 w-full;
+    .stroke {
+      @apply bg-lsd-white absolute inset-0;
+      mask: conic-gradient(
+          from -45deg at bottom,
+          #0000,
+          #000 1deg 89deg,
+          #0000 90deg
+        )
+        50% / calc(100% / 16) 100%;
+    }
+    .fill {
+      @apply bg-lsd-black absolute inset-0;
+      mask: conic-gradient(
+          from -45deg at bottom,
+          #0000,
+          #000 1deg 89deg,
+          #0000 90deg
+        )
+        50% / calc(100% / 16) 100%;
+      transform: translateY(-1.5px);
+    }
+  }
+}

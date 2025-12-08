@@ -1,28 +1,44 @@
 #events\/view {
+  @apply flex flex-col items-center justify-center;
+
   .flyer {
-    @apply relative mx-4 mb-12 bg-cover bg-center;
+    @apply relative w-full bg-cover bg-center;
+    @media (min-width: 768px) {
+      @apply mt-6 max-w-lg;
+    }
     img {
       @apply block h-auto w-full;
     }
-  }
-
-  .title {
-    @apply mb-6 text-2xl font-extrabold md:text-4xl;
-  }
-
-  .details {
-    @apply text-lsd-gray border-lsd-white/20 mb-4 flex w-full justify-between border-b pb-1 text-lg md:text-2xl;
-  }
-
-  .description {
-    @apply text-lg leading-relaxed;
-  }
-
-  form {
-    @apply flex justify-center;
-    .rsvp {
-      @apply mt-6 mb-12 px-24 py-3 text-4xl font-bold;
-      letter-spacing: 4px;
+    &::after {
+      @apply pointer-events-none absolute w-full;
+      content: "";
+      height: 140px;
+      top: calc(100% - 140px);
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        color-mix(in oklab, var(--color-lsd-black) 80%, transparent) 60%,
+        color-mix(in oklab, var(--color-lsd-black) 90%, transparent) 70%,
+        var(--color-lsd-black) 100%
+      );
     }
+  }
+
+  .info {
+    .title {
+      @apply mb-1.5 text-2xl;
+    }
+
+    .details {
+      @apply text-lsd-gray mb-8 flex justify-between;
+    }
+
+    .description {
+      @apply leading-relaxed;
+    }
+  }
+
+  .rsvp {
+    @apply flex grow justify-between;
   }
 }

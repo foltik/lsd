@@ -19,7 +19,7 @@ body:has(#posts\/edit) > header {
     @apply ml-auto flex items-center gap-x-4;
   }
 
-  .details {
+  .sidebar {
     @apply sticky col-span-1 h-full w-full min-w-sm px-4 py-4;
     @apply border-lsd-white/10 border-l;
   }
