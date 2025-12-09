@@ -163,7 +163,7 @@ mod edit {
         State(state): State<SharedAppState>, Form(form): Form<EditForm>,
     ) -> Json<EditResponse> {
         let res = match form.id {
-            0 => Post::create(&state.db, &form.post).await.map(|id| id),
+            0 => Post::create(&state.db, &form.post).await,
             id => Post::update(&state.db, id, &form.post).await.map(|_| id),
         };
 
@@ -292,6 +292,8 @@ mod send {
 
             email_template.opened_url = format!("{}/emails/{id}/footer.gif", &state.config.app.url);
             email_template.unsub_url = format!("{}/emails/{id}/unsubscribe", &state.config.app.url);
+
+            tracing::info!("id={id} addres={address:?}");
 
             let from = &state.config.email.from;
             let reply_to = state.config.email.newsletter_reply_to.as_ref().unwrap_or(from);

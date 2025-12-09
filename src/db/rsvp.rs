@@ -26,13 +26,6 @@ pub struct CreateRsvp {
     pub user_version: Option<i64>,
 }
 
-#[derive(serde::Deserialize)]
-pub struct UpdateRsvp {
-    pub user_id: Option<i64>,
-    pub user_version: Option<i64>,
-    pub checkin_at: Option<NaiveDateTime>,
-}
-
 #[derive(serde::Serialize)]
 pub struct SelectionRsvp {
     pub spot_id: i64,
@@ -42,6 +35,7 @@ pub struct SelectionRsvp {
 #[derive(serde::Serialize)]
 pub struct AttendeeRsvp {
     pub rsvp_id: i64,
+    pub user_id: Option<i64>,
     pub spot_name: String,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -85,6 +79,7 @@ impl Rsvp {
             AttendeeRsvp,
             r#"SELECT
                 r.id AS rsvp_id,
+                r.user_id,
                 s.name AS spot_name,
                 u.first_name,
                 u.last_name,
@@ -172,24 +167,6 @@ impl Rsvp {
             user.id,
             user.version,
             rsvp_id,
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn update(db: &Db, id: i64, rsvp: UpdateRsvp) -> AppResult<()> {
-        sqlx::query!(
-            r#"UPDATE rsvps
-               SET user_id = ?,
-                   user_version = ?,
-                   checkin_at = ?,
-                   updated_at = CURRENT_TIMESTAMP
-               WHERE id = ?"#,
-            rsvp.user_id,
-            rsvp.user_version,
-            rsvp.checkin_at,
-            id
         )
         .execute(db)
         .await?;

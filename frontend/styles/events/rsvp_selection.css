@@ -21,11 +21,13 @@
       .quantity {
         @apply flex;
         .value {
-          @apply mx-4;
+          @apply w-8 text-center select-none;
         }
         svg {
-          transition: color 0.08s linear;
+          @apply cursor-pointer select-none;
+          transition: color 0.1s linear;
           &.disabled {
+            @apply cursor-default;
             color: var(--color-lsd-charcoal);
           }
         }

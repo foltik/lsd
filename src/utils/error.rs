@@ -5,9 +5,6 @@ pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum AppError {
-    #[error("redirect")]
-    Redirect(String),
-
     #[error("bad request")]
     BadRequest,
     #[error(transparent)]
@@ -17,8 +14,6 @@ pub enum AppError {
     #[error("not found")]
     NotFound,
 
-    #[error("Stripe: {0}")]
-    Stripe(#[from] crate::utils::stripe::StripeError),
     #[error("Email: {0}")]
     Email(#[from] lettre::error::Error),
     #[error("SMTP: {0}")]
@@ -49,7 +44,6 @@ impl IntoResponse for AppError {
         );
 
         let (status, message) = match self {
-            AppError::Redirect(url) => return Redirect::to(&url).into_response(),
             AppError::BadRequest => error_400(),
             AppError::BadMultipart(_) => error_400(),
             AppError::Unauthorized => error_401(),
@@ -59,7 +53,6 @@ impl IntoResponse for AppError {
             AppError::Email(_) => error_500(),
             AppError::Render(_) => error_500(),
             AppError::Reqwest(_) => error_500(),
-            AppError::Stripe(_) => error_500(),
         };
 
         // TODO: add a `dev` mode to `config.app`, and:
