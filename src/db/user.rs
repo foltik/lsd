@@ -26,6 +26,14 @@ pub struct CreateUser {
     pub phone: Option<String>,
 }
 
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct UpdateUser {
+    pub email: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub phone: Option<String>,
+}
+
 #[macro_export]
 macro_rules! map_row {
     ($row:expr) => {
@@ -89,11 +97,46 @@ impl User {
 
         Ok(map_row!(row))
     }
-    pub fn name(&self) -> Option<(&str, &str)> {
-        match (self.first_name.as_ref(), self.last_name.as_ref()) {
-            (Some(first_name), Some(last_name)) => Some((first_name.as_str(), last_name.as_str())),
-            _ => None,
-        }
+    // pub fn name(&self) -> Option<(&str, &str)> {
+    //     match (self.first_name.as_ref(), self.last_name.as_ref()) {
+    //         (Some(first_name), Some(last_name)) => Some((first_name.as_str(), last_name.as_str())),
+    //         _ => None,
+    //     }
+    // }
+
+    pub async fn update(&self, db: &Db, info: &UpdateUser) -> AppResult<()> {
+        let new_version = self.version + 1;
+
+        sqlx::query!(
+            r#"INSERT INTO user_history (user_id, version, email, first_name, last_name, phone)
+               VALUES (?, ?, ?, ?, ?, ?)"#,
+            self.id,
+            new_version,
+            info.email,
+            info.first_name,
+            info.last_name,
+            info.phone,
+        )
+        .execute(db)
+        .await?;
+
+        sqlx::query!(
+            r#"UPDATE users
+               SET email = ?,
+                   first_name = ?,
+                   last_name = ?,
+                   phone = ?,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?"#,
+            info.email,
+            info.first_name,
+            info.last_name,
+            info.phone,
+            self.id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
     }
 
     // pub async fn add_role(db: &Db, user_id: i64, role: &str) -> AppResult<()> {

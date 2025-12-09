@@ -41,12 +41,6 @@ impl RsvpSession {
             .to_string()
     }
 
-    pub async fn temp_delete_all(db: &Db) -> AppResult<()> {
-        sqlx::query!("DELETE from rsvps").execute(db).await?;
-        sqlx::query!("DELETE from rsvp_sessions").execute(db).await?;
-        Ok(())
-    }
-
     pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE id = ?"#, id)
             .fetch_optional(db)

@@ -153,14 +153,6 @@ impl Event {
         Ok(())
     }
 
-    // Lookup an event by id, if one exists.
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Event>> {
-        let event = sqlx::query_as!(Self, r#"SELECT * FROM events WHERE id = ?"#, id)
-            .fetch_optional(db)
-            .await?;
-        Ok(event)
-    }
-
     /// Lookup a post by URL, if one exists.
     pub async fn lookup_by_slug(db: &Db, slug: &str) -> AppResult<Option<Event>> {
         let row = sqlx::query_as!(Self, "SELECT * FROM events WHERE slug = ?", slug)
