@@ -1,36 +1,8 @@
-use tokio::sync::{Mutex, Notify};
-
 use crate::prelude::*;
 
 /// Add all webhook routes to the router.
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| r.route("/webhooks/stripe", post(stripe::webhook)))
-}
-
-/// Webhook notification mechanism.
-#[derive(Clone, Default)]
-pub struct Webhooks(Arc<Mutex<HashMap<String, Arc<Notify>>>>);
-impl Webhooks {
-    pub const STRIPE_CHECKOUT_SESSION_COMPLETED: &str = "stripe.checkout.session.completed";
-
-    pub async fn wait(&self, webhook: &str, timeout: Duration) -> Result<(), ()> {
-        let notify = {
-            let mut map = self.0.lock().await;
-            let entry = map.entry(webhook.to_string()).or_default();
-            Arc::clone(entry)
-        };
-        tokio::select! {
-            _ = tokio::time::sleep(timeout) => Err(()),
-            _ = notify.notified() => Ok(()),
-        }
-    }
-
-    async fn notify(&self, webhook: &str) {
-        let map = self.0.lock().await;
-        if let Some(notify) = map.get(webhook) {
-            notify.notify_waiters();
-        }
-    }
 }
 
 pub mod stripe {
@@ -146,7 +118,6 @@ pub mod stripe {
             }
         }
 
-        state.webhooks.notify(Webhooks::STRIPE_CHECKOUT_SESSION_COMPLETED).await;
         Ok(())
     }
 }

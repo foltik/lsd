@@ -4,7 +4,7 @@
   height: 240px;
   transition: height 0.15s ease;
   @media (min-width: 768px) {
-    @apply w-full max-w-3xl;
+    @apply w-full max-w-3xl cursor-default;
     height: 384px;
   }
 
@@ -41,13 +41,20 @@
 
   .buttons {
     @apply mb-6 flex flex-col gap-4;
+    form {
+      @apply flex;
+    }
+    a,
     button {
-      @apply grow rounded-lg py-4 text-center;
+      @apply grow cursor-pointer rounded-lg py-4 text-center;
       &.edit {
         @apply bg-lsd-charcoal;
       }
       &.contact {
         @apply border-lsd-charcoal border;
+      }
+      &.delete {
+        @apply border-lsd-red/30 bg-lsd-red/20;
       }
     }
   }

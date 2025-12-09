@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                u.*,\n                h.version,\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM users u\n            LEFT JOIN login_tokens t ON t.user_id = u.id\n            JOIN user_history h ON h.user_id = u.id\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            WHERE t.token = ?\n            GROUP BY u.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "phone",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "version",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "roles!: String",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e67ae66de377b6ba906a79a942035795984601db00b77b9a25e5d53a215f686b"
+}

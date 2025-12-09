@@ -98,10 +98,6 @@ impl List {
         User::lookup_by_list_id(db, list_id).await
     }
 
-    pub async fn has_user(db: &Db, id: i64, user: &User) -> AppResult<bool> {
-        Self::has_user_id(db, id, user.id).await
-    }
-
     pub async fn has_user_id(db: &Db, id: i64, user_id: i64) -> AppResult<bool> {
         let exists = sqlx::query_scalar!(
             r#"

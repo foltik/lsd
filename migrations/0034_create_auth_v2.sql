@@ -12,6 +12,9 @@ CREATE TABLE session_tokens (
     token TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX session_tokens_token
+ON session_tokens(token);
+
 INSERT INTO session_tokens (user_id, token, created_at)
     SELECT user_id, token, created_at
     FROM session_tokens_old;

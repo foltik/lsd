@@ -1,4 +1,3 @@
-use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
 
 const API_VERSION: &str = "2025-07-30.basil";
@@ -81,10 +80,4 @@ impl Stripe {
 
         Ok(res.client_secret)
     }
-}
-
-#[derive(Debug, thiserror::Error, serde::Serialize)]
-pub enum StripeError {
-    #[error("timed out waiting for payment for session={session_id} timeout={timeout:?}")]
-    PaymentTimeout { session_id: i64, timeout: Duration },
 }
