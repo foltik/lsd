@@ -35,8 +35,10 @@
 .events\/rsvp\/layout {
   @apply mx-auto w-full max-w-3xl px-6;
 
-  &:not(.nofloat) {
-    @apply mb-24;
+  @media (max-width: 768px) {
+    &:not(.nofloat) {
+      @apply mb-24;
+    }
   }
 
   header {
