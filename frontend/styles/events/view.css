@@ -25,6 +25,14 @@
   }
 
   .info {
+    @apply mx-auto w-full max-w-3xl px-6;
+
+    @media (max-width: 768px) {
+      &:not(.nofloat) {
+        @apply mb-24;
+      }
+    }
+
     .title {
       @apply mb-1.5 text-2xl;
     }
