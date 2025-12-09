@@ -50,11 +50,11 @@
 }
 
 #events\/rsvp\/actions {
-  @apply mt-6 flex;
+  @apply my-6 flex;
 
   @media (max-width: 768px) {
     &:not(.nofloat) {
-      @apply fixed right-0 bottom-4 left-0 z-1 mx-6 max-w-3xl;
+      @apply fixed right-0 bottom-4 left-0 z-1 mx-6 mb-0 max-w-3xl;
     }
   }
   @media (min-width: 769px) {
@@ -63,7 +63,7 @@
 
   a,
   button {
-    @apply bg-lsd-charcoal cursor-pointer rounded-lg p-4;
+    @apply bg-lsd-charcoal cursor-pointer touch-manipulation rounded-lg p-4;
   }
 
   .share {
