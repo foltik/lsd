@@ -24,7 +24,7 @@
           @apply w-8 text-center select-none;
         }
         svg {
-          @apply cursor-pointer select-none;
+          @apply cursor-pointer touch-manipulation select-none;
           transition: color 0.1s linear;
           &.disabled {
             @apply cursor-default;
