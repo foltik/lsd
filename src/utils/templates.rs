@@ -54,6 +54,12 @@ pub mod filters {
         Ok(config().app.url.clone())
     }
 
+    /// Returns the site URL
+    pub fn mailto(_dummy: &str) -> Result<String, askama::Error> {
+        let email = config().email.from.email.to_string();
+        Ok(format!("mailto:{email}"))
+    }
+
     /// Livereload script enabled on debug builds.
     /// Askama doesn't support plain global functions, so we have to take a dummy argument.
     #[cfg(debug_assertions)]

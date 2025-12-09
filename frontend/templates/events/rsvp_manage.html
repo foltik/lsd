@@ -56,7 +56,10 @@
                 <div class="name">{{ rsvp.spot_name }}</div>
                 <span class="price">${{ rsvp.contribution }}</span>
               </div>
-              <span class="email">{{ rsvp.email }}</span>
+              <span class="email"
+                >{{ rsvp.first_name }} {{ rsvp.last_name }} •
+                {{ rsvp.email }}</span
+              >
             </div>
           {% endfor %}
         </div>
@@ -73,9 +76,23 @@
     </div>
     <div class="buttons">
       {% if rsvps.len() > 1 %}
-        <button class="edit">Edit guests</button>
+        <a
+          class="edit"
+          href="/e/{{ event.slug }}/rsvp/edit?reservation={{ session.token }}"
+          >Edit guests</a
+        >
       {% endif %}
-      <button class="contact">Contact us</button>
+      <a
+        class="contact"
+        href="{{ "" | mailto }}?subject=Reservation%20%23{{ session.token }}"
+        >Contact us</a
+      >
+      <form
+        action="/e/{{ event.slug }}/rsvp/manage?reservation={{ session.token }}"
+        method="POST"
+      >
+        <button class="delete">Delete (BETA ONLY)</button>
+      </form>
     </div>
   </section>
 {% endblock content %}

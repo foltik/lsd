@@ -1,4 +1,3 @@
-use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
 
 pub type AxumRouter = axum::Router<SharedAppState>;
@@ -34,6 +33,7 @@ impl AppRouter {
         let subrouter = subrouter.route_layer(axum::middleware::from_fn_with_state(
             self.state.clone(),
             move |user: User, req: Request, next: Next| async move {
+                tracing::info!("user roles:{:?}", user.roles);
                 if !user.has_role(role) {
                     return Err(AppError::Unauthorized);
                 }

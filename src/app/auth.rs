@@ -43,10 +43,7 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
                 Some(user) => {
                     request.extensions_mut().insert(user);
                 }
-                None => {
-                    tracing::error!("No session for token {:?}", token.value());
-                    cookies = cookies.remove("session")
-                }
+                None => cookies = cookies.remove("session"),
             }
         }
         let response = next.run(request).await;

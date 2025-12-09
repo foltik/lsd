@@ -77,13 +77,16 @@ impl Email {
         .fetch_all(db)
         .await?;
 
+        tracing::info!("EXISTING {existing:?}");
+
         let new = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, user_id, post_id, list_id)
-                 SELECT ?, u.email, ?, lm.list_id
+             INSERT INTO emails (kind, user_id, user_version, post_id, list_id)
+                 SELECT ?, u.id, uh.version, ?, lm.list_id
                  FROM list_members lm
                  JOIN users u ON u.id = lm.user_id
+                 JOIN user_history uh ON uh.user_id = u.id
                  WHERE lm.list_id = ?
                    AND NOT EXISTS (
                        SELECT 1
@@ -104,6 +107,8 @@ impl Email {
         )
         .fetch_all(db)
         .await?;
+
+        tracing::info!("NEW {new:#?}");
 
         let mut all = existing;
         all.extend(new);
@@ -138,10 +143,11 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-            INSERT INTO emails (kind, user_id, post_id, list_id)
-                SELECT ?, u.id, ?, lm.list_id
+            INSERT INTO emails (kind, user_id, user_version, post_id, list_id)
+                SELECT ?, u.id, uh.version, ?, lm.list_id
                 FROM list_members lm
                 JOIN users u ON u.id = lm.user_id
+                JOIN user_history uh ON uh.user_id = u.id
                 WHERE lm.list_id = ?
                   AND NOT EXISTS (
                       SELECT 1

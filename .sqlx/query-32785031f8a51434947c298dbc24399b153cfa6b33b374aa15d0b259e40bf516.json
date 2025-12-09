@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO user_history (user_id, version, email, first_name, last_name, phone)\n               VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "32785031f8a51434947c298dbc24399b153cfa6b33b374aa15d0b259e40bf516"
+}

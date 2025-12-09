@@ -71,12 +71,22 @@
           />
         </svg>
       </button>
-      <form class="rsvp" method="POST" action="/e/{{ event.slug }}/rsvp">
-        <button id="button" type="submit" class="rsvp">
-          <span>Attend & Contribute</span>
+      {% if let Some(session) = session %}
+        <a
+          class="rsvp"
+          href="/e/{{ event.slug }}/rsvp/manage?reservation={{ session.token }}"
+        >
+          <span>Manage my reservation</span>
           <span>&rarr;</span>
-        </button>
-      </form>
+        </a>
+      {% else %}
+        <form class="rsvp" method="POST" action="/e/{{ event.slug }}/rsvp">
+          <button id="button" type="submit" class="rsvp">
+            <span>Attend & Contribute</span>
+            <span>&rarr;</span>
+          </button>
+        </form>
+      {% endif %}
     </div>
     <div id="events/rsvp/fade"></div>
   </section>

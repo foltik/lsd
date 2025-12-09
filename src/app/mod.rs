@@ -3,7 +3,6 @@ use axum::extract::DefaultBodyLimit;
 use tower::ServiceBuilder;
 use tower_http::compression::{self, CompressionLayer, Predicate};
 
-pub use crate::app::webhooks::Webhooks;
 use crate::prelude::*;
 use crate::utils::cloudflare::Cloudflare;
 use crate::utils::emailer::Emailer;
@@ -24,7 +23,6 @@ pub struct AppState {
     pub stripe: Stripe,
     pub cloudflare: Cloudflare,
     pub mailer: Emailer,
-    pub webhooks: Webhooks,
 }
 
 pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
@@ -34,7 +32,6 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
         stripe: Stripe::new(&config),
         cloudflare: Cloudflare::new(&config)?,
         mailer: Emailer::connect(config.email).await?,
-        webhooks: Webhooks::default(),
     });
 
     // Register business logic routes
