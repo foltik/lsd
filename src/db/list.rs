@@ -1,5 +1,4 @@
-use sqlx::QueryBuilder;
-
+use crate::db::user::CreateUser;
 use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
@@ -136,14 +135,18 @@ impl List {
 
     /// Add members to a guest list.
     pub async fn add_members(db: &Db, list_id: i64, emails: &[&str]) -> AppResult<()> {
-        QueryBuilder::new("INSERT INTO list_members (list_id, email) ")
-            .push_values(emails, |mut b, email| {
-                b.push_bind(list_id).push_bind(email);
-            })
-            .push("ON CONFLICT DO NOTHING")
-            .build()
-            .execute(db)
+        // We could technically optimize this, but the common case is 1 signup.
+        for email in emails {
+            let user = User::get_or_create(
+                db,
+                &CreateUser { email: email.to_string(), first_name: None, last_name: None, phone: None },
+            )
             .await?;
+
+            sqlx::query!("INSERT INTO list_members (list_id, user_id) VALUES (?, ?)", list_id, user.id,)
+                .execute(db)
+                .await?;
+        }
         Ok(())
     }
 
