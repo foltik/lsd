@@ -21,8 +21,9 @@ tower = "0.5"
 tower-http = { version = "0.6", features = ["fs", "set-header", "compression-br", "request-id", "trace", "util"] }
 tower-serve-static = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "charset", "json", "multipart", "rustls-tls"] }
+sentry = { version = "0.46", default-features = false, features = ["tracing", "backtrace", "contexts", "debug-images", "panic", "release-health", "tower-axum-matched-path", "reqwest", "rustls"]}
+backtrace = "0.3"
 
-anyhow = "1"
 thiserror = "2"
 chrono-tz = { version = "0.10", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }

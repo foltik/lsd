@@ -4,6 +4,7 @@ pub mod emailer;
 pub mod error;
 pub mod image;
 pub mod routing;
+pub mod sentry;
 pub mod stripe;
 pub mod templates;
 pub mod tracing;

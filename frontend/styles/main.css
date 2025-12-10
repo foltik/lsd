@@ -9,6 +9,7 @@
 /* Home */
 @import "./home.css";
 @import "./dashboard.css";
+@import "./error.css";
 
 /* Events */
 @import "./events/edit.css";

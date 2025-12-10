@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound{% endblock title %}
+{% block content %}
+  <section id="error" class="ext/layout thin">
+    <h1>Error</h1>
+    <p>{{ message | safe }}</p>
+  </section>
+{% endblock content %}
