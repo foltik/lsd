@@ -492,7 +492,7 @@ mod rsvp {
 
         // Get or create Users for guest attendees, now that conflicts are resolved.
         for ParsedAttendee { rsvp, info } in &guest_attendees {
-            let guest_user = User::get_or_create(&state.db, &info).await?;
+            let guest_user = User::get_or_create(&state.db, info).await?;
             Rsvp::set_user(&state.db, rsvp.rsvp_id, &guest_user).await?;
         }
 
