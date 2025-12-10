@@ -79,7 +79,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     };
     // For non-HTML pages without a <link rel="icon">, this is where the browser looks
     let r = r.route("/favicon.ico", get(|| async { Redirect::to("/static/favicon.ico") }));
-    let r = r.fallback(|| async { AppError::NotFound });
+    let r = r.fallback(|| async { Err::<(), HtmlError>(not_found().into()) });
 
     // Register middleware
     let r = auth::add_middleware(r, Arc::clone(&state));

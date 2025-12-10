@@ -41,13 +41,13 @@ impl RsvpSession {
             .to_string()
     }
 
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<RsvpSession>> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE id = ?"#, id)
             .fetch_optional(db)
             .await?)
     }
 
-    pub async fn lookup_by_token(db: &Db, token: &str) -> AppResult<Option<RsvpSession>> {
+    pub async fn lookup_by_token(db: &Db, token: &str) -> Result<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE token = ?"#, token)
             .fetch_optional(db)
             .await?)
@@ -55,7 +55,7 @@ impl RsvpSession {
 
     pub async fn lookup_for_user_and_event(
         db: &Db, user: &User, event: &Event,
-    ) -> AppResult<Option<RsvpSession>> {
+    ) -> Result<Option<RsvpSession>> {
         let session = sqlx::query_as!(
             Self,
             r#"SELECT * FROM rsvp_sessions
@@ -70,7 +70,7 @@ impl RsvpSession {
 
     pub async fn get_or_create(
         db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event_id: i64,
-    ) -> AppResult<[(HeaderName, String); 1]> {
+    ) -> Result<[(HeaderName, String); 1]> {
         let session = match session {
             Some(session) => session.clone(),
             None => RsvpSession::create(db, event_id, user).await?,
@@ -79,7 +79,7 @@ impl RsvpSession {
         Ok([(header::SET_COOKIE, session.cookie())])
     }
 
-    pub async fn create(db: &Db, event_id: i64, user: &Option<User>) -> AppResult<Self> {
+    pub async fn create(db: &Db, event_id: i64, user: &Option<User>) -> Result<Self> {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let user = user.as_ref();
         let user_id = user.map(|u| u.id);
@@ -103,7 +103,7 @@ impl RsvpSession {
         Ok(session)
     }
 
-    pub async fn delete(&self, db: &Db) -> AppResult<()> {
+    pub async fn delete(&self, db: &Db) -> Result<()> {
         sqlx::query!("DELETE FROM rsvps WHERE session_id = ?", self.id)
             .execute(db)
             .await?;
@@ -114,7 +114,7 @@ impl RsvpSession {
     }
 
     /// Update
-    pub async fn set_user(&mut self, db: &Db, user: &User) -> AppResult<()> {
+    pub async fn set_user(&mut self, db: &Db, user: &User) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
                 SET user_id = ?,
@@ -132,7 +132,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_awaiting_payment(&self, db: &Db) -> AppResult<()> {
+    pub async fn set_awaiting_payment(&self, db: &Db) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET status = ?,
@@ -146,7 +146,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_confirmed(&self, db: &Db, payment_intent_id: Option<&str>) -> AppResult<()> {
+    pub async fn set_confirmed(&self, db: &Db, payment_intent_id: Option<&str>) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET status = ?,
@@ -162,7 +162,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_stripe_client_secret(&mut self, db: &Db, stripe_client_secret: &str) -> AppResult<()> {
+    pub async fn set_stripe_client_secret(&mut self, db: &Db, stripe_client_secret: &str) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET stripe_client_secret = ?, updated_at = CURRENT_TIMESTAMP
@@ -176,7 +176,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn clear_stripe_client_secret(&mut self, db: &Db) -> AppResult<()> {
+    pub async fn clear_stripe_client_secret(&mut self, db: &Db) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET stripe_client_secret = NULL, updated_at = CURRENT_TIMESTAMP
@@ -189,7 +189,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn delete_expired_drafts(db: &Db) -> AppResult<()> {
+    pub async fn delete_expired_drafts(db: &Db) -> Result<()> {
         sqlx::query!(
             "DELETE FROM rsvp_sessions
              WHERE status = ?
@@ -213,7 +213,7 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub fn line_items(&self, rsvps: &[ContributionRsvp]) -> AppResult<Vec<stripe::LineItem>> {
+    pub fn line_items(&self, rsvps: &[ContributionRsvp]) -> Result<Vec<stripe::LineItem>> {
         let mut spot_rsvps: HashMap<String, (i64, i64)> = Default::default();
         for rsvp in rsvps {
             let entry = spot_rsvps.entry(rsvp.spot_name.clone()).or_insert((1, rsvp.contribution));

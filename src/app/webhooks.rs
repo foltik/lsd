@@ -17,12 +17,12 @@ pub mod stripe {
 
     pub async fn webhook(
         State(state): State<SharedAppState>, headers: HeaderMap, body: String,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> JsonResult<()> {
         let signature = headers
             .get("stripe-signature")
-            .ok_or(AppError::BadRequest)?
+            .ok_or_else(invalid)?
             .to_str()
-            .map_err(|_| AppError::BadRequest)?;
+            .map_err(|_| invalid())?;
 
         // 1. Parse timestamp and signatures
         let mut timestamp: Option<&str> = None;
@@ -37,9 +37,9 @@ pub mod stripe {
                 }
             }
         }
-        let timestamp = timestamp.ok_or(AppError::BadRequest)?;
+        let timestamp = timestamp.ok_or_else(invalid)?;
         if signatures.is_empty() {
-            return Err(AppError::BadRequest);
+            crate::bail_invalid!();
         }
 
         // 2. Reconstruct `signed_payload`
@@ -53,7 +53,7 @@ pub mod stripe {
         // 4. Compare against provided signatures. We ignore the timestamp for now.
         let valid = signatures.iter().any(|sig| sig == &expected_signature);
         if !valid {
-            return Err(AppError::Unauthorized);
+            crate::bail_unauthorized!();
         }
 
         // tracing::debug!("STRIPE:  {body}");
@@ -72,9 +72,9 @@ pub mod stripe {
         struct EventData<T> {
             object: T,
         }
-        let event: Type = serde_json::from_str(&body).map_err(|_| AppError::BadRequest)?;
+        let event: Type = serde_json::from_str(&body).map_err(|_| invalid())?;
         fn parse<T: serde::de::DeserializeOwned>(body: &str) -> AppResult<T> {
-            let event: Event<T> = serde_json::from_str(body).map_err(|_| AppError::BadRequest)?;
+            let event: Event<T> = serde_json::from_str(body).map_err(|_| invalid())?;
             Ok(event.data.object)
         }
         match event.ty.as_str() {
@@ -84,7 +84,7 @@ pub mod stripe {
             ty => tracing::debug!("Stripe: unhandled webhook of type={ty:?}"),
         }
 
-        Ok((StatusCode::OK, "OK"))
+        Ok(Json(()))
     }
 
     #[derive(Debug, serde::Deserialize)]
@@ -95,12 +95,14 @@ pub mod stripe {
     }
     async fn checkout_session_completed(
         state: SharedAppState, event: CheckoutSessionCompleted,
-    ) -> AppResult<()> {
+    ) -> Result<()> {
         // unwrap(): we assume Stripe won't send us bogus data. RsvpSessions are never deleted.
         let session_id: i64 = event.client_reference_id.parse().unwrap();
         let Some(session) = RsvpSession::lookup_by_id(&state.db, session_id).await? else {
-            tracing::error!("Stripe[checkout.session.completed]: unknown rsvp_session={session_id}");
-            return Ok(());
+            bail!(
+                "Stripe: Unknown rsvp_session={session_id} while handling webhook for payment_intent={}",
+                event.payment_intent,
+            );
         };
 
         match event.payment_status.as_str() {

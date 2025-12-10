@@ -57,7 +57,7 @@ impl Spot {
     /// A work trade spot.
     pub const WORK: &'static str = "work";
 
-    pub async fn list_ids_for_event(db: &Db, event_id: i64) -> AppResult<Vec<i64>> {
+    pub async fn list_ids_for_event(db: &Db, event_id: i64) -> Result<Vec<i64>> {
         Ok(sqlx::query!("SELECT spot_id FROM event_spots WHERE event_id = ?", event_id)
             .fetch_all(db)
             .await?
@@ -66,7 +66,7 @@ impl Spot {
             .collect())
     }
 
-    pub async fn list_for_event(db: &Db, event_id: i64) -> AppResult<Vec<Spot>> {
+    pub async fn list_for_event(db: &Db, event_id: i64) -> Result<Vec<Spot>> {
         Ok(sqlx::query_as!(
             Spot,
             r#"SELECT s.*
@@ -82,7 +82,7 @@ impl Spot {
     }
 
     /// Create a new spot.
-    pub async fn create(db: &Db, spot: &UpdateSpot) -> AppResult<i64> {
+    pub async fn create(db: &Db, spot: &UpdateSpot) -> Result<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO spots
                (name, description, qty_total, qty_per_person, kind, sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours)
@@ -106,7 +106,7 @@ impl Spot {
     }
 
     /// Update an existing spot.
-    pub async fn update(db: &Db, id: i64, spot: &UpdateSpot) -> AppResult<()> {
+    pub async fn update(db: &Db, id: i64, spot: &UpdateSpot) -> Result<()> {
         sqlx::query!(
             "UPDATE spots
                SET name = ?,
@@ -141,7 +141,7 @@ impl Spot {
         Ok(())
     }
 
-    pub async fn add_to_event(db: &Db, event_id: i64, spot_ids: Vec<i64>) -> AppResult<()> {
+    pub async fn add_to_event(db: &Db, event_id: i64, spot_ids: Vec<i64>) -> Result<()> {
         if spot_ids.is_empty() {
             return Ok(());
         }
@@ -156,7 +156,7 @@ impl Spot {
         Ok(())
     }
 
-    pub async fn remove_from_event(db: &Db, event_id: i64, spot_ids: Vec<i64>) -> AppResult<()> {
+    pub async fn remove_from_event(db: &Db, event_id: i64, spot_ids: Vec<i64>) -> Result<()> {
         if spot_ids.is_empty() {
             return Ok(());
         }

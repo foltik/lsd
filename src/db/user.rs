@@ -1,10 +1,6 @@
-use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+use crate::prelude::*;
 
-use super::Db;
-use crate::utils::error::AppResult;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct User {
     pub id: i64,
     pub email: String,
@@ -59,7 +55,7 @@ impl User {
     /// Can manage posts.
     pub const WRITER: &'static str = "writer";
 
-    pub async fn get_or_create(db: &Db, info: &CreateUser) -> AppResult<User> {
+    pub async fn get_or_create(db: &Db, info: &CreateUser) -> Result<User> {
         Ok(match Self::lookup_by_email(db, &info.email).await? {
             Some(user) => user,
             None => Self::create(db, info).await?,
@@ -67,7 +63,7 @@ impl User {
     }
 
     /// Create a new user.
-    pub async fn create(db: &Db, user: &CreateUser) -> AppResult<User> {
+    pub async fn create(db: &Db, user: &CreateUser) -> Result<User> {
         let row = sqlx::query!(
             r#"INSERT INTO users
                (email, first_name, last_name, phone)
@@ -104,7 +100,7 @@ impl User {
     //     }
     // }
 
-    pub async fn update(&self, db: &Db, info: &UpdateUser) -> AppResult<()> {
+    pub async fn update(&self, db: &Db, info: &UpdateUser) -> Result<()> {
         let new_version = self.version + 1;
 
         sqlx::query!(
@@ -139,7 +135,7 @@ impl User {
         Ok(())
     }
 
-    // pub async fn add_role(db: &Db, user_id: i64, role: &str) -> AppResult<()> {
+    // pub async fn add_role(db: &Db, user_id: i64, role: &str) -> Result<()> {
     //     sqlx::query!(r#"INSERT INTO user_roles (user_id, role) VALUES (?, ?)"#, user_id, role)
     //         .execute(db)
     //         .await?;
@@ -147,7 +143,7 @@ impl User {
     // }
 
     /// Lookup a user by id, if one exists.
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<User>> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<User>> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -168,7 +164,7 @@ impl User {
     }
 
     /// Lookup a user by email address, if one exists.
-    pub async fn lookup_by_email(db: &Db, email: &str) -> AppResult<Option<User>> {
+    pub async fn lookup_by_email(db: &Db, email: &str) -> Result<Option<User>> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -188,7 +184,7 @@ impl User {
         Ok(row.map(|r| map_row!(r)))
     }
     /// Lookup a user by a login token, if it's valid.
-    pub async fn lookup_by_login_token(db: &Db, token: &str) -> AppResult<Option<User>> {
+    pub async fn lookup_by_login_token(db: &Db, token: &str) -> Result<Option<User>> {
         // Weird workaround for sqlx incorrectly inferring nullability for joins
         // not sure why this is needed here and not below
         // use the "!" syntax to force the column to be interpreted as non-null
@@ -213,7 +209,7 @@ impl User {
         Ok(row.map(|r| map_row!(r)))
     }
     /// Lookup a user by a session token, if it's valid.
-    pub async fn lookup_by_session_token(db: &Db, token: &str) -> AppResult<Option<User>> {
+    pub async fn lookup_by_session_token(db: &Db, token: &str) -> Result<Option<User>> {
         let row = sqlx::query!(
             r#"
             SELECT
@@ -234,7 +230,7 @@ impl User {
         Ok(row.map(|r| map_row!(r)))
     }
 
-    pub async fn lookup_by_list_id(db: &Db, list_id: i64) -> AppResult<Vec<User>> {
+    pub async fn lookup_by_list_id(db: &Db, list_id: i64) -> Result<Vec<User>> {
         let rows = sqlx::query!(
             r#"
             SELECT

@@ -49,6 +49,7 @@ jobs:
           EMAIL_NEWSLETTER_REPLY_TO: ${{ secrets.EMAIL_NEWSLETTER_REPLY_TO }}
           CF_TURNSTILE_SITE_KEY: ${{ secrets.CF_TURNSTILE_SITE_KEY }}
           CF_TURNSTILE_SECRET_KEY: ${{ secrets.CF_TURNSTILE_SECRET_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Generate content hashes
         run: |

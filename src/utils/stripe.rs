@@ -29,7 +29,7 @@ impl Stripe {
     /// Begin a stripe transaction, returning the client secret.
     pub async fn create_session(
         &self, session_id: i64, email: &str, line_items: Vec<LineItem>, return_path: String,
-    ) -> AppResult<String> {
+    ) -> Result<String> {
         let return_url = format!("{}{}", self.app_url, return_path);
 
         // Gross but there doesn't seem to be any other supported way to build form data in the way

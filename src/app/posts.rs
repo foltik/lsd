@@ -24,7 +24,7 @@ mod read {
     use super::*;
 
     // Display a list of posts.
-    pub async fn list_page(user: User, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    pub async fn list_page(user: User, State(state): State<SharedAppState>) -> HtmlResult {
         let posts = Post::list(&state.db).await?;
 
         #[derive(Template, WebTemplate)]
@@ -33,15 +33,15 @@ mod read {
             user: Option<User>,
             posts: Vec<Post>,
         }
-        Ok(Html { user: Some(user), posts })
+        Ok(Html { user: Some(user), posts }.into_response())
     }
 
     // Display a single post.
     pub async fn view_page(
         user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!();
         };
 
         #[derive(Template, WebTemplate)]
@@ -50,15 +50,13 @@ mod read {
             user: Option<User>,
             post: Post,
         }
-        Ok(Html { user, post })
+        Ok(Html { user, post }.into_response())
     }
 
     // Display a preview of a post as it would appear in an email.
-    pub async fn preview_page(
-        State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    pub async fn preview_page(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!();
         };
 
         #[derive(Template, WebTemplate)]
@@ -74,7 +72,8 @@ mod read {
             opened_url: "".into(),
             unsub_url: "".into(),
             post,
-        })
+        }
+        .into_response())
     }
 }
 
@@ -106,7 +105,7 @@ mod edit {
     }
 
     // New post page.
-    pub async fn new_page(user: User) -> AppResult<impl IntoResponse> {
+    pub async fn new_page(user: User) -> HtmlResult {
         Ok(EditHtml {
             user: Some(user),
             post: Post {
@@ -124,15 +123,16 @@ mod edit {
                 entity_id: None,
                 content: None,
             },
-        })
+        }
+        .into_response())
     }
 
     // Edit post page.
     pub async fn edit_page(
         user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!()
         };
 
         Ok(EditHtml {
@@ -144,7 +144,8 @@ mod edit {
                 content: Some(EditorContent { html: post.content.clone(), updated_at: post.updated_at }),
             },
             post,
-        })
+        }
+        .into_response())
     }
 
     // Edit post form.
@@ -156,48 +157,42 @@ mod edit {
     }
     #[derive(serde::Serialize)]
     pub struct EditResponse {
-        error: Option<String>,
         id: Option<i64>,
+        error: Option<String>,
     }
     pub async fn edit_form(
         State(state): State<SharedAppState>, Form(form): Form<EditForm>,
-    ) -> Json<EditResponse> {
-        let res = match form.id {
-            0 => Post::create(&state.db, &form.post).await,
-            id => Post::update(&state.db, id, &form.post).await.map(|_| id),
+    ) -> JsonResult<EditResponse> {
+        let id = match form.id {
+            0 => Post::create(&state.db, &form.post).await?,
+            id => Post::update(&state.db, id, &form.post).await.map(|_| id)?,
         };
 
-        Json(match res {
-            Ok(id) => EditResponse { id: Some(id), error: None },
-            Err(e) => EditResponse { id: None, error: Some(format!("{e:#}")) },
-        })
+        Ok(Json(EditResponse { id: Some(id), error: None }))
     }
 
     // Delete post form.
-    pub async fn delete_form(
-        State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    pub async fn delete_form(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!();
         };
         Post::delete(&state.db, post.id).await?;
-        Ok(Redirect::to("/posts"))
+        Ok(Redirect::to("/posts").into_response())
     }
 }
 
 mod send {
     use axum::body::Body;
     use futures::StreamExt;
-    use serde_json::json;
 
     use super::*;
 
     /// Display the form to send a post.
     pub async fn page(
         user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!();
         };
 
         #[derive(sqlx::FromRow)]
@@ -244,7 +239,7 @@ mod send {
             ratelimit: usize,
         }
         let ratelimit = state.config.email.ratelimit;
-        Ok(Html { user: Some(user), post, lists, ratelimit })
+        Ok(Html { user: Some(user), post, lists, ratelimit }.into_response())
     }
 
     #[derive(Template, WebTemplate)]
@@ -264,12 +259,12 @@ mod send {
     }
     pub async fn send_form(
         State(state): State<SharedAppState>, Path(slug): Path<String>, Form(form): Form<SendForm>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let Some(post) = Post::lookup_by_slug(&state.db, &slug).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!();
         };
         let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
-            return Err(AppError::NotFound);
+            bail_not_found!();
         };
 
         let emails = match form.resend {
@@ -323,15 +318,15 @@ mod send {
                         json!({"sent": p.sent, "remaining": p.remaining})
                     }
                     Err(e) => {
-                        let e = e.to_string();
-                        Email::mark_error(&state.db, email_id, &e).await?;
+                        let e = e.message();
+                        Email::mark_error(&state.db, email_id, e).await?;
                         json!({"error": e})
                     }
                 }.to_string();
-                yield Ok::<_, AppError>(format!("{json}\n"));
+                yield Ok::<_, AnyError>(format!("{json}\n"));
             }
         });
 
-        Ok(body)
+        Ok(body.into_response())
     }
 }

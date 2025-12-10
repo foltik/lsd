@@ -23,7 +23,7 @@ pub struct EventFlyer {
 impl EventFlyer {
     pub const CONTENT_TYPE: &'static str = "image/jpeg";
 
-    pub async fn create_or_update(db: &Db, event_id: i64, image: &DynamicImage) -> AppResult<()> {
+    pub async fn create_or_update(db: &Db, event_id: i64, image: &DynamicImage) -> Result<()> {
         let width = image.width();
         let height = image.height();
 
@@ -59,7 +59,7 @@ impl EventFlyer {
         Ok(())
     }
 
-    pub async fn lookup(db: &Db, event_id: i64) -> AppResult<Option<EventFlyer>> {
+    pub async fn lookup(db: &Db, event_id: i64) -> Result<Option<EventFlyer>> {
         let row = sqlx::query!(
             r#"SELECT width, height, image_thumb, strftime('%s', updated_at) as "version!: i64"
                FROM event_flyers WHERE event_id = ?"#,
@@ -76,7 +76,7 @@ impl EventFlyer {
         }))
     }
 
-    pub async fn serve(db: &Db, event_id: i64, size: EventFlyerSize) -> AppResult<Option<Vec<u8>>> {
+    pub async fn serve(db: &Db, event_id: i64, size: EventFlyerSize) -> Result<Option<Vec<u8>>> {
         let column = match size {
             EventFlyerSize::Small => "image_sm",
             EventFlyerSize::Medium => "image_md",
@@ -90,7 +90,7 @@ impl EventFlyer {
         Ok(flyer.and_then(|row| row.try_get::<Vec<u8>, _>(0).ok()))
     }
 
-    pub async fn exists_for_event(db: &Db, event_id: i64) -> AppResult<bool> {
+    pub async fn exists_for_event(db: &Db, event_id: i64) -> Result<bool> {
         let result = sqlx::query!("SELECT COUNT(*) as count FROM event_flyers WHERE event_id = ?", event_id)
             .fetch_one(db)
             .await?;

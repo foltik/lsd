@@ -33,11 +33,10 @@ impl AppRouter {
         let subrouter = subrouter.route_layer(axum::middleware::from_fn_with_state(
             self.state.clone(),
             move |user: User, req: Request, next: Next| async move {
-                tracing::info!("user roles:{:?}", user.roles);
                 if !user.has_role(role) {
-                    return Err(AppError::Unauthorized);
+                    bail_unauthorized!();
                 }
-                Ok(next.run(req).await)
+                Ok::<_, HtmlError>(next.run(req).await)
             },
         ));
         self.router = self.router.merge(subrouter);

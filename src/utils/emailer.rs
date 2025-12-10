@@ -17,7 +17,7 @@ pub struct Emailer {
 }
 
 impl Emailer {
-    pub async fn connect(config: EmailConfig) -> anyhow::Result<Self> {
+    pub async fn connect(config: EmailConfig) -> Result<Self> {
         // `lettre` requires a default provider to be installed to use SMTPS.
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
@@ -35,14 +35,14 @@ impl Emailer {
         Message::builder().from(self.from.clone())
     }
 
-    pub async fn send(&self, message: &Message) -> AppResult<()> {
+    pub async fn send(&self, message: &Message) -> Result<()> {
         self.transport.send(message)?;
         Ok(())
     }
 
     pub async fn send_batch(
         &self, state: SharedAppState, messages: Vec<Message>,
-    ) -> impl Stream<Item = AppResult<Progress>> + use<> {
+    ) -> impl Stream<Item = Result<Progress>> + use<> {
         async_stream::stream! {
             let mut progress = Progress { sent: 0, remaining: messages.len() as u32 };
 

@@ -10,7 +10,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     })
 }
 
-async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppState>) -> AppResult<Response> {
+async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppState>) -> HtmlResult {
     Email::mark_opened(&state.db, email_id).await?;
     let pixel = Response::builder()
         .status(StatusCode::OK)
@@ -22,11 +22,11 @@ async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppSt
 
 async fn email_unsubscribe_view(
     user: Option<User>, Path(email_id): Path<i64>, State(state): State<SharedAppState>,
-) -> AppResult<Response> {
+) -> HtmlResult {
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await? {
-        let list_id = email.list_id.ok_or(AppError::BadRequest)?;
-        let list = List::lookup_by_id(&state.db, list_id).await?.ok_or(AppError::BadRequest)?;
+        let list_id = email.list_id.ok_or_else(invalid)?;
+        let list = List::lookup_by_id(&state.db, list_id).await?.ok_or_else(invalid)?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/unsubscribe.html")]
@@ -50,7 +50,7 @@ async fn email_unsubscribe_view(
 
 async fn email_unsubscribe_form(
     Path(email_id): Path<i64>, State(state): State<SharedAppState>,
-) -> AppResult<Response> {
+) -> HtmlResult {
     // TODO: Better error handling rather than silently eating
     if let Some(email) = Email::lookup(&state.db, email_id).await?
         && let Some(list_id) = email.list_id

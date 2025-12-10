@@ -37,7 +37,7 @@ mod read {
     pub async fn view_page(
         session: Option<RsvpSession>, user: Option<User>, State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         #[derive(Template, WebTemplate)]
         #[template(path = "events/view.html")]
         struct Html {
@@ -46,9 +46,9 @@ mod read {
             event: Event,
             flyer: Option<EventFlyer>,
         }
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-        Ok(Html { session, user, event, flyer })
+        Ok(Html { session, user, event, flyer }.into_response())
     }
 
     // List all events.
@@ -59,28 +59,26 @@ mod read {
         events: Vec<Event>,
     }
 
-    pub async fn list_page(
-        user: Option<User>, State(state): State<SharedAppState>,
-    ) -> AppResult<impl IntoResponse> {
-        Ok(ListHtml { user, events: Event::list(&state.db).await? })
+    pub async fn list_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
+        Ok(ListHtml { user, events: Event::list(&state.db).await? }.into_response())
     }
 
     /// Serve an event flyer.
     pub async fn flyer(
         State(state): State<SharedAppState>, Path(slug): Path<String>,
         Query(params): Query<std::collections::HashMap<String, String>>,
-    ) -> AppResult<impl IntoResponse> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
         let size = match params.get("size").map(|s| s.as_str()) {
             Some("sm") => EventFlyerSize::Small,
             Some("md") => EventFlyerSize::Medium,
             Some("lg") => EventFlyerSize::Large,
-            Some(_) => return Err(AppError::BadRequest),
+            Some(_) => bail_invalid!(),
             None => EventFlyerSize::Full,
         };
 
-        let bytes = EventFlyer::serve(&state.db, event.id, size).await?.ok_or(AppError::NotFound)?;
+        let bytes = EventFlyer::serve(&state.db, event.id, size).await?.ok_or_else(not_found)?;
 
         Ok((
             [
@@ -89,7 +87,8 @@ mod read {
                 (HeaderName::from_static("priority"), "u=1"), // urgency below main.css (u=0) and above default (u=3)
             ],
             bytes,
-        ))
+        )
+            .into_response())
     }
 }
 
@@ -109,7 +108,7 @@ mod edit {
     }
 
     /// Display the form to create a new event.
-    pub async fn new_page(user: User, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+    pub async fn new_page(user: User, State(state): State<SharedAppState>) -> HtmlResult {
         let lists = List::list_with_counts(&state.db).await?;
         Ok(EditHtml {
             user: Some(user),
@@ -132,18 +131,19 @@ mod edit {
             spots: vec![],
             has_flyer: false,
             lists,
-        })
+        }
+        .into_response())
     }
 
     /// Display the form to edit an event.
     pub async fn edit_page(
         user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
         let lists = List::list_with_counts(&state.db).await?;
-        Ok(EditHtml { user: Some(user), event, spots, has_flyer, lists })
+        Ok(EditHtml { user: Some(user), event, spots, has_flyer, lists }.into_response())
     }
 
     // Handle edit submission.
@@ -156,7 +156,7 @@ mod edit {
     }
     pub async fn edit_form(
         State(state): State<SharedAppState>, mut multipart: axum::extract::Multipart,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let mut form: Option<EditForm> = None;
         let mut flyer: Option<DynamicImage> = None;
 
@@ -164,7 +164,7 @@ mod edit {
             match field.name().unwrap_or("") {
                 "data" => {
                     let text = field.text().await?;
-                    form = Some(serde_json::from_str(&text).map_err(|_| AppError::BadRequest)?);
+                    form = Some(serde_json::from_str(&text).map_err(|_| invalid())?);
                 }
                 "flyer" => {
                     let data = field.bytes().await?;
@@ -175,7 +175,7 @@ mod edit {
             }
         }
 
-        let form = form.ok_or(AppError::BadRequest)?;
+        let form = form.ok_or_else(invalid)?;
 
         match form.id {
             Some(id) => {
@@ -213,15 +213,14 @@ mod edit {
                 Spot::add_to_event(&state.db, event_id, spot_ids).await?;
             }
         }
-        Ok(())
+
+        Ok(Redirect::to("/events").into_response())
     }
 
     /// Handle delete submission.
-    pub async fn delete_form(
-        State(state): State<SharedAppState>, Path(id): Path<i64>,
-    ) -> AppResult<impl IntoResponse> {
+    pub async fn delete_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
         Event::delete(&state.db, id).await?;
-        Ok(Redirect::to("/events"))
+        Ok(Redirect::to("/events").into_response())
     }
 }
 
@@ -233,16 +232,16 @@ mod rsvp {
     use crate::db::user::{CreateUser, UpdateUser};
 
     #[derive(Template, WebTemplate)]
-    #[template(path = "error.html")]
+    #[template(path = "error_simple.html")]
     struct ErrorHtml {
         user: Option<User>,
         message: String,
     }
 
-    fn goto_guestlist_page(event: &Event) -> AppResult<Response> {
+    fn goto_guestlist_page(event: &Event) -> HtmlResult {
         Ok(Redirect::to(&format!("/e/{}/guestlist", &event.slug)).into_response())
     }
-    fn goto_guestlist_error(user: &Option<User>) -> AppResult<Response> {
+    fn goto_guestlist_error(user: &Option<User>) -> HtmlResult {
         let error = ErrorHtml { user: user.clone(), message: "Sorry, you're not on the list.".into() };
         Ok(error.into_response())
     }
@@ -251,8 +250,8 @@ mod rsvp {
     pub async fn rsvp_form(
         user: Option<User>, session: Option<RsvpSession>, State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
         if let Some(list_id) = event.guest_list_id {
             // No existing session or session without a user: redirect to /guestlist to collect email
@@ -275,9 +274,9 @@ mod rsvp {
     // Display the "Are you on the list?" page
     pub async fn guestlist_page(
         user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let _guest_list_id = event.guest_list_id.ok_or(AppError::BadRequest)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let _guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_guestlist.html")]
@@ -296,9 +295,9 @@ mod rsvp {
     pub async fn guestlist_form(
         user: Option<User>, session: Option<RsvpSession>, State(state): State<SharedAppState>,
         Path(slug): Path<String>, Form(form): Form<GuestlistForm>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
-        let guest_list_id = event.guest_list_id.ok_or(AppError::BadRequest)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
 
         match List::has_email(&state.db, guest_list_id, &form.email).await? {
             true => goto_selection_page(&state.db, &user, &session, &event).await,
@@ -309,15 +308,15 @@ mod rsvp {
     // *Ensure a session exists*, and then goto the selection page.
     async fn goto_selection_page(
         db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event: &Event,
-    ) -> AppResult<Response> {
+    ) -> HtmlResult {
         let headers = RsvpSession::get_or_create(db, user, session, event.id).await?;
         Ok((headers, Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug))).into_response())
     }
     // Display the "Choose a contribution" page
     pub async fn selection_page(
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let stats = event.stats_for_session(&state.db, session.id).await?;
 
         let spots = Spot::list_for_event(&state.db, event.id).await?;
@@ -361,14 +360,14 @@ mod rsvp {
     pub async fn selection_form(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
         Form(form): Form<SelectionForm>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
 
         // Compute ticket stats. This includes other users' pending RSVPs, but excludes those from our own session.
         let stats = event.stats_for_session(&state.db, session.id).await?;
         // Parse and validate the selection (checking capacity, etc.)
-        let rsvps = parse_selection(&stats, &spots, &form.rsvps).map_err(|_| AppError::BadRequest)?;
+        let rsvps = parse_selection(&stats, &spots, &form.rsvps).map_err(|_| invalid())?;
 
         // Delete any pending RSVPs (in case the user goes back) and create new ones.
         Rsvp::delete_for_session(&state.db, session.id).await?;
@@ -392,7 +391,7 @@ mod rsvp {
     }
 
     // Goto the attendees page.
-    fn goto_attendees_page(event: &Event) -> AppResult<Response> {
+    fn goto_attendees_page(event: &Event) -> HtmlResult {
         Ok(Redirect::to(&format!("/e/{}/rsvp/attendees", &event.slug)).into_response())
     }
     #[derive(PartialEq)]
@@ -414,8 +413,8 @@ mod rsvp {
     pub async fn attendees_page(
         user: Option<User>, session: RsvpSession, State(state): State<SharedAppState>,
         Path(slug): Path<String>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let attendees = Rsvp::list_for_attendees(&state.db, session.id).await?;
         let price = attendees.iter().map(|r| r.contribution).sum::<i64>();
         let mode = AttendeesMode::Create;
@@ -430,14 +429,13 @@ mod rsvp {
     pub async fn attendees_form(
         mut our_session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
         Form(form): Form<AttendeesForm>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let rsvps = Rsvp::list_for_attendees(&state.db, our_session.id).await?;
 
         // Parse attendees and lookup or create associated users
-        let (primary_attendee, guest_attendees) = parse_attendees(&rsvps, &form.attendees)
-            .await
-            .map_err(|_| AppError::BadRequest)?;
+        let (primary_attendee, guest_attendees) =
+            parse_attendees(&rsvps, &form.attendees).await.map_err(|_| invalid())?;
 
         // Get or create the User for primary attendee
         let user = User::get_or_create(&state.db, &primary_attendee.info).await?;
@@ -494,7 +492,7 @@ mod rsvp {
 
         // Get or create Users for guest attendees, now that conflicts are resolved.
         for ParsedAttendee { rsvp, info } in &guest_attendees {
-            let guest_user = User::get_or_create(&state.db, info).await?;
+            let guest_user = User::get_or_create(&state.db, &info).await?;
             Rsvp::set_user(&state.db, rsvp.rsvp_id, &guest_user).await?;
         }
 
@@ -502,14 +500,14 @@ mod rsvp {
     }
 
     // Goto the contribution page.
-    fn goto_contribution_page(event: &Event) -> AppResult<Response> {
+    fn goto_contribution_page(event: &Event) -> HtmlResult {
         Ok(Redirect::to(&format!("/e/{}/rsvp/contribution", &event.slug)).into_response())
     }
     // Display the "Make your contribution" page after submitting attendees
     pub async fn contribution_page(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
         // A user is guaranteed to exist, since either:
         // * There already was one in rsvp_form() and we redirected straight here (TODO, we don't redirect yet)
@@ -554,14 +552,14 @@ mod rsvp {
     // Handle submission of $0 RSVPs.
     pub async fn contribution_form(
         State(state): State<SharedAppState>, session: RsvpSession, Path(slug): Path<String>,
-    ) -> AppResult<Redirect> {
+    ) -> HtmlResult {
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
         let price: i64 = rsvps.iter().map(|r| r.contribution).sum();
         match price {
             0 => session.set_confirmed(&state.db, None).await?,
-            _ => return Err(AppError::BadRequest),
+            _ => bail_invalid!(),
         }
-        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", &session.token)))
+        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", &session.token)).into_response())
     }
 
     #[derive(serde::Deserialize)]
@@ -569,7 +567,7 @@ mod rsvp {
         reservation: String,
     }
     // Goto the manage page.
-    fn goto_manage_page(session: &RsvpSession, event: &Event) -> AppResult<Response> {
+    fn goto_manage_page(session: &RsvpSession, event: &Event) -> HtmlResult {
         Ok(
             Redirect::to(&format!("/e/{}/rsvp/manage?reservation={}", &event.slug, &session.token))
                 .into_response(),
@@ -579,13 +577,13 @@ mod rsvp {
     pub async fn manage_page(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
         Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.reservation).await? else {
             // A nonexistant session should never reach /manage, and a confirmed session should never be deleted.
-            return Err(AppError::BadRequest)?;
+            bail_invalid!();
         };
 
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         if session.status == RsvpSession::DRAFT {
@@ -613,23 +611,23 @@ mod rsvp {
     // Show the "Manage your RSVP" page.
     pub async fn temp_delete(
         State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
+    ) -> HtmlResult {
         let session = RsvpSession::lookup_by_token(&state.db, &query.reservation)
             .await?
-            .ok_or(AppError::NotFound)?;
+            .ok_or_else(not_found)?;
         session.delete(&state.db).await?;
-        Ok(Redirect::to(&format!("/e/{slug}")))
+        Ok(Redirect::to(&format!("/e/{slug}")).into_response())
     }
 
     // Show the editor for "Who will be attending?" page.
     pub async fn edit_page(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
         Path(slug): Path<String>,
-    ) -> AppResult<impl IntoResponse> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.reservation).await? else {
             // A nonexistant session should never reach /edit, and a confirmed session should never be deleted.
-            return Err(AppError::BadRequest)?;
+            bail_invalid!();
         };
 
         // Collect all guest rsvps
@@ -645,11 +643,11 @@ mod rsvp {
     pub async fn edit_form(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
         Path(slug): Path<String>, Form(form): Form<AttendeesForm>,
-    ) -> AppResult<Response> {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or(AppError::NotFound)?;
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let session = RsvpSession::lookup_by_token(&state.db, &query.reservation)
             .await?
-            .ok_or(AppError::BadRequest)?;
+            .ok_or_else(invalid)?;
 
         // Collect all guest rsvps
         let rsvps = Rsvp::list_for_attendees(&state.db, session.id)
@@ -668,15 +666,11 @@ mod rsvp {
             phone: Option<String>,
         }
 
-        let form: Vec<AttendeeForm> =
-            serde_json::from_str(&form.attendees).map_err(|_| AppError::BadRequest)?;
+        let form: Vec<AttendeeForm> = serde_json::from_str(&form.attendees).map_err(|_| invalid())?;
 
         for new in form {
             // Can't edit random rsvps
-            let old = rsvps
-                .iter()
-                .find(|old| old.rsvp_id == new.rsvp_id)
-                .ok_or(AppError::BadRequest)?;
+            let old = rsvps.iter().find(|old| old.rsvp_id == new.rsvp_id).ok_or_else(invalid)?;
 
             // Must exist for a valid RSVP
             let old_email = old.email.as_ref().unwrap();
@@ -826,9 +820,6 @@ mod rsvp {
         MissingIsMe,
         #[error("multiple attendees with is_me=true")]
         MultipleIsMe,
-
-        #[error("{0}")]
-        AppError(#[from] AppError),
     }
     async fn parse_attendees<'a>(
         rsvps: &'a [AttendeeRsvp], attendees: &str,
@@ -891,7 +882,7 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
     /// Middleware layer to lookup add an `RsvpSession` to the request if an rsvp_session token is present.
     pub async fn rsvp_session_middleware(
         State(state): State<SharedAppState>, mut cookies: CookieJar, mut request: Request, next: Next,
-    ) -> AppResult<(CookieJar, Response)> {
+    ) -> HtmlResult {
         if let Some(token) = cookies.get("rsvp_session") {
             match RsvpSession::lookup_by_token(&state.db, token.value()).await? {
                 Some(session) => {
@@ -901,7 +892,7 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
             }
         }
         let response = next.run(request).await;
-        Ok((cookies, response))
+        Ok((cookies, response).into_response())
     }
     router.layer(axum::middleware::from_fn_with_state(state, rsvp_session_middleware))
 }
