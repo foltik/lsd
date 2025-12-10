@@ -21,6 +21,7 @@ tower = "0.5"
 tower-http = { version = "0.6", features = ["fs", "set-header", "compression-br", "request-id", "trace", "util"] }
 tower-serve-static = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "charset", "json", "multipart", "rustls-tls"] }
+sentry = { version = "0.46", features = ["tracing", "tower-axum-matched-path"]}
 
 anyhow = "1"
 thiserror = "2"
