@@ -45,14 +45,9 @@ impl<E: Error + Send + Sync + 'static> From<E> for AnyError {
 
         let mut message = format!("{e}");
         let mut curr: &dyn Error = &e;
-        loop {
-            match curr.source() {
-                Some(prev) => {
-                    write!(message, ": {prev}").unwrap();
-                    curr = prev;
-                }
-                None => break,
-            }
+        while let Some(prev) = curr.source() {
+            write!(message, ": {prev}").unwrap();
+            curr = prev;
         }
 
         Self { message, backtrace }
@@ -150,9 +145,8 @@ macro_rules! impl_html_from {
 impl IntoResponse for HtmlError {
     #[rustfmt::skip]
     fn into_response(self) -> Response {
-        match &self {
-            HtmlError::App(e) => crate::utils::sentry::report(e.message().into(), e.backtrace()),
-            HtmlError::Any(e) => crate::utils::sentry::report(e.message().into(), e.backtrace()),
+        if let HtmlError::Any(e) = &self {
+            crate::utils::sentry::report(e.message().into(), e.backtrace());
         }
 
         #[cfg(debug_assertions)]
@@ -210,9 +204,8 @@ impl IntoResponse for HtmlError {
 
 impl IntoResponse for JsonError {
     fn into_response(self) -> Response {
-        match &self {
-            JsonError::App(e) => crate::utils::sentry::report(e.message().into(), e.backtrace()),
-            JsonError::Any(e) => crate::utils::sentry::report(e.message().into(), e.backtrace()),
+        if let JsonError::Any(e) = &self {
+            crate::utils::sentry::report(e.message().into(), e.backtrace());
         }
 
         let message = match self {
