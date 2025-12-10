@@ -24,8 +24,8 @@ pub fn add_middleware(router: AxumRouter) -> AxumRouter {
             .set_x_request_id(MakeRequestUuidV7)
             .layer(
                 TraceLayer::new_for_http()
-                    .make_span_with(DefaultMakeSpan::new().include_headers(true))
-                    .on_response(DefaultOnResponse::new().include_headers(true)),
+                    .make_span_with(DefaultMakeSpan::new())
+                    .on_response(DefaultOnResponse::new()),
             )
             .propagate_x_request_id(),
     )

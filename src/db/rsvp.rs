@@ -60,7 +60,7 @@ pub struct EventRsvp {
 }
 
 impl Rsvp {
-    pub async fn list_for_selection(db: &Db, session_id: i64) -> AppResult<Vec<SelectionRsvp>> {
+    pub async fn list_for_selection(db: &Db, session_id: i64) -> Result<Vec<SelectionRsvp>> {
         Ok(sqlx::query_as!(
             SelectionRsvp,
             r#"SELECT r.spot_id, r.contribution
@@ -74,7 +74,7 @@ impl Rsvp {
         .await?)
     }
 
-    pub async fn list_for_attendees(db: &Db, session_id: i64) -> AppResult<Vec<AttendeeRsvp>> {
+    pub async fn list_for_attendees(db: &Db, session_id: i64) -> Result<Vec<AttendeeRsvp>> {
         Ok(sqlx::query_as!(
             AttendeeRsvp,
             r#"SELECT
@@ -98,7 +98,7 @@ impl Rsvp {
         .await?)
     }
 
-    pub async fn list_for_contributions(db: &Db, session_id: i64) -> AppResult<Vec<ContributionRsvp>> {
+    pub async fn list_for_contributions(db: &Db, session_id: i64) -> Result<Vec<ContributionRsvp>> {
         Ok(sqlx::query_as!(
             ContributionRsvp,
             r#"SELECT
@@ -121,7 +121,7 @@ impl Rsvp {
     }
     pub async fn list_for_event_excluding_session(
         db: &Db, event_id: i64, session_id: i64,
-    ) -> AppResult<Vec<EventRsvp>> {
+    ) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
             "SELECT spot_id, contribution
@@ -135,13 +135,13 @@ impl Rsvp {
         .await?)
     }
 
-    // pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Rsvp>> {
+    // pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<Rsvp>> {
     //     Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvps WHERE id = ?"#, id)
     //         .fetch_optional(db)
     //         .await?)
     // }
 
-    pub async fn create(db: &Db, rsvp: CreateRsvp) -> AppResult<i64> {
+    pub async fn create(db: &Db, rsvp: CreateRsvp) -> Result<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO rsvps
                (session_id, spot_id, contribution, user_id, user_version)
@@ -157,7 +157,7 @@ impl Rsvp {
         Ok(row.last_insert_rowid())
     }
 
-    pub async fn set_user(db: &Db, rsvp_id: i64, user: &User) -> AppResult<()> {
+    pub async fn set_user(db: &Db, rsvp_id: i64, user: &User) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvps
                 SET user_id = ?,
@@ -175,7 +175,7 @@ impl Rsvp {
 
     pub async fn lookup_conflicts(
         db: &Db, session: &RsvpSession, event: &Event, email: &str,
-    ) -> AppResult<Option<String>> {
+    ) -> Result<Option<String>> {
         let row = sqlx::query!(
             "SELECT s.status
              FROM rsvps r
@@ -193,7 +193,7 @@ impl Rsvp {
         Ok(row.map(|r| r.status))
     }
 
-    pub async fn delete_for_session(db: &Db, session_id: i64) -> AppResult<()> {
+    pub async fn delete_for_session(db: &Db, session_id: i64) -> Result<()> {
         sqlx::query!(r#"DELETE FROM rsvps WHERE session_id = ?"#, session_id)
             .execute(db)
             .await?;

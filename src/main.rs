@@ -22,33 +22,49 @@ use utils::config::*;
 use crate::prelude::*;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // TODO(sam) is it possible to filter the logs from ServeDir?
     let log_filter = tracing_subscriber::filter::Targets::default()
         .with_target("h2", LevelFilter::OFF)
         .with_target("globset", LevelFilter::OFF)
         .with_target("rustls", LevelFilter::OFF)
-        .with_default(Level::DEBUG);
+        .with_default(Level::INFO);
 
-    tracing_subscriber::fmt()
-        .pretty()
-        .with_target(true)
-        .with_line_number(true)
-        .with_max_level(Level::DEBUG)
-        .finish()
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .pretty()
+                .with_target(true)
+                .with_line_number(true),
+        )
         .with(log_filter)
-        .try_init()?;
+        .with(utils::sentry::layer())
+        .init();
 
     // Load the server config
     #[cfg(debug_assertions)]
     let config = {
-        let file = std::env::args().nth(1).context("usage: lsd <config.toml>")?;
-        Config::load(&file).await?
+        let Some(file) = std::env::args().nth(1) else {
+            bail!("usage: lsd <config.toml>");
+        };
+        let config = Config::load(&file).await?;
+        tracing::info!("Loaded config at {file:?}: {config:#?}");
+        config
     };
     #[cfg(not(debug_assertions))]
-    let config = Config::parse(include_str!("../config/prod.toml"))?;
+    let config = {
+        let config = Config::parse(include_str!("../config/prod.toml"))?;
+        tracing::info!("Loaded embedded config: {config:#?}");
+        config
+    };
     // Make it visible globally
     CONFIG.set(config.clone()).unwrap_or_else(|_| unreachable!());
+
+    // Setup error logging
+    if let Some(config) = &config.sentry {
+        tracing::info!("Sentry enabled");
+        utils::sentry::init(config);
+    }
 
     let (router, state) = app::build(config.clone()).await?;
     let app = router.into_make_service_with_connect_info::<SocketAddr>();

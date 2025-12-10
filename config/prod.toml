@@ -34,3 +34,6 @@ webhook_key = "$STRIPE_WEBHOOK_KEY"
 [cloudflare]
 turnstile_site_key = "$CF_TURNSTILE_SITE_KEY"
 turnstile_secret_key = "$CF_TURNSTILE_SECRET_KEY"
+
+[sentry]
+dsn = "$SENTRY_DSN"

@@ -55,12 +55,12 @@ pub struct SpotStat {
 }
 
 impl Event {
-    pub async fn list(db: &Db) -> AppResult<Vec<Event>> {
+    pub async fn list(db: &Db) -> Result<Vec<Event>> {
         let events = sqlx::query_as!(Self, "SELECT * FROM events").fetch_all(db).await?;
         Ok(events)
     }
 
-    pub async fn list_upcoming(db: &Db) -> AppResult<Vec<Event>> {
+    pub async fn list_upcoming(db: &Db) -> Result<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,
             r#"SELECT * FROM events
@@ -73,7 +73,7 @@ impl Event {
         Ok(events)
     }
 
-    pub async fn list_past(db: &Db) -> AppResult<Vec<Event>> {
+    pub async fn list_past(db: &Db) -> Result<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,
             r#"SELECT * FROM events
@@ -87,7 +87,7 @@ impl Event {
     }
 
     // Create a new event.
-    pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> AppResult<i64> {
+    pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> Result<i64> {
         let event_id = sqlx::query!(
             r#"INSERT INTO events
                (title, slug, description, start, end, capacity, unlisted, guest_list_id)
@@ -113,9 +113,7 @@ impl Event {
     }
 
     // Update an event.
-    pub async fn update(
-        db: &Db, id: i64, event: &UpdateEvent, flyer: &Option<DynamicImage>,
-    ) -> AppResult<()> {
+    pub async fn update(db: &Db, id: i64, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> Result<()> {
         sqlx::query!(
             r#"UPDATE events
                 SET title = ?,
@@ -148,13 +146,13 @@ impl Event {
     }
 
     // Delete an event.
-    pub async fn delete(db: &Db, id: i64) -> AppResult<()> {
+    pub async fn delete(db: &Db, id: i64) -> Result<()> {
         sqlx::query!("DELETE FROM events WHERE id = ?", id).execute(db).await?;
         Ok(())
     }
 
     /// Lookup a post by URL, if one exists.
-    pub async fn lookup_by_slug(db: &Db, slug: &str) -> AppResult<Option<Event>> {
+    pub async fn lookup_by_slug(db: &Db, slug: &str) -> Result<Option<Event>> {
         let row = sqlx::query_as!(Self, "SELECT * FROM events WHERE slug = ?", slug)
             .fetch_optional(db)
             .await?;
@@ -162,7 +160,7 @@ impl Event {
     }
 
     /// Calculate user-facing stats for an event.
-    pub async fn stats_for_session(&self, db: &Db, session_id: i64) -> AppResult<EventStats> {
+    pub async fn stats_for_session(&self, db: &Db, session_id: i64) -> Result<EventStats> {
         let spots = Spot::list_for_event(db, self.id).await?;
         let rsvps = Rsvp::list_for_event_excluding_session(db, self.id, session_id).await?;
 

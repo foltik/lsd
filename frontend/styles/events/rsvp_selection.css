@@ -25,7 +25,7 @@
         }
         svg {
           @apply cursor-pointer touch-manipulation select-none;
-          transition: color 0.1s linear;
+          transition: color 0.05s linear;
           &.disabled {
             @apply cursor-default;
             color: var(--color-lsd-charcoal);

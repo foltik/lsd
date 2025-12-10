@@ -30,13 +30,13 @@ pub struct ListWithCount {
 
 impl List {
     /// List all lists.
-    pub async fn list(db: &Db) -> AppResult<Vec<List>> {
+    pub async fn list(db: &Db) -> Result<Vec<List>> {
         let lists = sqlx::query_as!(Self, "SELECT * FROM lists").fetch_all(db).await?;
         Ok(lists)
     }
 
     /// List all lists, and count the number of members in each list via list_members join.
-    pub async fn list_with_counts(db: &Db) -> AppResult<Vec<ListWithCount>> {
+    pub async fn list_with_counts(db: &Db) -> Result<Vec<ListWithCount>> {
         let lists = sqlx::query_as!(
             ListWithCount,
             "SELECT l.*, COUNT(m.list_id) AS count
@@ -50,7 +50,7 @@ impl List {
     }
 
     /// Create a list.
-    pub async fn create(db: &Db, event: &UpdateList) -> AppResult<i64> {
+    pub async fn create(db: &Db, event: &UpdateList) -> Result<i64> {
         let res = sqlx::query!(
             r#"INSERT INTO lists
                (name, description)
@@ -64,7 +64,7 @@ impl List {
     }
 
     /// Update a list.
-    pub async fn update(db: &Db, id: i64, event: &UpdateList) -> AppResult<()> {
+    pub async fn update(db: &Db, id: i64, event: &UpdateList) -> Result<()> {
         sqlx::query!(
             r#"UPDATE lists
                SET name = ?, description = ?
@@ -79,7 +79,7 @@ impl List {
     }
 
     /// Lookup a list by id, if one exists.
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<List>> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<List>> {
         let list = sqlx::query_as!(
             Self,
             r#"SELECT *
@@ -93,11 +93,11 @@ impl List {
     }
 
     /// Lookup the members of a list.
-    pub async fn list_members(db: &Db, list_id: i64) -> AppResult<Vec<User>> {
+    pub async fn list_members(db: &Db, list_id: i64) -> Result<Vec<User>> {
         User::lookup_by_list_id(db, list_id).await
     }
 
-    pub async fn has_user_id(db: &Db, id: i64, user_id: i64) -> AppResult<bool> {
+    pub async fn has_user_id(db: &Db, id: i64, user_id: i64) -> Result<bool> {
         let exists = sqlx::query_scalar!(
             r#"
             SELECT EXISTS(
@@ -114,7 +114,7 @@ impl List {
         Ok(exists)
     }
 
-    pub async fn has_email(db: &Db, id: i64, email: &str) -> AppResult<bool> {
+    pub async fn has_email(db: &Db, id: i64, email: &str) -> Result<bool> {
         let exists = sqlx::query_scalar!(
             r#"
             SELECT EXISTS (
@@ -134,7 +134,7 @@ impl List {
     }
 
     /// Add members to a guest list.
-    pub async fn add_members(db: &Db, list_id: i64, emails: &[&str]) -> AppResult<()> {
+    pub async fn add_members(db: &Db, list_id: i64, emails: &[&str]) -> Result<()> {
         // We could technically optimize this, but the common case is 1 signup.
         for email in emails {
             let user = User::get_or_create(
@@ -150,7 +150,7 @@ impl List {
         Ok(())
     }
 
-    pub async fn remove_member(db: &Db, list_id: i64, user_id: i64) -> AppResult<()> {
+    pub async fn remove_member(db: &Db, list_id: i64, user_id: i64) -> Result<()> {
         sqlx::query!(
             r#"DELETE FROM list_members
                WHERE list_id = ? AND user_id = ?"#,

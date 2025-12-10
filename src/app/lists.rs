@@ -27,7 +27,7 @@ struct ListEditHtml {
 }
 
 /// Display a list of all lists
-async fn list_lists_page(user: User, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
+async fn list_lists_page(user: User, State(state): State<SharedAppState>) -> HtmlResult {
     let lists = List::list(&state.db).await?;
 
     #[derive(Template, WebTemplate)]
@@ -36,22 +36,20 @@ async fn list_lists_page(user: User, State(state): State<SharedAppState>) -> App
         user: Option<User>,
         lists: Vec<List>,
     }
-    Ok(Html { user: Some(user), lists })
+    Ok(Html { user: Some(user), lists }.into_response())
 }
 
 /// Display the form to view and edit a list.
-async fn edit_list_page(
-    user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
-) -> AppResult<impl IntoResponse> {
-    let list = List::lookup_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
+async fn edit_list_page(user: User, State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+    let list = List::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
 
     let members = List::list_members(&state.db, id).await?;
 
-    Ok(ListEditHtml { user: Some(user), list, members })
+    Ok(ListEditHtml { user: Some(user), list, members }.into_response())
 }
 
 /// Display the form to create a new list.
-async fn create_list_page(user: User) -> AppResult<impl IntoResponse> {
+async fn create_list_page(user: User) -> HtmlResult {
     let list = List {
         id: 0,
         name: "".into(),
@@ -60,13 +58,11 @@ async fn create_list_page(user: User) -> AppResult<impl IntoResponse> {
         updated_at: Utc::now().naive_utc(),
     };
 
-    Ok(ListEditHtml { user: Some(user), list, members: vec![] })
+    Ok(ListEditHtml { user: Some(user), list, members: vec![] }.into_response())
 }
 
 /// Process the form and create or edit a list.
-async fn edit_list_form(
-    State(state): State<SharedAppState>, Form(form): Form<UpdateList>,
-) -> AppResult<Response> {
+async fn edit_list_form(State(state): State<SharedAppState>, Form(form): Form<UpdateList>) -> HtmlResult {
     let id = match form.id {
         Some(id) => {
             List::update(&state.db, id, &form).await?;
@@ -91,31 +87,29 @@ async fn edit_list_form(
 
 async fn remove_list_member(
     State(state): State<SharedAppState>, Path((id, user_id)): Path<(i64, i64)>,
-) -> AppResult<()> {
+) -> JsonResult<()> {
     List::remove_member(&state.db, id, user_id).await?;
-    Ok(())
+    Ok(Json(()))
 }
 
 /// Display the newsletter signup page.
 // XXX: Hard coded to list with id=1.
-pub async fn newsletter_signup_page(
-    user: Option<User>, State(state): State<SharedAppState>,
-) -> AppResult<impl IntoResponse> {
+pub async fn newsletter_signup_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
     signup_page(user, State(state), Path(1)).await
 }
 
 /// Display the list signup page.
 async fn signup_page(
     user: Option<User>, State(state): State<SharedAppState>, Path(list_id): Path<i64>,
-) -> AppResult<impl IntoResponse> {
+) -> HtmlResult {
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
     if list_id != 1 {
-        return Err(AppError::Unauthorized);
+        bail_unauthorized!()
     }
 
     let Some(list) = List::lookup_by_id(&state.db, list_id).await? else {
-        return Err(AppError::NotFound);
+        bail_not_found!();
     };
 
     #[derive(Template, WebTemplate)]
@@ -124,7 +118,7 @@ async fn signup_page(
         user: Option<User>,
         list: List,
     }
-    Ok(Html { user, list })
+    Ok(Html { user, list }.into_response())
 }
 
 /// Process the list signup form.
@@ -132,15 +126,15 @@ async fn signup_page(
 // XXX: We really should rate limit this.
 async fn signup_form(
     user: Option<User>, State(state): State<SharedAppState>, Form(form): Form<NewsletterForm>,
-) -> AppResult<impl IntoResponse> {
+) -> HtmlResult {
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
     if form.list_id != 1 {
-        return Err(AppError::Unauthorized);
+        bail_unauthorized!()
     }
 
     let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
-        return Err(AppError::NotFound);
+        bail_not_found!();
     };
     List::add_members(&state.db, list.id, &[form.email.email.as_ref()]).await?;
 
@@ -151,7 +145,7 @@ async fn signup_form(
         list: List,
         email: String,
     }
-    Ok(Html { user, list, email: state.config.email.from.email.to_string() })
+    Ok(Html { user, list, email: state.config.email.from.email.to_string() }.into_response())
 }
 #[derive(serde::Deserialize)]
 struct NewsletterForm {

@@ -20,7 +20,7 @@ impl Cloudflare {
     }
 
     /// Validates a Cloudflare Turnstile token from a client.
-    pub async fn validate_turnstile(&self, client_ip: IpAddr, token: &str) -> AppResult<bool> {
+    pub async fn validate_turnstile(&self, client_ip: IpAddr, token: &str) -> Result<bool> {
         #[derive(serde::Serialize)]
         struct Request {
             secret: String,
@@ -47,9 +47,9 @@ impl Cloudflare {
             error_codes: Vec<String>,
         }
         let res: Response = req.json().await?;
-        if !res.error_codes.is_empty() {
-            tracing::debug!("Cloudflare: turnstile validation errors={:?}", res.error_codes);
-        }
+
+        // If things go wrong we could look in here, but no sense in printing bot spam.
+        /* if !res.error_codes.is_empty() { ... } */
 
         let challenge_ok = res.success;
         let domain_ok = match self.app_domain.as_str() {

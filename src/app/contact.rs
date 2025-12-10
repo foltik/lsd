@@ -9,9 +9,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| r.route("/contact", get(contact_page).post(contact_form)))
 }
 
-async fn contact_page(
-    user: Option<User>, State(state): State<SharedAppState>,
-) -> AppResult<impl IntoResponse> {
+async fn contact_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
     #[derive(Template, WebTemplate)]
     #[template(path = "contact/send.html")]
     struct Html {
@@ -21,7 +19,8 @@ async fn contact_page(
     Ok(Html {
         user,
         turnstile_site_key: state.config.cloudflare.turnstile_site_key.clone(),
-    })
+    }
+    .into_response())
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -36,9 +35,9 @@ struct ContactForm {
 async fn contact_form(
     user: Option<User>, State(state): State<SharedAppState>, ConnectInfo(client): ConnectInfo<SocketAddr>,
     Form(form): Form<ContactForm>,
-) -> AppResult<impl IntoResponse> {
+) -> HtmlResult {
     if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {
-        return Err(AppError::BadRequest);
+        bail_invalid!();
     }
 
     let name = Some(form.name).filter(|n| !n.is_empty());
@@ -51,7 +50,7 @@ async fn contact_form(
         None => format!("[Anonymous]: {}", form.subject),
     };
     let reply_to = match email {
-        Some(e) => Some(Mailbox::new(name, e.parse().map_err(|_| AppError::BadRequest)?)),
+        Some(e) => Some(Mailbox::new(name, e.parse().map_err(|_| invalid())?)),
         None => None,
     };
 
@@ -68,5 +67,5 @@ async fn contact_form(
     struct Html {
         user: Option<User>,
     };
-    Ok(Html { user })
+    Ok(Html { user }.into_response())
 }

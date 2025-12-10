@@ -2,10 +2,25 @@
 
 {% block title %}light and sound{% endblock title %}
 {% block content %}
-  <section class="ext/layout thin">
-    <header>
-      <h1>Error</h1>
-    </header>
-    <p>{{ message }}</p>
+  <section id="error" class="ext/layout thin">
+    <h1>{{ title }}</h1>
+    <p>{{ message | safe }}</p>
   </section>
+  {% if context.is_some() || backtrace.is_some() %}
+    <section id="error-extra">
+      {% if let Some(context) = context %}
+        <div class="section">
+          <h2>Context</h2>
+          <pre>{{ context }}</pre>
+        </div>
+      {% endif %}
+
+      {% if let Some(backtrace) = backtrace %}
+        <div class="section">
+          <h2>Backtrace</h2>
+          <pre>{{ backtrace }}</pre>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
 {% endblock content %}

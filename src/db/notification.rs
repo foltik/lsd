@@ -1,9 +1,6 @@
 #![allow(unused)]
 
-use chrono::NaiveDateTime;
-
-use super::Db;
-use crate::utils::error::AppResult;
+use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Notification {
@@ -24,11 +21,11 @@ pub struct UpdateNotification {
 }
 
 impl Notification {
-    pub async fn list(db: &Db) -> AppResult<Vec<Notification>> {
+    pub async fn list(db: &Db) -> Result<Vec<Notification>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM notifications"#).fetch_all(db).await?)
     }
 
-    pub async fn create(db: &Db, n: &UpdateNotification) -> AppResult<i64> {
+    pub async fn create(db: &Db, n: &UpdateNotification) -> Result<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO notifications (name, content)
                VALUES (?, ?)"#,
@@ -40,7 +37,7 @@ impl Notification {
         Ok(row.last_insert_rowid())
     }
 
-    pub async fn update(db: &Db, id: i64, n: &UpdateNotification) -> AppResult<()> {
+    pub async fn update(db: &Db, id: i64, n: &UpdateNotification) -> Result<()> {
         sqlx::query!(
             r#"UPDATE notifications
                SET name = ?, content = ?
@@ -54,14 +51,14 @@ impl Notification {
         Ok(())
     }
 
-    pub async fn delete(db: &Db, id: i64) -> AppResult<()> {
+    pub async fn delete(db: &Db, id: i64) -> Result<()> {
         sqlx::query!(r#"DELETE FROM notifications WHERE id = ?"#, id)
             .execute(db)
             .await?;
         Ok(())
     }
 
-    pub async fn lookup_by_id(db: &Db, id: i64) -> AppResult<Option<Notification>> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<Notification>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM notifications WHERE id = ?"#, id)
             .fetch_optional(db)
             .await?)

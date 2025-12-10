@@ -1,0 +1,21 @@
+#error {
+  h1 {
+    @apply mb-2 text-2xl italic;
+  }
+  p {
+    @apply text-lsd-gray text-sm;
+  }
+  a {
+    @apply decoration-lsd-blue hover:text-lsd-blue underline;
+  }
+}
+
+#error-extra {
+  max-width: 800px;
+  .section {
+    @apply mb-6;
+  }
+  pre {
+    font-size: 10px;
+  }
+}

@@ -8,12 +8,8 @@ use jpeg_encoder::{ColorType, Encoder};
 
 use crate::prelude::*;
 
-pub async fn decode(bytes: &Bytes) -> AppResult<DynamicImage> {
-    ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .map_err(|_| AppError::BadRequest)?
-        .decode()
-        .map_err(|_| AppError::BadRequest)
+pub async fn decode(bytes: &Bytes) -> Result<DynamicImage> {
+    Ok(ImageReader::new(Cursor::new(bytes)).with_guessed_format()?.decode()?)
 }
 
 pub async fn encode_jpeg(image: &DynamicImage, max_w: Option<u32>) -> Vec<u8> {

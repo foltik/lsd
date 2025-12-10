@@ -15,10 +15,10 @@ struct HomeHtml {
 }
 
 /// Display the front page.
-async fn home_page(user: Option<User>, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-    Ok(HomeHtml { user, events: Event::list_upcoming(&state.db).await?, past: false })
+async fn home_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
+    Ok(HomeHtml { user, events: Event::list_upcoming(&state.db).await?, past: false }.into_response())
 }
 
-async fn past_page(user: Option<User>, State(state): State<SharedAppState>) -> AppResult<impl IntoResponse> {
-    Ok(HomeHtml { user, events: Event::list_past(&state.db).await?, past: true })
+async fn past_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
+    Ok(HomeHtml { user, events: Event::list_past(&state.db).await?, past: true }.into_response())
 }

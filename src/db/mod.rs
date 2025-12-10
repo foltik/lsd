@@ -1,7 +1,7 @@
-use anyhow::Context as _;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::{Sqlite, SqlitePool};
 
+use crate::prelude::*;
 use crate::utils::config::DbConfig;
 
 pub type Db = SqlitePool;
@@ -19,7 +19,7 @@ pub mod token;
 pub mod user;
 
 /// Create a new db connection pool, initializing and running migrations if necessary.
-pub async fn init(db_config: &DbConfig) -> anyhow::Result<Db> {
+pub async fn init(db_config: &DbConfig) -> Result<Db> {
     let url = format!("sqlite://{}", db_config.file.display());
     if !Sqlite::database_exists(&url).await? {
         Sqlite::create_database(&url).await?;
@@ -29,9 +29,7 @@ pub async fn init(db_config: &DbConfig) -> anyhow::Result<Db> {
     sqlx::migrate!("./migrations").run(&db).await?;
 
     if let Some(seed_data) = &db_config.seed_data {
-        let sql = tokio::fs::read_to_string(seed_data)
-            .await
-            .with_context(|| format!("reading config.db.seed_data={seed_data:?}"))?;
+        let sql = tokio::fs::read_to_string(seed_data).await?;
         sqlx::raw_sql(&sql).execute(&db).await?;
     }
 
