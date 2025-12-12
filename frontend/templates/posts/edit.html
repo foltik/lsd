@@ -6,14 +6,11 @@
 {% endblock back %}
 
 {% block actions %}
-  <a class="ext/button" href="/posts/{{ post.slug }}/send">Send</a>
+  <button id="send" class="ext/button" type="button">Send</button>
 {% endblock actions %}
 
 {% block form %}
-  {% if post.id != 0 %}
-    <input type="hidden" name="id" value="{{ post.id }}" />
-  {% endif %}
-
+  <input type="hidden" name="id" value="{{ post.id }}" />
   <div class="field">
     <label for="title">Title</label>
     <input type="text" id="title" name="title" value="{{ post.title }}" />
@@ -27,3 +24,16 @@
     <input type="text" id="author" name="author" value="{{ post.author }}" />
   </div>
 {% endblock form %}
+
+{% block extra_scripts %}
+  <script>
+    document.getElementById("send").addEventListener("click", () => {
+      if (window.editor.entityId == 0 || window.editor.localUpdatedAt != null) {
+        alert("Please save first!");
+      } else {
+        const slug = document.getElementById("slug").value;
+        window.location.href = `/posts/${slug}/send`;
+      }
+    });
+  </script>
+{% endblock extra_scripts %}
