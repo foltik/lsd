@@ -142,10 +142,21 @@ macro_rules! impl_html_from {
     };
 }
 
+#[derive(Template, WebTemplate)]
+#[template(path = "error.html")]
+pub struct ErrorHtml {
+    pub user: Option<User>,
+    pub title: String,
+    pub message: String,
+    pub context: Option<String>,
+    pub backtrace: Option<String>,
+}
+
 impl IntoResponse for HtmlError {
     #[rustfmt::skip]
     fn into_response(self) -> Response {
         if let HtmlError::Any(e) = &self {
+            tracing::error!("{}", e.message());
             crate::utils::sentry::report(e.message().into(), e.backtrace());
         }
 
@@ -165,21 +176,8 @@ impl IntoResponse for HtmlError {
         #[cfg(not(debug_assertions))]
         let context = None;
 
-        // TODO: add a `dev` mode to `config.app`, and:
-        // * when enabled, respond with a stack trace
-        // * when disabled, respond with a generic error message that doesn't leak any details
-        #[derive(Template, WebTemplate)]
-        #[template(path = "error.html")]
-        struct Html {
-            user: Option<User>,
-            title: String,
-            message: String,
-            context: Option<String>,
-            backtrace: Option<String>,
-        }
-
         let (status, html) = match &self {
-            HtmlError::App(e) => (e.status(), Html {
+            HtmlError::App(e) => (e.status(), ErrorHtml {
                 user: None,
                 title: "Error".into(),
                 message: e.message().into(),
@@ -189,7 +187,7 @@ impl IntoResponse for HtmlError {
             HtmlError::Any(_) => (StatusCode::INTERNAL_SERVER_ERROR, {
                 let email = config().email.from.email.to_string();
                 let mailto = format!(r#"<a href="mailto:{email}">{email}</a>"#);
-                Html {
+                ErrorHtml {
                     user: None,
                     title: "We encountered an unexpected error".into(),
                     message: format!("The team has been alerted that there is an issue. If you need assistance, please contact {mailto}."),
@@ -205,6 +203,7 @@ impl IntoResponse for HtmlError {
 impl IntoResponse for JsonError {
     fn into_response(self) -> Response {
         if let JsonError::Any(e) = &self {
+            tracing::error!("{}", e.message());
             crate::utils::sentry::report(e.message().into(), e.backtrace());
         }
 

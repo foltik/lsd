@@ -136,16 +136,28 @@ async fn signup_form(
     let Some(list) = List::lookup_by_id(&state.db, form.list_id).await? else {
         bail_not_found!();
     };
-    List::add_members(&state.db, list.id, &[form.email.email.as_ref()]).await?;
+
+    if List::has_email(&state.db, form.list_id, form.email.email.as_ref()).await? {
+        return Ok(ErrorHtml {
+            user,
+            title: "Error.".into(),
+            message: "You're already on the list!".into(),
+            context: None,
+            backtrace: None,
+        }
+        .into_response());
+    } else {
+        List::add_members(&state.db, list.id, &[form.email.email.as_ref()]).await?;
+    }
 
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/confirmation.html")]
-    struct Html {
+    struct SuccessHtml {
         user: Option<User>,
         list: List,
         email: String,
     }
-    Ok(Html { user, list, email: state.config.email.from.email.to_string() }.into_response())
+    Ok(SuccessHtml { user, list, email: state.config.email.from.email.to_string() }.into_response())
 }
 #[derive(serde::Deserialize)]
 struct NewsletterForm {
