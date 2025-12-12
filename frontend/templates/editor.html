@@ -69,6 +69,7 @@
       persistedUpdatedAt: null,
       // {% endif %}
     };
+    window.editor = state;
 
     /* ---------- "X days/hours/minutes/seconds ago" ---------------- */
     const plural = (word, n) => (n == 1 ? word : `${word}s`);
@@ -170,13 +171,17 @@
         // If there's no extra fields added, this will be the only thing in the form data.
         form.append("content", ui.editor.innerHTML);
 
-        response = await (
-          await fetch(state.url(), {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams(form),
-          })
-        ).json();
+        const res = await fetch(state.url(), {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(form),
+        });
+
+        try {
+          response = await res.json();
+        } catch (e) {
+          response = await res.text();
+        }
       } catch (e) {
         response = { error: e.message };
       }
