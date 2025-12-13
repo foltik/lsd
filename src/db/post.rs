@@ -29,40 +29,42 @@ impl Post {
     }
 
     /// Create a new post.
-    pub async fn create(db: &Db, post: &UpdatePost) -> Result<i64> {
+    pub async fn create(db: &Db, post: &UpdatePost) -> Result<(i64, NaiveDateTime)> {
         let row = sqlx::query!(
             r#"INSERT INTO posts
                (title, slug, author, content)
-               VALUES (?, ?, ?, ?)"#,
+               VALUES (?, ?, ?, ?)
+               RETURNING id, updated_at"#,
             post.title,
             post.slug,
             post.author,
             post.content,
         )
-        .execute(db)
+        .fetch_one(db)
         .await?;
-        Ok(row.last_insert_rowid())
+        Ok((row.id, row.updated_at))
     }
 
     /// Update an existing post.
-    pub async fn update(db: &Db, id: i64, post: &UpdatePost) -> Result<()> {
-        sqlx::query!(
+    pub async fn update(db: &Db, id: i64, post: &UpdatePost) -> Result<(i64, NaiveDateTime)> {
+        let row = sqlx::query!(
             r#"UPDATE posts
                SET title = ?,
                  slug = ?,
                  author = ?,
                  content = ?,
                  updated_at = CURRENT_TIMESTAMP
-               WHERE id = ?"#,
+               WHERE id = ?
+               RETURNING id, updated_at"#,
             post.title,
             post.slug,
             post.author,
             post.content,
             id
         )
-        .execute(db)
+        .fetch_one(db)
         .await?;
-        Ok(())
+        Ok((row.id, row.updated_at))
     }
 
     /// Delete a post.
