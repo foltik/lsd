@@ -97,7 +97,7 @@
       if (haveSnapshot) {
         const snapshot = JSON.parse(localStorage[state.localstorageKey()]);
         const snapshotHtml = snapshot.html;
-        const snapshotUpdatedAt = new Date(snapshot.updatedAt);
+        const snapshotUpdatedAt = snapshot.updatedAt;
 
         // Restore this snapshot if we have local changes, but the snapshot is newer.
         // This can happen if there were changes made in a separate tab.
@@ -162,13 +162,15 @@
         return;
       }
 
+      let ok;
       let response;
       try {
         // Create a FormData from whatever fields have been added to the form.
         // Templates that extend this page could add some, for example post title/slug/author.
         let form = new FormData(ui.form);
-        // Plus tack on `content` field for the editor html itself.
+        // Plus tack on `id`, and `content` field for the editor html itself.
         // If there's no extra fields added, this will be the only thing in the form data.
+        form.append("id", state.entityId);
         form.append("content", ui.editor.innerHTML);
 
         const res = await fetch(state.url(), {
@@ -176,6 +178,7 @@
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams(form),
         });
+        ok = res.ok;
 
         try {
           response = await res.json();
@@ -186,7 +189,7 @@
         response = { error: e.message };
       }
 
-      if (!response.error) {
+      if (ok && !response.error) {
         // Only clear localStorage for entites not yet persisted.
         // Otherwise, we keep it around so other tabs know there were local changes without a reload.
         if (state.persistedUpdatedAt == null) {
@@ -195,12 +198,17 @@
 
         state.entityId = response.id;
         state.persistedHtml = ui.editor.innerHTML;
-        state.persistedUpdatedAt = state.localUpdatedAt;
+        state.persistedUpdatedAt = response.updated_at;
         state.localUpdatedAt = null;
         ui.status.textContent = "Changes saved";
         ui.revert.disabled = true;
+
+        localStorage[state.localstorageKey()] = JSON.stringify({
+          html: ui.editor.innerHTML,
+          updatedAt: response.updated_at,
+        });
       } else {
-        alert(`Error saving: ${response.error}`);
+        alert(`Error saving: ${response.error || response}`);
       }
     });
 

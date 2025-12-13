@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE posts\n               SET title = ?,\n                 slug = ?,\n                 author = ?,\n                 content = ?,\n                 updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?\n               RETURNING id, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 1,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "d2f045b2973edcc1a81525e089999886861b054753515afcb454245d7cd1d498"
+}
