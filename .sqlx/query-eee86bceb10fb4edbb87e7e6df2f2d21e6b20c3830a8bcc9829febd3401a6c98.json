@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO posts\n               (title, slug, author, content)\n               VALUES (?, ?, ?, ?)\n               RETURNING id, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 1,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "eee86bceb10fb4edbb87e7e6df2f2d21e6b20c3830a8bcc9829febd3401a6c98"
+}

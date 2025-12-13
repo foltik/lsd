@@ -158,17 +158,29 @@ mod edit {
     #[derive(serde::Serialize)]
     pub struct EditResponse {
         id: Option<i64>,
+        updated_at: Option<i64>,
         error: Option<String>,
     }
     pub async fn edit_form(
         State(state): State<SharedAppState>, Form(form): Form<EditForm>,
     ) -> JsonResult<EditResponse> {
-        let id = match form.id {
-            0 => Post::create(&state.db, &form.post).await?,
-            id => Post::update(&state.db, id, &form.post).await.map(|_| id)?,
+        let (id, updated_at) = match form.id {
+            0 => {
+                if Post::lookup_by_slug(&state.db, &form.post.slug).await?.is_some() {
+                    return Ok(Json(EditResponse {
+                        id: None,
+                        updated_at: None,
+                        error: Some("A post with that slug already exists.".into()),
+                    }));
+                }
+                Post::create(&state.db, &form.post).await?
+            }
+            id => Post::update(&state.db, id, &form.post).await?,
         };
 
-        Ok(Json(EditResponse { id: Some(id), error: None }))
+        let updated_at = updated_at.and_utc().timestamp_millis();
+
+        Ok(Json(EditResponse { id: Some(id), updated_at: Some(updated_at), error: None }))
     }
 
     // Delete post form.
