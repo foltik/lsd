@@ -16,6 +16,7 @@
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
+@import "./events/attendees.css";
 @import "./events/rsvp_layout.css";
 @import "./events/rsvp_guestlist.css";
 @import "./events/rsvp_selection.css";
@@ -71,4 +72,11 @@ blockquote {
   padding: 1.5rem 2rem;
   background: var(--color-lsd);
   border-left: 4px solid #333;
+}
+
+thead {
+  @apply border-b-lsd-gray border-b;
+}
+th {
+  @apply text-start;
 }

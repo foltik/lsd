@@ -60,17 +60,15 @@ mod read {
         };
 
         #[derive(Template, WebTemplate)]
-        #[template(path = "posts/email.html")]
+        #[template(path = "emails/post.html")]
         struct EmailHtml {
+            email_id: i64,
             post: Post,
             post_url: String,
-            opened_url: String,
-            unsub_url: String,
         }
         Ok(EmailHtml {
             post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
-            opened_url: "".into(),
-            unsub_url: "".into(),
+            email_id: 0,
             post,
         }
         .into_response())
@@ -80,21 +78,7 @@ mod read {
 /// Create and edit posts.
 mod edit {
     use super::*;
-
-    struct EditorContent {
-        html: String,
-        updated_at: NaiveDateTime,
-    }
-    struct Editor {
-        /// Where the content gets POSTed to.
-        /// The string "{id}" is replaced with the current entity id.
-        /// Returns JSON, either {id: 123} or {error: ""}
-        url: &'static str,
-        snapshot_prefix: &'static str,
-
-        entity_id: Option<i64>,
-        content: Option<EditorContent>,
-    }
+    use crate::utils::editor::{Editor, EditorContent};
 
     #[derive(Template, WebTemplate)]
     #[template(path = "posts/edit.html")]
@@ -255,12 +239,11 @@ mod send {
     }
 
     #[derive(Template, WebTemplate)]
-    #[template(path = "posts/email.html")]
+    #[template(path = "emails/post.html")]
     struct EmailHtml {
+        email_id: i64,
         post: Post,
         post_url: String,
-        opened_url: String,
-        unsub_url: String,
     }
 
     // Process the form and create or edit a post.
@@ -285,10 +268,9 @@ mod send {
         };
 
         let mut email_template = EmailHtml {
+            email_id: 0,
             post: post.clone(),
             post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
-            opened_url: "".into(),
-            unsub_url: "".into(),
         };
         let mut messages = vec![];
         let mut email_ids = vec![];
@@ -297,10 +279,7 @@ mod send {
                 continue;
             }
 
-            email_template.opened_url = format!("{}/emails/{id}/footer.gif", &state.config.app.url);
-            email_template.unsub_url = format!("{}/emails/{id}/unsubscribe", &state.config.app.url);
-
-            tracing::info!("id={id} addres={address:?}");
+            email_template.email_id = id;
 
             let from = &state.config.email.from;
             let reply_to = state.config.email.newsletter_reply_to.as_ref().unwrap_or(from);

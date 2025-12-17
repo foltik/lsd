@@ -1,0 +1,29 @@
+{% extends "editor.html" %}
+{% block title %}Edit Day-of - {{ event.title }}{% endblock title %}
+
+{% block back %}
+  <a href="/events">&larr; All Events</a>
+{% endblock back %}
+
+{% block actions %}
+  <a
+    href="/events/{{ event.id }}/dayof/preview"
+    class="ext/button"
+    type="button"
+    >Preview</a
+  >
+  <button id="send" class="ext/button" type="button">Send</button>
+{% endblock actions %}
+
+{% block extra_scripts %}
+  <script>
+    document.getElementById("send").addEventListener("click", () => {
+      if (window.editor.localUpdatedAt != null) {
+        alert("Please save first!");
+      } else {
+        const id = window.editor.entityId;
+        window.location.href = `/events/${id}/dayof/send`;
+      }
+    });
+  </script>
+{% endblock extra_scripts %}

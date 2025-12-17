@@ -36,7 +36,11 @@ where
         .span_filter(|e| matches!(*e.level(), tracing::Level::ERROR | tracing::Level::WARN))
 }
 
-pub fn report(message: String, backtrace: &Backtrace) {
+// pub fn report(message: String) {
+//     sentry::capture_event(Event { level: Level::Error, message: Some(message), ..Default::default() });
+// }
+
+pub fn report_trace(message: String, backtrace: &Backtrace) {
     let stacktrace = backtrace_to_stacktrace(backtrace);
 
     let mut event = Event { level: Level::Error, message: Some(message.clone()), ..Default::default() };
