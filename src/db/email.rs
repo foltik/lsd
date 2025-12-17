@@ -26,6 +26,13 @@ impl Email {
     /// An email containing a post.
     pub const POST: &'static str = "post";
 
+    /// An event invitation email.
+    pub const EVENT_INVITE: &'static str = "event/invite";
+    /// An event purchase confirmation email.
+    pub const EVENT_CONFIRMATION: &'static str = "event/confirmation";
+    /// An event day-of info email.
+    pub const EVENT_DAYOF: &'static str = "event/dayof";
+
     /// Lookup an email by id.
     pub async fn lookup(db: &Db, id: i64) -> Result<Option<Email>> {
         let res = sqlx::query_as!(
@@ -77,8 +84,6 @@ impl Email {
         .fetch_all(db)
         .await?;
 
-        tracing::info!("EXISTING {existing:?}");
-
         let new = sqlx::query_as!(
             Email,
             r#"
@@ -108,7 +113,162 @@ impl Email {
         .fetch_all(db)
         .await?;
 
-        tracing::info!("NEW {new:#?}");
+        let mut all = existing;
+        all.extend(new);
+        Ok(all)
+    }
+
+    /// Create email entries for sending the given post to all users on the given list.
+    /// Returns rows with `sent_at` set if the post was already emailed to a user.
+    pub async fn create_send_invites(db: &Db, event_id: i64, list_id: i64) -> Result<Vec<Email>> {
+        let existing = sqlx::query_as!(
+            Email,
+            r#"
+            SELECT e.*, u.email as address FROM emails e
+            JOIN users u ON u.id = e.user_id
+            WHERE e.kind = ? AND e.event_id = ? AND e.list_id = ?
+                AND ifnull(e.sent_at, '') = (
+                    SELECT ifnull(MAX(ee.sent_at), '')
+                    FROM emails ee
+                    WHERE ee.kind = e.kind
+                    AND ee.list_id = e.list_id
+                    AND ee.user_id = e.user_id
+                    AND ee.event_id = e.event_id
+                );
+            "#,
+            Email::EVENT_INVITE,
+            event_id,
+            list_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        let new = sqlx::query_as!(
+            Email,
+            r#"
+             INSERT INTO emails (kind, user_id, user_version, event_id, list_id)
+                 SELECT ?, u.id, uh.version, ?, ?
+                 FROM list_members lm
+                 JOIN users u ON u.id = lm.user_id
+                 JOIN user_history uh ON uh.user_id = u.id
+                 WHERE lm.list_id = ?
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM emails ee
+                       WHERE ee.kind = ?
+                         AND ee.user_id = u.id
+                         AND ee.event_id = ?
+                         AND ee.list_id = ?
+                   )
+             RETURNING *, (
+                SELECT u.email FROM users u
+                WHERE u.id = emails.user_id
+             ) AS address
+             "#,
+            Email::EVENT_INVITE,
+            event_id,
+            list_id,
+            list_id,
+            Email::EVENT_INVITE,
+            event_id,
+            list_id,
+        )
+        .fetch_all(db)
+        .await?;
+
+        let mut all = existing;
+        all.extend(new);
+        Ok(all)
+    }
+
+    pub async fn have_sent_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
+        let row = sqlx::query!(
+            "SELECT id FROM emails WHERE kind = ? AND event_id = ? AND user_id = ?",
+            Email::EVENT_CONFIRMATION,
+            event_id,
+            user_id
+        )
+        .fetch_optional(db)
+        .await?;
+        Ok(row.is_some())
+    }
+
+    pub async fn create_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<Email> {
+        let row = sqlx::query_as!(
+            Email,
+            r#"
+             INSERT INTO emails (kind, user_id, user_version, event_id)
+                 SELECT ?, u.id, uh.version, ?
+                 FROM users u
+                 JOIN user_history uh ON uh.user_id = u.id
+                 WHERE u.id = ?
+             RETURNING *, (
+                SELECT u.email FROM users u
+                WHERE u.id = emails.user_id
+             ) AS "address!"
+             "#,
+            Email::EVENT_CONFIRMATION,
+            event_id,
+            user_id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row)
+    }
+
+    /// Create email entries for sending the given post to all users on the given list.
+    /// Returns rows with `sent_at` set if the post was already emailed to a user.
+    pub async fn create_send_dayof(db: &Db, event_id: i64) -> Result<Vec<Email>> {
+        let existing = sqlx::query_as!(
+            Email,
+            r#"
+            SELECT e.*, u.email as address FROM emails e
+            JOIN users u ON u.id = e.user_id
+            WHERE e.kind = ? AND e.event_id = ?
+                AND ifnull(e.sent_at, '') = (
+                    SELECT ifnull(MAX(ee.sent_at), '')
+                    FROM emails ee
+                    WHERE ee.kind = e.kind
+                    AND ee.user_id = e.user_id
+                    AND ee.event_id = e.event_id
+                );
+            "#,
+            Email::EVENT_DAYOF,
+            event_id,
+        )
+        .fetch_all(db)
+        .await?;
+
+        let new = sqlx::query_as!(
+            Email,
+            r#"
+             INSERT INTO emails (kind, user_id, user_version, event_id)
+                 SELECT ?, u.id, uh.version, ?
+                 FROM rsvps r
+                 JOIN rsvp_sessions rs ON rs.id = r.session_id
+                 JOIN users u ON u.id = r.user_id
+                 JOIN user_history uh ON uh.user_id = u.id
+                 WHERE rs.event_id = ?
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM emails ee
+                       WHERE ee.kind = ?
+                         AND ee.user_id = u.id
+                         AND ee.event_id = ?
+                   )
+             RETURNING *, (
+                SELECT u.email FROM users u
+                WHERE u.id = emails.user_id
+             ) AS "address!"
+             "#,
+            Email::EVENT_INVITE,
+            event_id,
+            event_id,
+            Email::EVENT_INVITE,
+            event_id,
+        )
+        .fetch_all(db)
+        .await?;
 
         let mut all = existing;
         all.extend(new);

@@ -1,4 +1,5 @@
 // No idea why this fires...
+#![feature(if_let_guard)]
 #![allow(redundant_semicolons)]
 
 mod app;
