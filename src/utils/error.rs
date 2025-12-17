@@ -65,6 +65,17 @@ macro_rules! bail {
 }
 pub use bail;
 
+#[macro_export]
+macro_rules! any {
+    ( $fmt:expr ) => {
+        AnyError::new($fmt)
+    };
+    ( $fmt:expr, $($arg:expr),* $(,)?) => {
+        AnyError::new(format!("{}", format_args!($fmt, $($arg),*)))
+    }
+}
+pub use any;
+
 /// Semantic app error.
 /// * For HTML responses, gets templated into a nice error page.
 /// * For JSON responses, gets treated like a normal error.
@@ -157,7 +168,7 @@ impl IntoResponse for HtmlError {
     fn into_response(self) -> Response {
         if let HtmlError::Any(e) = &self {
             tracing::error!("{}", e.message());
-            crate::utils::sentry::report(e.message().into(), e.backtrace());
+            crate::utils::sentry::report_trace(e.message().into(), e.backtrace());
         }
 
         #[cfg(debug_assertions)]
@@ -204,7 +215,7 @@ impl IntoResponse for JsonError {
     fn into_response(self) -> Response {
         if let JsonError::Any(e) = &self {
             tracing::error!("{}", e.message());
-            crate::utils::sentry::report(e.message().into(), e.backtrace());
+            crate::utils::sentry::report_trace(e.message().into(), e.backtrace());
         }
 
         let message = match self {

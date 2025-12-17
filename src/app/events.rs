@@ -13,7 +13,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
                 .route("/e/{slug}/flyer", get(read::flyer))
-                .route("/e/{slug}/rsvp", post(rsvp::rsvp_form))
+                .route("/e/{slug}/rsvp", get(rsvp::rsvp_form))
                 .route("/e/{slug}/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
@@ -26,6 +26,15 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/new", get(edit::new_page))
                 .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
                 .route("/events/{slug}/delete", post(edit::delete_form))
+                .route("/events/{slug}/attendees", get(edit::attendees_page))
+                .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
+                .route("/events/{id}/invite/preview", get(edit::preview_invite_page))
+                .route("/events/{id}/invite/send", get(edit::send_invite_page).post(edit::send_invite_form))
+                .route("/events/{id}/confirmation/edit", get(edit::edit_confirmation_page).post(edit::edit_confirmation_form))
+                .route("/events/{id}/confirmation/preview", get(edit::preview_confirmation_page))
+                .route("/events/{id}/dayof/edit", get(edit::edit_dayof_page).post(edit::edit_dayof_form))
+                .route("/events/{id}/dayof/preview", get(edit::preview_dayof_page))
+                .route("/events/{id}/dayof/send", get(edit::send_dayof_page).post(edit::send_dayof_form))
         })
 }
 
@@ -94,8 +103,12 @@ mod read {
 
 // Create and edit events.
 mod edit {
+    use axum::body::Body;
+
     use super::*;
     use crate::db::list::{List, ListWithCount};
+    use crate::db::rsvp::{AdminAttendeesRsvp, Rsvp};
+    use crate::utils::editor::{Editor, EditorContent};
 
     #[derive(Template, WebTemplate)]
     #[template(path = "events/edit.html")]
@@ -117,13 +130,22 @@ mod edit {
                 title: "".into(),
                 slug: "".into(),
                 description: "".into(),
-
                 start: Utc::now().naive_utc(),
                 end: None,
-
                 capacity: 0,
                 unlisted: false,
                 guest_list_id: None,
+
+                invite_html: None,
+                invite_updated_at: None,
+                invite_sent_at: None,
+
+                confirmation_html: None,
+                confirmation_updated_at: None,
+
+                dayof_html: None,
+                dayof_updated_at: None,
+                dayof_sent_at: None,
 
                 created_at: Utc::now().naive_utc(),
                 updated_at: Utc::now().naive_utc(),
@@ -217,6 +239,488 @@ mod edit {
         Ok(Redirect::to("/events").into_response())
     }
 
+    // Edit invite page.
+    pub async fn edit_invite_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/edit_invite.html")]
+        struct EditInviteHtml {
+            user: Option<User>,
+            event: Event,
+            editor: Editor,
+        }
+        Ok(EditInviteHtml {
+            user: Some(user),
+            event: event.clone(),
+            editor: Editor {
+                url: "/events/{id}/invite/edit",
+                snapshot_prefix: "event/invite",
+                entity_id: Some(event.id),
+                content: match (event.invite_html, event.invite_updated_at) {
+                    (Some(html), Some(updated_at)) => Some(EditorContent { html, updated_at }),
+                    _ => None,
+                },
+            },
+        }
+        .into_response())
+    }
+
+    // Edit invite form.
+    #[derive(serde::Deserialize)]
+    pub struct EditInviteForm {
+        id: i64,
+        content: String, // TODO: rename to html in editor
+    }
+    #[derive(serde::Serialize)]
+    pub struct EditInviteResponse {
+        id: Option<i64>,
+        updated_at: Option<i64>,
+        error: Option<String>,
+    }
+    pub async fn edit_invite_form(
+        State(state): State<SharedAppState>, Form(form): Form<EditInviteForm>,
+    ) -> JsonResult<EditInviteResponse> {
+        let Some(event) = Event::lookup_by_id(&state.db, form.id).await? else {
+            bail_not_found!();
+        };
+
+        let updated_at = Event::update_invite(&state.db, event.id, form.content).await?;
+
+        Ok(Json(EditInviteResponse {
+            id: Some(event.id),
+            updated_at: Some(updated_at.and_utc().timestamp_millis()),
+            error: None,
+        }))
+    }
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "emails/event_invite.html")]
+    struct InviteEmailHtml {
+        email_id: i64,
+        email: String,
+        event: Event,
+    }
+    // Preview invite page.
+    pub async fn preview_invite_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        Ok(InviteEmailHtml { email_id: 0, email: user.email, event }.into_response())
+    }
+
+    /// Display the form to send a post.
+    pub async fn send_invite_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+        let Some(guest_list_id) = event.guest_list_id else {
+            bail_invalid!()
+        };
+
+        #[derive(sqlx::FromRow)]
+        struct Counts {
+            count: i64,
+            sent: i64,
+        }
+        let list = sqlx::query_as!(
+            Counts,
+            r#"
+            SELECT
+                COUNT(lm.user_id) AS count,
+                SUM(
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM emails e
+                        WHERE kind = ?
+                          AND e.user_id = u.id
+                          AND e.event_id = ?
+                          AND e.sent_at IS NOT NULL
+                    )
+                    THEN 1 ELSE 0 END
+                ) AS sent
+            FROM lists l
+            LEFT JOIN list_members lm ON lm.list_id = l.id
+            LEFT JOIN users u ON u.id = lm.user_id
+            WHERE l.id = ?
+            GROUP BY l.id;
+            "#,
+            Email::EVENT_INVITE,
+            event.id,
+            guest_list_id,
+        )
+        .fetch_one(&state.db)
+        .await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/send_invites.html")]
+        struct SendHtml {
+            user: Option<User>,
+            list: Counts,
+            event: Event,
+            ratelimit: usize,
+        }
+        let ratelimit = state.config.email.ratelimit;
+        Ok(SendHtml { user: Some(user), event, list, ratelimit }.into_response())
+    }
+
+    pub async fn send_invite_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!();
+        };
+        let Some(guest_list_id) = event.guest_list_id else {
+            bail_invalid!()
+        };
+
+        let emails = Email::create_send_invites(&state.db, event.id, guest_list_id).await?;
+
+        let mut email_template = InviteEmailHtml { email_id: 0, email: "".into(), event: event.clone() };
+        let mut messages = vec![];
+        let mut email_ids = vec![];
+        for Email { id, address, sent_at, .. } in emails {
+            if sent_at.is_some() {
+                continue;
+            }
+
+            email_template.email_id = id;
+            email_template.email = address.clone();
+
+            let from = &state.config.email.from;
+            let reply_to = config().email.contact_to.as_ref().unwrap_or(from);
+            let message = state
+                .mailer
+                .builder()
+                .to(address.parse().unwrap())
+                .reply_to(reply_to.clone())
+                .subject(format!("Invitation to {}", event.title))
+                .header(lettre::message::header::ContentType::TEXT_HTML)
+                .body(email_template.render()?)
+                .unwrap();
+
+            messages.push(message);
+            email_ids.push(id);
+        }
+
+        event.mark_sent_invites(&state.db).await?;
+
+        let email_ids = futures::stream::iter(email_ids);
+        let results = state.mailer.send_batch(Arc::clone(&state), messages).await;
+
+        let body = Body::from_stream(async_stream::stream! {
+            let mut stream = Box::pin(results.zip(email_ids));
+            while let Some((progress, email_id)) = stream.next().await {
+                let json = match progress {
+                    Ok(p) => {
+                        Email::mark_sent(&state.db, email_id).await?;
+                        json!({"sent": p.sent, "remaining": p.remaining})
+                    }
+                    Err(e) => {
+                        let e = e.message();
+                        Email::mark_error(&state.db, email_id, e).await?;
+                        json!({"error": e})
+                    }
+                }.to_string();
+                yield Ok::<_, AnyError>(format!("{json}\n"));
+            }
+        });
+
+        Ok(body.into_response())
+    }
+
+    // Edit confirmation page.
+    pub async fn edit_confirmation_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/edit_confirmation.html")]
+        struct EditConfirmationHtml {
+            user: Option<User>,
+            event: Event,
+            editor: Editor,
+        }
+        Ok(EditConfirmationHtml {
+            user: Some(user),
+            event: event.clone(),
+            editor: Editor {
+                url: "/events/{id}/confirmation/edit",
+                snapshot_prefix: "event/confirmation",
+                entity_id: Some(event.id),
+                content: match (event.confirmation_html, event.confirmation_updated_at) {
+                    (Some(html), Some(updated_at)) => Some(EditorContent { html, updated_at }),
+                    _ => None,
+                },
+            },
+        }
+        .into_response())
+    }
+
+    // Edit confirmation form.
+    #[derive(serde::Deserialize)]
+    pub struct EditConfirmationForm {
+        id: i64,
+        content: String, // TODO: rename to html in editor
+    }
+    #[derive(serde::Serialize)]
+    pub struct EditConfirmationResponse {
+        id: Option<i64>,
+        updated_at: Option<i64>,
+        error: Option<String>,
+    }
+    pub async fn edit_confirmation_form(
+        State(state): State<SharedAppState>, Form(form): Form<EditConfirmationForm>,
+    ) -> JsonResult<EditConfirmationResponse> {
+        let Some(event) = Event::lookup_by_id(&state.db, form.id).await? else {
+            bail_not_found!();
+        };
+
+        let updated_at = Event::update_confirmation(&state.db, event.id, form.content).await?;
+
+        Ok(Json(EditConfirmationResponse {
+            id: Some(event.id),
+            updated_at: Some(updated_at.and_utc().timestamp_millis()),
+            error: None,
+        }))
+    }
+
+    // Preview confirmation page.
+    pub async fn preview_confirmation_page(
+        State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "emails/event_confirmation.html")]
+        struct PreviewConfirmationHtml {
+            email_id: i64,
+            event: Event,
+            token: String,
+        }
+        Ok(
+            PreviewConfirmationHtml { email_id: 0, event: event.clone(), token: "xxxxxxxx".into() }
+                .into_response(),
+        )
+    }
+
+    // Edit dayof page.
+    pub async fn edit_dayof_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/edit_dayof.html")]
+        struct EditDayofHtml {
+            user: Option<User>,
+            event: Event,
+            editor: Editor,
+        }
+        Ok(EditDayofHtml {
+            user: Some(user),
+            event: event.clone(),
+            editor: Editor {
+                url: "/events/{id}/dayof/edit",
+                snapshot_prefix: "event/dayof",
+                entity_id: Some(event.id),
+                content: match (event.dayof_html, event.dayof_updated_at) {
+                    (Some(html), Some(updated_at)) => Some(EditorContent { html, updated_at }),
+                    _ => None,
+                },
+            },
+        }
+        .into_response())
+    }
+
+    // Edit dayof form.
+    #[derive(serde::Deserialize)]
+    pub struct EditDayofForm {
+        id: i64,
+        content: String, // TODO: rename to html in editor
+    }
+    #[derive(serde::Serialize)]
+    pub struct EditDayofResponse {
+        id: Option<i64>,
+        updated_at: Option<i64>,
+        error: Option<String>,
+    }
+    pub async fn edit_dayof_form(
+        State(state): State<SharedAppState>, Form(form): Form<EditDayofForm>,
+    ) -> JsonResult<EditDayofResponse> {
+        let Some(event) = Event::lookup_by_id(&state.db, form.id).await? else {
+            bail_not_found!();
+        };
+
+        let updated_at = Event::update_dayof(&state.db, event.id, form.content).await?;
+
+        Ok(Json(EditDayofResponse {
+            id: Some(event.id),
+            updated_at: Some(updated_at.and_utc().timestamp_millis()),
+            error: None,
+        }))
+    }
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "emails/event_dayof.html")]
+    struct DayofEmailHtml {
+        email_id: i64,
+        event: Event,
+    }
+    // Preview dayof page.
+    pub async fn preview_dayof_page(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        Ok(DayofEmailHtml { email_id: 0, event: event.clone() }.into_response())
+    }
+
+    /// Display the form to send a post.
+    pub async fn send_dayof_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        #[derive(sqlx::FromRow)]
+        struct Counts {
+            count: i64,
+            sent: i64,
+        }
+        let list = sqlx::query_as!(
+            Counts,
+            r#"
+            SELECT
+                COUNT(r.user_id) AS count,
+                COALESCE(SUM(
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM emails e
+                        WHERE e.kind = ?
+                          AND e.user_id = r.user_id
+                          AND e.event_id = rs.event_id
+                          AND e.sent_at IS NOT NULL
+                    )
+                    THEN 1 ELSE 0 END
+                ), 0) AS sent
+            FROM rsvps r
+            JOIN rsvp_sessions rs ON rs.id = r.session_id
+            WHERE rs.event_id = ?
+                AND (rs.status = ? OR rs.status = ?)
+            "#,
+            Email::EVENT_DAYOF,
+            event.id,
+            RsvpSession::AWAITING_PAYMENT,
+            RsvpSession::CONFIRMED,
+        )
+        .fetch_one(&state.db)
+        .await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/send_dayof.html")]
+        struct SendHtml {
+            user: Option<User>,
+            list: Counts,
+            event: Event,
+            ratelimit: usize,
+        }
+        let ratelimit = state.config.email.ratelimit;
+        Ok(SendHtml { user: Some(user), event, list, ratelimit }.into_response())
+    }
+
+    pub async fn send_dayof_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!();
+        };
+
+        let emails = Email::create_send_dayof(&state.db, event.id).await?;
+
+        let mut email_template = DayofEmailHtml { email_id: 0, event: event.clone() };
+        let mut messages = vec![];
+        let mut email_ids = vec![];
+        for Email { id, address, sent_at, .. } in emails {
+            if sent_at.is_some() {
+                continue;
+            }
+
+            email_template.email_id = id;
+
+            let from = &state.config.email.from;
+            let reply_to = config().email.contact_to.as_ref().unwrap_or(from);
+            let message = state
+                .mailer
+                .builder()
+                .to(address.parse().unwrap())
+                .reply_to(reply_to.clone())
+                .subject(format!("What to know for {}", event.title))
+                .header(lettre::message::header::ContentType::TEXT_HTML)
+                .body(email_template.render()?)
+                .unwrap();
+
+            messages.push(message);
+            email_ids.push(id);
+        }
+
+        event.mark_sent_dayof(&state.db).await?;
+
+        let email_ids = futures::stream::iter(email_ids);
+        let results = state.mailer.send_batch(Arc::clone(&state), messages).await;
+
+        let body = Body::from_stream(async_stream::stream! {
+            let mut stream = Box::pin(results.zip(email_ids));
+            while let Some((progress, email_id)) = stream.next().await {
+                let json = match progress {
+                    Ok(p) => {
+                        Email::mark_sent(&state.db, email_id).await?;
+                        json!({"sent": p.sent, "remaining": p.remaining})
+                    }
+                    Err(e) => {
+                        let e = e.message();
+                        Email::mark_error(&state.db, email_id, e).await?;
+                        json!({"error": e})
+                    }
+                }.to_string();
+                yield Ok::<_, AnyError>(format!("{json}\n"));
+            }
+        });
+
+        Ok(body.into_response())
+    }
+
+    /// View an event.
+    pub async fn attendees_page(
+        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let rsvps = Rsvp::list_for_admin_attendees(&state.db, event.id).await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/attendees.html")]
+        struct Html {
+            pub user: Option<User>,
+            event: Event,
+            rsvps: Vec<AdminAttendeesRsvp>,
+        }
+
+        Ok(Html { user: Some(user), event, rsvps }.into_response())
+    }
+
     /// Handle delete submission.
     pub async fn delete_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
         Event::delete(&state.db, id).await?;
@@ -246,29 +750,38 @@ mod rsvp {
         Ok(error.into_response())
     }
 
+    #[derive(serde::Deserialize)]
+    pub struct RsvpQuery {
+        email: Option<String>,
+    }
     /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
         user: Option<User>, session: Option<RsvpSession>, State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        Path(slug): Path<String>, Query(query): Query<RsvpQuery>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
-        if let Some(list_id) = event.guest_list_id {
-            // No existing session or session without a user: redirect to /guestlist to collect email
-            if session.is_none() || session.as_ref().is_some_and(|s| s.user_id.is_none()) {
-                return goto_guestlist_page(&event);
-            }
-
-            // Session with a user not on the list: redirect to error
-            if let Some(session) = session.as_ref()
-                && let Some(user_id) = session.user_id
-                && !List::has_user_id(&state.db, list_id, user_id).await?
-            {
-                return goto_guestlist_error(&user);
-            }
+        match event.guest_list_id {
+            None => goto_selection_page(&state.db, &user, &session, &event).await,
+            Some(guest_list_id) => match session {
+                Some(session) => {
+                    if let Some(user_id) = session.user_id
+                        && List::has_user_id(&state.db, guest_list_id, user_id).await?
+                    {
+                        goto_selection_page(&state.db, &user, &Some(session), &event).await
+                    } else {
+                        goto_guestlist_page(&event)
+                    }
+                }
+                _ => match query.email {
+                    Some(email) => match List::has_email(&state.db, guest_list_id, &email).await? {
+                        true => goto_selection_page(&state.db, &user, &session, &event).await,
+                        false => goto_guestlist_error(&user),
+                    },
+                    _ => goto_guestlist_page(&event),
+                },
+            },
         }
-
-        goto_selection_page(&state.db, &user, &session, &event).await
     }
 
     // Display the "Are you on the list?" page
@@ -579,18 +1092,58 @@ mod rsvp {
         Path(slug): Path<String>,
     ) -> HtmlResult {
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.reservation).await? else {
-            // A nonexistant session should never reach /manage, and a confirmed session should never be deleted.
-            bail_invalid!();
+            let error = ErrorHtml { user: user.clone(), message: "Reservation not found.".into() };
+            return Ok(error.into_response());
+        };
+        let Some(user_id) = session.user_id else {
+            bail_invalid!()
+        };
+        let Some(session_user) = User::lookup_by_id(&state.db, user_id).await? else {
+            bail_invalid!()
         };
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        if session.status == RsvpSession::DRAFT {
+        match session.status.as_str() {
+            RsvpSession::CONFIRMED | RsvpSession::AWAITING_PAYMENT => {}
             // If you get here, we hold your spot and assume payment is coming later via webhook.
-            //
             // This is technically exploitable, but we could check for still unpaid rsvps at event start.
-            session.set_awaiting_payment(&state.db).await?;
+            RsvpSession::DRAFT => session.set_awaiting_payment(&state.db).await?,
+            _ => bail_invalid!(),
+        }
+
+        if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
+            let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
+
+            #[derive(Template, WebTemplate)]
+            #[template(path = "emails/event_confirmation.html")]
+            struct ConfirmationEmailHtml {
+                email_id: i64,
+                event: Event,
+                token: String,
+            }
+
+            let from = &state.config.email.from;
+            let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+            let message = state
+                .mailer
+                .builder()
+                .to(session_user.email.parse().unwrap())
+                .reply_to(reply_to.clone())
+                .subject(format!("Invitation to {}", event.title))
+                .header(lettre::message::header::ContentType::TEXT_HTML)
+                .body(
+                    ConfirmationEmailHtml {
+                        email_id: email.id,
+                        event: event.clone(),
+                        token: session.token.clone(),
+                    }
+                    .render()?,
+                )
+                .unwrap();
+
+            state.mailer.send(&message).await?;
         }
 
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;

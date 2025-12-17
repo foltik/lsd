@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM login_tokens WHERE token = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "59d5c9a9e5bb2050b1d49479f98529acb56e0d7d503a369370db69028dcd7c59"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE EVENTS\n             SET dayof_html = ?,\n                 dayof_updated_at = CURRENT_TIMESTAMP,\n                 updated_at = CURRENT_TIMESTAMP\n             WHERE id = ?\n             RETURNING updated_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "updated_at",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "750b447a41e4a4e5d2f674925d7d98d4702f7ed53fbd3ce266b2208eb73da235"
+}

@@ -1,0 +1,60 @@
+{% extends "emails/layout.html" %}
+
+{% block title %}Confirmation for {{ event.title }}{% endblock %}
+
+{% block content %}
+  <article>
+    <h1 class="title">You're confirmed for {{ event.title }}</h1>
+    <div class="details">
+      <time aria-label="date" datetime="{{ event.start }}"
+        >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
+      >
+      <div>
+        <time aria-label="start" datetime="{{ event.start }}"
+          >{{ event.start | format_datetime("%-I:%M%p") }}</time
+        >
+        -
+        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}"
+          >{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time
+        >
+      </div>
+    </div>
+    {% if let Some(confirmation_html) = event.confirmation_html %}
+      {{ confirmation_html | safe }}
+    {% endif %}
+    <div class="center">
+      <a
+        class="rsvp"
+        href="{{ "" | url }}/e/{{ event.slug }}/rsvp/manage?reservation={{ token }}"
+        >View your confirmation</a
+      >
+    </div>
+  </article>
+{% endblock %}
+
+{% block styles %}
+  <style>
+    time {
+      font-size: 16px;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+    .details {
+      display: flex;
+      justify-content: space-between;
+      color: #878787;
+      margin-bottom: 24px;
+    }
+    .center {
+      display: flex;
+      justify-content: center;
+    }
+    .rsvp {
+      text-decoration: none;
+      border-radius: 8px;
+      padding: 16px 64px;
+      margin-top: 32px;
+      background-color: #1e1b19;
+    }
+  </style>
+{% endblock %}

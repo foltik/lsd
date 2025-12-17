@@ -1,0 +1,36 @@
+{% extends "emails/layout.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+  <article>
+    <h1 class="title">{{ post.title }}</h1>
+    <time class="date" datetime="{{ post.created_at }}"
+      >{{ post.created_at | format_datetime("%b %d, %Y") }}</time
+    >
+    {{ post.content | safe }}
+  </article>
+{% endblock %}
+
+{% block footer %}
+  {# gmail inexplicably deletes any nav elements so we use a div #}
+  <div class="nav">
+    <p>
+      <a href="{{ post_url }}">View this post on the web</a> or
+      <a href="{{ email_id | unsubscribe_url }}">unsubscribe</a>
+    </p>
+  </div>
+{% endblock %}
+
+{% block styles %}
+  <style>
+    time {
+      display: block;
+      margin-bottom: 2rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      color: #878787;
+    }
+  </style>
+{% endblock %}

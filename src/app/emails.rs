@@ -11,7 +11,9 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 }
 
 async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppState>) -> HtmlResult {
+    // Mark opened IF it exists. Not found is not an error, we still return the pixel.
     Email::mark_opened(&state.db, email_id).await?;
+
     let pixel = Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/gif")

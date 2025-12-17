@@ -59,7 +59,53 @@ pub struct EventRsvp {
     pub contribution: i64,
 }
 
+pub struct AdminAttendeesRsvp {
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
+    pub guest_of: Option<String>,
+
+    pub spot_name: String,
+    pub contribution: i64,
+
+    pub created_at: NaiveDateTime,
+    pub checkin_at: Option<NaiveDateTime>,
+}
+
 impl Rsvp {
+    pub async fn list_for_admin_attendees(db: &Db, event_id: i64) -> Result<Vec<AdminAttendeesRsvp>> {
+        Ok(sqlx::query_as!(
+            AdminAttendeesRsvp,
+            r#"
+            SELECT
+                u.first_name as "first_name!",
+                u.last_name as "last_name!",
+                u.email,
+                CASE
+                    WHEN rs.user_id IS NOT NULL AND rs.user_id != r.user_id
+                    THEN hu.first_name || ' ' || hu.last_name
+                    ELSE NULL
+                END AS guest_of,
+
+                sp.name AS spot_name,
+                r.contribution,
+
+                r.created_at,
+                r.checkin_at
+            FROM rsvps r
+            JOIN rsvp_sessions rs ON rs.id = r.session_id
+            JOIN spots sp ON sp.id = r.spot_id
+            JOIN users u  ON u.id  = r.user_id
+            JOIN users hu ON hu.id = rs.user_id
+
+            WHERE rs.event_id = ?
+            ORDER BY u.last_name;
+            "#,
+            event_id
+        )
+        .fetch_all(db)
+        .await?)
+    }
     pub async fn list_for_selection(db: &Db, session_id: i64) -> Result<Vec<SelectionRsvp>> {
         Ok(sqlx::query_as!(
             SelectionRsvp,

@@ -44,19 +44,59 @@
         "type_info": "Bool"
       },
       {
-        "name": "created_at",
+        "name": "guest_list_id",
         "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "invite_html",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "invite_updated_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "invite_sent_at",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "confirmation_html",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "confirmation_updated_at",
+        "ordinal": 13,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "dayof_html",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "dayof_updated_at",
+        "ordinal": 15,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "dayof_sent_at",
+        "ordinal": 16,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 17,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 9,
+        "ordinal": 18,
         "type_info": "Datetime"
-      },
-      {
-        "name": "guest_list_id",
-        "ordinal": 10,
-        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -71,9 +111,17 @@
       true,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       false,
-      false,
-      true
+      false
     ]
   },
   "hash": "fb9d4adb6c2f81ceb869c34fd26d188e9e2b3dbc7b951ff9c00db06be355c7c9"

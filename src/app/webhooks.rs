@@ -11,6 +11,7 @@ pub mod stripe {
     use sha2::Sha256;
 
     use super::*;
+    use crate::db::event::Event;
     use crate::db::rsvp_session::RsvpSession;
 
     type HmacSha256 = Hmac<Sha256>;
@@ -94,24 +95,74 @@ pub mod stripe {
         payment_status: String,
     }
     async fn checkout_session_completed(
-        state: SharedAppState, event: CheckoutSessionCompleted,
+        state: SharedAppState, payload: CheckoutSessionCompleted,
     ) -> Result<()> {
         // unwrap(): we assume Stripe won't send us bogus data. RsvpSessions are never deleted.
-        let session_id: i64 = event.client_reference_id.parse().unwrap();
+        let session_id: i64 = payload.client_reference_id.parse().unwrap();
         let Some(session) = RsvpSession::lookup_by_id(&state.db, session_id).await? else {
             bail!(
                 "Stripe: Unknown rsvp_session={session_id} while handling webhook for payment_intent={}",
-                event.payment_intent,
+                payload.payment_intent,
+            );
+        };
+        let Some(user_id) = session.user_id else {
+            bail!(
+                "Stripe: Got rsvp_session={session_id} with empty user_id while handling webhook for payment_intent={}",
+                payload.payment_intent,
+            );
+        };
+        let Some(user) = User::lookup_by_id(&state.db, user_id).await? else {
+            bail!(
+                "Stripe: Got rsvp_session={session_id} with unknown user_id={} while handling webhook for payment_intent={}",
+                user_id,
+                payload.payment_intent,
+            );
+        };
+        let Some(event) = Event::lookup_by_id(&state.db, session.event_id).await? else {
+            bail!(
+                "Stripe: Got rsvp_session={session_id} with nonexistant event_id={} while handling webhook for payment_intent={}",
+                session.event_id,
+                payload.payment_intent,
             );
         };
 
-        match event.payment_status.as_str() {
+        match payload.payment_status.as_str() {
             "paid" => {
                 tracing::info!(
                     "Stripe[checkout.session.completed]: session={session:?} intent={:?}",
-                    event.payment_intent
+                    payload.payment_intent
                 );
-                session.set_confirmed(&state.db, Some(&event.payment_intent)).await?
+
+                session.set_confirmed(&state.db, Some(&payload.payment_intent)).await?;
+
+                if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
+                    let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
+
+                    #[derive(Template, WebTemplate)]
+                    #[template(path = "emails/event_confirmation.html")]
+                    struct ConfirmationEmailHtml {
+                        email_id: i64,
+                        event: Event,
+                        token: String,
+                    }
+
+                    let from = &state.config.email.from;
+                    let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+                    let message = state
+                        .mailer
+                        .builder()
+                        .to(user.email.parse().unwrap())
+                        .reply_to(reply_to.clone())
+                        .subject(format!("Invitation to {}", event.title))
+                        .header(lettre::message::header::ContentType::TEXT_HTML)
+                        .body(
+                            ConfirmationEmailHtml { email_id: email.id, event, token: session.token }
+                                .render()?,
+                        )
+                        .unwrap();
+
+                    state.mailer.send(&message).await?;
+                }
             }
             status => {
                 tracing::error!(
