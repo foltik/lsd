@@ -1,0 +1,9 @@
+{% extends "message.html" %}
+
+{% block message %}
+  <h1>Check your email!</h1>
+  <p>
+    An email with a link to login has been sent to {{ email }} if the account
+    exists. You can now close this tab.
+  </p>
+{% endblock message %}
