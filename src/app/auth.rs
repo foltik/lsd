@@ -69,16 +69,25 @@ impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
     }
 }
 
+#[derive(Template, WebTemplate)]
+#[template(path = "auth/login_email_sent.html")]
+struct LoginEmailSentHtml {
+    user: Option<User>,
+    email: String,
+}
 /// Process a login form and send either a login or registration link via email.
 async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginForm>) -> HtmlResult {
     let email = form.email.email.to_string();
     let Some(user) = User::lookup_by_email(&state.db, &email).await? else {
-        bail_unauthorized!()
+        return Ok(LoginEmailSentHtml { user: None, email }.into_response());
     };
 
     let email_id = Email::create_login(&state.db, &user).await?;
 
+    // Delete any existing tokens and re-create
+    LoginToken::delete_by_user(&state.db, &user).await?;
     let login_token = LoginToken::create(&state.db, &user).await?;
+
     let base_url = &state.config.app.url;
     let login_url = match form.redirect {
         Some(redirect) => format!("{base_url}/login?token={login_token}&redirect={redirect}"),
@@ -104,7 +113,7 @@ async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginF
     match state.mailer.send(&msg).await {
         Ok(_) => {
             Email::mark_sent(&state.db, email_id).await?;
-            Ok("Check your email!".into_response())
+            Ok(LoginEmailSentHtml { user: None, email }.into_response())
         }
         Err(e) => {
             Email::mark_error(&state.db, email_id, e.message()).await?;
@@ -156,7 +165,7 @@ async fn login_link(
     let Some(user) = User::lookup_by_login_token(&state.db, token).await? else {
         bail_unauthorized!();
     };
-    LoginToken::delete(&state.db, token).await?;
+    LoginToken::delete_by_token(&state.db, token).await?;
     let token = SessionToken::create(&state.db, &user).await?;
     let cookie = session_cookie(&state.config, token);
 
