@@ -1,0 +1,8 @@
+#events\/attendees {
+  table {
+    @apply text-xs;
+  }
+  td {
+    @apply px-1;
+  }
+}

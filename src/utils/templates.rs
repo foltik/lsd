@@ -49,6 +49,11 @@ pub mod filters {
         })
     }
 
+    /// Returns the site domain
+    pub fn domain(_dummy: &str) -> Result<String, askama::Error> {
+        Ok(config().app.domain.clone())
+    }
+
     /// Returns the site URL
     pub fn url(_dummy: &str) -> Result<String, askama::Error> {
         Ok(config().app.url.clone())
@@ -58,6 +63,14 @@ pub mod filters {
     pub fn mailto(_dummy: &str) -> Result<String, askama::Error> {
         let email = config().email.from.email.to_string();
         Ok(format!("mailto:{email}"))
+    }
+
+    pub fn opened_url(email_id: &i64) -> Result<String, askama::Error> {
+        Ok(format!("{}/emails/{email_id}/footer.gif", config().app.url))
+    }
+
+    pub fn unsubscribe_url(email_id: &i64) -> Result<String, askama::Error> {
+        Ok(format!("{}/emails/{email_id}/unsubscribe", config().app.url))
     }
 
     /// Livereload script enabled on debug builds.

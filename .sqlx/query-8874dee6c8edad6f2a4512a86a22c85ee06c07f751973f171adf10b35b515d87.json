@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                COUNT(r.user_id) AS count,\n                COALESCE(SUM(\n                    CASE WHEN EXISTS (\n                        SELECT 1\n                        FROM emails e\n                        WHERE e.kind = ?\n                          AND e.user_id = r.user_id\n                          AND e.event_id = rs.event_id\n                          AND e.sent_at IS NOT NULL\n                    )\n                    THEN 1 ELSE 0 END\n                ), 0) AS sent\n            FROM rsvps r\n            JOIN rsvp_sessions rs ON rs.id = r.session_id\n            WHERE rs.event_id = ?\n                AND (rs.status = ? OR rs.status = ?)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "count",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sent",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8874dee6c8edad6f2a4512a86a22c85ee06c07f751973f171adf10b35b515d87"
+}

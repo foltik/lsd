@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block title %}Attendees - {{ event.title }}{% endblock %}
+
+{% block content %}
+  <section id="events/attendees" class="ext/layout">
+    <header>
+      <h1>{{ event.title }}</h1>
+    </header>
+    <table class="attendees">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Guest of</th>
+          <th>Spot</th>
+          <th>Created</th>
+          <th>Checkin</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rsvp in rsvps %}
+          <tr>
+            <td>{{ rsvp.last_name }}, {{ rsvp.first_name }}</td>
+            <td>{{ rsvp.email }}</td>
+            <td>{{ rsvp.guest_of | unwrap_or_empty }}</td>
+            <td>{{ rsvp.spot_name }} (${{ rsvp.contribution }})</td>
+            <td>
+              <time datetime="{{ rsvp.created_at }}">
+                {{ rsvp.created_at | format_datetime("%m/%d %-I:%M%p") }}
+              </time>
+            </td>
+            <td>
+              <time datetime="{{ rsvp.checkin_at | unwrap_or_empty }}">
+                {{ rsvp.checkin_at | format_optional_datetime("%m/%d %-I:%M%p") }}
+              </time>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

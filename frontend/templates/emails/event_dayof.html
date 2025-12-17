@@ -1,0 +1,42 @@
+{% extends "emails/layout.html" %}
+
+{% block title %}What to know for {{ event.title }}{% endblock %}
+
+{% block content %}
+  <article>
+    <h1 class="title">What to know for {{ event.title }}</h1>
+    <div class="details">
+      <time aria-label="date" datetime="{{ event.start }}"
+        >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
+      >
+      <div>
+        <time aria-label="start" datetime="{{ event.start }}"
+          >{{ event.start | format_datetime("%-I:%M%p") }}</time
+        >
+        -
+        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}"
+          >{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time
+        >
+      </div>
+    </div>
+    {% if let Some(dayof_html) = event.dayof_html %}
+      {{ dayof_html | safe }}
+    {% endif %}
+  </article>
+{% endblock %}
+
+{% block styles %}
+  <style>
+    time {
+      font-size: 16px;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+    .details {
+      display: flex;
+      justify-content: space-between;
+      color: #878787;
+      margin-bottom: 24px;
+    }
+  </style>
+{% endblock %}

@@ -80,19 +80,26 @@ async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginF
 
     let login_token = LoginToken::create(&state.db, &user).await?;
     let base_url = &state.config.app.url;
-    let url = match form.redirect {
+    let login_url = match form.redirect {
         Some(redirect) => format!("{base_url}/login?token={login_token}&redirect={redirect}"),
         None => format!("{base_url}/login?token={login_token}"),
     };
     let domain = &state.config.app.domain;
 
+    #[derive(Template)]
+    #[template(path = "emails/login.html")]
+    struct LoginEmailHtml {
+        email_id: i64,
+        login_url: String,
+    };
+
     let msg = state
         .mailer
         .builder()
-        .header(ContentType::TEXT_PLAIN)
+        .header(ContentType::TEXT_HTML)
         .to(form.email)
         .subject(format!("Login to {domain}"))
-        .body(format!("Click here to login: {url}"))?;
+        .body(LoginEmailHtml { email_id, login_url }.render()?)?;
 
     match state.mailer.send(&msg).await {
         Ok(_) => {
@@ -149,6 +156,7 @@ async fn login_link(
     let Some(user) = User::lookup_by_login_token(&state.db, token).await? else {
         bail_unauthorized!();
     };
+    LoginToken::delete(&state.db, token).await?;
     let token = SessionToken::create(&state.db, &user).await?;
     let cookie = session_cookie(&state.config, token);
 

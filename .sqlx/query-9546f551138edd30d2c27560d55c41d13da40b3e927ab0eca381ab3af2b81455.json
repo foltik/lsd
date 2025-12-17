@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM events",
+  "query": "SELECT * FROM events WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -100,7 +100,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -124,5 +124,5 @@
       false
     ]
   },
-  "hash": "0d4d698b039ac95743392f44379bd1b8881297a06d0e0d333b065aec5d9da24e"
+  "hash": "9546f551138edd30d2c27560d55c41d13da40b3e927ab0eca381ab3af2b81455"
 }

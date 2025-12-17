@@ -1,0 +1,15 @@
+{% extends "editor.html" %}
+{% block title %}Edit confirmation - {{ event.title }}{% endblock title %}
+
+{% block back %}
+  <a href="/events">&larr; All Events</a>
+{% endblock back %}
+
+{% block actions %}
+  <a
+    href="/events/{{ event.id }}/confirmation/preview"
+    class="ext/button"
+    type="button"
+    >Preview</a
+  >
+{% endblock actions %}

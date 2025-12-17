@@ -44,4 +44,11 @@ impl LoginToken {
 
         Ok(token)
     }
+
+    pub async fn delete(db: &Db, token: &str) -> Result<()> {
+        sqlx::query!("DELETE FROM login_tokens WHERE token = ?", token)
+            .execute(db)
+            .await?;
+        Ok(())
+    }
 }
