@@ -1,31 +1,17 @@
 {% extends "layout.html" %}
-{% block title %}Send post – {{ post.title }}{% endblock %}
+{% block title %}Send day-of info for {{ event.title }}{% endblock %}
 
 {% block content %}
   <section id="posts/send" class="ext/layout standard">
     <header>
-      <h1>Send {{ post.title }}</h1>
+      <h1>Send day-of info for {{ event.title }}</h1>
     </header>
     <form
       id="form"
       class="ext/form"
       method="POST"
-      action="/posts/{{ post.slug }}/send"
+      action="/events/{{ event.id }}/dayof/send"
     >
-      <div class="field">
-        <label for="list_id">Send to list</label>
-        <select id="list" class="ext/select" name="list_id">
-          {% for list in lists %}
-            <option
-              value="{{ list.id }}"
-              data-count="{{ list.count }}"
-              data-sent="{{ list.sent }}"
-            >
-              {{ list.name }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
       <div id="progress" class="field">
         <ul class="counts">
           <li>Sent<span id="sent">0</span></li>
@@ -40,7 +26,6 @@
         <pre id="errors"></pre>
       </div>
       <button id="send" class="ext/button :green">Send</button>
-      <button id="resend" class="ext/button :yellow">Resend</button>
     </form>
   </section>
 {% endblock content %}
@@ -52,9 +37,7 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form:   $('form'),
-      list:   $('list'),
       send:   $('send'),
-      resend: $('resend'),
 
       sent:   $('sent'),
       remain: $('remaining'),
@@ -78,19 +61,11 @@
         }
       },
 
-      list: {
-        count: 0,
-        sent: 0,
-        remaining() {
-          return this.count - this.sent;
-        }
-      },
-
       errors: [],
       progress: {
         start: Date.now(),
-        sent: 0,
-        remaining: 0,
+        sent: parseInt(`{{ list.sent }}`),
+        remaining: parseInt(`{{ list.count }}`) - parseInt(`{{ list.sent }}`),
         percent() {
           const total = this.sent + this.remaining;
           return total > 0 ? (this.sent / total) * 100 : 0;
@@ -113,7 +88,6 @@
       ui.errors.className = state.status;
 
       // Update progress
-      ui.list.disabled = state.status == 'sending';
       ui.sent.textContent   = state.progress.sent;
       ui.remain.textContent = state.progress.remaining;
       ui.eta.textContent    = state.progress.eta();
@@ -121,42 +95,20 @@
       ui.errors.textContent = state.errors.join('\n');
 
       // Update send button
-      ui.send.style.display = state.list.remaining() > 0 ? 'block' : 'none';
-      ui.send.disabled = state.status == 'sending';
-      ui.send.textContent = `Send ${state.list.remaining()}${state.list.sent > 0 ? ' remaining' : ''} email${state.list.remaining() == 1 ? '' : 's'}`;
-
-      // Update resend button
-      ui.resend.style.display = state.list.sent > 0 ? 'block' : 'none';
-      ui.resend.disabled = state.status == 'sending';
-      ui.resend.textContent = `Resend ${state.list.count} email${state.list.count > 1 ? 's' : ''}`;
+      ui.send.disabled = state.progress.remaining == 0 || state.status == 'sending';
+      ui.send.textContent = `Send ${state.progress.remaining}${state.progress.sent > 0 ? ' remaining' : ''} email${state.progress.remaining == 1 ? '' : 's'}`;
     }
-
-    /* ---------- List change handler ------------------------------------------- */
-    ui.list.addEventListener("change", () => {
-      const { count, sent } = ui.list.selectedOptions[0].dataset;
-      state.list.count = +count;
-      state.list.sent = +sent;
-      state.progress.sent = state.list.sent;
-      state.progress.remaining = state.list.remaining();
-      state.status = null;
-      render();
-    });
-    ui.list.dispatchEvent(new Event("change"));
+    render();
 
     /* ---------- Form submit handler ------------------------------------------- */
-    const submit = async (resend) => {
-      const body = new URLSearchParams(new FormData(ui.form));
-      body.append("resend", resend);
-
+    const submit = async () => {
       state.status = 'sending';
       state.progress.start = Date.now();
-      state.progress.sent = 0;
-      state.progress.remaining = 0;
       state.errors = [];
       render();
 
       try {
-        const resp = await fetch(ui.form.action, { method: "POST", body });
+        const resp = await fetch(ui.form.action, { method: "POST" });
         if (!resp.ok) throw new Error(await resp.text());
 
         // The server streams us messages of the form:
@@ -174,12 +126,6 @@
           render();
         }
 
-        // Stash new sent count back into the <option> now that we've sent some emails
-        const opt = ui.list.selectedOptions[0];
-        console.log(`resend=${resend} progress.sent=${state.progress.sent} data.sent=${opt.dataset.sent}`);
-        state.list.sent = resend ? state.progress.sent : +opt.dataset.sent + state.progress.sent;
-        opt.dataset.sent = state.list.sent;
-
         state.status = "ok";
       } catch (e) {
         state.errors.push(e.stack);
@@ -187,8 +133,7 @@
       }
       render();
     };
-    ui.send.addEventListener("click", async (e) => (e.preventDefault(), await submit(false)));
-    ui.resend.addEventListener("click", async (e) => (e.preventDefault(), await submit(true)));
+    ui.send.addEventListener("click", async (e) => (e.preventDefault(), await submit()));
 
     /* ---------- Stream JSON from request body --------------------------------- */
     async function* streamJson(body) {

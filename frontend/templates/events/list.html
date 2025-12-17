@@ -10,30 +10,90 @@
     </header>
     {% for event in events %}
       <div class="event">
-        <div class="info">
-          <h2 class="title">
-            <a href="/e/{{ event.slug }}">{{ event.title }}</a>
-          </h2>
-          <time datetime="{{ event.start.date() }}">
-            {{ event.start | format_datetime("%a %b %d, %Y") }}
-          </time>
-        </div>
+        <h2 class="title">
+          <a href="/e/{{ event.slug }}">{{ event.title }}</a>
+        </h2>
+        <time datetime="{{ event.start.date() }}">
+          {{ event.start | format_datetime("%a %b %d, %Y") }}
+        </time>
         <div class="actions">
           <a class="ext/button :icon" href="/events/{{ event.slug }}/edit">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="size-6"
+              width="16"
+              height="16"
+              viewBox="0 0 48 48"
             >
               <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                fill="currentColor"
+                d="M41.974 6.025a6.907 6.907 0 0 0-9.768 0L8.038 30.197a6.007 6.007 0 0 0-1.572 2.758L4.039 42.44a1.25 1.25 0 0 0 1.52 1.52l9.487-2.424a6.006 6.006 0 0 0 2.76-1.572l24.168-24.172a6.907 6.907 0 0 0 0-9.767Zm-8 1.768a4.407 4.407 0 0 1 6.233 6.232L38 16.232l-6.232-6.233l2.206-2.206ZM30 11.767L36.232 18L16.038 38.196a3.507 3.507 0 0 1-1.611.918l-7.443 1.902l1.904-7.441c.156-.61.473-1.166.917-1.61L30 11.766Z"
               />
             </svg>
+            <span>Edit</span>
+          </a>
+          {% if event.guest_list_id.is_some() %}
+            <a
+              class="ext/button :icon"
+              href="/events/{{ event.id }}/invite/edit"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 48 48"
+              >
+                <path
+                  fill="currentColor"
+                  d="M37.75 9c2.9 0 5.25 2.35 5.25 5.25v19.5c0 2.9-2.35 5.25-5.25 5.25h-27.5A5.25 5.25 0 0 1 5 33.75v-19.5C5 11.35 7.35 9 10.25 9h27.5Zm2.75 9.351l-15.898 8.744a1.25 1.25 0 0 1-1.077.061l-.127-.06L7.5 18.35v15.4a2.75 2.75 0 0 0 2.75 2.75h27.5a2.75 2.75 0 0 0 2.75-2.75V18.351ZM37.75 11.5h-27.5a2.75 2.75 0 0 0-2.75 2.75v1.249L24 24.573l16.5-9.075V14.25a2.75 2.75 0 0 0-2.75-2.75Z"
+                />
+              </svg>
+              <span>Invite</span>
+            </a>
+          {% endif %}
+          <a
+            class="ext/button :icon"
+            href="/events/{{ event.id }}/confirmation/edit"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 48 48"
+            >
+              <path
+                fill="currentColor"
+                d="M37.75 9c2.9 0 5.25 2.35 5.25 5.25v19.5c0 2.9-2.35 5.25-5.25 5.25h-27.5A5.25 5.25 0 0 1 5 33.75v-19.5C5 11.35 7.35 9 10.25 9h27.5Zm2.75 9.351l-15.898 8.744a1.25 1.25 0 0 1-1.077.061l-.127-.06L7.5 18.35v15.4a2.75 2.75 0 0 0 2.75 2.75h27.5a2.75 2.75 0 0 0 2.75-2.75V18.351ZM37.75 11.5h-27.5a2.75 2.75 0 0 0-2.75 2.75v1.249L24 24.573l16.5-9.075V14.25a2.75 2.75 0 0 0-2.75-2.75Z"
+              />
+            </svg>
+            <span>Confirmation</span>
+          </a>
+          <a class="ext/button :icon" href="/events/{{ event.id }}/dayof/edit">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 48 48"
+            >
+              <path
+                fill="currentColor"
+                d="M37.75 9c2.9 0 5.25 2.35 5.25 5.25v19.5c0 2.9-2.35 5.25-5.25 5.25h-27.5A5.25 5.25 0 0 1 5 33.75v-19.5C5 11.35 7.35 9 10.25 9h27.5Zm2.75 9.351l-15.898 8.744a1.25 1.25 0 0 1-1.077.061l-.127-.06L7.5 18.35v15.4a2.75 2.75 0 0 0 2.75 2.75h27.5a2.75 2.75 0 0 0 2.75-2.75V18.351ZM37.75 11.5h-27.5a2.75 2.75 0 0 0-2.75 2.75v1.249L24 24.573l16.5-9.075V14.25a2.75 2.75 0 0 0-2.75-2.75Z"
+              />
+            </svg>
+            <span>Day-of</span>
+          </a>
+          <a class="ext/button :icon" href="/events/{{ event.slug }}/attendees">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 48 48"
+            >
+              <path
+                fill="currentColor"
+                d="M24 4c-5.523 0-10 4.477-10 10s4.477 10 10 10s10-4.477 10-10S29.523 4 24 4Zm-7.5 10a7.5 7.5 0 1 1 15 0a7.5 7.5 0 0 1-15 0Zm-4.25 14A4.25 4.25 0 0 0 8 32.249V33c0 3.755 1.942 6.567 4.92 8.38C15.85 43.163 19.786 44 24 44s8.15-.837 11.08-2.62C38.058 39.567 40 36.755 40 33v-.751A4.249 4.249 0 0 0 35.75 28h-23.5Zm-1.75 4.249a1.75 1.75 0 0 1 1.75-1.749h23.5c.967 0 1.75.783 1.75 1.749V33c0 2.744-1.36 4.808-3.72 6.245C31.37 40.712 27.932 41.5 24 41.5c-3.932 0-7.37-.788-9.78-2.255c-2.36-1.437-3.72-3.5-3.72-6.245v-.751Z"
+              />
+            </svg>
+            <span>Attendees</span>
           </a>
         </div>
       </div>

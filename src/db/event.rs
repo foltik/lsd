@@ -5,19 +5,28 @@ use crate::db::rsvp::Rsvp;
 use crate::db::spot::Spot;
 use crate::prelude::*;
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+#[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Event {
     pub id: i64,
     pub title: String,
     pub slug: String,
     pub description: String,
-
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
-
     pub capacity: i64,
     pub unlisted: bool,
     pub guest_list_id: Option<i64>,
+
+    pub invite_html: Option<String>,
+    pub invite_updated_at: Option<NaiveDateTime>,
+    pub invite_sent_at: Option<NaiveDateTime>,
+
+    pub confirmation_html: Option<String>,
+    pub confirmation_updated_at: Option<NaiveDateTime>,
+
+    pub dayof_html: Option<String>,
+    pub dayof_updated_at: Option<NaiveDateTime>,
+    pub dayof_sent_at: Option<NaiveDateTime>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -145,10 +154,80 @@ impl Event {
         Ok(())
     }
 
+    pub async fn update_invite(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+        let row = sqlx::query!(
+            "UPDATE EVENTS
+             SET invite_html = ?,
+                 invite_updated_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+             RETURNING updated_at",
+            html,
+            id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row.updated_at)
+    }
+
+    pub async fn mark_sent_invites(&self, db: &Db) -> Result<()> {
+        sqlx::query!("UPDATE events SET invite_sent_at = CURRENT_TIMESTAMP WHERE id = ?", self.id)
+            .execute(db)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn update_confirmation(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+        let row = sqlx::query!(
+            "UPDATE EVENTS
+             SET confirmation_html = ?,
+                 confirmation_updated_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+             RETURNING updated_at",
+            html,
+            id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row.updated_at)
+    }
+
+    pub async fn update_dayof(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+        let row = sqlx::query!(
+            "UPDATE EVENTS
+             SET dayof_html = ?,
+                 dayof_updated_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+             RETURNING updated_at",
+            html,
+            id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row.updated_at)
+    }
+
+    pub async fn mark_sent_dayof(&self, db: &Db) -> Result<()> {
+        sqlx::query!("UPDATE events SET dayof_sent_at = CURRENT_TIMESTAMP WHERE id = ?", self.id)
+            .execute(db)
+            .await?;
+        Ok(())
+    }
+
     // Delete an event.
     pub async fn delete(db: &Db, id: i64) -> Result<()> {
         sqlx::query!("DELETE FROM events WHERE id = ?", id).execute(db).await?;
         Ok(())
+    }
+
+    /// Lookup a post by id.
+    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<Event>> {
+        let row = sqlx::query_as!(Self, "SELECT * FROM events WHERE id = ?", id)
+            .fetch_optional(db)
+            .await?;
+        Ok(row)
     }
 
     /// Lookup a post by URL, if one exists.

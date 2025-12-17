@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT e.*, u.email as address FROM emails e\n            JOIN users u ON u.id = e.user_id\n            WHERE e.kind = ? AND e.event_id = ? AND e.list_id = ?\n                AND ifnull(e.sent_at, '') = (\n                    SELECT ifnull(MAX(ee.sent_at), '')\n                    FROM emails ee\n                    WHERE ee.kind = e.kind\n                    AND ee.list_id = e.list_id\n                    AND ee.user_id = e.user_id\n                    AND ee.event_id = e.event_id\n                );\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_version",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "post_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "list_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notification_id",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "sent_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "opened_at",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "address",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "d6ace25a7ffcc03ee6a1b199371369ac0ecba36a7abd4470666ed6a77d3bac42"
+}

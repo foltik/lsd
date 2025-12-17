@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n             INSERT INTO emails (kind, user_id, user_version, event_id)\n                 SELECT ?, u.id, uh.version, ?\n                 FROM rsvps r\n                 JOIN rsvp_sessions rs ON rs.id = r.session_id\n                 JOIN users u ON u.id = r.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                 WHERE rs.event_id = ?\n                   AND NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_version",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "post_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "list_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "notification_id",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "sent_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "opened_at",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "address!",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "058c90033d34c0db0877b72a584b4dcf50d26f7beb511026e79642a42e73bb11"
+}

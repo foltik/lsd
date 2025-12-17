@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                u.first_name as \"first_name!\",\n                u.last_name as \"last_name!\",\n                u.email,\n                CASE\n                    WHEN rs.user_id IS NOT NULL AND rs.user_id != r.user_id\n                    THEN hu.first_name || ' ' || hu.last_name\n                    ELSE NULL\n                END AS guest_of,\n\n                sp.name AS spot_name,\n                r.contribution,\n\n                r.created_at,\n                r.checkin_at\n            FROM rsvps r\n            JOIN rsvp_sessions rs ON rs.id = r.session_id\n            JOIN spots sp ON sp.id = r.spot_id\n            JOIN users u  ON u.id  = r.user_id\n            JOIN users hu ON hu.id = rs.user_id\n\n            WHERE rs.event_id = ?\n            ORDER BY u.last_name;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "first_name!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "guest_of",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "spot_name",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "checkin_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "dd5fbaa2bc5bdd79902ed1a985836ec3e0cfb3e2a120dcf608ee7e928cfe88de"
+}

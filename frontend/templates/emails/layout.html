@@ -1,12 +1,11 @@
-{# TODO email template file? #}
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock title %}</title>
+    {# fix gmail inverting everything back to light #}
     <meta name="color-scheme" content="light only" />
-    <!-- Stop email clients from messing with the colors -->
-    <title>{{ post.title }}</title>
     <style>
       html,
       body {
@@ -14,15 +13,15 @@
         padding: 0;
         width: 100%;
         height: 100%;
-        color: #f2f2f2;
-        background-color: #000;
+        color: #ebe3de;
+        background-color: #080504;
         font-family: system-ui;
         line-height: 1.6;
       }
 
       header {
         padding: 1rem;
-        border-bottom: 1px solid #333;
+        border-bottom: 1px solid #1e1b19;
       }
       header a {
         text-decoration: none;
@@ -43,8 +42,8 @@
         flex-direction: column;
         justify-content: center;
         padding: 1rem 0;
-        border-top: 1px solid #333;
-        color: #aaa;
+        border-top: 1px solid #1e1b19;
+        color: #878787;
       }
 
       article {
@@ -52,9 +51,9 @@
         margin: 0 auto;
         padding: 1rem;
 
-        /* Styles copied from above for gmail */
-        color: #f2f2f2;
-        background-color: #000;
+        /* fix gmail not inheriting from body */
+        color: #ebe3de;
+        background-color: #080504;
         font-family: system-ui;
         line-height: 1.6;
       }
@@ -66,15 +65,6 @@
         line-height: 2.2rem;
       }
 
-      time {
-        display: block;
-        margin-bottom: 2rem;
-        font-size: 0.8rem;
-        letter-spacing: 0.2px;
-        text-transform: uppercase;
-        color: #aaa;
-      }
-
       p {
         margin: 0;
       }
@@ -83,8 +73,8 @@
         font-style: italic;
         margin: 2rem 0;
         padding: 1.5rem 2rem;
-        background: #080808;
-        border-left: 4px solid #333;
+        background: #1e1b19;
+        border-left: 4px solid #878787;
       }
 
       img {
@@ -100,20 +90,23 @@
       }
 
       a {
-        color: #f2f2f2 !important; /* Fix gmail overriding link colors with !important */
+        /* fix gmail overriding link color with !important */
+        color: #ebe3de !important;
         text-decoration: underline;
         text-decoration-color: #8ec6ff;
       }
       a:hover {
-        color: #aaa;
+        color: #8ec6ff;
       }
       ul {
         list-style-position: inside;
       }
     </style>
+    {% block styles %}
+    {% endblock styles %}
   </head>
-  <body style="background-color: #000;">
-    <!-- Fix gmail ignoring non-inline body styles -->
+  {# fix gmail ignoring non-inline body styles #}
+  <body style="background-color: #080504;">
     <header>
       <div class="nav">
         <a class="home" href="https://lightandsound.design">
@@ -121,24 +114,14 @@
         </a>
       </div>
     </header>
-    <main style="background-color: #000;">
-      <article>
-        <h1 class="title">{{ post.title }}</h1>
-        <time class="date" datetime="{{ post.created_at }}"
-          >{{ post.created_at | format_datetime("%b %d, %Y") }}</time
-        >
-        {{ post.content | safe }}
-        <img alt="footer" src="{{ opened_url }}" />
-      </article>
+    <main style="background-color: #080504;">
+      {% block content %}
+      {% endblock content %}
+      <img alt="footer" src="{{ email_id | opened_url }}" />
     </main>
     <footer>
-      <!-- Gmail deletes the nav element for some reason, use a div instead -->
-      <div class="nav">
-        <p>
-          <a href="{{ post_url }}">View this post on the web</a> or
-          <a href="{{ unsub_url }}">unsubscribe</a>
-        </p>
-      </div>
+      {% block footer %}
+      {% endblock footer %}
     </footer>
   </body>
 </html>

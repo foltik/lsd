@@ -1,5 +1,6 @@
 pub mod cloudflare;
 pub mod config;
+pub mod editor;
 pub mod emailer;
 pub mod error;
 pub mod image;
