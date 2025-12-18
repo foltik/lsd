@@ -26,18 +26,29 @@ pub struct RsvpSession {
 }
 
 impl RsvpSession {
-    pub const DRAFT: &str = "draft";
-    pub const AWAITING_PAYMENT: &str = "awaiting_payment";
-    pub const CONFIRMED: &str = "confirmed";
+    pub const SELECTION: &str = "selection";
+    pub const ATTENDEES: &str = "attendees";
+    pub const CONTRIBUTION: &str = "contribution";
+    pub const PAYMENT_PENDING: &str = "payment_pending";
+    pub const PAYMENT_CONFIRMED: &str = "payment_confirmed";
 
-    pub const DRAFT_EXPIRY_TIME_SQL: &str = "-15 minutes";
+    pub const EXPIRY_TIME_SQL: &str = "-31 minutes";
+    pub const STRIPE_EXPIRY_MINUTES: i64 = 30;
 
-    fn cookie(&self) -> String {
+    /// Returns true if the stripe client secret is expired (older than 14 minutes).
+    pub fn is_stripe_expired(&self) -> bool {
+        let now = Utc::now().naive_utc();
+        let age = now - self.updated_at;
+        age.num_minutes() >= Self::STRIPE_EXPIRY_MINUTES
+    }
+
+    fn cookie(&self, path: &str) -> String {
         Cookie::build(("rsvp_session", &self.token))
             .secure(config().acme.is_some())
             .http_only(true)
             .same_site(cookie::SameSite::Strict)
             .domain(&config().app.domain)
+            .path(path)
             .to_string()
     }
 
@@ -76,7 +87,12 @@ impl RsvpSession {
             None => RsvpSession::create(db, event_id, user).await?,
         };
 
-        Ok([(header::SET_COOKIE, session.cookie())])
+        let event = Event::lookup_by_id(db, event_id)
+            .await?
+            .ok_or_else(|| any!("RsvpSession::get_or_create(): no such event_id={event_id}"))?;
+        let path = format!("/e/{}", event.slug);
+
+        Ok([(header::SET_COOKIE, session.cookie(&path))])
     }
 
     pub async fn create(db: &Db, event_id: i64, user: &Option<User>) -> Result<Self> {
@@ -93,7 +109,7 @@ impl RsvpSession {
                RETURNING *"#,
             event_id,
             token,
-            Self::DRAFT,
+            Self::SELECTION,
             user_id,
             user_version,
         )
@@ -132,13 +148,13 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_awaiting_payment(&self, db: &Db) -> Result<()> {
+    pub async fn set_status(&self, db: &Db, status: &str) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET status = ?,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
-            Self::AWAITING_PAYMENT,
+            status,
             self.id
         )
         .execute(db)
@@ -146,14 +162,12 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_confirmed(&self, db: &Db, payment_intent_id: Option<&str>) -> Result<()> {
+    pub async fn set_payment_intent_id(&self, db: &Db, payment_intent_id: &str) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
-             SET status = ?,
-                 stripe_payment_intent_id = ?,
+             SET stripe_payment_intent_id = ?,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
-            Self::CONFIRMED,
             payment_intent_id,
             self.id
         )
@@ -189,13 +203,15 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn delete_expired_drafts(db: &Db) -> Result<()> {
+    pub async fn delete_expired(db: &Db) -> Result<()> {
         sqlx::query!(
             "DELETE FROM rsvp_sessions
-             WHERE status = ?
+             WHERE status in (?, ?, ?)
              AND updated_at < datetime('now', ?)",
-            Self::DRAFT,
-            Self::DRAFT_EXPIRY_TIME_SQL,
+            Self::SELECTION,
+            Self::ATTENDEES,
+            Self::CONTRIBUTION,
+            Self::EXPIRY_TIME_SQL,
         )
         .execute(db)
         .await?;
@@ -227,4 +243,95 @@ impl RsvpSession {
 
         Ok(line_items)
     }
+
+    /// List all sessions for debug view (only for events within last 24hrs).
+    pub async fn list_debug(db: &Db) -> Result<Vec<DebugSession>> {
+        let sessions = sqlx::query_as!(
+            DebugSessionRow,
+            r#"SELECT
+                s.id,
+                s.status,
+                s.created_at,
+                s.updated_at,
+                e.title AS event_title,
+                e.slug AS event_slug,
+                u.email AS user_email
+            FROM rsvp_sessions s
+            JOIN events e ON e.id = s.event_id
+            LEFT JOIN users u ON u.id = s.user_id
+            WHERE e.start > datetime('now', '-24 hours')
+            ORDER BY s.updated_at DESC"#
+        )
+        .fetch_all(db)
+        .await?;
+
+        let rsvps = sqlx::query_as!(
+            DebugRsvp,
+            r#"SELECT
+                r.session_id,
+                sp.name AS spot_name,
+                r.contribution,
+                u.email
+            FROM rsvps r
+            JOIN spots sp ON sp.id = r.spot_id
+            LEFT JOIN users u ON u.id = r.user_id"#
+        )
+        .fetch_all(db)
+        .await?;
+
+        let now = Utc::now().naive_utc();
+        let mut rsvps_by_session: HashMap<i64, Vec<DebugRsvp>> = HashMap::new();
+        for rsvp in rsvps {
+            rsvps_by_session.entry(rsvp.session_id).or_default().push(rsvp);
+        }
+
+        Ok(sessions
+            .into_iter()
+            .map(|s| {
+                let expires_in = 31 - (now - s.updated_at).num_minutes();
+                DebugSession {
+                    id: s.id,
+                    status: s.status,
+                    created_at: s.created_at,
+                    updated_at: s.updated_at,
+                    event_title: s.event_title,
+                    event_slug: s.event_slug,
+                    user_email: s.user_email,
+                    rsvps: rsvps_by_session.remove(&s.id).unwrap_or_default(),
+                    expires_in,
+                }
+            })
+            .collect())
+    }
+}
+
+struct DebugSessionRow {
+    id: i64,
+    status: String,
+    created_at: NaiveDateTime,
+    updated_at: NaiveDateTime,
+    event_title: String,
+    event_slug: String,
+    user_email: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct DebugSession {
+    pub id: i64,
+    pub status: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub event_title: String,
+    pub event_slug: String,
+    pub user_email: Option<String>,
+    pub rsvps: Vec<DebugRsvp>,
+    pub expires_in: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct DebugRsvp {
+    pub session_id: i64,
+    pub spot_name: String,
+    pub contribution: i64,
+    pub email: Option<String>,
 }

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE EVENTS\n             SET confirmation_subject = ?,\n                 confirmation_html = ?,\n                 confirmation_updated_at = CURRENT_TIMESTAMP,\n                 updated_at = CURRENT_TIMESTAMP\n             WHERE id = ?\n             RETURNING confirmation_updated_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "confirmation_updated_at",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "a76250e7f015d820a55e1072fff9ea988ee03b8b2dd115156e574972d37361bf"
+}

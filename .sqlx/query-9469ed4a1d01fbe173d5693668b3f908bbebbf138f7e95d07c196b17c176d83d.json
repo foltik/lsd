@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                l.name AS name,\n                COUNT(lm.user_id) AS count,\n                SUM(\n                    CASE WHEN EXISTS (\n                        SELECT 1\n                        FROM emails e\n                        WHERE kind = ?\n                          AND e.user_id = u.id\n                          AND e.event_id = ?\n                          AND e.sent_at IS NOT NULL\n                    )\n                    THEN 1 ELSE 0 END\n                ) AS sent\n            FROM lists l\n            LEFT JOIN list_members lm ON lm.list_id = l.id\n            LEFT JOIN users u ON u.id = lm.user_id\n            WHERE l.id = ?\n            GROUP BY l.id;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "count",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sent",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9469ed4a1d01fbe173d5693668b3f908bbebbf138f7e95d07c196b17c176d83d"
+}

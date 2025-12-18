@@ -147,7 +147,7 @@
         spot.querySelector('input[name="contribution"]').value,
     };
     const stats = JSON.parse(`{{ stats | json | safe }}`);
-    const userMaxSpots = +`{{ user_max_spots.unwrap_or(0) }}` || Infinity;
+    const userQty = +`{{ user_qty.unwrap_or(0) }}` || Infinity;
 
     /* ---------- Update spot limits and total ------------------ */
     const updateSpots = () => {
@@ -168,7 +168,7 @@
         const currQty = +spot.dataset.qty;
         const remainingSpotCapacity = stats.remaining_spots[+spot.dataset.id];
         const remainingSpotLimitPerPerson = +spot.dataset.limit - currQty;
-        const remainingLimitForUser = userMaxSpots - totalQty;
+        const remainingLimitForUser = userQty - totalQty;
         const remainingQty = Math.max(
           0,
           Math.min(

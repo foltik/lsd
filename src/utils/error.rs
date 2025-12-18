@@ -196,7 +196,9 @@ impl IntoResponse for HtmlError {
                 backtrace,
             }),
             HtmlError::Any(_) => (StatusCode::INTERNAL_SERVER_ERROR, {
-                let email = config().email.from.email.to_string();
+                let contact_to = config().email.contact_to.as_ref();
+                let from = &config().email.from;
+                let email = contact_to.unwrap_or(from).to_string();
                 let mailto = format!(r#"<a href="mailto:{email}">{email}</a>"#);
                 ErrorHtml {
                     user: None,

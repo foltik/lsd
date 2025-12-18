@@ -20,5 +20,5 @@ pub async fn init(state: SharedAppState, config: Config) {
     );
 }
 async fn expire_rsvp_sessions(state: SharedAppState) {
-    let _ = RsvpSession::delete_expired_drafts(&state.db).await;
+    let _ = RsvpSession::delete_expired(&state.db).await;
 }

@@ -55,7 +55,9 @@
           >
         </div>
       </div>
-      <p class="description">{{ event.description | safe }}</p>
+      {% if let Some(desc) = event.description_html.as_ref() %}
+        <div class="description">{{ desc | safe }}</div>
+      {% endif %}
     </div>
     <div id="events/rsvp/actions">
       <!--<button class="share">
@@ -71,10 +73,10 @@
           />
         </svg>
       </button>-->
-      {% if let Some(session) = session %}
+      {% if session.is_some() && (session.as_ref().unwrap().status == RsvpSession::PAYMENT_PENDING || session.as_ref().unwrap().status == RsvpSession::PAYMENT_CONFIRMED) %}
         <a
           class="rsvp"
-          href="/e/{{ event.slug }}/rsvp/manage?reservation={{ session.token }}"
+          href="/e/{{ event.slug }}/rsvp/manage?reservation={{ session.as_ref().unwrap().token }}"
         >
           <span>Manage my reservation</span>
           <span>&rarr;</span>

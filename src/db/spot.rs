@@ -81,6 +81,24 @@ impl Spot {
         .await?)
     }
 
+    /// Get RSVP counts per spot for an event.
+    pub async fn rsvp_counts_for_event(
+        db: &Db, event_id: i64,
+    ) -> Result<std::collections::HashMap<i64, i64>> {
+        let rows = sqlx::query!(
+            r#"SELECT r.spot_id, COUNT(*) as count
+               FROM rsvps r
+               JOIN rsvp_sessions rs ON rs.id = r.session_id
+               WHERE rs.event_id = ?
+               GROUP BY r.spot_id"#,
+            event_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| (r.spot_id, r.count)).collect())
+    }
+
     /// Create a new spot.
     pub async fn create(db: &Db, spot: &UpdateSpot) -> Result<i64> {
         let row = sqlx::query!(

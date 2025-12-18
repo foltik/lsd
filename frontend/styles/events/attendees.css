@@ -5,4 +5,7 @@
   td {
     @apply px-1;
   }
+  .checkin {
+    @apply flex items-center gap-2;
+  }
 }

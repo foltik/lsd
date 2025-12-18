@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rsvp_sessions\n             WHERE status in (?, ?, ?)\n             AND updated_at < datetime('now', ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "e74c7b012c77c20c04d3a57bba0232993b4164eb538dbc1dcb2ba0953086d46d"
+}
