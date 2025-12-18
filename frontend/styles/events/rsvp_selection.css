@@ -2,10 +2,7 @@
   .spot {
     @apply mt-6 flex flex-col p-6;
 
-    @apply border-lsd-charcoal rounded-lg border;
-    &:nth-child(1) {
-      @apply border-lsd-white;
-    }
+    @apply border-lsd-white rounded-lg border;
 
     .name {
       @apply mb-2 text-2xl;

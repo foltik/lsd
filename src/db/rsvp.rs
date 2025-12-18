@@ -60,6 +60,7 @@ pub struct EventRsvp {
 }
 
 pub struct AdminAttendeesRsvp {
+    pub rsvp_id: i64,
     pub first_name: String,
     pub last_name: String,
     pub email: String,
@@ -78,6 +79,7 @@ impl Rsvp {
             AdminAttendeesRsvp,
             r#"
             SELECT
+                r.id AS rsvp_id,
                 u.first_name as "first_name!",
                 u.last_name as "last_name!",
                 u.email,
@@ -165,6 +167,8 @@ impl Rsvp {
         .fetch_all(db)
         .await?)
     }
+    /// List rsvps for an event, excluding a specific session.
+    /// Only includes sessions at CONTRIBUTION status or later (spots are "held" once at contribution).
     pub async fn list_for_event_excluding_session(
         db: &Db, event_id: i64, session_id: i64,
     ) -> Result<Vec<EventRsvp>> {
@@ -173,9 +177,14 @@ impl Rsvp {
             "SELECT spot_id, contribution
              FROM rsvps r
              JOIN rsvp_sessions s ON s.id = r.session_id
-             WHERE s.event_id = ? AND s.id != ?",
+             WHERE s.event_id = ?
+               AND s.id != ?
+               AND s.status IN (?, ?, ?)",
             event_id,
             session_id,
+            RsvpSession::CONTRIBUTION,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -241,6 +250,23 @@ impl Rsvp {
 
     pub async fn delete_for_session(db: &Db, session_id: i64) -> Result<()> {
         sqlx::query!(r#"DELETE FROM rsvps WHERE session_id = ?"#, session_id)
+            .execute(db)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_checkin_at(db: &Db, rsvp_id: i64) -> Result<NaiveDateTime> {
+        let row = sqlx::query!(
+            "UPDATE rsvps SET checkin_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING checkin_at AS 'checkin_at!'",
+            rsvp_id
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row.checkin_at)
+    }
+
+    pub async fn clear_checkin_at(db: &Db, rsvp_id: i64) -> Result<()> {
+        sqlx::query!("UPDATE rsvps SET checkin_at = NULL WHERE id = ?", rsvp_id)
             .execute(db)
             .await?;
         Ok(())

@@ -1,0 +1,15 @@
+#events\/sessions {
+  table {
+    @apply w-full text-xs;
+  }
+  th,
+  td {
+    @apply px-2 py-1 text-left;
+  }
+  .rsvps {
+    @apply flex flex-col gap-1;
+  }
+  .rsvps span {
+    @apply text-neutral-400;
+  }
+}

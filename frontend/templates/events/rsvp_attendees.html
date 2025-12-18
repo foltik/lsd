@@ -53,7 +53,7 @@
           </div>
           <div class="subtext">
             <p class="spot">{{ attendee.spot_name }}</p>
-            <p class="price">$0</p>
+            <p class="price">${{ attendee.contribution }}</p>
           </div>
           <div class="name">
             <label class="first field">
@@ -94,13 +94,12 @@
           </div>
           <div>
             <label class="field">
-              <span class="label">Phone (1234567890)</span>
+              <span class="label">Phone</span>
               <input
                 name="phone"
                 class="ext/input"
                 type="tel"
                 value="{{ attendee.phone | unwrap_or_empty }}"
-                pattern="[0-9]{3}[0-9]{3}[0-9]{4}"
                 autocomplete="tel"
               />
             </label>
@@ -157,6 +156,58 @@
     // Provide current user data for autofill; null if not logged in.
     const user = JSON.parse(`{{ user | json | safe }}`);
 
+    /* ---------- Validation: throws on error, returns formatted value -------- */
+    const validate = {
+      phone: (phone) => {
+        if (!phone.trim()) return "";
+        const digits = phone.replace(/\D/g, "");
+        if (digits.length == 10) return "+1" + digits;
+        if (digits.length >= 11 && digits.length <= 15) return "+" + digits;
+        throw new Error(
+          "Phone must be 10 digits (US) or 11-15 digits (international)",
+        );
+      },
+      email: (email) => {
+        if (!email.trim()) throw new Error("Email is required");
+        const trimmed = email.trim().toLowerCase();
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return trimmed;
+        throw new Error("Invalid email address");
+      },
+    };
+
+    /* ---------- Validate on blur -------------------------------------------- */
+    const checkDuplicate = (field, value) => {
+      if (!value) return;
+      const others = [...ui.form.querySelectorAll(`[name="${field}"]`)].filter(
+        (el) => el.value === value,
+      );
+      if (others.length > 1)
+        throw new Error(`Each guest must have a different ${field}`);
+    };
+
+    for (const a of ui.attendees()) {
+      ui.field(a, "phone").addEventListener("blur", (e) => {
+        try {
+          e.target.value = validate.phone(e.target.value);
+          checkDuplicate("phone", e.target.value);
+          e.target.classList.remove("error");
+        } catch (err) {
+          e.target.classList.add("error");
+          alert(err.message);
+        }
+      });
+      ui.field(a, "email").addEventListener("blur", (e) => {
+        try {
+          e.target.value = validate.email(e.target.value);
+          checkDuplicate("email", e.target.value);
+          e.target.classList.remove("error");
+        } catch (err) {
+          e.target.classList.add("error");
+          alert(err.message);
+        }
+      });
+    }
+
     /* ---------- Handle "This is me!" selection and autofill ----------------- */
     ui.form.addEventListener("change", (e) => {
       if (!user || e.target.name != "is_me") return;
@@ -198,20 +249,41 @@
     ui.next.addEventListener("click", async () => {
       // Let the browser run built-in HTML validation first.
       if (!ui.form.reportValidity()) return;
+      if (ui.form.querySelector(".error")) return;
 
       const attendees = [];
       for (const a of ui.attendees()) {
         const rsvp_id = +a.dataset.rsvpId;
         const first_name = ui.field(a, "first_name").value.trim();
         const last_name = ui.field(a, "last_name").value.trim();
-        const email = ui.field(a, "email").value.trim();
-        const phone = ui.field(a, "phone").value.trim();
+
+        // Use validated/formatted values
+        let email, phone;
+        try {
+          email = validate.email(ui.field(a, "email").value);
+          phone = validate.phone(ui.field(a, "phone").value);
+        } catch (err) {
+          alert(err.message);
+          return;
+        }
 
         // When there's only a single RSVP, is_me is always true
-        let is_me_radio = a.querySelector('input[name="is_me"]');
+        const is_me_radio = a.querySelector('input[name="is_me"]');
         const is_me = is_me_radio ? is_me_radio.checked : true;
 
         attendees.push({ rsvp_id, first_name, last_name, email, phone, is_me });
+      }
+
+      // Check for duplicate emails and phones
+      const emails = attendees.map((a) => a.email);
+      const phones = attendees.map((a) => a.phone).filter((p) => p);
+      if (new Set(emails).size != emails.length) {
+        alert("Each guest must have a different email");
+        return;
+      }
+      if (new Set(phones).size != phones.length) {
+        alert("Each guest must have a different phone number");
+        return;
       }
 
       const form = document.createElement("form");
