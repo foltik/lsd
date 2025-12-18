@@ -1,10 +1,20 @@
 {% extends "emails/layout.html" %}
 
-{% block title %}Confirmation for {{ event.title }}{% endblock %}
+{% block title %}{% if let Some(subject) = event.confirmation_subject.as_deref() %}
+  {{ subject }}
+{% else %}
+  You're confirmed for {{ event.title }}
+{% endif %}{% endblock %}
 
 {% block content %}
   <article>
-    <h1 class="title">You're confirmed for {{ event.title }}</h1>
+    <h1 class="title">
+      {% if let Some(subject) = event.confirmation_subject.as_deref() %}
+        {{ subject }}
+      {% else %}
+        You're confirmed for {{ event.title }}
+      {% endif %}
+    </h1>
     <div class="details">
       <time aria-label="date" datetime="{{ event.start }}"
         >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
@@ -21,6 +31,8 @@
     </div>
     {% if let Some(confirmation_html) = event.confirmation_html %}
       {{ confirmation_html | safe }}
+    {% else %}
+      <p>Thank you for your contribution. We look forward to seeing you!</p>
     {% endif %}
     <div class="center">
       <a

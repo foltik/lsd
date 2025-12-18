@@ -1,12 +1,20 @@
 {% extends "emails/layout.html" %}
 
-{% block title %}Invitation to {{ event.title }}{% endblock %}
+{% block title %}{% if let Some(subject) = event.invite_subject.as_deref() %}
+  {{ subject }}
+{% else %}
+  Invitation to {{ event.title }}
+{% endif %}{% endblock %}
 
 {% block content %}
   <article>
     <h1 class="title">
       <a href="{{ "" | url }}/e/{{ event.slug }}/rsvp?email={{ email }}"
-        >{{ event.title }}</a
+        >{% if let Some(subject) = event.invite_subject.as_deref() %}
+          {{ subject }}
+        {% else %}
+          Invitation to {{ event.title }}
+        {% endif %}</a
       >
     </h1>
     <div class="details">

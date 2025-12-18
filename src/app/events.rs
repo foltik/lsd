@@ -23,10 +23,13 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
+                .route("/events/sessions", get(read::sessions_page))
+                .route("/events/sessions/{id}", delete(read::delete_session))
                 .route("/events/new", get(edit::new_page))
                 .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
                 .route("/events/{slug}/delete", post(edit::delete_form))
                 .route("/events/{slug}/attendees", get(edit::attendees_page))
+                .route("/events/{slug}/attendees/{rsvp_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
                 .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
                 .route("/events/{id}/invite/preview", get(edit::preview_invite_page))
                 .route("/events/{id}/invite/send", get(edit::send_invite_page).post(edit::send_invite_form))
@@ -35,12 +38,14 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{id}/dayof/edit", get(edit::edit_dayof_page).post(edit::edit_dayof_form))
                 .route("/events/{id}/dayof/preview", get(edit::preview_dayof_page))
                 .route("/events/{id}/dayof/send", get(edit::send_dayof_page).post(edit::send_dayof_form))
+                .route("/events/{id}/description/edit", get(edit::edit_description_page).post(edit::edit_description_form))
         })
 }
 
 // View and list events.
 mod read {
     use super::*;
+    use crate::db::rsvp_session;
 
     /// View an event.
     pub async fn view_page(
@@ -99,6 +104,28 @@ mod read {
         )
             .into_response())
     }
+
+    /// Debug view for RSVP sessions.
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/sessions.html")]
+    struct SessionsHtml {
+        user: Option<User>,
+        sessions: Vec<rsvp_session::DebugSession>,
+    }
+    pub async fn sessions_page(user: User, State(state): State<SharedAppState>) -> HtmlResult {
+        let sessions = RsvpSession::list_debug(&state.db).await?;
+        Ok(SessionsHtml { user: Some(user), sessions }.into_response())
+    }
+
+    pub async fn delete_session(State(state): State<SharedAppState>, Path(id): Path<i64>) -> JsonResult<()> {
+        let session = RsvpSession::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
+        if session.status == RsvpSession::PAYMENT_PENDING || session.status == RsvpSession::PAYMENT_CONFIRMED
+        {
+            bail_invalid!();
+        }
+        session.delete(&state.db).await?;
+        Ok(Json(()))
+    }
 }
 
 // Create and edit events.
@@ -116,6 +143,7 @@ mod edit {
         user: Option<User>,
         event: Event,
         spots: Vec<Spot>,
+        rsvp_counts: std::collections::HashMap<i64, i64>,
         has_flyer: bool,
         lists: Vec<ListWithCount>,
     }
@@ -129,20 +157,27 @@ mod edit {
                 id: 0,
                 title: "".into(),
                 slug: "".into(),
-                description: "".into(),
                 start: Utc::now().naive_utc(),
                 end: None,
                 capacity: 0,
                 unlisted: false,
+                closed: false,
                 guest_list_id: None,
+                spots_per_person: None,
 
+                description_html: None,
+                description_updated_at: None,
+
+                invite_subject: None,
                 invite_html: None,
                 invite_updated_at: None,
                 invite_sent_at: None,
 
+                confirmation_subject: None,
                 confirmation_html: None,
                 confirmation_updated_at: None,
 
+                dayof_subject: None,
                 dayof_html: None,
                 dayof_updated_at: None,
                 dayof_sent_at: None,
@@ -151,6 +186,7 @@ mod edit {
                 updated_at: Utc::now().naive_utc(),
             },
             spots: vec![],
+            rsvp_counts: Default::default(),
             has_flyer: false,
             lists,
         }
@@ -163,9 +199,10 @@ mod edit {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let rsvp_counts = Spot::rsvp_counts_for_event(&state.db, event.id).await?;
         let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
         let lists = List::list_with_counts(&state.db).await?;
-        Ok(EditHtml { user: Some(user), event, spots, has_flyer, lists }.into_response())
+        Ok(EditHtml { user: Some(user), event, spots, rsvp_counts, has_flyer, lists }.into_response())
     }
 
     // Handle edit submission.
@@ -203,6 +240,7 @@ mod edit {
             Some(id) => {
                 Event::update(&state.db, id, &form.event, &flyer).await?;
 
+                let rsvp_counts = Spot::rsvp_counts_for_event(&state.db, id).await?;
                 let mut to_add = vec![];
                 let mut to_delete = Spot::list_ids_for_event(&state.db, id).await?;
 
@@ -219,8 +257,10 @@ mod edit {
                     }
                 }
 
+                // Only delete spots with no RSVPs
+                to_delete.retain(|&spot_id| rsvp_counts.get(&spot_id).copied().unwrap_or(0) == 0);
+
                 Spot::add_to_event(&state.db, id, to_add).await?;
-                // TODO: Disallow??
                 Spot::remove_from_event(&state.db, id, to_delete).await?;
             }
             None => {
@@ -274,7 +314,8 @@ mod edit {
     #[derive(serde::Deserialize)]
     pub struct EditInviteForm {
         id: i64,
-        content: String, // TODO: rename to html in editor
+        subject: String,
+        content: String,
     }
     #[derive(serde::Serialize)]
     pub struct EditInviteResponse {
@@ -289,7 +330,7 @@ mod edit {
             bail_not_found!();
         };
 
-        let updated_at = Event::update_invite(&state.db, event.id, form.content).await?;
+        let updated_at = Event::update_invite(&state.db, event.id, form.subject, form.content).await?;
 
         Ok(Json(EditInviteResponse {
             id: Some(event.id),
@@ -328,14 +369,16 @@ mod edit {
         };
 
         #[derive(sqlx::FromRow)]
-        struct Counts {
+        struct ListCounts {
+            name: String,
             count: i64,
             sent: i64,
         }
         let list = sqlx::query_as!(
-            Counts,
+            ListCounts,
             r#"
             SELECT
+                l.name AS name,
                 COUNT(lm.user_id) AS count,
                 SUM(
                     CASE WHEN EXISTS (
@@ -365,7 +408,7 @@ mod edit {
         #[template(path = "events/send_invites.html")]
         struct SendHtml {
             user: Option<User>,
-            list: Counts,
+            list: ListCounts,
             event: Event,
             ratelimit: usize,
         }
@@ -401,7 +444,7 @@ mod edit {
                 .builder()
                 .to(address.parse().unwrap())
                 .reply_to(reply_to.clone())
-                .subject(format!("Invitation to {}", event.title))
+                .subject(event.invite_subject.as_deref().expect("missing invite_subject"))
                 .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(email_template.render()?)
                 .unwrap();
@@ -471,7 +514,8 @@ mod edit {
     #[derive(serde::Deserialize)]
     pub struct EditConfirmationForm {
         id: i64,
-        content: String, // TODO: rename to html in editor
+        subject: String,
+        content: String,
     }
     #[derive(serde::Serialize)]
     pub struct EditConfirmationResponse {
@@ -486,7 +530,7 @@ mod edit {
             bail_not_found!();
         };
 
-        let updated_at = Event::update_confirmation(&state.db, event.id, form.content).await?;
+        let updated_at = Event::update_confirmation(&state.db, event.id, form.subject, form.content).await?;
 
         Ok(Json(EditConfirmationResponse {
             id: Some(event.id),
@@ -551,7 +595,8 @@ mod edit {
     #[derive(serde::Deserialize)]
     pub struct EditDayofForm {
         id: i64,
-        content: String, // TODO: rename to html in editor
+        subject: String,
+        content: String,
     }
     #[derive(serde::Serialize)]
     pub struct EditDayofResponse {
@@ -566,7 +611,7 @@ mod edit {
             bail_not_found!();
         };
 
-        let updated_at = Event::update_dayof(&state.db, event.id, form.content).await?;
+        let updated_at = Event::update_dayof(&state.db, event.id, form.subject, form.content).await?;
 
         Ok(Json(EditDayofResponse {
             id: Some(event.id),
@@ -626,8 +671,8 @@ mod edit {
             "#,
             Email::EVENT_DAYOF,
             event.id,
-            RsvpSession::AWAITING_PAYMENT,
-            RsvpSession::CONFIRMED,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
         )
         .fetch_one(&state.db)
         .await?;
@@ -649,7 +694,7 @@ mod edit {
             bail_not_found!();
         };
 
-        let emails = Email::create_send_dayof(&state.db, event.id).await?;
+        let emails = Email::create_send_dayof_batch(&state.db, event.id).await?;
 
         let mut email_template = DayofEmailHtml { email_id: 0, event: event.clone() };
         let mut messages = vec![];
@@ -668,7 +713,7 @@ mod edit {
                 .builder()
                 .to(address.parse().unwrap())
                 .reply_to(reply_to.clone())
-                .subject(format!("What to know for {}", event.title))
+                .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
                 .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(email_template.render()?)
                 .unwrap();
@@ -703,6 +748,65 @@ mod edit {
         Ok(body.into_response())
     }
 
+    // Edit description page.
+    pub async fn edit_description_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!()
+        };
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/edit_description.html")]
+        struct EditDescriptionHtml {
+            user: Option<User>,
+            event: Event,
+            editor: Editor,
+        }
+        Ok(EditDescriptionHtml {
+            user: Some(user),
+            event: event.clone(),
+            editor: Editor {
+                url: "/events/{id}/description/edit",
+                snapshot_prefix: "event/description",
+                entity_id: Some(event.id),
+                content: match (event.description_html, event.description_updated_at) {
+                    (Some(html), Some(updated_at)) => Some(EditorContent { html, updated_at }),
+                    _ => None,
+                },
+            },
+        }
+        .into_response())
+    }
+
+    // Edit description form.
+    #[derive(serde::Deserialize)]
+    pub struct EditDescriptionForm {
+        id: i64,
+        content: String,
+    }
+    #[derive(serde::Serialize)]
+    pub struct EditDescriptionResponse {
+        id: Option<i64>,
+        updated_at: Option<i64>,
+        error: Option<String>,
+    }
+    pub async fn edit_description_form(
+        State(state): State<SharedAppState>, Form(form): Form<EditDescriptionForm>,
+    ) -> JsonResult<EditDescriptionResponse> {
+        let Some(event) = Event::lookup_by_id(&state.db, form.id).await? else {
+            bail_not_found!();
+        };
+
+        let updated_at = Event::update_description(&state.db, event.id, form.content).await?;
+
+        Ok(Json(EditDescriptionResponse {
+            id: Some(event.id),
+            updated_at: Some(updated_at.and_utc().timestamp_millis()),
+            error: None,
+        }))
+    }
+
     /// View an event.
     pub async fn attendees_page(
         user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
@@ -726,6 +830,27 @@ mod edit {
         Event::delete(&state.db, id).await?;
         Ok(Redirect::to("/events").into_response())
     }
+
+    #[derive(serde::Deserialize)]
+    pub struct CheckinPath {
+        #[allow(unused)]
+        slug: String,
+        rsvp_id: i64,
+    }
+
+    pub async fn set_checkin(
+        State(state): State<SharedAppState>, Path(path): Path<CheckinPath>,
+    ) -> JsonResult<()> {
+        Rsvp::set_checkin_at(&state.db, path.rsvp_id).await?;
+        Ok(Json(()))
+    }
+
+    pub async fn clear_checkin(
+        State(state): State<SharedAppState>, Path(path): Path<CheckinPath>,
+    ) -> JsonResult<()> {
+        Rsvp::clear_checkin_at(&state.db, path.rsvp_id).await?;
+        Ok(Json(()))
+    }
 }
 
 mod rsvp {
@@ -742,12 +867,28 @@ mod rsvp {
         message: String,
     }
 
+    #[derive(Template, WebTemplate)]
+    #[template(path = "message_simple.html")]
+    struct MessageHtml {
+        user: Option<User>,
+        title: String,
+        message: String,
+    }
+
     fn goto_guestlist_page(event: &Event) -> HtmlResult {
         Ok(Redirect::to(&format!("/e/{}/guestlist", &event.slug)).into_response())
     }
     fn goto_guestlist_error(user: &Option<User>) -> HtmlResult {
         let error = ErrorHtml { user: user.clone(), message: "Sorry, you're not on the list.".into() };
         Ok(error.into_response())
+    }
+    pub fn show_registration_closed_error(user: &Option<User>) -> Response {
+        MessageHtml {
+            user: user.clone(),
+            title: "Sorry".into(),
+            message: "Registration for this event is closed.".into(),
+        }
+        .into_response()
     }
 
     #[derive(serde::Deserialize)]
@@ -762,20 +903,20 @@ mod rsvp {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
         match event.guest_list_id {
-            None => goto_selection_page(&state.db, &user, &session, &event).await,
+            None => goto_selection_page(&state.db, &session, &event).await,
             Some(guest_list_id) => match session {
                 Some(session) => {
                     if let Some(user_id) = session.user_id
                         && List::has_user_id(&state.db, guest_list_id, user_id).await?
                     {
-                        goto_selection_page(&state.db, &user, &Some(session), &event).await
+                        goto_selection_page(&state.db, &Some(session), &event).await
                     } else {
                         goto_guestlist_page(&event)
                     }
                 }
                 _ => match query.email {
                     Some(email) => match List::has_email(&state.db, guest_list_id, &email).await? {
-                        true => goto_selection_page(&state.db, &user, &session, &event).await,
+                        true => goto_selection_page(&state.db, &session, &event).await,
                         false => goto_guestlist_error(&user),
                     },
                     _ => goto_guestlist_page(&event),
@@ -813,16 +954,14 @@ mod rsvp {
         let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
 
         match List::has_email(&state.db, guest_list_id, &form.email).await? {
-            true => goto_selection_page(&state.db, &user, &session, &event).await,
+            true => goto_selection_page(&state.db, &session, &event).await,
             false => goto_guestlist_error(&user),
         }
     }
 
     // *Ensure a session exists*, and then goto the selection page.
-    async fn goto_selection_page(
-        db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event: &Event,
-    ) -> HtmlResult {
-        let headers = RsvpSession::get_or_create(db, user, session, event.id).await?;
+    async fn goto_selection_page(db: &Db, session: &Option<RsvpSession>, event: &Event) -> HtmlResult {
+        let headers = RsvpSession::get_or_create(db, &None, session, event.id).await?;
         Ok((headers, Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug))).into_response())
     }
     // Display the "Choose a contribution" page
@@ -830,6 +969,7 @@ mod rsvp {
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+
         let stats = event.stats_for_session(&state.db, session.id).await?;
 
         let spots = Spot::list_for_event(&state.db, event.id).await?;
@@ -842,21 +982,19 @@ mod rsvp {
             spot_contributions.insert(rsvp.spot_id, rsvp.contribution);
         }
 
-        let user_spots = Some(4);
-
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_selection.html")]
         struct SelectionHtml {
             event: Event,
-            user_max_spots: Option<u64>,
+            user_qty: Option<i64>,
             spots: Vec<Spot>,
             spot_qtys: HashMap<i64, usize>,
             spot_contributions: HashMap<i64, i64>,
             stats: EventStats,
         }
         Ok(SelectionHtml {
+            user_qty: event.spots_per_person,
             event,
-            user_max_spots: user_spots,
             spots,
             spot_qtys,
             spot_contributions,
@@ -898,6 +1036,7 @@ mod rsvp {
             .await?;
         }
         session.clear_stripe_client_secret(&state.db).await?;
+        session.set_status(&state.db, RsvpSession::ATTENDEES).await?;
 
         // TODO: skip to /contribution if only one spot and RsvpSession already has an associated user
         goto_attendees_page(&event)
@@ -961,14 +1100,14 @@ mod rsvp {
             {
                 // If this user has an existing session for this event...
                 match other_session.status.as_str() {
-                    // If in DRAFT status, delete the draft
-                    RsvpSession::DRAFT => {
+                    // If in progress, delete the draft
+                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {
                         other_session.delete(&state.db).await?;
                     }
                     // If they've already confirmed for this event, display an error.
                     // IMPORTANT: We can't just assume the existing session's cookie and goto /manage
                     // Otherwise, someone could type in any random email and be able to modify their RSVP.
-                    RsvpSession::AWAITING_PAYMENT | RsvpSession::CONFIRMED => {
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
                         our_session.delete(&state.db).await?;
                         return Ok(ErrorHtml {
                             message: format!(
@@ -996,8 +1135,13 @@ mod rsvp {
             let email = &info.email;
             if let Some(status) = Rsvp::lookup_conflicts(&state.db, &our_session, &event, email).await? {
                 let message = match status.as_str() {
-                    RsvpSession::DRAFT => format!("Someone is in the process of RSVPing for {email}."),
-                    _ => format!("Someone has already RSVPed for {email}."),
+                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {
+                        format!("Someone is in the process of RSVPing for {email}. Check back in 30 minutes.")
+                    }
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
+                        format!("Someone has already RSVPed for {email}.")
+                    }
+                    _ => unreachable!(),
                 };
                 return Ok(ErrorHtml { user: Some(user), message }.into_response());
             }
@@ -1009,6 +1153,20 @@ mod rsvp {
             Rsvp::set_user(&state.db, rsvp.rsvp_id, &guest_user).await?;
         }
 
+        // Check for preemption: ensure there's still capacity for this session's spots.
+        // This matters because we only count sessions at CONTRIBUTION+ status against capacity.
+        let stats = event.stats_for_session(&state.db, our_session.id).await?;
+        let spots_requested = rsvps.len() as i64;
+        if stats.remaining_capacity < spots_requested {
+            Rsvp::delete_for_session(&state.db, our_session.id).await?;
+            return Ok(ErrorHtml {
+                user: Some(user),
+                message: "Sorry, your spot was taken. Please try again or check back later.".to_string(),
+            }
+            .into_response());
+        }
+
+        our_session.set_status(&state.db, RsvpSession::CONTRIBUTION).await?;
         goto_contribution_page(&event)
     }
 
@@ -1032,6 +1190,11 @@ mod rsvp {
         if price > 0 {
             let line_items = session.line_items(&rsvps)?;
             let return_url = format!("/e/{slug}/rsvp/manage?reservation={}", session.token);
+
+            // Clear expired stripe sessions (older than 14 minutes)
+            if session.stripe_client_secret.is_some() && session.is_stripe_expired() {
+                session.clear_stripe_client_secret(&state.db).await?;
+            }
 
             if session.stripe_client_secret.is_none() {
                 let stripe_client_secret = state
@@ -1069,9 +1232,48 @@ mod rsvp {
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
         let price: i64 = rsvps.iter().map(|r| r.contribution).sum();
         match price {
-            0 => session.set_confirmed(&state.db, None).await?,
+            0 => session.set_status(&state.db, RsvpSession::PAYMENT_CONFIRMED).await?,
             _ => bail_invalid!(),
         }
+
+        // Send confirmation email
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let user_id = session.user_id.ok_or_else(invalid)?;
+        let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
+
+        if !Email::have_sent_confirmation(&state.db, event.id, user_id).await? {
+            let email = Email::create_confirmation(&state.db, event.id, user_id).await?;
+
+            #[derive(Template, WebTemplate)]
+            #[template(path = "emails/event_confirmation.html")]
+            struct ConfirmationEmailHtml {
+                email_id: i64,
+                event: Event,
+                token: String,
+            }
+
+            let from = &state.config.email.from;
+            let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+            let subject = event
+                .confirmation_subject
+                .clone()
+                .unwrap_or_else(|| format!("Confirmation for {}", event.title));
+            let message = state
+                .mailer
+                .builder()
+                .to(user.email.parse().unwrap())
+                .reply_to(reply_to.clone())
+                .subject(subject)
+                .header(lettre::message::header::ContentType::TEXT_HTML)
+                .body(
+                    ConfirmationEmailHtml { email_id: email.id, event, token: session.token.clone() }
+                        .render()?,
+                )
+                .unwrap();
+
+            state.mailer.send(&message).await?;
+        }
+
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", &session.token)).into_response())
     }
 
@@ -1106,11 +1308,14 @@ mod rsvp {
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         match session.status.as_str() {
-            RsvpSession::CONFIRMED | RsvpSession::AWAITING_PAYMENT => {}
+            RsvpSession::SELECTION => return goto_selection_page(&state.db, &Some(session), &event).await,
+            RsvpSession::ATTENDEES => return goto_attendees_page(&event),
             // If you get here, we hold your spot and assume payment is coming later via webhook.
             // This is technically exploitable, but we could check for still unpaid rsvps at event start.
-            RsvpSession::DRAFT => session.set_awaiting_payment(&state.db).await?,
-            _ => bail_invalid!(),
+            RsvpSession::CONTRIBUTION => session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?,
+            // If pending or confirmed, you're good.
+            RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
+            _ => unreachable!(),
         }
 
         if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
@@ -1131,7 +1336,12 @@ mod rsvp {
                 .builder()
                 .to(session_user.email.parse().unwrap())
                 .reply_to(reply_to.clone())
-                .subject(format!("Invitation to {}", event.title))
+                .subject(
+                    event
+                        .confirmation_subject
+                        .clone()
+                        .unwrap_or_else(|| format!("Confirmation for {}", event.title)),
+                )
                 .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(
                     ConfirmationEmailHtml {
@@ -1144,6 +1354,30 @@ mod rsvp {
                 .unwrap();
 
             state.mailer.send(&message).await?;
+
+            // If dayof email has been sent out, also send it to this new RSVP
+            if event.dayof_sent_at.is_some() {
+                let dayof_email = Email::create_send_dayof_single(&state.db, event.id, user_id).await?;
+
+                #[derive(Template, WebTemplate)]
+                #[template(path = "emails/event_dayof.html")]
+                struct DayofEmailHtml {
+                    email_id: i64,
+                    event: Event,
+                }
+
+                let dayof_message = state
+                    .mailer
+                    .builder()
+                    .to(session_user.email.parse().unwrap())
+                    .reply_to(reply_to.clone())
+                    .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
+                    .header(lettre::message::header::ContentType::TEXT_HTML)
+                    .body(DayofEmailHtml { email_id: dayof_email.id, event: event.clone() }.render()?)
+                    .unwrap();
+
+                state.mailer.send(&dayof_message).await?;
+            }
         }
 
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
@@ -1234,10 +1468,15 @@ mod rsvp {
                 && let Some(status) = Rsvp::lookup_conflicts(&state.db, &session, &event, new_email).await?
             {
                 let message = match status.as_str() {
-                    RsvpSession::DRAFT => {
-                        format!("Someone is in the process of RSVPing for {new_email}.")
+                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {
+                        format!(
+                            "Someone is in the process of RSVPing for {new_email}. Check back in 15 minutes."
+                        )
                     }
-                    _ => format!("Someone has already RSVPed for {new_email}."),
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
+                        format!("Someone has already RSVPed for {new_email}.")
+                    }
+                    _ => unreachable!(),
                 };
                 return Ok(ErrorHtml { user, message }.into_response());
             }
@@ -1373,6 +1612,28 @@ mod rsvp {
         MissingIsMe,
         #[error("multiple attendees with is_me=true")]
         MultipleIsMe,
+        #[error("invalid phone number: {phone}")]
+        InvalidPhone { phone: String },
+        #[error("duplicate email: {email}")]
+        DuplicateEmail { email: String },
+        #[error("duplicate phone: {phone}")]
+        DuplicatePhone { phone: String },
+    }
+
+    /// Validate and normalize phone to E.164 format.
+    /// Empty string is ok (returns None). 10 digits assumes +1. 11-15 digits assumes leading +.
+    fn validate_phone(phone: Option<String>) -> Result<Option<String>, ParseAttendeesError> {
+        let Some(phone) = phone else { return Ok(None) };
+        if phone.trim().is_empty() {
+            return Ok(None);
+        };
+
+        let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
+        match digits.len() {
+            10 => Ok(Some(format!("+1{digits}"))),
+            11..=15 => Ok(Some(format!("+{digits}"))),
+            _ => Err(ParseAttendeesError::InvalidPhone { phone }),
+        }
     }
     async fn parse_attendees<'a>(
         rsvps: &'a [AttendeeRsvp], attendees: &str,
@@ -1409,6 +1670,7 @@ mod rsvp {
                 return Err(Error::UnknownRsvp { rsvp_id });
             };
 
+            let phone = validate_phone(phone)?;
             let attendee = ParsedAttendee {
                 rsvp,
                 info: CreateUser { first_name: Some(first_name), last_name: Some(last_name), email, phone },
@@ -1427,25 +1689,57 @@ mod rsvp {
             return Err(Error::MissingIsMe);
         };
 
+        // Check for duplicate emails
+        let mut seen_emails = std::collections::HashSet::new();
+        for a in &attendees {
+            if !seen_emails.insert(&a.info.email) {
+                return Err(Error::DuplicateEmail { email: a.info.email.clone() });
+            }
+        }
+
+        // Check for duplicate phones (ignoring None)
+        let mut seen_phones = std::collections::HashSet::new();
+        for a in &attendees {
+            if let Some(phone) = &a.info.phone
+                && !seen_phones.insert(phone)
+            {
+                return Err(Error::DuplicatePhone { phone: phone.clone() });
+            }
+        }
+
         Ok((is_me_attendee, attendees))
     }
 }
 
 pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
     /// Middleware layer to lookup add an `RsvpSession` to the request if an rsvp_session token is present.
+    /// Also blocks RSVP pages (except manage/edit) when registration is closed.
     pub async fn rsvp_session_middleware(
-        State(state): State<SharedAppState>, mut cookies: CookieJar, mut request: Request, next: Next,
+        State(state): State<SharedAppState>, cookies: CookieJar, mut request: Request, next: Next,
     ) -> HtmlResult {
-        if let Some(token) = cookies.get("rsvp_session") {
-            match RsvpSession::lookup_by_token(&state.db, token.value()).await? {
-                Some(session) => {
-                    request.extensions_mut().insert(session);
-                }
-                None => cookies = cookies.remove("rsvp_session"),
+        if let Some(token) = cookies.get("rsvp_session")
+            && let Some(session) = RsvpSession::lookup_by_token(&state.db, token.value()).await?
+        {
+            request.extensions_mut().insert(session);
+        }
+        // Don't remove stale cookies here (e.g. from expired session).
+        // They will be overwritten when a new session is created.
+
+        // Block RSVP pages when registration is closed (except manage/edit for confirmed users).
+        let path = request.uri().path();
+        let is_rsvp_path = path.contains("/rsvp") || path.contains("/guestlist");
+        let is_manage_or_edit = path.contains("/manage") || path.contains("/edit");
+        if is_rsvp_path && !is_manage_or_edit {
+            // Parse slug from /e/{slug}/...
+            if let Some(slug) = path.strip_prefix("/e/").and_then(|p| p.split('/').next())
+                && let Some(event) = Event::lookup_by_slug(&state.db, slug).await?
+                && event.closed
+            {
+                return Ok(rsvp::show_registration_closed_error(&None));
             }
         }
-        let response = next.run(request).await;
-        Ok((cookies, response).into_response())
+
+        Ok(next.run(request).await)
     }
     router.layer(axum::middleware::from_fn_with_state(state, rsvp_session_middleware))
 }
@@ -1485,8 +1779,8 @@ impl axum::extract::FromRequestParts<SharedAppState> for RsvpSession {
 
         match parts.extensions.get::<RsvpSession>().cloned() {
             Some(session) => match session.status.as_str() {
-                RsvpSession::DRAFT => Ok(session),
-                RsvpSession::AWAITING_PAYMENT | RsvpSession::CONFIRMED => {
+                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => Ok(session),
+                RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
                     match parts.uri.path().contains("manage") {
                         true => Ok(session), // avoid redirect loop
                         false => Err(Redirect::to(&format!(

@@ -10,20 +10,27 @@ pub struct Event {
     pub id: i64,
     pub title: String,
     pub slug: String,
-    pub description: String,
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
     pub capacity: i64,
     pub unlisted: bool,
+    pub closed: bool,
     pub guest_list_id: Option<i64>,
+    pub spots_per_person: Option<i64>,
 
+    pub description_html: Option<String>,
+    pub description_updated_at: Option<NaiveDateTime>,
+
+    pub invite_subject: Option<String>,
     pub invite_html: Option<String>,
     pub invite_updated_at: Option<NaiveDateTime>,
     pub invite_sent_at: Option<NaiveDateTime>,
 
+    pub confirmation_subject: Option<String>,
     pub confirmation_html: Option<String>,
     pub confirmation_updated_at: Option<NaiveDateTime>,
 
+    pub dayof_subject: Option<String>,
     pub dayof_html: Option<String>,
     pub dayof_updated_at: Option<NaiveDateTime>,
     pub dayof_sent_at: Option<NaiveDateTime>,
@@ -36,14 +43,15 @@ pub struct Event {
 pub struct UpdateEvent {
     pub title: String,
     pub slug: String,
-    pub description: String,
 
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
 
     pub capacity: i64,
     pub unlisted: bool,
+    pub closed: bool,
     pub guest_list_id: Option<i64>,
+    pub spots_per_person: Option<i64>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -99,16 +107,17 @@ impl Event {
     pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> Result<i64> {
         let event_id = sqlx::query!(
             r#"INSERT INTO events
-               (title, slug, description, start, end, capacity, unlisted, guest_list_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
+               (title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
             event.title,
             event.slug,
-            event.description,
             event.start,
             event.end,
             event.capacity,
             event.unlisted,
+            event.closed,
             event.guest_list_id,
+            event.spots_per_person,
         )
         .execute(db)
         .await?
@@ -127,21 +136,23 @@ impl Event {
             r#"UPDATE events
                 SET title = ?,
                     slug = ?,
-                    description = ?,
                     start = ?,
                     end = ?,
                     capacity = ?,
                     unlisted = ?,
-                    guest_list_id = ?
+                    closed = ?,
+                    guest_list_id = ?,
+                    spots_per_person = ?
                 WHERE id = ?"#,
             event.title,
             event.slug,
-            event.description,
             event.start,
             event.end,
             event.capacity,
             event.unlisted,
+            event.closed,
             event.guest_list_id,
+            event.spots_per_person,
             id
         )
         .execute(db)
@@ -154,20 +165,22 @@ impl Event {
         Ok(())
     }
 
-    pub async fn update_invite(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+    pub async fn update_invite(db: &Db, id: i64, subject: String, html: String) -> Result<NaiveDateTime> {
         let row = sqlx::query!(
             "UPDATE EVENTS
-             SET invite_html = ?,
+             SET invite_subject = ?,
+                 invite_html = ?,
                  invite_updated_at = CURRENT_TIMESTAMP,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?
-             RETURNING updated_at",
+             RETURNING invite_updated_at",
+            subject,
             html,
             id,
         )
         .fetch_one(db)
         .await?;
-        Ok(row.updated_at)
+        Ok(row.invite_updated_at.unwrap())
     }
 
     pub async fn mark_sent_invites(&self, db: &Db) -> Result<()> {
@@ -177,36 +190,58 @@ impl Event {
         Ok(())
     }
 
-    pub async fn update_confirmation(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+    pub async fn update_confirmation(
+        db: &Db, id: i64, subject: String, html: String,
+    ) -> Result<NaiveDateTime> {
         let row = sqlx::query!(
             "UPDATE EVENTS
-             SET confirmation_html = ?,
+             SET confirmation_subject = ?,
+                 confirmation_html = ?,
                  confirmation_updated_at = CURRENT_TIMESTAMP,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?
-             RETURNING updated_at",
+             RETURNING confirmation_updated_at",
+            subject,
             html,
             id,
         )
         .fetch_one(db)
         .await?;
-        Ok(row.updated_at)
+        Ok(row.confirmation_updated_at.unwrap())
     }
 
-    pub async fn update_dayof(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+    pub async fn update_dayof(db: &Db, id: i64, subject: String, html: String) -> Result<NaiveDateTime> {
         let row = sqlx::query!(
             "UPDATE EVENTS
-             SET dayof_html = ?,
+             SET dayof_subject = ?,
+                 dayof_html = ?,
                  dayof_updated_at = CURRENT_TIMESTAMP,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?
-             RETURNING updated_at",
+             RETURNING dayof_updated_at",
+            subject,
             html,
             id,
         )
         .fetch_one(db)
         .await?;
-        Ok(row.updated_at)
+        Ok(row.dayof_updated_at.unwrap())
+    }
+
+    pub async fn update_description(db: &Db, id: i64, html: String) -> Result<NaiveDateTime> {
+        let row = sqlx::query!(
+            "UPDATE EVENTS
+             SET description_html = ?,
+                 description_updated_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?
+             RETURNING description_updated_at",
+            html,
+            id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row.description_updated_at.unwrap())
     }
 
     pub async fn mark_sent_dayof(&self, db: &Db) -> Result<()> {

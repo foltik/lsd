@@ -216,9 +216,32 @@ impl Email {
         Ok(row)
     }
 
+    pub async fn create_send_dayof_single(db: &Db, event_id: i64, user_id: i64) -> Result<Email> {
+        let row = sqlx::query_as!(
+            Email,
+            r#"
+             INSERT INTO emails (kind, user_id, user_version, event_id)
+                 SELECT ?, u.id, uh.version, ?
+                 FROM users u
+                 JOIN user_history uh ON uh.user_id = u.id
+                 WHERE u.id = ?
+             RETURNING *, (
+                SELECT u.email FROM users u
+                WHERE u.id = emails.user_id
+             ) AS "address!"
+             "#,
+            Email::EVENT_DAYOF,
+            event_id,
+            user_id,
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(row)
+    }
+
     /// Create email entries for sending the given post to all users on the given list.
     /// Returns rows with `sent_at` set if the post was already emailed to a user.
-    pub async fn create_send_dayof(db: &Db, event_id: i64) -> Result<Vec<Email>> {
+    pub async fn create_send_dayof_batch(db: &Db, event_id: i64) -> Result<Vec<Email>> {
         let existing = sqlx::query_as!(
             Email,
             r#"

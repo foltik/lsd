@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+{% block title %}RSVP Sessions{% endblock %}
+
+{% block content %}
+  <section id="events/sessions" class="ext/layout">
+    <header>
+      <h1>RSVP Sessions</h1>
+    </header>
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Status</th>
+          <th>User</th>
+          <th>RSVPs</th>
+          <th>Created</th>
+          <th>Updated</th>
+          <th>Expires</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sessions %}
+          <tr data-id="{{ s.id }}">
+            <td><a href="/e/{{ s.event_slug }}">{{ s.event_title }}</a></td>
+            <td>{{ s.status }}</td>
+            <td>{{ s.user_email|unwrap_or_empty }}</td>
+            <td class="rsvps">
+              {% for r in s.rsvps %}
+                <span
+                  >{{ r.spot_name }}
+                  ${{ r.contribution }}{% if let Some(email) = r.email.as_ref() %}({{ email }}){% endif %}</span
+                >
+              {% endfor %}
+            </td>
+            <td>{{ s.created_at | format_datetime("%-I:%M%p") }}</td>
+            <td>{{ s.updated_at | format_datetime("%-I:%M%p") }}</td>
+            <td>
+              {% if s.status != "payment_pending" && s.status != "payment_confirmed" %}{% if s.expires_in > 0 %}{{ s.expires_in }}m{% else %}expired{% endif %}{% endif %}
+            </td>
+            <td>
+              <button
+                class="delete ext/button :red"
+                {% if s.status == "payment_pending" || s.status == "payment_confirmed" %}disabled{% endif %}
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <script>
+    document.querySelector("table").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button.delete");
+      if (!btn || btn.disabled) return;
+      if (!confirm("Delete this session?")) return;
+      const row = btn.closest("tr");
+      const id = row.dataset.id;
+      const resp = await fetch(`/events/sessions/${id}`, { method: "DELETE" });
+      if (resp.ok) row.remove();
+      else alert("Failed to delete");
+    });
+  </script>
+{% endblock %}

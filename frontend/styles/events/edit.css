@@ -35,5 +35,11 @@
     .spot-row {
       @apply flex gap-2;
     }
+    .rsvp-count {
+      @apply text-lsd-gray flex items-center text-sm;
+    }
+    textarea {
+      @apply h-32;
+    }
   }
 }

@@ -19,27 +19,27 @@
         "type_info": "Text"
       },
       {
-        "name": "description",
-        "ordinal": 3,
-        "type_info": "Text"
-      },
-      {
         "name": "start",
-        "ordinal": 4,
+        "ordinal": 3,
         "type_info": "Datetime"
       },
       {
         "name": "end",
-        "ordinal": 5,
+        "ordinal": 4,
         "type_info": "Datetime"
       },
       {
         "name": "capacity",
-        "ordinal": 6,
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "unlisted",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "closed",
         "ordinal": 7,
         "type_info": "Bool"
       },
@@ -49,53 +49,83 @@
         "type_info": "Integer"
       },
       {
-        "name": "invite_html",
+        "name": "spots_per_person",
         "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "description_html",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
-        "name": "invite_updated_at",
-        "ordinal": 10,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "invite_sent_at",
+        "name": "description_updated_at",
         "ordinal": 11,
         "type_info": "Datetime"
       },
       {
-        "name": "confirmation_html",
+        "name": "invite_subject",
         "ordinal": 12,
         "type_info": "Text"
       },
       {
-        "name": "confirmation_updated_at",
+        "name": "invite_html",
         "ordinal": 13,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "dayof_html",
-        "ordinal": 14,
         "type_info": "Text"
       },
       {
-        "name": "dayof_updated_at",
+        "name": "invite_updated_at",
+        "ordinal": 14,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "invite_sent_at",
         "ordinal": 15,
         "type_info": "Datetime"
       },
       {
-        "name": "dayof_sent_at",
+        "name": "confirmation_subject",
         "ordinal": 16,
+        "type_info": "Text"
+      },
+      {
+        "name": "confirmation_html",
+        "ordinal": 17,
+        "type_info": "Text"
+      },
+      {
+        "name": "confirmation_updated_at",
+        "ordinal": 18,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "dayof_subject",
+        "ordinal": 19,
+        "type_info": "Text"
+      },
+      {
+        "name": "dayof_html",
+        "ordinal": 20,
+        "type_info": "Text"
+      },
+      {
+        "name": "dayof_updated_at",
+        "ordinal": 21,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "dayof_sent_at",
+        "ordinal": 22,
         "type_info": "Datetime"
       },
       {
         "name": "created_at",
-        "ordinal": 17,
+        "ordinal": 23,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 18,
+        "ordinal": 24,
         "type_info": "Datetime"
       }
     ],
@@ -107,10 +137,16 @@
       false,
       false,
       false,
-      false,
       true,
       false,
       false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       true,
       true,
       true,

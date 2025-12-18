@@ -51,11 +51,6 @@
       </div>
 
       <div class="field">
-        <label for="description">Description</label>
-        <input name="description" value="{{ event.description }}" required />
-      </div>
-
-      <div class="field">
         <label for="capacity">Capacity</label>
         <input
           name="capacity"
@@ -71,6 +66,15 @@
           name="unlisted"
           type="checkbox"
           {% if event.unlisted %}checked{% endif %}
+        />
+      </div>
+
+      <div class="field">
+        <label for="closed">Close registration</label>
+        <input
+          name="closed"
+          type="checkbox"
+          {% if event.closed %}checked{% endif %}
         />
       </div>
 
@@ -92,6 +96,18 @@
             </option>
           {% endfor %}
         </select>
+      </div>
+
+      <div class="field">
+        <label for="spots_per_person">Max spots per person</label>
+        <input
+          name="spots_per_person"
+          type="number"
+          value="{% if let Some(n) = event.spots_per_person %}{{ n }}{% endif %}"
+          step="1"
+          min="0"
+          placeholder="Unlimited"
+        />
       </div>
 
       <div class="field">
@@ -166,14 +182,20 @@
     };
 
     /* ---------- Rendering ----------------------------------------------------- */
-    const template = (t) => `
-    <div class="spot">
+    const rsvpCounts = JSON.parse(`{{ rsvp_counts | json | safe }}`);
+
+    const template = (t) => {
+      const count = rsvpCounts[t.id] || 0;
+      const hasRsvps = count > 0;
+      return `
+    <div class="spot" data-id="${t.id ?? ""}">
       <div class="spot-row">
         <input name="id"   value="${t.id ?? ""}" type="hidden" data-type="number">
         <input name="name" value="${t.name ?? ""}" placeholder="Name" required>
+        ${hasRsvps ? `<span class="rsvp-count">${count} have RSVPed</span>` : ""}
         <button type="button" class="ext/button"       data-action="up">↑</button>
         <button type="button" class="ext/button"       data-action="down">↓</button>
-        <button type="button" class="ext/button :red"  data-action="remove">✕</button>
+        <button type="button" class="ext/button :red"  data-action="remove" ${hasRsvps ? "disabled" : ""}>✕</button>
       </div>
       <div class="spot-row">
         <input name="qty_total"       placeholder="Qty available"   value="${t.qty_total ?? ""}"      type="number" required>
@@ -195,10 +217,11 @@
         <input name="required_notice_hours"  type="number" placeholder="Notice Period (Hours)"  value="${t.required_notice_hours ?? ""}" type="number">
       </div>
       <div class="spot-row">
-        <input name="description" placeholder="Description"  value="${t.description ?? ""}" required>
+        <textarea name="description" placeholder="Description" required>${t.description ?? ""}</textarea>
       </div>
     </div>
   `;
+    };
 
     function render() {
       ui.spots().forEach((s, i, arr) => {
@@ -325,12 +348,13 @@
         id: parseInt("{{ event.id }}") || undefined,
         title: value("title"),
         slug: value("slug"),
-        description: value("description"),
         start,
         end,
         capacity: value("capacity"),
         unlisted: value("unlisted"),
+        closed: value("closed"),
         guest_list_id: value("guest_list_id"),
+        spots_per_person: value("spots_per_person") || null,
         spots: ui.spots().map((t, i) => {
           const kind = value("kind", t);
           const spot = {

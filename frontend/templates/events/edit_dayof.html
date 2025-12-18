@@ -5,6 +5,19 @@
   <a href="/events">&larr; All Events</a>
 {% endblock back %}
 
+{% block form %}
+  <div class="field">
+    <label for="subject">Subject</label>
+    <input
+      type="text"
+      id="subject"
+      name="subject"
+      value="{% if let Some(subject) = event.dayof_subject.as_deref() %}{{ subject }}{% else %}What to know for {{ event.title }}{% endif %}"
+      required
+    />
+  </div>
+{% endblock form %}
+
 {% block actions %}
   <a
     href="/events/{{ event.id }}/dayof/preview"

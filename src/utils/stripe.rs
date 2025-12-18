@@ -1,3 +1,4 @@
+use crate::db::rsvp_session::RsvpSession;
 use crate::prelude::*;
 
 const API_VERSION: &str = "2025-07-30.basil";
@@ -8,6 +9,7 @@ pub struct Stripe {
     http: reqwest::Client,
 }
 
+#[derive(Debug)]
 pub struct LineItem {
     /// Item name.
     pub name: String,
@@ -32,6 +34,9 @@ impl Stripe {
     ) -> Result<String> {
         let return_url = format!("{}{}", self.app_url, return_path);
 
+        // Log line_items for debugging before we consume them
+        let line_items_debug = format!("{:?}", &line_items);
+
         // Gross but there doesn't seem to be any other supported way to build form data in the way
         // that stripe expects in particular for lists of objects.
         //
@@ -40,13 +45,14 @@ impl Stripe {
         //
         // See https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-05-28.basil
         //
-        // TODO: do we need?
+        let expires_at = Utc::now().timestamp() + (RsvpSession::STRIPE_EXPIRY_MINUTES * 60);
         let mut form_data = format!(
             "client_reference_id={session_id}\
             &customer_email={email}\
             &ui_mode=custom\
             &mode=payment\
             &currency=usd\
+            &expires_at={expires_at}\
             &allow_promotion_codes=false\
             &payment_method_types[]=card\
             &return_url={return_url}"
@@ -66,7 +72,15 @@ impl Stripe {
 
         #[derive(serde::Deserialize)]
         struct Response {
-            client_secret: String,
+            client_secret: Option<String>,
+            error: Option<StripeError>,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct StripeError {
+            message: String,
+            #[serde(rename = "type")]
+            error_type: String,
         }
 
         #[rustfmt::skip]
@@ -78,6 +92,21 @@ impl Stripe {
             .body(form_data)
             .send().await?.json().await?;
 
-        Ok(res.client_secret)
+        if let Some(err) = res.error {
+            let msg = format!(
+                "Stripe::create_session(): {} (type={}), session_id={session_id}, email={email}, line_items={line_items_debug}",
+                err.message, err.error_type
+            );
+            crate::utils::sentry::report(msg.clone());
+            bail!(msg);
+        }
+
+        res.client_secret.ok_or_else(|| {
+            let msg = format!(
+                "Stripe::create_session(): response missing client_secret, session_id={session_id}, email={email}, line_items={line_items_debug}"
+            );
+            crate::utils::sentry::report(msg.clone());
+            any!(msg)
+        })
     }
 }

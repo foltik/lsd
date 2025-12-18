@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE EVENTS\n             SET invite_subject = ?,\n                 invite_html = ?,\n                 invite_updated_at = CURRENT_TIMESTAMP,\n                 updated_at = CURRENT_TIMESTAMP\n             WHERE id = ?\n             RETURNING invite_updated_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "invite_updated_at",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "a3f2a593f8de75e0f898035d3004d0e37c7d66fdf2f878fd9ad0bb2ac8e1e1fc"
+}
