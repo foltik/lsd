@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                r.session_id,\n                sp.name AS spot_name,\n                r.contribution,\n                u.email\n            FROM rsvps r\n            JOIN spots sp ON sp.id = r.spot_id\n            LEFT JOIN users u ON u.id = r.user_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "session_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "spot_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "email",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "ef4e33d3ac04980a5e3df62c1d8f1d8fcfe766edf9dcad5cda2a50bf28c83016"
+}

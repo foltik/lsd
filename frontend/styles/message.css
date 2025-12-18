@@ -1,9 +1,9 @@
 #message {
   h1 {
-    @apply mb-2 text-center text-2xl italic;
+    @apply mb-2 text-center text-2xl;
   }
   p {
-    @apply text-lsd-gray text-center text-sm;
+    @apply text-lsd-gray text-center;
   }
   a {
     @apply decoration-lsd-blue hover:text-lsd-blue underline;

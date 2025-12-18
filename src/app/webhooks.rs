@@ -133,7 +133,8 @@ pub mod stripe {
                     payload.payment_intent
                 );
 
-                session.set_confirmed(&state.db, Some(&payload.payment_intent)).await?;
+                session.set_status(&state.db, RsvpSession::PAYMENT_CONFIRMED).await?;
+                session.set_payment_intent_id(&state.db, &payload.payment_intent).await?;
 
                 if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
                     let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
@@ -148,12 +149,16 @@ pub mod stripe {
 
                     let from = &state.config.email.from;
                     let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+                    let subject = event
+                        .confirmation_subject
+                        .clone()
+                        .unwrap_or_else(|| format!("Confirmation for {}", event.title));
                     let message = state
                         .mailer
                         .builder()
                         .to(user.email.parse().unwrap())
                         .reply_to(reply_to.clone())
-                        .subject(format!("Invitation to {}", event.title))
+                        .subject(subject)
                         .header(lettre::message::header::ContentType::TEXT_HTML)
                         .body(
                             ConfirmationEmailHtml { email_id: email.id, event, token: session.token }

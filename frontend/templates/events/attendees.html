@@ -5,6 +5,7 @@
   <section id="events/attendees" class="ext/layout">
     <header>
       <h1>{{ event.title }}</h1>
+      <button id="download" class="ext/button">Download CSV</button>
     </header>
     <table class="attendees">
       <thead>
@@ -19,24 +20,138 @@
       </thead>
       <tbody>
         {% for rsvp in rsvps %}
-          <tr>
-            <td>{{ rsvp.last_name }}, {{ rsvp.first_name }}</td>
-            <td>{{ rsvp.email }}</td>
-            <td>{{ rsvp.guest_of | unwrap_or_empty }}</td>
-            <td>{{ rsvp.spot_name }} (${{ rsvp.contribution }})</td>
-            <td>
+          <tr data-rsvp-id="{{ rsvp.rsvp_id }}">
+            <td class="name">{{ rsvp.last_name }}, {{ rsvp.first_name }}</td>
+            <td class="email">{{ rsvp.email }}</td>
+            <td class="guest-of">{{ rsvp.guest_of | unwrap_or_empty }}</td>
+            <td class="spot">
+              {{ rsvp.spot_name }} (${{ rsvp.contribution }})
+            </td>
+            <td class="created">
               <time datetime="{{ rsvp.created_at }}">
                 {{ rsvp.created_at | format_datetime("%m/%d %-I:%M%p") }}
               </time>
             </td>
-            <td>
-              <time datetime="{{ rsvp.checkin_at | unwrap_or_empty }}">
-                {{ rsvp.checkin_at | format_optional_datetime("%m/%d %-I:%M%p") }}
-              </time>
+            <td class="checkin">
+              {% if let Some(checkin_at) = rsvp.checkin_at %}
+                <time datetime="{{ checkin_at }}"
+                  >{{ checkin_at | format_datetime("%-I:%M%p") }}</time
+                >
+                <button class="clear" title="Clear check-in">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 48 48"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M24 4c11.046 0 20 8.954 20 20s-8.954 20-20 20S4 35.046 4 24S12.954 4 24 4Zm-6.116 12.116l-.102-.091a1.25 1.25 0 0 0-1.564 0l-.102.091l-.091.102a1.25 1.25 0 0 0 0 1.564l.091.102L22.233 24l-6.117 6.116l-.091.102a1.25 1.25 0 0 0 0 1.564l.091.102l.102.091a1.25 1.25 0 0 0 1.564 0l.102-.091L24 25.767l6.116 6.117l.102.091a1.25 1.25 0 0 0 1.564 0l.102-.091l.091-.102a1.25 1.25 0 0 0 0-1.564l-.091-.102L25.767 24l6.117-6.116l.091-.102a1.25 1.25 0 0 0 0-1.564l-.091-.102l-.102-.091a1.25 1.25 0 0 0-1.564 0l-.102.091L24 22.233l-6.116-6.117l-.102-.091l.102.091Z"
+                    />
+                  </svg>
+                </button>
+              {% else %}
+                <button class="set" title="Check in">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 48 48"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M24 4c11.046 0 20 8.954 20 20s-8.954 20-20 20S4 35.046 4 24S12.954 4 24 4Zm8.634 13.616a1.25 1.25 0 0 0-1.666-.091l-.102.091L20.75 27.732l-3.616-3.616a1.25 1.25 0 0 0-1.859 1.666l.091.102l4.5 4.5a1.25 1.25 0 0 0 1.666.091l.102-.091l11-11a1.25 1.25 0 0 0 0-1.768Z"
+                    />
+                  </svg>
+                </button>
+              {% endif %}
             </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   </section>
+  <script>
+    /* ---------- UI ---------------------------------------------------------- */
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      download: $("download"),
+      table: document.querySelector("table.attendees"),
+      rows: () => [...ui.table.querySelectorAll("tbody tr")],
+    };
+    const slug = "{{ event.slug }}";
+
+    /* ---------- CSV Download ------------------------------------------------ */
+    ui.download.addEventListener("click", () => {
+      const headers = ["Name", "Email", "Guest of", "Spot", "Created"];
+      const rows = ui
+        .rows()
+        .map((row) => [
+          row.querySelector(".name").textContent.trim(),
+          row.querySelector(".email").textContent.trim(),
+          row.querySelector(".guest-of").textContent.trim(),
+          row.querySelector(".spot").textContent.trim(),
+          row.querySelector(".created time").textContent.trim(),
+        ]);
+
+      const escape = (s) => `"${s.replace(/"/g, '""')}"`;
+      const csv = [headers, ...rows]
+        .map((r) => r.map(escape).join(","))
+        .join("\n");
+
+      const date = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}_${date}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    /* ---------- Check-in ---------------------------------------------------- */
+    ui.table.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+
+      const row = btn.closest("tr");
+      const rsvpId = row.dataset.rsvpId;
+      const cell = row.querySelector(".checkin");
+      const isSet = btn.classList.contains("set");
+
+      try {
+        const resp = await fetch(
+          `/events/${slug}/attendees/${rsvpId}/checkin`,
+          {
+            method: isSet ? "POST" : "DELETE",
+          },
+        );
+        if (!resp.ok) throw new Error(await resp.text());
+
+        if (isSet) {
+          const now = new Date();
+          const h = now.getHours();
+          const m = now.getMinutes().toString().padStart(2, "0");
+          const ampm = h >= 12 ? "PM" : "AM";
+          const time = `${h % 12 || 12}:${m}${ampm}`;
+          cell.innerHTML = `
+            <time>${time}</time>
+            <button class="clear" title="Clear check-in">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                <path fill="currentColor" d="M24 4c11.046 0 20 8.954 20 20s-8.954 20-20 20S4 35.046 4 24S12.954 4 24 4Zm-6.116 12.116l-.102-.091a1.25 1.25 0 0 0-1.564 0l-.102.091l-.091.102a1.25 1.25 0 0 0 0 1.564l.091.102L22.233 24l-6.117 6.116l-.091.102a1.25 1.25 0 0 0 0 1.564l.091.102l.102.091a1.25 1.25 0 0 0 1.564 0l.102-.091L24 25.767l6.116 6.117l.102.091a1.25 1.25 0 0 0 1.564 0l.102-.091l.091-.102a1.25 1.25 0 0 0 0-1.564l-.091-.102L25.767 24l6.117-6.116l.091-.102a1.25 1.25 0 0 0 0-1.564l-.091-.102l-.102-.091a1.25 1.25 0 0 0-1.564 0l-.102.091L24 22.233l-6.116-6.117l-.102-.091l.102.091Z"/>
+              </svg>
+            </button>`;
+        } else {
+          cell.innerHTML = `
+            <button class="set" title="Check in">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                <path fill="currentColor" d="M24 4c11.046 0 20 8.954 20 20s-8.954 20-20 20S4 35.046 4 24S12.954 4 24 4Zm8.634 13.616a1.25 1.25 0 0 0-1.666-.091l-.102.091L20.75 27.732l-3.616-3.616a1.25 1.25 0 0 0-1.859 1.666l.091.102l4.5 4.5a1.25 1.25 0 0 0 1.666.091l.102-.091l11-11a1.25 1.25 0 0 0 0-1.768Z"/>
+              </svg>
+            </button>`;
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    });
+  </script>
 {% endblock %}

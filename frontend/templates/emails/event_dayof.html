@@ -1,10 +1,20 @@
 {% extends "emails/layout.html" %}
 
-{% block title %}What to know for {{ event.title }}{% endblock %}
+{% block title %}{% if let Some(subject) = event.dayof_subject.as_deref() %}
+  {{ subject }}
+{% else %}
+  What to know for {{ event.title }}
+{% endif %}{% endblock %}
 
 {% block content %}
   <article>
-    <h1 class="title">What to know for {{ event.title }}</h1>
+    <h1 class="title">
+      {% if let Some(subject) = event.dayof_subject.as_deref() %}
+        {{ subject }}
+      {% else %}
+        What to know for {{ event.title }}
+      {% endif %}
+    </h1>
     <div class="details">
       <time aria-label="date" datetime="{{ event.start }}"
         >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
