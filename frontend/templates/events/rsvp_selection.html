@@ -26,8 +26,8 @@
           data-id="{{ spot.id }}"
           data-kind="{{ spot.kind }}"
           data-price="{{ spot.required_contribution.unwrap_or(0) }}"
-          data-qty="{{ spot_qtys.get(spot.id).unwrap_or(&0) }}"
-          data-limit="{{ spot.qty_per_person }}"
+          data-qty="{{ our_qtys.get(spot.id).unwrap_or(&0) }}"
+          data-limit="{{ limits.spot_limits.get(spot.id).unwrap_or(&0) }}"
         >
           <h2 class="name">{{ spot.name }}</h2>
           <p class="description">{{ spot.description }}</p>
@@ -43,7 +43,7 @@
                       class="ext/input"
                       type="number"
                       name="contribution"
-                      value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
+                      value="{{ our_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
                       min="{{ spot.min_contribution.unwrap() }}"
                       max="{{ spot.max_contribution.unwrap() }}"
                     />
@@ -53,12 +53,12 @@
                       class="ext/input"
                       type="range"
                       name="contribution"
-                      value="{{ spot_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
+                      value="{{ our_contributions.get(spot.id).unwrap_or(&spot.suggested_contribution.unwrap()) }}"
                       min="{{ spot.min_contribution.unwrap() }}"
                       max="{{ spot.max_contribution.unwrap() }}"
                       step="1"
                     />
-                    {% for stat in stats.spot_stats.get(spot.id).into_iter().flatten() %}
+                    {% for stat in stats.stats.get(spot.id).into_iter().flatten() %}
                       <span
                         class="stat"
                         style="--i: {{ loop.index - 1 }}; --val: {{ stat.value }}; --min: {{ spot.min_contribution.unwrap() }}; --max: {{ spot.max_contribution.unwrap() }}"
@@ -86,7 +86,7 @@
                 />
               </svg>
               <span class="value"
-                >{{ spot_qtys.get(spot.id).unwrap_or(&0) }}</span
+                >{{ our_qtys.get(spot.id).unwrap_or(&0) }}</span
               >
               <svg
                 class="add"
@@ -146,10 +146,9 @@
       spotContribution: (spot) =>
         spot.querySelector('input[name="contribution"]').value,
     };
-    const stats = JSON.parse(`{{ stats | json | safe }}`);
-    const userQty = +`{{ user_qty.unwrap_or(0) }}` || Infinity;
 
     /* ---------- Update spot limits and total ------------------ */
+    const totalLimit = +`{{ limits.total_limit }}`;
     const updateSpots = () => {
       let totalQty = 0;
       let totalPrice = 0;
@@ -163,25 +162,15 @@
       }
       ui.total.innerText = `$${totalPrice}`;
 
-      const remainingEventCapacity = stats.remaining_capacity - totalQty;
       for (const spot of ui.spots()) {
-        const currQty = +spot.dataset.qty;
-        const remainingSpotCapacity = stats.remaining_spots[+spot.dataset.id];
-        const remainingSpotLimitPerPerson = +spot.dataset.limit - currQty;
-        const remainingLimitForUser = userQty - totalQty;
-        const remainingQty = Math.max(
-          0,
-          Math.min(
-            remainingLimitForUser,
-            remainingSpotLimitPerPerson,
-            remainingSpotCapacity,
-            remainingEventCapacity,
-          ),
-        );
+        const spotLimit = +spot.dataset.limit;
+        const spotQty = +spot.dataset.qty;
 
-        ui.spotAdd(spot).classList.toggle("disabled", remainingQty == 0);
-        ui.spotSub(spot).classList.toggle("disabled", currQty == 0);
-        ui.spotQty(spot).innerText = currQty;
+        const limit = Math.min(totalLimit - totalQty, spotLimit - spotQty);
+
+        ui.spotAdd(spot).classList.toggle("disabled", limit == 0);
+        ui.spotSub(spot).classList.toggle("disabled", spotQty == 0);
+        ui.spotQty(spot).innerText = spotQty;
       }
     };
     /* ---------- On click +/- ------------------------------------------------ */

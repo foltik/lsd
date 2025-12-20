@@ -14,12 +14,12 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
             r.route("/e/{slug}", get(read::view_page))
                 .route("/e/{slug}/flyer", get(read::flyer))
                 .route("/e/{slug}/rsvp", get(rsvp::rsvp_form))
-                .route("/e/{slug}/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
+                .route("/e/{slug}/rsvp/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
                 .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page).post(rsvp::contribution_form))
                 .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page).post(rsvp::temp_delete))
-                .route("/e/{slug}/rsvp/edit", get(rsvp::edit_page).post(rsvp::edit_form))
+                .route("/e/{slug}/rsvp/edit", get(rsvp::edit_guests_page).post(rsvp::edit_guests_form))
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
@@ -854,11 +854,15 @@ mod edit {
 }
 
 mod rsvp {
+    use std::collections::HashSet;
+
     use super::*;
+    use crate::app::events::rsvp::parse::ParsedAttendee;
     use crate::db::list::List;
-    use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, Rsvp};
+    use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, EventRsvp, Rsvp};
     use crate::db::rsvp_session::RsvpSession;
-    use crate::db::user::{CreateUser, UpdateUser};
+    use crate::db::user::CreateUser;
+    use crate::utils::sentry;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "error_simple.html")]
@@ -875,61 +879,50 @@ mod rsvp {
         message: String,
     }
 
-    fn goto_guestlist_page(event: &Event) -> HtmlResult {
-        Ok(Redirect::to(&format!("/e/{}/guestlist", &event.slug)).into_response())
-    }
-    fn goto_guestlist_error(user: &Option<User>) -> HtmlResult {
-        let error = ErrorHtml { user: user.clone(), message: "Sorry, you're not on the list.".into() };
-        Ok(error.into_response())
-    }
-    pub fn show_registration_closed_error(user: &Option<User>) -> Response {
-        MessageHtml {
-            user: user.clone(),
-            title: "Sorry".into(),
-            message: "Registration for this event is closed.".into(),
-        }
-        .into_response()
-    }
-
     #[derive(serde::Deserialize)]
     pub struct RsvpQuery {
         email: Option<String>,
     }
     /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
-        user: Option<User>, session: Option<RsvpSession>, State(state): State<SharedAppState>,
-        Path(slug): Path<String>, Query(query): Query<RsvpQuery>,
+        session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Query(query): Query<RsvpQuery>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &None).await;
+        }
 
         match event.guest_list_id {
-            None => goto_selection_page(&state.db, &session, &event).await,
+            None => goto::selection_page(&state.db, &None, &session, &event).await,
             Some(guest_list_id) => match session {
                 Some(session) => {
                     if let Some(user_id) = session.user_id
                         && List::has_user_id(&state.db, guest_list_id, user_id).await?
                     {
-                        goto_selection_page(&state.db, &Some(session), &event).await
+                        goto::selection_page(&state.db, &None, &Some(session), &event).await
                     } else {
-                        goto_guestlist_page(&event)
+                        goto::guestlist_page(&event)
                     }
                 }
                 _ => match query.email {
                     Some(email) => match List::has_email(&state.db, guest_list_id, &email).await? {
-                        true => goto_selection_page(&state.db, &session, &event).await,
-                        false => goto_guestlist_error(&user),
+                        true => goto::selection_page(&state.db, &None, &session, &event).await,
+                        false => goto::error_not_on_guestlist(),
                     },
-                    _ => goto_guestlist_page(&event),
+                    _ => goto::guestlist_page(&event),
                 },
             },
         }
     }
 
     // Display the "Are you on the list?" page
-    pub async fn guestlist_page(
-        user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> HtmlResult {
+    pub async fn guestlist_page(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &None).await;
+        }
+
         let _guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
 
         #[derive(Template, WebTemplate)]
@@ -938,7 +931,7 @@ mod rsvp {
             user: Option<User>,
             slug: String,
         }
-        Ok(GuestlistHtml { user, slug }.into_response())
+        Ok(GuestlistHtml { user: None, slug }.into_response())
     }
 
     // Handle submission of the "Are you on the list?" form
@@ -947,60 +940,87 @@ mod rsvp {
         email: String,
     }
     pub async fn guestlist_form(
-        user: Option<User>, session: Option<RsvpSession>, State(state): State<SharedAppState>,
-        Path(slug): Path<String>, Form(form): Form<GuestlistForm>,
+        mut session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Form(form): Form<GuestlistForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &None).await;
+        }
 
-        match List::has_email(&state.db, guest_list_id, &form.email).await? {
-            true => goto_selection_page(&state.db, &session, &event).await,
-            false => goto_guestlist_error(&user),
+        // If they're on the list, there must be a corresponding user.
+        let Some(user) = User::lookup_by_email(&state.db, &form.email).await? else {
+            return goto::error_not_on_guestlist();
+        };
+        let primary_user = CreateUser {
+            email: user.email.clone(),
+            first_name: user.first_name.clone(),
+            last_name: user.last_name.clone(),
+            phone: user.phone.clone(),
+        };
+
+        match List::has_user_id(&state.db, guest_list_id, user.id).await? {
+            true => {
+                // Check for conflicts
+                let other_users =
+                    Rsvp::list_reserved_users_for_event(&state.db, &event, session.as_ref()).await?;
+                use validate::Conflict;
+                if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
+                    validate::no_conflicts(&other_users, &primary_user, &[])
+                {
+                    return goto::error_conflict(&email, &status);
+                }
+
+                // Set user on session if already exists
+                if let Some(session) = session.as_mut() {
+                    session.set_user(&state.db, &user).await?;
+                }
+
+                goto::selection_page(&state.db, &Some(user), &session, &event).await
+            }
+            false => goto::error_not_on_guestlist(),
         }
     }
 
-    // *Ensure a session exists*, and then goto the selection page.
-    async fn goto_selection_page(db: &Db, session: &Option<RsvpSession>, event: &Event) -> HtmlResult {
-        let headers = RsvpSession::get_or_create(db, &None, session, event.id).await?;
-        Ok((headers, Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug))).into_response())
-    }
     // Display the "Choose a contribution" page
     pub async fn selection_page(
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-
-        let stats = event.stats_for_session(&state.db, session.id).await?;
-
-        let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let mut spot_qtys = HashMap::default();
-        let mut spot_contributions = HashMap::default();
-
-        let rsvps = Rsvp::list_for_selection(&state.db, session.id).await?;
-        for rsvp in rsvps {
-            *spot_qtys.entry(rsvp.spot_id).or_default() += 1;
-            spot_contributions.insert(rsvp.spot_id, rsvp.contribution);
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &Some(session)).await;
         }
+
+        let user = session.user(&state.db).await?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+
+        let our_rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
+        let mut our_qtys = HashMap::default();
+        let mut our_contributions = HashMap::default();
+        for rsvp in our_rsvps {
+            *our_qtys.entry(rsvp.spot_id).or_default() += 1;
+            our_contributions.insert(rsvp.spot_id, rsvp.contribution);
+        }
+
+        let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
+        let limits = event.compute_limits(&user, &spots, &other_rsvps);
+        if limits.total_limit == 0 {
+            return goto::error_registration_closed(&state.db, &None).await;
+        }
+        let stats = Spot::stats(&spots, &other_rsvps);
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_selection.html")]
         struct SelectionHtml {
             event: Event,
-            user_qty: Option<i64>,
             spots: Vec<Spot>,
-            spot_qtys: HashMap<i64, usize>,
-            spot_contributions: HashMap<i64, i64>,
-            stats: EventStats,
+            our_qtys: HashMap<i64, usize>,
+            our_contributions: HashMap<i64, i64>,
+            limits: EventLimits,
+            stats: SpotStats,
         }
-        Ok(SelectionHtml {
-            user_qty: event.spots_per_person,
-            event,
-            spots,
-            spot_qtys,
-            spot_contributions,
-            stats,
-        }
-        .into_response())
+        Ok(SelectionHtml { event, spots, our_qtys, our_contributions, limits, stats }.into_response())
     }
 
     // Handle submission of the "Choose a contribution" form
@@ -1013,16 +1033,32 @@ mod rsvp {
         Form(form): Form<SelectionForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &Some(session)).await;
+        }
+
+        let user = session.user(&state.db).await?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
 
-        // Compute ticket stats. This includes other users' pending RSVPs, but excludes those from our own session.
-        let stats = event.stats_for_session(&state.db, session.id).await?;
-        // Parse and validate the selection (checking capacity, etc.)
-        let rsvps = parse_selection(&stats, &spots, &form.rsvps).map_err(|_| invalid())?;
+        // Parse and validate form
+        let our_rsvps = parse::selection_form(&spots, &form.rsvps).map_err(|e| {
+            sentry::report(format!("selection_form(): session={} form={form:?}: {e}", session.token));
+            invalid()
+        })?;
 
-        // Delete any pending RSVPs (in case the user goes back) and create new ones.
+        // Verify limits
+        let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
+        let limits = event.compute_limits(&user, &spots, &other_rsvps);
+        if limits.total_limit == 0 {
+            return goto::error_registration_closed(&state.db, &None).await;
+        }
+        if !validate::within_limits(&limits, &our_rsvps) {
+            return goto::error_spot_taken(&state.db, &session).await;
+        }
+
+        // Delete any old and create new RSVPs
         Rsvp::delete_for_session(&state.db, session.id).await?;
-        for rsvp in rsvps {
+        for rsvp in our_rsvps {
             Rsvp::create(
                 &state.db,
                 CreateRsvp {
@@ -1039,13 +1075,9 @@ mod rsvp {
         session.set_status(&state.db, RsvpSession::ATTENDEES).await?;
 
         // TODO: skip to /contribution if only one spot and RsvpSession already has an associated user
-        goto_attendees_page(&event)
+        goto::attendees_page(&event)
     }
 
-    // Goto the attendees page.
-    fn goto_attendees_page(event: &Event) -> HtmlResult {
-        Ok(Redirect::to(&format!("/e/{}/rsvp/attendees", &event.slug)).into_response())
-    }
     #[derive(PartialEq)]
     enum AttendeesMode {
         Create,
@@ -1063,10 +1095,14 @@ mod rsvp {
     }
     // Display the "Who will be attending?" page after submitting spots
     pub async fn attendees_page(
-        user: Option<User>, session: RsvpSession, State(state): State<SharedAppState>,
-        Path(slug): Path<String>,
+        session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
+        let user = session.user(&state.db).await?;
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &Some(session)).await;
+        }
+
         let attendees = Rsvp::list_for_attendees(&state.db, session.id).await?;
         let price = attendees.iter().map(|r| r.contribution).sum::<i64>();
         let mode = AttendeesMode::Create;
@@ -1083,102 +1119,84 @@ mod rsvp {
         Form(form): Form<AttendeesForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        let rsvps = Rsvp::list_for_attendees(&state.db, our_session.id).await?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &Some(our_session)).await;
+        }
 
-        // Parse attendees and lookup or create associated users
+        let user = our_session.user(&state.db).await?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let our_rsvps = Rsvp::list_for_session(&state.db, our_session.id).await?;
+
+        // Parse and validate form
         let (primary_attendee, guest_attendees) =
-            parse_attendees(&rsvps, &form.attendees).await.map_err(|_| invalid())?;
+            parse::attendees_form(&user, &our_rsvps, &form.attendees).await.map_err(|e| {
+                sentry::report(format!("attendees_form(): session={} form={form:?}: {e}", our_session.token));
+                invalid()
+            })?;
+        // Collect all users
+        let primary_user = primary_attendee.user.clone();
+        let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
+        let mut all_users = guest_users.clone();
+        all_users.push(primary_user.clone());
 
-        // Get or create the User for primary attendee
-        let user = User::get_or_create(&state.db, &primary_attendee.info).await?;
-
-        // Handle conflicts for the primary attendee.
-        // If our session has no user, this is the first time they're RSVPing with this browser/device.
-        if our_session.user_id.is_none() {
-            if let Some(other_session) =
-                RsvpSession::lookup_for_user_and_event(&state.db, &user, &event).await?
-            {
-                // If this user has an existing session for this event...
-                match other_session.status.as_str() {
-                    // If in progress, delete the draft
-                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {
-                        other_session.delete(&state.db).await?;
+        // Check for conflicts
+        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, Some(&our_session)).await?;
+        if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users) {
+            use validate::Conflict;
+            match conflict {
+                // For guest conflicts, always show an error.
+                Conflict::Guest { email, status } => return goto::error_conflict(&email, &status),
+                // For primary conflicts...
+                Conflict::Primary { email, status } => match status.as_str() {
+                    // If in a draft status, "take it over" by deleting the conflicting session
+                    RsvpSession::ATTENDEES | RsvpSession::SELECTION => {
+                        our_session.takeover_for_event(&state.db, &event, &email).await?;
                     }
-                    // If they've already confirmed for this event, display an error.
-                    // IMPORTANT: We can't just assume the existing session's cookie and goto /manage
-                    // Otherwise, someone could type in any random email and be able to modify their RSVP.
-                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
-                        our_session.delete(&state.db).await?;
-                        return Ok(ErrorHtml {
-                            message: format!(
-                                "You've already RSVPed for this event! \
-                                 Manage your RSVP via the confirmation email that was sent to {}.",
-                                &user.email
-                            ),
-                            user: Some(user),
-                        }
-                        .into_response());
+                    // If reserved, show an error.
+                    RsvpSession::CONTRIBUTION
+                    | RsvpSession::PAYMENT_PENDING
+                    | RsvpSession::PAYMENT_CONFIRMED => {
+                        return goto::error_conflict(&email, &status);
                     }
                     _ => unreachable!(),
-                }
-
-                // ....replace it with ours.
-                our_session.set_user(&state.db, &user).await?;
-            } else {
-                // If no existing session, populate user_id on our session.
-                our_session.set_user(&state.db, &user).await?;
+                },
             }
         }
 
-        // Handle conflicts for guest attendees.
-        for ParsedAttendee { info, .. } in &guest_attendees {
-            let email = &info.email;
-            if let Some(status) = Rsvp::lookup_conflicts(&state.db, &our_session, &event, email).await? {
-                let message = match status.as_str() {
-                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {
-                        format!("Someone is in the process of RSVPing for {email}. Check back in 30 minutes.")
-                    }
-                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
-                        format!("Someone has already RSVPed for {email}.")
-                    }
-                    _ => unreachable!(),
-                };
-                return Ok(ErrorHtml { user: Some(user), message }.into_response());
-            }
+        // Verify limits in case of preemption since `selection_form()` submission.
+        // Once we transition to CONTRIBUTION, our rsvps spots are held.
+        let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
+        let limits = event.compute_limits(&user, &spots, &other_rsvps);
+        if limits.total_limit == 0 {
+            return goto::error_registration_closed(&state.db, &None).await;
+        }
+        if !validate::within_limits(&limits, &our_rsvps) {
+            return goto::error_spot_taken(&state.db, &our_session).await;
         }
 
-        // Get or create Users for guest attendees, now that conflicts are resolved.
-        for ParsedAttendee { rsvp, info } in &guest_attendees {
-            let guest_user = User::get_or_create(&state.db, info).await?;
-            Rsvp::set_user(&state.db, rsvp.rsvp_id, &guest_user).await?;
-        }
+        // Create and store primary user on RsvpSession and Rsvp
+        let primary_user = User::update_or_create(&state.db, &primary_user).await?;
+        our_session.set_user(&state.db, &primary_user).await?;
+        Rsvp::set_user(&state.db, primary_attendee.rsvp_id, &primary_user).await?;
 
-        // Check for preemption: ensure there's still capacity for this session's spots.
-        // This matters because we only count sessions at CONTRIBUTION+ status against capacity.
-        let stats = event.stats_for_session(&state.db, our_session.id).await?;
-        let spots_requested = rsvps.len() as i64;
-        if stats.remaining_capacity < spots_requested {
-            Rsvp::delete_for_session(&state.db, our_session.id).await?;
-            return Ok(ErrorHtml {
-                user: Some(user),
-                message: "Sorry, your spot was taken. Please try again or check back later.".to_string(),
-            }
-            .into_response());
+        // Create and store users on guest Rsvps
+        for ParsedAttendee { rsvp_id, user } in guest_attendees {
+            let user = User::update_or_create(&state.db, &user).await?;
+            Rsvp::set_user(&state.db, rsvp_id, &user).await?;
         }
 
         our_session.set_status(&state.db, RsvpSession::CONTRIBUTION).await?;
-        goto_contribution_page(&event)
+        goto::contribution_page(&event)
     }
 
-    // Goto the contribution page.
-    fn goto_contribution_page(event: &Event) -> HtmlResult {
-        Ok(Redirect::to(&format!("/e/{}/rsvp/contribution", &event.slug)).into_response())
-    }
     // Display the "Make your contribution" page after submitting attendees
     pub async fn contribution_page(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &Some(session)).await;
+        }
 
         // A user is guaranteed to exist, since either:
         // * There already was one in rsvp_form() and we redirected straight here (TODO, we don't redirect yet)
@@ -1229,6 +1247,11 @@ mod rsvp {
     pub async fn contribution_form(
         State(state): State<SharedAppState>, session: RsvpSession, Path(slug): Path<String>,
     ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &Some(session)).await;
+        }
+
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
         let price: i64 = rsvps.iter().map(|r| r.contribution).sum();
         match price {
@@ -1237,7 +1260,6 @@ mod rsvp {
         }
 
         // Send confirmation email
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let user_id = session.user_id.ok_or_else(invalid)?;
         let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
 
@@ -1281,13 +1303,6 @@ mod rsvp {
     pub struct SessionQuery {
         reservation: String,
     }
-    // Goto the manage page.
-    fn goto_manage_page(session: &RsvpSession, event: &Event) -> HtmlResult {
-        Ok(
-            Redirect::to(&format!("/e/{}/rsvp/manage?reservation={}", &event.slug, &session.token))
-                .into_response(),
-        )
-    }
     // Show the "Manage your RSVP" page.
     pub async fn manage_page(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
@@ -1308,8 +1323,10 @@ mod rsvp {
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         match session.status.as_str() {
-            RsvpSession::SELECTION => return goto_selection_page(&state.db, &Some(session), &event).await,
-            RsvpSession::ATTENDEES => return goto_attendees_page(&event),
+            RsvpSession::SELECTION => {
+                return goto::selection_page(&state.db, &None, &Some(session), &event).await;
+            }
+            RsvpSession::ATTENDEES => return goto::attendees_page(&event),
             // If you get here, we hold your spot and assume payment is coming later via webhook.
             // This is technically exploitable, but we could check for still unpaid rsvps at event start.
             RsvpSession::CONTRIBUTION => session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?,
@@ -1407,307 +1424,348 @@ mod rsvp {
     }
 
     // Show the editor for "Who will be attending?" page.
-    pub async fn edit_page(
+    pub async fn edit_guests_page(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
         Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.reservation).await? else {
             // A nonexistant session should never reach /edit, and a confirmed session should never be deleted.
-            bail_invalid!();
+            bail_not_found!();
         };
 
-        // Collect all guest rsvps
-        let rsvps = Rsvp::list_for_attendees(&state.db, session.id)
-            .await?
-            .into_iter()
-            .filter(|r| r.user_id != session.user_id)
-            .collect::<Vec<_>>();
-
+        let rsvps = Rsvp::list_for_attendees(&state.db, session.id).await?;
         let mode = AttendeesMode::Edit;
         Ok(AttendeesHtml { mode, event, user, session, attendees: rsvps, price: 0 }.into_response())
     }
-    pub async fn edit_form(
-        user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
-        Path(slug): Path<String>, Form(form): Form<AttendeesForm>,
+    pub async fn edit_guests_form(
+        State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
+        Form(form): Form<AttendeesForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let session = RsvpSession::lookup_by_token(&state.db, &query.reservation)
             .await?
             .ok_or_else(invalid)?;
+        let user = session.user(&state.db).await?;
+        let our_rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
 
-        // Collect all guest rsvps
-        let rsvps = Rsvp::list_for_attendees(&state.db, session.id)
-            .await?
-            .into_iter()
-            .filter(|r| r.user_id != session.user_id)
-            .collect::<Vec<_>>();
+        // Parse and validate form. NOTE that we only allow editing guest info.
+        // The primary_attendee form is disabled on the frontend, and changes are ignored here.
+        let (primary_attendee, guest_attendees) =
+            parse::attendees_form(&user, &our_rsvps, &form.attendees).await.map_err(|e| {
+                sentry::report(format!("edit_form(): session={} form={form:?}: {e}", session.token));
+                tracing::error!("{}", format!("edit_form(): session={} form={form:?}: {e}", session.token));
+                invalid()
+            })?;
 
-        #[derive(Debug, serde::Deserialize)]
-        pub struct AttendeeForm {
-            rsvp_id: i64,
-
-            first_name: String,
-            last_name: String,
-            email: String,
-            phone: Option<String>,
+        // Check for conflicts
+        let primary_user = primary_attendee.user.clone();
+        let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
+        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, Some(&session)).await?;
+        use validate::Conflict;
+        if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
+            validate::no_conflicts(&other_users, &primary_user, &guest_users)
+        {
+            return goto::error_conflict(&email, &status);
         }
 
-        let form: Vec<AttendeeForm> = serde_json::from_str(&form.attendees).map_err(|_| invalid())?;
+        // Update guests
+        for ParsedAttendee { rsvp_id, user } in guest_attendees {
+            let user = User::update_or_create(&state.db, &user).await?;
+            Rsvp::set_user(&state.db, rsvp_id, &user).await?;
+        }
 
-        for new in form {
-            // Can't edit random rsvps
-            let old = rsvps.iter().find(|old| old.rsvp_id == new.rsvp_id).ok_or_else(invalid)?;
+        goto::manage_page(&session, &event)
+    }
 
-            // Must exist for a valid RSVP
-            let old_email = old.email.as_ref().unwrap();
-            let new_email = &new.email;
+    /// Helpers for changing RSVP session state and redirecting.
+    #[rustfmt::skip]
+    pub mod goto {
+        use super::*;
 
-            // If changing user, confirm they haven't already RSVPed
-            if new_email != old_email
-                && let Some(status) = Rsvp::lookup_conflicts(&state.db, &session, &event, new_email).await?
-            {
-                let message = match status.as_str() {
-                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {
-                        format!(
-                            "Someone is in the process of RSVPing for {new_email}. Check back in 15 minutes."
-                        )
+        pub fn guestlist_page(event: &Event) -> HtmlResult {
+            Ok(Redirect::to(&format!("/e/{}/rsvp/guestlist", &event.slug)).into_response())
+        }
+        pub async fn selection_page(db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event: &Event) -> HtmlResult {
+            let headers = RsvpSession::get_or_create(db, user, session, event.id).await?;
+            Ok((headers, Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug))).into_response())
+        }
+        pub fn attendees_page(event: &Event) -> HtmlResult {
+            Ok(Redirect::to(&format!("/e/{}/rsvp/attendees", &event.slug)).into_response())
+        }
+        pub fn contribution_page(event: &Event) -> HtmlResult {
+            Ok(Redirect::to(&format!("/e/{}/rsvp/contribution", &event.slug)).into_response())
+        }
+        pub fn manage_page(session: &RsvpSession, event: &Event) -> HtmlResult {
+            Ok(Redirect::to(&format!("/e/{}/rsvp/manage?reservation={}", &event.slug, &session.token)).into_response())
+        }
+
+        pub fn error_not_on_guestlist() -> HtmlResult {
+            let error = ErrorHtml { user: None, message: "Sorry, you're not on the list.".into() };
+            Ok(error.into_response())
+        }
+        pub async fn error_registration_closed(db: &Db, session: &Option<RsvpSession>) -> HtmlResult {
+            if let Some(session) = session {
+                session.delete(db).await?;
+            }
+            Ok(MessageHtml {
+                user: None,
+                title: "Sorry".into(),
+                message: "Registration for this event is closed.".into(),
+            }
+            .into_response())
+        }
+        pub async fn error_spot_taken(db: &Db, session: &RsvpSession) -> HtmlResult {
+            session.delete(db).await?;
+            Ok(ErrorHtml {
+                user: None,
+                message: "Sorry, a spot you selected was taken. Please try again.".to_string(),
+            }
+            .into_response())
+        }
+        pub fn error_conflict(email: &str, status: &str) -> HtmlResult {
+            let wording = match status {
+                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => "is currently in the process of RSVPing",
+                RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => "has already RSVPed",
+                _ => unreachable!()
+            };
+            Ok(ErrorHtml {
+                message: format!("Someone {wording} for {email}."),
+                user: None,
+            }.into_response())
+        }
+    }
+
+    mod validate {
+        use super::*;
+        use crate::db::rsvp::UserRsvp;
+
+        pub fn registration_open(event: &Event) -> bool {
+            !event.closed
+        }
+
+        /// Returns true if rsvps satisfy total and per-spot limits.
+        pub fn within_limits(limits: &EventLimits, rsvps: &[EventRsvp]) -> bool {
+            let total_qty = rsvps.len() as i64;
+            let mut spot_qtys: HashMap<i64, i64> = HashMap::default();
+            for rsvp in rsvps {
+                *spot_qtys.entry(rsvp.spot_id).or_default() += 1;
+            }
+
+            if total_qty > limits.total_limit {
+                return false;
+            }
+            for (spot_id, spot_qty) in spot_qtys {
+                if spot_qty > *limits.spot_limits.get(&spot_id).unwrap_or(&0) {
+                    return false;
+                }
+            }
+
+            true
+        }
+
+        pub enum Conflict {
+            Primary { email: String, status: String },
+            Guest { email: String, status: String },
+        }
+        #[rustfmt::skip]
+        pub fn no_conflicts(
+            other_users: &[UserRsvp], primary: &CreateUser, guests: &[CreateUser],
+        ) -> Option<Conflict> {
+            for other_user in other_users {
+                if primary.email == other_user.email {
+                    return Some(Conflict::Primary { email: other_user.email.clone(), status: other_user.status.clone() })
+                }
+
+                for guest in guests {
+                    if guest.email == other_user.email {
+                        return Some(Conflict::Guest { email: other_user.email.clone(), status: other_user.status.clone() });
                     }
-                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
-                        format!("Someone has already RSVPed for {new_email}.")
-                    }
-                    _ => unreachable!(),
+                }
+            }
+            None
+        }
+    }
+
+    mod parse {
+        use super::*;
+
+        #[derive(thiserror::Error, Debug)]
+        pub enum ParseSelectionError {
+            #[error("failed to parse request JSON")]
+            Parse,
+            #[error("unknown spot_id={spot_id}")]
+            UnknownSpot { spot_id: i64 },
+
+            #[error("contribution is outside of range for spot_id={spot_id}")]
+            SpotRange { spot_id: i64 },
+        }
+        pub fn selection_form(
+            spots: &[Spot], selection: &str,
+        ) -> Result<Vec<EventRsvp>, ParseSelectionError> {
+            type Error = ParseSelectionError;
+
+            #[derive(Debug, serde::Deserialize)]
+            pub struct RsvpForm {
+                spot_id: i64,
+                qty: i64,
+                contribution: Option<i64>,
+            }
+
+            let rsvps: Vec<RsvpForm> = serde_json::from_str(selection).map_err(|_| Error::Parse)?;
+            let mut parsed = vec![];
+
+            for rsvp in rsvps {
+                let spot_id = rsvp.spot_id;
+                let Some(spot) = spots.iter().find(|s| s.id == spot_id) else {
+                    return Err(Error::UnknownSpot { spot_id });
                 };
-                return Ok(ErrorHtml { user, message }.into_response());
-            }
 
-            // Get or create the new user. This could be:
-            // * A newly created user with the new email
-            // * An existing user with the new email
-            // * The old user with the same email
-            let user = User::get_or_create(
-                &state.db,
-                &CreateUser {
-                    email: new.email.clone(),
-                    first_name: Some(new.first_name.clone()),
-                    last_name: Some(new.last_name.clone()),
-                    phone: new.phone.clone(),
-                },
-            )
-            .await?;
+                let contribution = match spot.kind.as_str() {
+                    Spot::FIXED => spot.required_contribution.unwrap(),
+                    Spot::VARIABLE => rsvp.contribution.unwrap(),
+                    Spot::FREE => 0,
+                    Spot::WORK => 0,
+                    kind => panic!("unknown kind: {kind}"),
+                };
+                if spot.kind == Spot::VARIABLE {
+                    let min = spot.min_contribution.unwrap();
+                    let max = spot.max_contribution.unwrap();
+                    if !(min..=max).contains(&contribution) {
+                        return Err(Error::SpotRange { spot_id });
+                    }
+                }
 
-            // In either case, if any of the info has changed, update this user
-            if user.first_name != Some(new.first_name.clone())
-                || user.last_name != Some(new.last_name.clone())
-                || user.phone != new.phone.clone()
-            {
-                user.update(
-                    &state.db,
-                    &UpdateUser {
-                        email: Some(new.email.clone()),
-                        first_name: Some(new.first_name),
-                        last_name: Some(new.last_name),
-                        phone: new.phone,
-                    },
-                )
-                .await?;
-            }
-
-            // Update the rsvp user and version
-            Rsvp::set_user(&state.db, old.rsvp_id, &user).await?;
-        }
-
-        goto_manage_page(&session, &event)
-    }
-
-    pub struct ParsedSelection {
-        spot_id: i64,
-        contribution: i64,
-    }
-    #[derive(thiserror::Error, Debug)]
-    pub enum ParseSelectionError {
-        #[error("failed to parse request JSON")]
-        Parse,
-
-        #[error("unknown spot_id={spot_id}")]
-        UnknownSpot { spot_id: i64 },
-
-        #[error("number of rsvps exceeds event capacity")]
-        EventCapacity,
-        #[error("number of rsvps exceeds capacity for spot_id={spot_id}")]
-        SpotCapacity { spot_id: i64 },
-
-        #[error("contribution is outside of range for spot_id={spot_id}")]
-        SpotRange { spot_id: i64 },
-    }
-    fn parse_selection(
-        stats: &EventStats, spots: &[Spot], selection: &str,
-    ) -> Result<Vec<ParsedSelection>, ParseSelectionError> {
-        type Error = ParseSelectionError;
-
-        #[derive(Debug, serde::Deserialize)]
-        pub struct RsvpForm {
-            spot_id: i64,
-            qty: i64,
-            contribution: Option<i64>,
-        }
-
-        let rsvps: Vec<RsvpForm> = serde_json::from_str(selection).map_err(|_| Error::Parse)?;
-        let mut parsed = vec![];
-
-        let mut reserved_qty = 0;
-        for rsvp in rsvps {
-            let spot_id = rsvp.spot_id;
-            let Some(spot) = spots.iter().find(|s| s.id == spot_id) else {
-                return Err(Error::UnknownSpot { spot_id });
-            };
-
-            if rsvp.qty > *stats.remaining_spots.get(&rsvp.spot_id).unwrap_or(&0) {
-                return Err(Error::SpotCapacity { spot_id });
-            }
-
-            let contribution = match spot.kind.as_str() {
-                Spot::FIXED => spot.required_contribution.unwrap(),
-                Spot::VARIABLE => rsvp.contribution.unwrap(),
-                Spot::FREE => 0,
-                Spot::WORK => 0,
-                kind => panic!("unknown kind: {kind}"),
-            };
-            if spot.kind == Spot::VARIABLE {
-                let min = spot.min_contribution.unwrap();
-                let max = spot.max_contribution.unwrap();
-                if !(min..=max).contains(&contribution) {
-                    return Err(Error::SpotRange { spot_id });
+                for _ in 0..rsvp.qty {
+                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution })
                 }
             }
-            reserved_qty += rsvp.qty;
 
-            for _ in 0..rsvp.qty {
-                parsed.push(ParsedSelection { spot_id, contribution })
+            Ok(parsed)
+        }
+
+        #[derive(Clone)]
+        pub struct ParsedAttendee {
+            pub rsvp_id: i64,
+            pub user: CreateUser,
+        }
+        #[derive(thiserror::Error, Debug)]
+        pub enum ParseAttendeesError {
+            #[error("failed to parse request JSON")]
+            Parse,
+
+            #[error("unknown or duplicate rsvp_id={rsvp_id}")]
+            UnknownOrDuplicateRsvp { rsvp_id: i64 },
+            #[error("missing attendee for rsvp_ids={rsvp_ids:?}")]
+            MissingAttendee { rsvp_ids: Vec<i64> },
+            #[error("missing attendee with is_me=true")]
+            MissingPrimary,
+            #[error("multiple attendees with is_me=true")]
+            MultiplePrimary,
+            #[error("modified attendee with is_me=true")]
+            PrimaryChanged,
+            #[error("invalid name: first={first_name:?} last={last_name:?}")]
+            InvalidName { first_name: String, last_name: String },
+            #[error("invalid phone number: {phone}")]
+            InvalidPhone { phone: String },
+            #[error("duplicate email: {email}")]
+            DuplicateEmail { email: String },
+            #[error("duplicate phone: {phone}")]
+            DuplicatePhone { phone: String },
+        }
+        pub async fn attendees_form(
+            session_user: &Option<User>, rsvps: &[EventRsvp], attendees: &str,
+        ) -> Result<(ParsedAttendee, Vec<ParsedAttendee>), ParseAttendeesError> {
+            type Error = ParseAttendeesError;
+
+            #[derive(Debug, serde::Deserialize)]
+            pub struct AttendeeForm {
+                rsvp_id: i64,
+
+                first_name: String,
+                last_name: String,
+                email: String,
+                phone: Option<String>,
+
+                is_me: bool,
             }
-        }
+            let attendees: Vec<AttendeeForm> = serde_json::from_str(attendees).map_err(|_| Error::Parse)?;
 
-        if reserved_qty > stats.remaining_capacity {
-            return Err(Error::EventCapacity);
-        }
+            // Track available rsvp_ids, seen email/phones for duplicate detection
+            let mut remaining_rsvps: HashSet<i64> = HashSet::from_iter(rsvps.iter().map(|r| r.rsvp_id));
+            let mut seen_emails: HashSet<String> = HashSet::default();
+            let mut seen_phones: HashSet<String> = HashSet::default();
 
-        Ok(parsed)
-    }
+            // Extract primary/guest attendees from form, and map to rsvps.
+            let mut primary_attendee = None;
+            let mut guest_attendees = vec![];
+            for AttendeeForm { rsvp_id, first_name, last_name, email, phone, is_me } in attendees {
+                // Validate rsvp_id
+                if !remaining_rsvps.remove(&rsvp_id) {
+                    return Err(Error::UnknownOrDuplicateRsvp { rsvp_id });
+                }
 
-    #[derive(Clone)]
-    struct ParsedAttendee<'a> {
-        rsvp: &'a AttendeeRsvp,
-        info: CreateUser,
-    }
-    #[derive(thiserror::Error, Debug)]
-    pub enum ParseAttendeesError {
-        #[error("failed to parse request JSON")]
-        Parse,
+                // Validate name
+                if first_name.is_empty() || last_name.is_empty() {
+                    return Err(Error::InvalidName { first_name, last_name });
+                }
 
-        #[error("unknown rsvp_id={rsvp_id}")]
-        UnknownRsvp { rsvp_id: i64 },
-        #[error("missing attendee for rsvp_id={rsvp_id}")]
-        MissingAttendee { rsvp_id: i64 },
-        #[error("missing attendee with is_me=true")]
-        MissingIsMe,
-        #[error("multiple attendees with is_me=true")]
-        MultipleIsMe,
-        #[error("invalid phone number: {phone}")]
-        InvalidPhone { phone: String },
-        #[error("duplicate email: {email}")]
-        DuplicateEmail { email: String },
-        #[error("duplicate phone: {phone}")]
-        DuplicatePhone { phone: String },
-    }
+                // Validate email/phone and check for duplicates
+                if !seen_emails.insert(email.clone()) {
+                    return Err(Error::DuplicateEmail { email });
+                }
+                let phone = parse_phone(phone)?;
+                if let Some(phone) = phone.clone()
+                    && !seen_phones.insert(phone.clone())
+                {
+                    return Err(Error::DuplicatePhone { phone });
+                }
 
-    /// Validate and normalize phone to E.164 format.
-    /// Empty string is ok (returns None). 10 digits assumes +1. 11-15 digits assumes leading +.
-    fn validate_phone(phone: Option<String>) -> Result<Option<String>, ParseAttendeesError> {
-        let Some(phone) = phone else { return Ok(None) };
-        if phone.trim().is_empty() {
-            return Ok(None);
-        };
+                let user =
+                    CreateUser { first_name: Some(first_name), last_name: Some(last_name), email, phone };
+                let attendee = ParsedAttendee { rsvp_id, user };
+                if is_me {
+                    // Disallow changing is_me email when it's already set on the session (it's disabled on the frontend)
+                    if session_user.as_ref().is_some_and(|u| attendee.user.email != u.email) {
+                        return Err(Error::PrimaryChanged);
+                    }
 
-        let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
-        match digits.len() {
-            10 => Ok(Some(format!("+1{digits}"))),
-            11..=15 => Ok(Some(format!("+{digits}"))),
-            _ => Err(ParseAttendeesError::InvalidPhone { phone }),
-        }
-    }
-    async fn parse_attendees<'a>(
-        rsvps: &'a [AttendeeRsvp], attendees: &str,
-    ) -> Result<(ParsedAttendee<'a>, Vec<ParsedAttendee<'a>>), ParseAttendeesError> {
-        type Error = ParseAttendeesError;
-
-        #[derive(Debug, serde::Deserialize)]
-        pub struct AttendeeForm {
-            rsvp_id: i64,
-
-            first_name: String,
-            last_name: String,
-            email: String,
-            phone: Option<String>,
-
-            is_me: bool,
-        }
-
-        let form: Vec<AttendeeForm> = serde_json::from_str(attendees).map_err(|_| Error::Parse)?;
-
-        let mut attendees = vec![];
-        let mut is_me_attendee = None;
-
-        for rsvp in rsvps {
-            // Ensure all RSVPs have an attendee specified
-            if !form.iter().any(|a| a.rsvp_id == rsvp.rsvp_id) {
-                return Err(Error::MissingAttendee { rsvp_id: rsvp.rsvp_id });
-            }
-        }
-
-        for AttendeeForm { rsvp_id, first_name, last_name, email, phone, is_me } in form {
-            // Ensure all attendees correspond to a valid RSVP
-            let Some(rsvp) = rsvps.iter().find(|r| r.rsvp_id == rsvp_id) else {
-                return Err(Error::UnknownRsvp { rsvp_id });
-            };
-
-            let phone = validate_phone(phone)?;
-            let attendee = ParsedAttendee {
-                rsvp,
-                info: CreateUser { first_name: Some(first_name), last_name: Some(last_name), email, phone },
-            };
-
-            if is_me {
-                match is_me_attendee {
-                    Some(_) => return Err(Error::MultipleIsMe),
-                    None => is_me_attendee = Some(attendee.clone()),
+                    match primary_attendee {
+                        Some(_) => return Err(Error::MultiplePrimary),
+                        None => primary_attendee = Some(attendee),
+                    }
+                } else {
+                    guest_attendees.push(attendee);
                 }
             }
-            attendees.push(attendee);
+            // Ensure exactle one primary attendee.
+            let Some(primary_attendee) = primary_attendee else {
+                return Err(Error::MissingPrimary);
+            };
+
+            // Ensure no remaining rsvps without an attendee specified
+            if !remaining_rsvps.is_empty() {
+                let rsvp_ids = remaining_rsvps.into_iter().collect();
+                return Err(Error::MissingAttendee { rsvp_ids });
+            }
+
+            Ok((primary_attendee, guest_attendees))
         }
+        /// Normalize phone to E.164 format.
+        /// Empty string is ok (returns None). 10 digits assumes +1. 11-15 digits assumes leading +.
+        fn parse_phone(phone: Option<String>) -> Result<Option<String>, ParseAttendeesError> {
+            let Some(phone) = phone else { return Ok(None) };
+            if phone.trim().is_empty() {
+                return Ok(None);
+            };
 
-        let Some(is_me_attendee) = is_me_attendee else {
-            return Err(Error::MissingIsMe);
-        };
-
-        // Check for duplicate emails
-        let mut seen_emails = std::collections::HashSet::new();
-        for a in &attendees {
-            if !seen_emails.insert(&a.info.email) {
-                return Err(Error::DuplicateEmail { email: a.info.email.clone() });
+            let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
+            match digits.len() {
+                10 => Ok(Some(format!("+1{digits}"))),
+                11..=15 => Ok(Some(format!("+{digits}"))),
+                _ => Err(ParseAttendeesError::InvalidPhone { phone }),
             }
         }
-
-        // Check for duplicate phones (ignoring None)
-        let mut seen_phones = std::collections::HashSet::new();
-        for a in &attendees {
-            if let Some(phone) = &a.info.phone
-                && !seen_phones.insert(phone)
-            {
-                return Err(Error::DuplicatePhone { phone: phone.clone() });
-            }
-        }
-
-        Ok((is_me_attendee, attendees))
     }
 }
 
@@ -1717,29 +1775,25 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
     pub async fn rsvp_session_middleware(
         State(state): State<SharedAppState>, cookies: CookieJar, mut request: Request, next: Next,
     ) -> HtmlResult {
+        let is_rsvp_path = request.uri().path().contains("/rsvp");
+
         if let Some(token) = cookies.get("rsvp_session")
             && let Some(session) = RsvpSession::lookup_by_token(&state.db, token.value()).await?
         {
+            // Don't remove stale cookies if session is not found (e.g. it expired).
+            // They will be overwritten when a new session is created.
             request.extensions_mut().insert(session);
         }
-        // Don't remove stale cookies here (e.g. from expired session).
-        // They will be overwritten when a new session is created.
 
-        // Block RSVP pages when registration is closed (except manage/edit for confirmed users).
-        let path = request.uri().path();
-        let is_rsvp_path = path.contains("/rsvp") || path.contains("/guestlist");
-        let is_manage_or_edit = path.contains("/manage") || path.contains("/edit");
-        if is_rsvp_path && !is_manage_or_edit {
-            // Parse slug from /e/{slug}/...
-            if let Some(slug) = path.strip_prefix("/e/").and_then(|p| p.split('/').next())
-                && let Some(event) = Event::lookup_by_slug(&state.db, slug).await?
-                && event.closed
-            {
-                return Ok(rsvp::show_registration_closed_error(&None));
-            }
+        let mut res = next.run(request).await;
+
+        if is_rsvp_path {
+            // Prevent browser from storing these stateful pages in the back-forward cache
+            res.headers_mut()
+                .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
         }
 
-        Ok(next.run(request).await)
+        Ok(res)
     }
     router.layer(axum::middleware::from_fn_with_state(state, rsvp_session_middleware))
 }

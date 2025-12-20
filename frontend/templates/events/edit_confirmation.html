@@ -12,7 +12,11 @@
       type="text"
       id="subject"
       name="subject"
-      value="{% if let Some(subject) = event.confirmation_subject.as_deref() %}{{ subject }}{% else %}You're confirmed for {{ event.title }}{% endif %}"
+      value="{% if let Some(subject) = event.confirmation_subject.as_deref() %}
+        {{ subject }}
+      {% else %}
+        You're confirmed for {{ event.title }}
+      {% endif %}"
       required
     />
   </div>

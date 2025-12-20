@@ -52,6 +52,18 @@ impl RsvpSession {
             .to_string()
     }
 
+    pub async fn user(&self, db: &Db) -> Result<Option<User>> {
+        Ok(match self.user_id {
+            Some(id) => {
+                let user = User::lookup_by_id(db, id)
+                    .await?
+                    .ok_or_else(|| any!("bad user_id={id} in rsvp_session={}", self.token))?;
+                Some(user)
+            }
+            None => None,
+        })
+    }
+
     pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<RsvpSession>> {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE id = ?"#, id)
             .fetch_optional(db)
@@ -62,21 +74,6 @@ impl RsvpSession {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE token = ?"#, token)
             .fetch_optional(db)
             .await?)
-    }
-
-    pub async fn lookup_for_user_and_event(
-        db: &Db, user: &User, event: &Event,
-    ) -> Result<Option<RsvpSession>> {
-        let session = sqlx::query_as!(
-            Self,
-            r#"SELECT * FROM rsvp_sessions
-               WHERE user_id = ? AND event_id = ?"#,
-            user.id,
-            event.id
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(session)
     }
 
     pub async fn get_or_create(
@@ -126,6 +123,25 @@ impl RsvpSession {
         sqlx::query!("DELETE FROM rsvp_sessions WHERE id = ?", self.id)
             .execute(db)
             .await?;
+        Ok(())
+    }
+
+    pub async fn takeover_for_event(&self, db: &Db, event: &Event, email: &str) -> Result<()> {
+        sqlx::query!(
+            "DELETE FROM rsvp_sessions
+             WHERE user_id IN (
+                 SELECT u.id
+                 FROM users u
+                 WHERE u.email = ?
+             )
+             AND id != ?
+             AND event_id = ?",
+            email,
+            self.id,
+            event.id
+        )
+        .execute(db)
+        .await?;
         Ok(())
     }
 

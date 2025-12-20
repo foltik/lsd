@@ -8,7 +8,7 @@ pub use askama::Template;
 pub use askama_web::WebTemplate;
 pub use axum::extract::{Path, Query, Request, State};
 pub use axum::http::request::Parts;
-pub use axum::http::{HeaderName, StatusCode, header};
+pub use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 pub use axum::middleware::Next;
 pub use axum::response::{IntoResponse, Redirect, Response};
 pub use axum::routing::{delete, get, post};

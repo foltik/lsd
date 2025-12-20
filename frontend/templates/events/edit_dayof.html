@@ -12,7 +12,11 @@
       type="text"
       id="subject"
       name="subject"
-      value="{% if let Some(subject) = event.dayof_subject.as_deref() %}{{ subject }}{% else %}What to know for {{ event.title }}{% endif %}"
+      value="{% if let Some(subject) = event.dayof_subject.as_deref() %}
+        {{ subject }}
+      {% else %}
+        What to know for {{ event.title }}
+      {% endif %}"
       required
     />
   </div>
