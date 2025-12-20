@@ -49,6 +49,14 @@
                 />
                 <span>Me</span>
               </label>
+            {% else if mode == AttendeesMode::Create && attendees.len() == 1 %}
+              <input type="hidden" name="is_me" value="true" />
+            {% else if mode == AttendeesMode::Edit %}
+              <input
+                type="hidden"
+                name="is_me"
+                value="{{ attendee.user_id == session.user_id }}"
+              />
             {% endif %}
           </div>
           <div class="subtext">
@@ -65,6 +73,9 @@
                 value="{{ attendee.first_name | unwrap_or_empty }}"
                 autocomplete="given-name"
                 required
+                {% if mode == AttendeesMode::Edit && attendee.user_id == session.user_id %}
+                  disabled
+                {% endif %}
               />
             </label>
             <label class="last field">
@@ -76,6 +87,9 @@
                 value="{{ attendee.last_name | unwrap_or_empty }}"
                 autocomplete="family-name"
                 required
+                {% if mode == AttendeesMode::Edit && attendee.user_id == session.user_id %}
+                  disabled
+                {% endif %}
               />
             </label>
           </div>
@@ -89,6 +103,9 @@
                 value="{{ attendee.email | unwrap_or_empty }}"
                 autocomplete="email"
                 required
+                {% if mode == AttendeesMode::Edit && attendee.user_id == session.user_id %}
+                  disabled
+                {% endif %}
               />
             </label>
           </div>
@@ -101,6 +118,9 @@
                 type="tel"
                 value="{{ attendee.phone | unwrap_or_empty }}"
                 autocomplete="tel"
+                {% if mode == AttendeesMode::Edit && attendee.user_id == session.user_id %}
+                  disabled
+                {% endif %}
               />
             </label>
           </div>
@@ -150,7 +170,7 @@
       next: $("next"),
       attendees: () => [...ui.form.querySelectorAll(".attendee")],
       field: (a, name) => a.querySelector(`[name="${name}"]`),
-      isMeRadios: () => [...ui.form.querySelectorAll('input[name="is_me"]')],
+      isMeInputs: () => [...ui.form.querySelectorAll('input[name="is_me"]')],
     };
 
     // Provide current user data for autofill; null if not logged in.
@@ -208,13 +228,12 @@
       });
     }
 
-    /* ---------- Handle "This is me!" selection and autofill ----------------- */
-    ui.form.addEventListener("change", (e) => {
-      if (!user || e.target.name != "is_me") return;
-
+    /* ---------- Handle "Me" selection and autofill ----------------- */
+    const updateIsMe = () => {
       // Find ticked "is_me"
-      const ticked = ui.isMeRadios().find((r) => r.checked);
-      if (!ticked) return;
+      const ticked = ui
+        .isMeInputs()
+        .find((r) => r.checked || r.value == "true");
 
       // Re-enable all fields, and clear out the previous "is_me"
       for (const a of ui.attendees()) {
@@ -235,15 +254,19 @@
       let last = ui.field(a, "last_name");
       let email = ui.field(a, "email");
       let phone = ui.field(a, "phone");
-      first.disabled = true;
-      last.disabled = true;
-      email.disabled = true;
-      phone.disabled = phone != null;
       first.value = user.first_name;
       last.value = user.last_name;
       email.value = user.email;
       phone.value = user.phone;
+      first.disabled = !!user.first_name;
+      last.disabled = !!user.last_name;
+      email.disabled = true;
+      phone.disabled = !!user.phone;
+    };
+    ui.form.addEventListener("change", (e) => {
+      if (user && e.target.name == "is_me") updateIsMe();
     });
+    updateIsMe();
 
     /* ---------- Next button ------------------------------------------------ */
     ui.next.addEventListener("click", async () => {
@@ -267,9 +290,12 @@
           return;
         }
 
-        // When there's only a single RSVP, is_me is always true
-        const is_me_radio = a.querySelector('input[name="is_me"]');
-        const is_me = is_me_radio ? is_me_radio.checked : true;
+        // When there's only a single RSVP, is_me is always true.
+        // is_me input can either be a radio on /attendees, or a hidden on /edit
+        const is_me_input = a.querySelector('input[name="is_me"]');
+        const is_me = is_me_input
+          ? is_me_input.checked || is_me_input.value == "true"
+          : true;
 
         attendees.push({ rsvp_id, first_name, last_name, email, phone, is_me });
       }

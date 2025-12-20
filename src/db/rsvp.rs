@@ -27,12 +27,6 @@ pub struct CreateRsvp {
 }
 
 #[derive(serde::Serialize)]
-pub struct SelectionRsvp {
-    pub spot_id: i64,
-    pub contribution: i64,
-}
-
-#[derive(serde::Serialize)]
 pub struct AttendeeRsvp {
     pub rsvp_id: i64,
     pub user_id: Option<i64>,
@@ -54,9 +48,16 @@ pub struct ContributionRsvp {
     pub contribution: i64,
 }
 
+#[derive(Clone)]
 pub struct EventRsvp {
+    pub rsvp_id: i64,
     pub spot_id: i64,
     pub contribution: i64,
+}
+
+pub struct UserRsvp {
+    pub status: String,
+    pub email: String,
 }
 
 pub struct AdminAttendeesRsvp {
@@ -108,10 +109,10 @@ impl Rsvp {
         .fetch_all(db)
         .await?)
     }
-    pub async fn list_for_selection(db: &Db, session_id: i64) -> Result<Vec<SelectionRsvp>> {
+    pub async fn list_for_session(db: &Db, session_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
-            SelectionRsvp,
-            r#"SELECT r.spot_id, r.contribution
+            EventRsvp,
+            r#"SELECT r.id as rsvp_id, r.spot_id, r.contribution
                FROM rsvps r
                JOIN rsvp_sessions rs ON rs.id = r.session_id
                WHERE rs.id = ?
@@ -167,24 +168,45 @@ impl Rsvp {
         .fetch_all(db)
         .await?)
     }
-    /// List rsvps for an event, excluding a specific session.
-    /// Only includes sessions at CONTRIBUTION status or later (spots are "held" once at contribution).
-    pub async fn list_for_event_excluding_session(
-        db: &Db, event_id: i64, session_id: i64,
+
+    /// List reserved spots for an event, excluding a specific session.
+    /// Only includes rsvps from sessions at CONTRIBUTION status or later.
+    pub async fn list_reserved_for_event(
+        db: &Db, event: &Event, session: &RsvpSession,
     ) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT spot_id, contribution
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
              FROM rsvps r
-             JOIN rsvp_sessions s ON s.id = r.session_id
-             WHERE s.event_id = ?
-               AND s.id != ?
-               AND s.status IN (?, ?, ?)",
-            event_id,
-            session_id,
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             WHERE rs.event_id = ?
+               AND rs.id != ?
+               AND rs.status IN (?, ?, ?)",
+            event.id,
+            session.id,
             RsvpSession::CONTRIBUTION,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
+    pub async fn list_reserved_users_for_event(
+        db: &Db, event: &Event, session: Option<&RsvpSession>,
+    ) -> Result<Vec<UserRsvp>> {
+        let session_id = session.map(|s| s.id).unwrap_or(0);
+        Ok(sqlx::query_as!(
+            UserRsvp,
+            r#"SELECT rs.status, u.email
+               FROM users u
+               JOIN rsvps r ON r.user_id = u.id
+               JOIN rsvp_sessions rs ON rs.id = r.session_id
+               WHERE rs.event_id = ?
+                 AND rs.id != ?
+            "#,
+            event.id,
+            session_id,
         )
         .fetch_all(db)
         .await?)
@@ -226,26 +248,6 @@ impl Rsvp {
         .execute(db)
         .await?;
         Ok(())
-    }
-
-    pub async fn lookup_conflicts(
-        db: &Db, session: &RsvpSession, event: &Event, email: &str,
-    ) -> Result<Option<String>> {
-        let row = sqlx::query!(
-            "SELECT s.status
-             FROM rsvps r
-             JOIN rsvp_sessions s ON s.id = r.session_id
-             LEFT JOIN users u ON u.id = s.user_id
-             WHERE s.id != ?
-               AND s.event_id = ?
-               AND u.email = ?",
-            session.id,
-            event.id,
-            email
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(row.map(|r| r.status))
     }
 
     pub async fn delete_for_session(db: &Db, session_id: i64) -> Result<()> {

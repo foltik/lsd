@@ -1,5 +1,6 @@
 use sqlx::QueryBuilder;
 
+use crate::db::rsvp::EventRsvp;
 use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
@@ -191,5 +192,56 @@ impl Spot {
             .await?;
 
         Ok(())
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct SpotStats {
+    pub stats: HashMap<i64, Vec<SpotStat>>,
+}
+
+// Stat about VARIABLE spot, such as min/median/max contribution.
+#[derive(Debug, serde::Serialize)]
+pub struct SpotStat {
+    pub name: String,
+    pub value: i64,
+}
+
+impl Spot {
+    /// Compute contribution statistics for VARIABLE spots given a list of rsvps.
+    pub fn stats(spots: &[Spot], rsvps: &[EventRsvp]) -> SpotStats {
+        let mut contributions: HashMap<i64, Vec<i64>> = HashMap::default();
+        for rsvp in rsvps {
+            contributions.entry(rsvp.spot_id).or_default().push(rsvp.contribution);
+        }
+
+        let mut variable_stats = HashMap::default();
+        for spot in spots.iter().filter(|s| s.kind == Spot::VARIABLE) {
+            let Some(values) = contributions.get_mut(&spot.id) else {
+                continue;
+            };
+
+            let n = values.len();
+            values.sort_unstable();
+            let median = if n.is_multiple_of(2) {
+                let l = values[n / 2 - 1];
+                let r = values[n / 2];
+                (l + r) / 2
+            } else {
+                values[n / 2]
+            };
+            let max = values.last().copied().unwrap();
+
+            // Only add the max if it's different from the median to avoid clutter
+            let mut stats = vec![];
+            stats.push(SpotStat { name: "Median".into(), value: median });
+            if max > median {
+                stats.push(SpotStat { name: "Max".into(), value: max });
+            }
+
+            variable_stats.insert(spot.id, stats);
+        }
+
+        SpotStats { stats: variable_stats }
     }
 }
