@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.id as rsvp_id, r.spot_id, r.contribution\n               FROM rsvps r\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               WHERE rs.id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "rsvp_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "spot_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f00506273c315a0b8c34a224acc5e4b4921dcc6517f0900ebd246a055558f552"
+}

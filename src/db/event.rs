@@ -1,7 +1,7 @@
 use image::DynamicImage;
 
 use crate::db::event_flyer::EventFlyer;
-use crate::db::rsvp::Rsvp;
+use crate::db::rsvp::EventRsvp;
 use crate::db::spot::Spot;
 use crate::prelude::*;
 
@@ -52,23 +52,6 @@ pub struct UpdateEvent {
     pub closed: bool,
     pub guest_list_id: Option<i64>,
     pub spots_per_person: Option<i64>,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct EventStats {
-    /// Number of total spots available.
-    pub remaining_capacity: i64,
-    /// Number of spots of each type available (by id)
-    pub remaining_spots: HashMap<i64, i64>,
-
-    /// Statistics about spot reservations (by id)
-    pub spot_stats: HashMap<i64, Vec<SpotStat>>,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct SpotStat {
-    pub name: String,
-    pub value: i64,
 }
 
 impl Event {
@@ -273,73 +256,6 @@ impl Event {
         Ok(row)
     }
 
-    /// Calculate user-facing stats for an event.
-    pub async fn stats_for_session(&self, db: &Db, session_id: i64) -> Result<EventStats> {
-        let spots = Spot::list_for_event(db, self.id).await?;
-        let rsvps = Rsvp::list_for_event_excluding_session(db, self.id, session_id).await?;
-
-        let mut contributions: HashMap<i64, Vec<i64>> = HashMap::default();
-        let mut qty_reserved: HashMap<i64, i64> = HashMap::default();
-        for rsvp in rsvps {
-            contributions.entry(rsvp.spot_id).or_default().push(rsvp.contribution);
-            *qty_reserved.entry(rsvp.spot_id).or_insert(0) += 1;
-        }
-
-        let remaining_capacity = self.capacity.saturating_sub(qty_reserved.values().sum::<i64>());
-        let remaining_spots = spots
-            .iter()
-            .map(|t| {
-                (
-                    t.id,
-                    t.qty_total
-                        .saturating_sub(*qty_reserved.get(&t.id).unwrap_or(&0))
-                        .min(t.qty_per_person),
-                )
-            })
-            .collect();
-
-        let mut spot_stats: HashMap<i64, Vec<SpotStat>> = HashMap::default();
-        for spot in &spots {
-            let n = qty_reserved.get(&spot.id).copied().unwrap_or(0) as usize;
-            if spot.kind != Spot::VARIABLE {
-                continue;
-            }
-
-            // If the spot hasn't been reserved, just use the suggested contribution as the median
-            // so we always have at least one stat to make frontend styling easier.
-            if n == 0 {
-                spot_stats.insert(
-                    spot.id,
-                    vec![SpotStat { name: "Median".into(), value: spot.suggested_contribution.unwrap() }],
-                );
-                continue;
-            }
-
-            let prices = contributions.get_mut(&spot.id).unwrap(); // we checked n > 0
-            prices.sort_unstable();
-
-            let median = if n.is_multiple_of(2) {
-                let l = prices[n / 2 - 1];
-                let r = prices[n / 2];
-                (l + r) / 2
-            } else {
-                prices[n / 2]
-            };
-            let max = prices.last().copied().unwrap();
-
-            // Only add the max if it's different from the median to avoid clutter
-            let mut stats = vec![];
-            stats.push(SpotStat { name: "Median".into(), value: median });
-            if max > median {
-                stats.push(SpotStat { name: "Max".into(), value: max });
-            }
-
-            spot_stats.insert(spot.id, stats);
-        }
-
-        Ok(EventStats { remaining_capacity, remaining_spots, spot_stats })
-    }
-
     #[allow(unused)]
     pub fn is_upcoming(&self, now: NaiveDateTime) -> bool {
         // TODO: use with:
@@ -347,5 +263,44 @@ impl Event {
         // let past = query.past.unwrap_or(false);
 
         now <= self.start || self.end.is_some_and(|end| now <= end)
+    }
+}
+
+pub struct EventLimits {
+    pub total_limit: i64,
+    pub spot_limits: HashMap<i64, i64>,
+}
+
+impl Event {
+    /// Calculate number of spots available of each type for this event.
+    pub fn compute_limits(&self, user: &Option<User>, spots: &[Spot], rsvps: &[EventRsvp]) -> EventLimits {
+        // Overall event limits
+        let capacity_limit = self.capacity - rsvps.len() as i64;
+        let per_person_limit = self.spots_per_person.unwrap_or(i64::MAX);
+        let this_user_limit = user.as_ref().map(|_| i64::MAX).unwrap_or(i64::MAX); // TODO
+        let limit = capacity_limit.min(per_person_limit).min(this_user_limit);
+
+        // Count rsvps per spot
+        let mut spot_num_rsvps: HashMap<i64, i64> = Default::default();
+        for rsvp in rsvps {
+            *spot_num_rsvps.entry(rsvp.spot_id).or_default() += 1;
+        }
+
+        // Per-spot limits
+        let mut sum_spot_limits = 0;
+        let mut spot_limits = HashMap::default();
+        for spot in spots {
+            let spot_total_limit = spot.qty_total - spot_num_rsvps.get(&spot.id).unwrap_or(&0);
+            let spot_per_person_limit = spot.qty_per_person;
+            let spot_limit = spot_total_limit.min(spot_per_person_limit);
+
+            sum_spot_limits += spot_limit;
+            spot_limits.insert(spot.id, spot_limit);
+        }
+
+        // Final limit is no more than the sum of all per-spot limits
+        let limit = limit.min(sum_spot_limits);
+
+        EventLimits { total_limit: limit, spot_limits }
     }
 }

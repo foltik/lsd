@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT rs.status, u.email\n               FROM users u\n               JOIN rsvps r ON r.user_id = u.id\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               WHERE rs.event_id = ?\n                 AND rs.id != ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "status",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "2ee5f2eb3e517e0954c5bc4d7161c1b0e36e560b22aea8eed6209df746e7c1d0"
+}
