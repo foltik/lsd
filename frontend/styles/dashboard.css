@@ -1,3 +1,15 @@
 #dashboard {
   @apply mx-auto flex max-w-2xl flex-col px-12 py-8;
+
+  h1 {
+    @apply mb-6 text-3xl;
+  }
+
+  .links {
+    @apply flex flex-col gap-4;
+
+    .dashboard-link {
+      @apply bg-lsd-charcoal hover:bg-lsd-white hover:text-lsd-black rounded-lg p-4 text-center text-xl transition-colors duration-200;
+    }
+  }
 }
