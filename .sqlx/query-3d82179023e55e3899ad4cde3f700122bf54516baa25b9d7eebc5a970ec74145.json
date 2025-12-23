@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                s.id,\n                s.token,\n                s.status,\n                s.created_at,\n                s.updated_at,\n                e.title AS event_title,\n                e.slug AS event_slug,\n                u.email AS user_email\n            FROM rsvp_sessions s\n            JOIN events e ON e.id = s.event_id\n            LEFT JOIN users u ON u.id = s.user_id\n            WHERE e.start > datetime('now', '-24 hours')\n            ORDER BY s.updated_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "token",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "event_title",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_slug",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_email",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3d82179023e55e3899ad4cde3f700122bf54516baa25b9d7eebc5a970ec74145"
+}
