@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                u.*,\n                h.version,\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM users u\n            LEFT JOIN login_tokens t ON t.user_id = u.id\n            JOIN user_history h ON h.user_id = u.id\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            WHERE t.token = ?\n            GROUP BY u.id",
+  "query": "\n            SELECT\n                u.*,\n                COALESCE(MAX(h.version), 0) as \"version!: i64\",\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM users u\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            JOIN user_history h ON h.user_id = u.id\n            WHERE u.email = ?\n            GROUP BY u.id\n            ",
   "describe": {
     "columns": [
       {
@@ -39,14 +39,14 @@
         "type_info": "Datetime"
       },
       {
-        "name": "version",
+        "name": "version!: i64",
         "ordinal": 7,
-        "type_info": "Integer"
+        "type_info": "Null"
       },
       {
         "name": "roles!: String",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Null"
       }
     ],
     "parameters": {
@@ -60,9 +60,9 @@
       true,
       false,
       false,
-      false,
-      false
+      null,
+      null
     ]
   },
-  "hash": "e67ae66de377b6ba906a79a942035795984601db00b77b9a25e5d53a215f686b"
+  "hash": "6ce3d654372fc6d767da5bb04280448868b8cd7d1c8fc3bbb0ec9a24c2e4d4d5"
 }
