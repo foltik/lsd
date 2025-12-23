@@ -248,7 +248,7 @@ impl RsvpSession {
     pub fn line_items(&self, rsvps: &[ContributionRsvp]) -> Result<Vec<stripe::LineItem>> {
         let mut spot_rsvps: HashMap<String, (i64, i64)> = Default::default();
         for rsvp in rsvps {
-            let entry = spot_rsvps.entry(rsvp.spot_name.clone()).or_insert((1, rsvp.contribution));
+            let entry = spot_rsvps.entry(rsvp.spot_name.clone()).or_insert((0, rsvp.contribution));
             entry.0 += 1; // quantity++
         }
 
