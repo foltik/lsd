@@ -10,6 +10,7 @@
       <thead>
         <tr>
           <th>Event</th>
+          <th>Reservation #</th>
           <th>Status</th>
           <th>User</th>
           <th>RSVPs</th>
@@ -23,6 +24,7 @@
         {% for s in sessions %}
           <tr data-id="{{ s.id }}">
             <td><a href="/e/{{ s.event_slug }}">{{ s.event_title }}</a></td>
+            <td>{{ s.token }}</td>
             <td>{{ s.status }}</td>
             <td>{{ s.user_email|unwrap_or_empty }}</td>
             <td class="rsvps">

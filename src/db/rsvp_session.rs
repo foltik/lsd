@@ -266,6 +266,7 @@ impl RsvpSession {
             DebugSessionRow,
             r#"SELECT
                 s.id,
+                s.token,
                 s.status,
                 s.created_at,
                 s.updated_at,
@@ -307,6 +308,7 @@ impl RsvpSession {
                 let expires_in = 31 - (now - s.updated_at).num_minutes();
                 DebugSession {
                     id: s.id,
+                    token: s.token,
                     status: s.status,
                     created_at: s.created_at,
                     updated_at: s.updated_at,
@@ -323,6 +325,7 @@ impl RsvpSession {
 
 struct DebugSessionRow {
     id: i64,
+    token: String,
     status: String,
     created_at: NaiveDateTime,
     updated_at: NaiveDateTime,
@@ -334,6 +337,7 @@ struct DebugSessionRow {
 #[derive(Debug, serde::Serialize)]
 pub struct DebugSession {
     pub id: i64,
+    pub token: String,
     pub status: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
