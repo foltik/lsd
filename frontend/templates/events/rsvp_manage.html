@@ -87,12 +87,12 @@
         href="{{ "" | mailto }}?subject=Help%20with%20reservation%20{{ session.token }}"
         >Contact us</a
       >
-      <form
+      <!--<form
         action="/e/{{ event.slug }}/rsvp/manage?reservation={{ session.token }}"
         method="POST"
       >
         <button class="delete">Delete (BETA ONLY)</button>
-      </form>
+      </form>-->
     </div>
   </section>
 {% endblock content %}
