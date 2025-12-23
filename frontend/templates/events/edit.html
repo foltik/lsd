@@ -167,10 +167,10 @@
       },
     };
     const KINDS = {
-      free: "Free",
       fixed: "Fixed",
       // TODO
       // variable: "Variable",
+      free: "Free",
       work: "Work Trade",
     };
     const FIELDS = {
@@ -198,23 +198,47 @@
         <button type="button" class="ext/button :red"  data-action="remove" ${hasRsvps ? "disabled" : ""}>✕</button>
       </div>
       <div class="spot-row">
-        <input name="qty_total"       placeholder="Qty available"   value="${t.qty_total ?? ""}"      type="number" required>
-        <input name="qty_per_person"  placeholder="Qty per person"  value="${t.qty_per_person ?? ""}" type="number" required>
-        <select name="kind" required>
-          ${Object.entries(KINDS)
-            .map(
-              ([kind, desc]) =>
-                `<option value="${kind}" ${t.kind == kind ? "selected" : ""}>${desc}</option>`,
-            )
-            .join("")}
-        </select>
+        <div class="field-group">
+          <label>Qty available</label>
+          <input name="qty_total"       value="${t.qty_total ?? ""}"      type="number" required>
+        </div>
+        <div class="field-group">
+          <label>Qty per person</label>
+          <input name="qty_per_person"  value="${t.qty_per_person ?? ""}" type="number" required>
+        </div>
+        <div class="field-group">
+          <label>Kind</label>
+          <select name="kind" required>
+            ${Object.entries(KINDS)
+              .map(
+                ([kind, desc]) =>
+                  `<option value="${kind}" ${t.kind == kind ? "selected" : ""}>${desc}</option>`,
+              )
+              .join("")}
+          </select>
+        </div>
       </div>
       <div class="spot-row">
-        <input name="required_contribution"  type="number" placeholder="Required Contribution"  value="${t.required_contribution ?? ""}">
-        <input name="min_contribution"       type="number" placeholder="Min Contribution"       value="${t.min_contribution ?? ""}">
-        <input name="max_contribution"       type="number" placeholder="Max Contribution"       value="${t.max_contribution ?? ""}">
-        <input name="suggested_contribution" type="number" placeholder="Suggested Contribution" value="${t.suggested_contribution ?? ""}">
-        <input name="required_notice_hours"  type="number" placeholder="Notice Period (Hours)"  value="${t.required_notice_hours ?? ""}" type="number">
+        <div class="field-group">
+          <label>Required ($)</label>
+          <input name="required_contribution" type="number" value="${t.required_contribution ?? ""}">
+        </div>
+        <div class="field-group">
+          <label>Min ($)</label>
+          <input name="min_contribution" type="number" value="${t.min_contribution ?? ""}">
+        </div>
+        <div class="field-group">
+          <label>Max ($)</label>
+          <input name="max_contribution" type="number" value="${t.max_contribution ?? ""}">
+        </div>
+        <div class="field-group">
+          <label>Suggested ($)</label>
+          <input name="suggested_contribution" type="number" value="${t.suggested_contribution ?? ""}">
+        </div>
+        <div class="field-group">
+          <label>Notice Required (hrs)</label>
+          <input name="required_notice_hours" type="number" value="${t.required_notice_hours ?? ""}">
+        </div>
       </div>
       <div class="spot-row">
         <textarea name="description" placeholder="Description" required>${t.description ?? ""}</textarea>
@@ -232,9 +256,10 @@
         // Update kind-specific field visibility
         const kind = s.querySelector('[name="kind"]').value;
         for (const [field, forKind] of Object.entries(FIELDS)) {
-          const el = s.querySelector(`[name="${field}"]`);
-          el.classList.toggle("hidden", kind != forKind);
-          el.required = kind == forKind;
+          const input = s.querySelector(`[name="${field}"]`);
+          const fieldGroup = input.closest(".field-group");
+          fieldGroup.style.display = kind == forKind ? "block" : "none";
+          input.required = kind == forKind;
         }
       });
     }

@@ -24,7 +24,7 @@
   }
 
   #spots {
-    @apply mb-12 flex flex-col gap-10;
+    @apply mb-12 flex flex-col gap-16;
 
     .header {
       @apply flex items-center gap-3;
@@ -34,6 +34,18 @@
     }
     .spot-row {
       @apply flex gap-2;
+
+      .field-group {
+        @apply flex grow flex-col gap-1;
+
+        label {
+          @apply text-lsd-gray text-sm;
+        }
+
+        input {
+          @apply text-center;
+        }
+      }
     }
     .rsvp-count {
       @apply text-lsd-gray flex items-center text-sm;
