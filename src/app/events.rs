@@ -1006,7 +1006,7 @@ mod rsvp {
         let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
         let limits = event.compute_limits(&user, &spots, &other_rsvps);
         if limits.total_limit == 0 {
-            return goto::error_registration_closed(&state.db, &None).await;
+            return goto::error_at_capacity(&state.db, &None).await;
         }
         let stats = Spot::stats(&spots, &other_rsvps);
 
@@ -1050,7 +1050,7 @@ mod rsvp {
         let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
         let limits = event.compute_limits(&user, &spots, &other_rsvps);
         if limits.total_limit == 0 {
-            return goto::error_registration_closed(&state.db, &None).await;
+            return goto::error_at_capacity(&state.db, &None).await;
         }
         if !validate::within_limits(&limits, &our_rsvps) {
             return goto::error_spot_taken(&state.db, &session).await;
@@ -1168,7 +1168,7 @@ mod rsvp {
         let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
         let limits = event.compute_limits(&user, &spots, &other_rsvps);
         if limits.total_limit == 0 {
-            return goto::error_registration_closed(&state.db, &None).await;
+            return goto::error_at_capacity(&state.db, &None).await;
         }
         if !validate::within_limits(&limits, &our_rsvps) {
             return goto::error_spot_taken(&state.db, &our_session).await;
@@ -1504,6 +1504,17 @@ mod rsvp {
             let error = ErrorHtml { user: None, message: "Sorry, you're not on the list.".into() };
             Ok(error.into_response())
         }
+        pub async fn error_at_capacity(db: &Db, session: &Option<RsvpSession>) -> HtmlResult {
+            if let Some(session) = session {
+                session.delete(db).await?;
+            }
+            Ok(MessageHtml {
+                user: None,
+                title: "Sorry".into(),
+                message: "This event has reached capacity.".into(),
+            }
+            .into_response())
+        }
         pub async fn error_registration_closed(db: &Db, session: &Option<RsvpSession>) -> HtmlResult {
             if let Some(session) = session {
                 session.delete(db).await?;
@@ -1511,7 +1522,7 @@ mod rsvp {
             Ok(MessageHtml {
                 user: None,
                 title: "Sorry".into(),
-                message: "Registration for this event is closed.".into(),
+                message: "Registration for this event is now closed.".into(),
             }
             .into_response())
         }
