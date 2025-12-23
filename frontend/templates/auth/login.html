@@ -15,7 +15,11 @@
       <div class="field">
         <button type="submit">Login</button>
       </div>
-      <input type="hidden" value="{{ redirect | unwrap_or_empty }}" />
+      <input
+        name="redirect"
+        type="hidden"
+        value="{{ redirect | unwrap_or_empty }}"
+      />
     </form>
   </section>
 {% endblock content %}

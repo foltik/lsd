@@ -58,13 +58,13 @@ impl<S: Send + Sync> axum::extract::OptionalFromRequestParts<S> for User {
         Ok(parts.extensions.get::<User>().cloned())
     }
 }
-/// Enable extracting a `User` in a handler, returning UNAUTHORIZED if not logged in.
+/// Enable extracting a `User` in a handler, redirecting to /login if not logged in.
 impl<S: Send + Sync> axum::extract::FromRequestParts<S> for User {
-    type Rejection = HtmlError;
+    type Rejection = Redirect;
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         match parts.extensions.get::<User>().cloned() {
             Some(user) => Ok(user),
-            None => bail_unauthorized!(),
+            None => Err(Redirect::to(&format!("/login?redirect={}", parts.uri.path()))),
         }
     }
 }
@@ -79,7 +79,7 @@ struct LoginEmailSentHtml {
 async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginForm>) -> HtmlResult {
     let email = form.email.email.to_string();
     let Some(user) = User::lookup_by_email(&state.db, &email).await? else {
-        return Ok(LoginEmailSentHtml { user: None, email }.into_response());
+        bail_unauthorized!();
     };
 
     let email_id = Email::create_login(&state.db, &user).await?;
@@ -163,7 +163,7 @@ async fn login_link(
 
     // Otherwise we're handling a login link. Valdiate the login token and create a new session.
     let Some(user) = User::lookup_by_login_token(&state.db, token).await? else {
-        bail_unauthorized!();
+        bail_not_found!();
     };
     LoginToken::delete_by_token(&state.db, token).await?;
     let token = SessionToken::create(&state.db, &user).await?;
