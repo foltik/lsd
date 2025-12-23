@@ -1288,12 +1288,31 @@ mod rsvp {
                 .subject(subject)
                 .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(
-                    ConfirmationEmailHtml { email_id: email.id, event, token: session.token.clone() }
-                        .render()?,
+                    ConfirmationEmailHtml {
+                        email_id: email.id,
+                        event: event.clone(),
+                        token: session.token.clone(),
+                    }
+                    .render()?,
                 )
                 .unwrap();
 
-            state.mailer.send(&message).await?;
+            match state.mailer.send(&message).await {
+                Ok(_) => {
+                    Email::mark_sent(&state.db, email.id).await?;
+                    tracing::info!("Confirmation for event_id={} sent to email={:?}", event.id, user.email);
+                }
+                Err(e) => {
+                    let e = e.message();
+                    Email::mark_error(&state.db, email.id, e).await?;
+                    let message = format!(
+                        "Error sending confirmation for event_id={} to email={:?}: {e}",
+                        event.id, user.email
+                    );
+                    tracing::error!(message);
+                    sentry::report(message);
+                }
+            };
         }
 
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", &session.token)).into_response())
@@ -1370,7 +1389,26 @@ mod rsvp {
                 )
                 .unwrap();
 
-            state.mailer.send(&message).await?;
+            match state.mailer.send(&message).await {
+                Ok(_) => {
+                    Email::mark_sent(&state.db, email.id).await?;
+                    tracing::info!(
+                        "Confirmation for event_id={} sent to email={:?}",
+                        event.id,
+                        session_user.email
+                    );
+                }
+                Err(e) => {
+                    let e = e.message();
+                    Email::mark_error(&state.db, email.id, e).await?;
+                    let message = format!(
+                        "Error sending confirmation for event_id={} to email={:?}: {e}",
+                        event.id, session_user.email
+                    );
+                    tracing::error!(message);
+                    sentry::report(message);
+                }
+            };
 
             // If dayof email has been sent out, also send it to this new RSVP
             if event.dayof_sent_at.is_some() {
@@ -1393,7 +1431,26 @@ mod rsvp {
                     .body(DayofEmailHtml { email_id: dayof_email.id, event: event.clone() }.render()?)
                     .unwrap();
 
-                state.mailer.send(&dayof_message).await?;
+                match state.mailer.send(&dayof_message).await {
+                    Ok(_) => {
+                        Email::mark_sent(&state.db, dayof_email.id).await?;
+                        tracing::info!(
+                            "Day-of for event_id={} sent to email={:?}",
+                            event.id,
+                            session_user.email
+                        );
+                    }
+                    Err(e) => {
+                        let e = e.message();
+                        Email::mark_error(&state.db, email.id, e).await?;
+                        let message = format!(
+                            "Error sending day-of for event_id={} to email={:?}: {e}",
+                            event.id, session_user.email
+                        );
+                        tracing::error!(message);
+                        sentry::report(message);
+                    }
+                };
             }
         }
 

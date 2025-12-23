@@ -49,6 +49,23 @@ macro_rules! map_row {
 }
 pub use map_row;
 
+macro_rules! map_row_fuck {
+    ($row:expr) => {
+        User {
+            id: $row.id.unwrap(),
+            email: $row.email.unwrap(),
+            first_name: $row.first_name,
+            last_name: $row.last_name,
+            phone: $row.phone,
+            created_at: $row.created_at.unwrap(),
+            updated_at: $row.updated_at.unwrap(),
+
+            version: $row.version,
+            roles: $row.roles.split(',').filter(|s| !s.is_empty()).map(|s| s.to_string()).collect(),
+        }
+    };
+}
+
 impl User {
     /// Full access to everything.
     pub const ADMIN: &'static str = "admin";
@@ -169,7 +186,7 @@ impl User {
             r#"
             SELECT
                 u.*,
-                h.version,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
                 COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN user_roles r ON r.user_id = u.id
@@ -181,7 +198,7 @@ impl User {
         )
         .fetch_optional(db)
         .await?;
-        Ok(row.map(|r| map_row!(r)))
+        Ok(row.map(|r| map_row_fuck!(r)))
     }
 
     /// Lookup a user by email address, if one exists.
@@ -190,7 +207,7 @@ impl User {
             r#"
             SELECT
                 u.*,
-                h.version,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
                 COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN user_roles r ON r.user_id = u.id
@@ -214,7 +231,7 @@ impl User {
             r#"
             SELECT
                 u.*,
-                h.version,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
                 COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN login_tokens t ON t.user_id = u.id
@@ -227,7 +244,7 @@ impl User {
         .fetch_optional(db)
         .await?;
 
-        Ok(row.map(|r| map_row!(r)))
+        Ok(row.map(|r| map_row_fuck!(r)))
     }
     /// Lookup a user by a session token, if it's valid.
     pub async fn lookup_by_session_token(db: &Db, token: &str) -> Result<Option<User>> {
@@ -235,7 +252,7 @@ impl User {
             r#"
             SELECT
                 u.*,
-                h.version,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
                 COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM users u
             LEFT JOIN session_tokens t ON t.user_id = u.id
@@ -256,7 +273,7 @@ impl User {
             r#"
             SELECT
                 u.*,
-                h.version,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
                 COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
             FROM list_members lm
             JOIN users u ON u.id = lm.user_id
