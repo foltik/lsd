@@ -188,42 +188,45 @@
         );
       },
       email: (email) => {
-        if (!email.trim()) throw new Error("Email is required");
-        const trimmed = email.trim().toLowerCase();
+        const trimmed = email.trim();
+        if (!trimmed) return "";
         if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return trimmed;
         throw new Error("Invalid email address");
+      },
+      emailRequired: (email) => {
+        if (!email.trim()) throw new Error("Email is required");
+        return validate.email(email);
+      },
+      noDuplicate: (field, value) => {
+        if (!value) return;
+        const others = [
+          ...ui.form.querySelectorAll(`[name="${field}"]`),
+        ].filter((el) => el.value === value);
+        if (others.length > 1)
+          throw new Error(`Each guest must have a different ${field}`);
       },
     };
 
     /* ---------- Validate on blur -------------------------------------------- */
-    const checkDuplicate = (field, value) => {
-      if (!value) return;
-      const others = [...ui.form.querySelectorAll(`[name="${field}"]`)].filter(
-        (el) => el.value === value,
-      );
-      if (others.length > 1)
-        throw new Error(`Each guest must have a different ${field}`);
-    };
-
     for (const a of ui.attendees()) {
       ui.field(a, "phone").addEventListener("blur", (e) => {
         try {
           e.target.value = validate.phone(e.target.value);
-          checkDuplicate("phone", e.target.value);
+          validate.noDuplicate("phone", e.target.value);
           e.target.classList.remove("error");
         } catch (err) {
           e.target.classList.add("error");
-          alert(err.message);
+          if (document.hasFocus()) alert(err.message);
         }
       });
       ui.field(a, "email").addEventListener("blur", (e) => {
         try {
           e.target.value = validate.email(e.target.value);
-          checkDuplicate("email", e.target.value);
+          validate.noDuplicate("email", e.target.value);
           e.target.classList.remove("error");
         } catch (err) {
           e.target.classList.add("error");
-          alert(err.message);
+          if (document.hasFocus()) alert(err.message);
         }
       });
     }
@@ -286,8 +289,10 @@
         // Use validated/formatted values
         let email, phone;
         try {
-          email = validate.email(ui.field(a, "email").value);
+          email = validate.emailRequired(ui.field(a, "email").value);
           phone = validate.phone(ui.field(a, "phone").value);
+          validate.noDuplicate("email", email);
+          validate.noDuplicate("phone", phone);
         } catch (err) {
           alert(err.message);
           return;
