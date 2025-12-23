@@ -230,6 +230,9 @@
 
     /* ---------- Handle "Me" selection and autofill ----------------- */
     const updateIsMe = () => {
+      // If no user, nothing to do but the radio itself
+      if (!user) return;
+
       // Find ticked "is_me"
       const ticked = ui
         .isMeInputs()
