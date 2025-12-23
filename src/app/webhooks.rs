@@ -161,12 +161,35 @@ pub mod stripe {
                         .subject(subject)
                         .header(lettre::message::header::ContentType::TEXT_HTML)
                         .body(
-                            ConfirmationEmailHtml { email_id: email.id, event, token: session.token }
-                                .render()?,
+                            ConfirmationEmailHtml {
+                                email_id: email.id,
+                                event: event.clone(),
+                                token: session.token,
+                            }
+                            .render()?,
                         )
                         .unwrap();
 
-                    state.mailer.send(&message).await?;
+                    match state.mailer.send(&message).await {
+                        Ok(_) => {
+                            Email::mark_sent(&state.db, email.id).await?;
+                            tracing::info!(
+                                "Confirmation for event_id={} sent to email={:?} from webhook",
+                                event.id,
+                                user.email
+                            );
+                        }
+                        Err(e) => {
+                            let e = e.message();
+                            Email::mark_error(&state.db, email.id, e).await?;
+                            let message = format!(
+                                "Error sending confirmation for event_id={} to email={:?} from webhook: {e}",
+                                event.id, user.email
+                            );
+                            tracing::error!(message);
+                            crate::utils::sentry::report(message);
+                        }
+                    };
                 }
             }
             status => {
