@@ -72,6 +72,10 @@
     @apply mr-6;
   }
 
+  .submit {
+    @apply flex grow;
+  }
+
   .next {
     @apply flex grow cursor-pointer justify-between;
     #total {
