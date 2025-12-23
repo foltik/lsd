@@ -59,5 +59,12 @@
         el.style.animationDelay = `-${(phase + i * 100) % 2000}ms`;
       });
     }
+
+    const logo = document.getElementById("logo");
+    const logoHold = () =>
+      setTimeout(() => (window.location.href = "/dashboard"), 1500);
+    ["mousedown", "touchstart"].forEach((ev) =>
+      logo.addEventListener(ev, logoHold),
+    );
   </script>
 {% endblock scripts %}

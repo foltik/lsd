@@ -16,7 +16,7 @@
 
 .ext\/layout\/nav {
   @apply border-lsd-white/10 flex w-full items-center justify-between border-b px-6 py-4;
-  .logo {
+  #logo {
     @apply text-lsd-bright font-extrabold;
   }
   .icons {

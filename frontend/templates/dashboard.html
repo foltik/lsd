@@ -1,10 +1,14 @@
 {% extends "layout.html" %}
 
-{% block title %}light and sound{% endblock title %}
+{% block title %}light and sound - Dashboard{% endblock title %}
 
 {% block content %}
   <section id="dashboard">
-    {% let path = "/dashboard" %}
-    {% include "sidebar.html" %}
+    <h1>Dashboard</h1>
+    <div class="links">
+      <a href="/events" class="dashboard-link">Events</a>
+      <a href="/events/sessions" class="dashboard-link">RSVP sessions</a>
+      <a href="/posts" class="dashboard-link">Newsletter</a>
+    </div>
   </section>
 {% endblock content %}
