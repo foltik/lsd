@@ -34,9 +34,9 @@ impl AppRouter {
             self.state.clone(),
             move |user: User, req: Request, next: Next| async move {
                 if !user.has_role(role) {
-                    bail_unauthorized!();
+                    return Err(Redirect::to(&format!("/login?redirect={}", req.uri().path())));
                 }
-                Ok::<_, HtmlError>(next.run(req).await)
+                Ok(next.run(req).await)
             },
         ));
         self.router = self.router.merge(subrouter);
