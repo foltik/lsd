@@ -18,7 +18,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
                 .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page).post(rsvp::contribution_form))
-                .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page).post(rsvp::temp_delete))
+                .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page)) // REMOVEME .post(rsvp::temp_delete))
                 .route("/e/{slug}/rsvp/edit", get(rsvp::edit_guests_page).post(rsvp::edit_guests_form))
         })
         .restricted_routes(User::ADMIN, |r| {
@@ -1413,6 +1413,7 @@ mod rsvp {
         Ok(ManageHtml { user, session, event, flyer, rsvps, price }.into_response())
     }
     // Show the "Manage your RSVP" page.
+    #[allow(unused)]
     pub async fn temp_delete(
         State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
     ) -> HtmlResult {
