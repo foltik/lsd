@@ -61,9 +61,13 @@
           </div>
         </button>
       {% else %}
-        <form action="/e/{{ event.slug }}/rsvp/confirm" method="POST">
+        <form
+          class="submit"
+          action="/e/{{ event.slug }}/rsvp/contribution"
+          method="POST"
+        >
           <button class="next" type="submit">
-            <span>Confirm</span>
+            <span>RSVP now</span>
             <div class="right">
               <span>&rarr;</span>
             </div>
@@ -119,8 +123,10 @@
       /* ---------- Submit ----------------------------------------------------- */
       ui.next.addEventListener("click", async (e) => {
         ui.next.classList.add("disabled");
+        ui.next.querySelector("span").innerText = "Processing...";
         res = await checkout.confirm();
         ui.next.classList.remove("disabled");
+        ui.next.querySelector("span").innerText = "Pay now";
         if (res?.type === "error") {
           alert(res.error.message);
         }
