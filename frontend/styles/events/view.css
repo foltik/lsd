@@ -1,5 +1,5 @@
 #events\/view {
-  @apply flex flex-col items-center justify-center;
+  @apply flex w-full flex-col items-center justify-center;
 
   .flyer {
     @apply relative w-full bg-cover bg-center;
@@ -25,7 +25,7 @@
   }
 
   .info {
-    @apply mx-auto w-full max-w-3xl min-w-full px-6;
+    @apply mx-auto w-full max-w-3xl px-6;
 
     @media (max-width: 768px) {
       &:not(.nofloat) {

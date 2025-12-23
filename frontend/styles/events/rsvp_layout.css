@@ -52,7 +52,7 @@
 }
 
 #events\/rsvp\/actions {
-  @apply my-6 flex;
+  @apply my-6 flex max-w-3xl;
 
   @media (max-width: 768px) {
     &:not(.nofloat) {
