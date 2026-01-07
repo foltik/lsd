@@ -180,10 +180,11 @@
         });
         ok = res.ok;
 
+        const text = await res.text();
         try {
-          response = await res.json();
+          response = JSON.parse(text);
         } catch (e) {
-          response = await res.text();
+          response = { error: text };
         }
       } catch (e) {
         response = { error: e.message };
