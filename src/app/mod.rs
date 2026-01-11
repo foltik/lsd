@@ -57,6 +57,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = {
         use tower_serve_static::{ServeFile, include_file};
         use tower_http::set_header::SetResponseHeaderLayer;
+        use tower_http::services::ServeDir;
         use axum::http::{HeaderName, HeaderValue};
 
         let nest_static = |r: Router<Arc<AppState>>, urgency: u8, filename: &str, file: tower_serve_static::File| -> Router<SharedAppState> {
@@ -75,6 +76,8 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
 
         let r = nest_static(r, 0, "main.css", include_file!("/frontend/static/main.css"));
         let r = nest_static(r, 4, "favicon.ico", include_file!("/frontend/static/favicon.ico"));
+        // Serve additional static files from disk
+        let r = r.nest_service("/static", ServiceBuilder::new().service(ServeDir::new("/home/lsd/static")));
         r
     };
     // For non-HTML pages without a <link rel="icon">, this is where the browser looks

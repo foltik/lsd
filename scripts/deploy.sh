@@ -6,6 +6,7 @@ if [ $# -ne 1 ]; then
 fi
 
 rsync --rsync-path="sudo rsync" -Pavz target/aarch64-unknown-linux-gnu/release/lsd $1:/home/lsd/lsd.next
+rsync --rsync-path="sudo rsync" -Pavz --delete frontend/static/ $1:/home/lsd/static/
 
 ssh $1 <<'EOS'
 set -euxo pipefail
