@@ -11,6 +11,7 @@
 @import "./dashboard.css";
 @import "./error.css";
 @import "./message.css";
+@import "./sublet.css";
 
 /* Events */
 @import "./events/edit.css";
