@@ -1,0 +1,71 @@
+#sublet {
+  @apply mx-auto w-full max-w-3xl px-6 py-8;
+
+  header {
+    @apply mb-8;
+
+    h1 {
+      @apply mb-4 text-3xl font-bold tracking-tight md:text-4xl;
+    }
+
+    .intro {
+      @apply mb-6 leading-relaxed;
+    }
+  }
+
+  .apply {
+    @apply bg-lsd-charcoal inline-flex cursor-pointer items-center justify-between gap-4 rounded-lg px-6 py-4 transition-colors;
+    &:hover {
+      @apply bg-lsd-white/20;
+    }
+  }
+
+  .content {
+    @apply flex flex-col gap-10;
+  }
+
+  .section {
+    h2 {
+      @apply border-lsd-white/20 mb-4 border-b pb-2 text-xl font-bold tracking-wide;
+    }
+
+    ul {
+      @apply flex flex-col gap-2;
+    }
+
+    li {
+      @apply relative pl-5;
+      &::before {
+        @apply text-lsd-gray absolute left-0;
+        content: "\2022";
+      }
+    }
+  }
+
+  .photos {
+    @apply w-full;
+
+    img {
+      @apply h-auto w-full rounded-sm;
+    }
+
+    &.single {
+      img {
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+      }
+    }
+
+    &.pair {
+      @apply grid grid-cols-2 gap-4;
+      img {
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+      }
+    }
+  }
+
+  .cta {
+    @apply border-lsd-white/20 flex flex-col items-center gap-6 border-t pt-10 text-center;
+  }
+}
