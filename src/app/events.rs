@@ -27,7 +27,8 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/sessions/{id}", delete(read::delete_session))
                 .route("/events/new", get(edit::new_page))
                 .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
-                .route("/events/{slug}/delete", post(edit::delete_form))
+                .route("/events/{slug}/delete", get(edit::delete_page).post(edit::delete_form))
+                .route("/events/{slug}/duplicate", post(edit::duplicate_form))
                 .route("/events/{slug}/attendees", get(edit::attendees_page))
                 .route("/events/{slug}/attendees/{rsvp_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
                 .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
@@ -346,6 +347,7 @@ mod edit {
         email_id: i64,
         email: String,
         event: Event,
+        flyer: Option<EventFlyer>,
     }
     // Preview invite page.
     pub async fn preview_invite_page(
@@ -354,8 +356,9 @@ mod edit {
         let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
             bail_not_found!()
         };
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        Ok(InviteEmailHtml { email_id: 0, email: user.email, event }.into_response())
+        Ok(InviteEmailHtml { email_id: 0, email: user.email, event, flyer }.into_response())
     }
 
     /// Display the form to send a post.
@@ -426,8 +429,10 @@ mod edit {
         };
 
         let emails = Email::create_send_invites(&state.db, event.id, guest_list_id).await?;
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        let mut email_template = InviteEmailHtml { email_id: 0, email: "".into(), event: event.clone() };
+        let mut email_template =
+            InviteEmailHtml { email_id: 0, email: "".into(), event: event.clone(), flyer };
         let mut messages = vec![];
         let mut email_ids = vec![];
         for Email { id, address, sent_at, .. } in emails {
@@ -547,6 +552,7 @@ mod edit {
         let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
             bail_not_found!()
         };
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/event_confirmation.html")]
@@ -554,9 +560,10 @@ mod edit {
             email_id: i64,
             event: Event,
             token: String,
+            flyer: Option<EventFlyer>,
         }
         Ok(
-            PreviewConfirmationHtml { email_id: 0, event: event.clone(), token: "xxxxxxxx".into() }
+            PreviewConfirmationHtml { email_id: 0, event: event.clone(), token: "xxxxxxxx".into(), flyer }
                 .into_response(),
         )
     }
@@ -626,14 +633,16 @@ mod edit {
     struct DayofEmailHtml {
         email_id: i64,
         event: Event,
+        flyer: Option<EventFlyer>,
     }
     // Preview dayof page.
     pub async fn preview_dayof_page(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
         let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
             bail_not_found!()
         };
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        Ok(DayofEmailHtml { email_id: 0, event: event.clone() }.into_response())
+        Ok(DayofEmailHtml { email_id: 0, event: event.clone(), flyer }.into_response())
     }
 
     /// Display the form to send a post.
@@ -696,8 +705,9 @@ mod edit {
         };
 
         let emails = Email::create_send_dayof_batch(&state.db, event.id).await?;
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        let mut email_template = DayofEmailHtml { email_id: 0, event: event.clone() };
+        let mut email_template = DayofEmailHtml { email_id: 0, event: event.clone(), flyer };
         let mut messages = vec![];
         let mut email_ids = vec![];
         for Email { id, address, sent_at, .. } in emails {
@@ -826,10 +836,34 @@ mod edit {
         Ok(Html { user: Some(user), event, rsvps }.into_response())
     }
 
+    /// Delete confirmation page.
+    pub async fn delete_page(
+        user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+    ) -> HtmlResult {
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/delete_confirm.html")]
+        struct Html {
+            user: Option<User>,
+            event: Event,
+            stats: EventDeleteStats,
+        }
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let stats = Event::delete_stats(&state.db, event.id).await?;
+        Ok(Html { user, event, stats }.into_response())
+    }
+
     /// Handle delete submission.
-    pub async fn delete_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
-        Event::delete(&state.db, id).await?;
+    pub async fn delete_form(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        Event::delete(&state.db, event.id).await?;
         Ok(Redirect::to("/events").into_response())
+    }
+
+    /// Handle duplicate submission.
+    pub async fn duplicate_form(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let (_, new_slug) = Event::duplicate(&state.db, event.id).await?;
+        Ok(Redirect::to(&format!("/events/{new_slug}/edit")).into_response())
     }
 
     #[derive(serde::Deserialize)]
@@ -1266,6 +1300,7 @@ mod rsvp {
 
         if !Email::have_sent_confirmation(&state.db, event.id, user_id).await? {
             let email = Email::create_confirmation(&state.db, event.id, user_id).await?;
+            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
             #[derive(Template, WebTemplate)]
             #[template(path = "emails/event_confirmation.html")]
@@ -1273,6 +1308,7 @@ mod rsvp {
                 email_id: i64,
                 event: Event,
                 token: String,
+                flyer: Option<EventFlyer>,
             }
 
             let from = &state.config.email.from;
@@ -1293,6 +1329,7 @@ mod rsvp {
                         email_id: email.id,
                         event: event.clone(),
                         token: session.token.clone(),
+                        flyer,
                     }
                     .render()?,
                 )
@@ -1357,6 +1394,7 @@ mod rsvp {
 
         if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
             let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
+            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
             #[derive(Template, WebTemplate)]
             #[template(path = "emails/event_confirmation.html")]
@@ -1364,6 +1402,7 @@ mod rsvp {
                 email_id: i64,
                 event: Event,
                 token: String,
+                flyer: Option<EventFlyer>,
             }
 
             let from = &state.config.email.from;
@@ -1385,6 +1424,7 @@ mod rsvp {
                         email_id: email.id,
                         event: event.clone(),
                         token: session.token.clone(),
+                        flyer,
                     }
                     .render()?,
                 )
@@ -1414,12 +1454,14 @@ mod rsvp {
             // If dayof email has been sent out, also send it to this new RSVP
             if event.dayof_sent_at.is_some() {
                 let dayof_email = Email::create_send_dayof_single(&state.db, event.id, user_id).await?;
+                let dayof_flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
                 #[derive(Template, WebTemplate)]
                 #[template(path = "emails/event_dayof.html")]
                 struct DayofEmailHtml {
                     email_id: i64,
                     event: Event,
+                    flyer: Option<EventFlyer>,
                 }
 
                 let dayof_message = state
