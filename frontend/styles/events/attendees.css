@@ -8,4 +8,10 @@
   .checkin {
     @apply flex items-center gap-2;
   }
+  .actions {
+    @apply flex flex-wrap gap-2 text-xs;
+    a {
+      @apply flex items-center gap-2 p-2 py-1;
+    }
+  }
 }
