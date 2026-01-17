@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE manual_rsvps SET checkin_at = NULL WHERE event_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "d364c3f63f83bae9234419434181abec8e5cc21ec02181b490da305a8399cb5a"
+}

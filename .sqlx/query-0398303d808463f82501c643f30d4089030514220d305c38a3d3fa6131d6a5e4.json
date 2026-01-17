@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvps SET checkin_at = CURRENT_TIMESTAMP\n               WHERE id = (\n                   SELECT r.id FROM rsvps r\n                   JOIN rsvp_sessions rs ON rs.id = r.session_id\n                   WHERE rs.event_id = ? AND r.user_id = ?\n                     AND rs.status IN ('payment_pending', 'payment_confirmed')\n               )\n               RETURNING checkin_at AS 'checkin_at!'",
+  "describe": {
+    "columns": [
+      {
+        "name": "checkin_at!",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "0398303d808463f82501c643f30d4089030514220d305c38a3d3fa6131d6a5e4"
+}
