@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                 r.spot_id,\n                 SUM(CASE WHEN rs.status IN ('payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) as \"rsvp_count!: i64\",\n                 SUM(CASE WHEN rs.status IN ('selection', 'attendees', 'contribution') THEN 1 ELSE 0 END) as \"cart_count!: i64\"\n               FROM rsvps r\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               WHERE rs.event_id = ?\n               GROUP BY r.spot_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "spot_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rsvp_count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "cart_count!: i64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1edafe5420cc73624ca34ab82117236d583414bbd76bf14dbc9b679b491455ae"
+}

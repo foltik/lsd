@@ -185,17 +185,30 @@
     const rsvpCounts = JSON.parse(`{{ rsvp_counts | json | safe }}`);
 
     const template = (t) => {
-      const count = rsvpCounts[t.id] || 0;
-      const hasRsvps = count > 0;
+      const counts = rsvpCounts[t.id] || { rsvp_count: 0, cart_count: 0 };
+      const rsvpCount = counts.rsvp_count || 0;
+      const cartCount = counts.cart_count || 0;
+      const hasInflightRsvps = rsvpCount > 0 || cartCount > 0;
+
+      // Build the count display string
+      let countDisplay = "";
+      if (rsvpCount > 0 && cartCount > 0) {
+        countDisplay = `<span class="rsvp-count">${rsvpCount} RSVPed ${cartCount} in cart</span>`;
+      } else if (rsvpCount > 0) {
+        countDisplay = `<span class="rsvp-count">${rsvpCount} RSVPed</span>`;
+      } else if (cartCount > 0) {
+        countDisplay = `<span class="rsvp-count">${cartCount} in cart</span>`;
+      }
+
       return `
-    <div class="spot" data-id="${t.id ?? ""}">
+    <div class="spot" data-id="${t.id ?? ""}" data-has-inflight-rsvps="${hasInflightRsvps}">
       <div class="spot-row">
         <input name="id"   value="${t.id ?? ""}" type="hidden" data-type="number">
         <input name="name" value="${t.name ?? ""}" placeholder="Name" required>
-        ${hasRsvps ? `<span class="rsvp-count">${count} have RSVPed</span>` : ""}
+        ${countDisplay}
         <button type="button" class="ext/button"       data-action="up">↑</button>
         <button type="button" class="ext/button"       data-action="down">↓</button>
-        <button type="button" class="ext/button :red"  data-action="remove" ${hasRsvps ? "disabled" : ""}>✕</button>
+        <button type="button" class="ext/button :red"  data-action="remove">✕</button>
       </div>
       <div class="spot-row">
         <div class="field-group">
@@ -279,7 +292,16 @@
       const action = e.target.dataset?.action;
       if (!action) return;
 
-      if (action == "remove") spot.remove();
+      if (action == "remove") {
+        // Check if spot has confirmed RSVPs
+        if (spot.dataset.hasInflightRsvps === "true") {
+          alert(
+            "This spot cannot be deleted because it has confirmed RSVPs.\n\nTo prevent further RSVPs, set the quantity available to 0.\n\nTo truly delete this spot, first manually delete all corresponding RSVPs in the attendees page.",
+          );
+          return;
+        }
+        spot.remove();
+      }
       if (action == "up") ui.list.insertBefore(spot, spots[i - 1]);
       if (action == "down") ui.list.insertBefore(spots[i + 1], spot);
 
