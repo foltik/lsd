@@ -143,7 +143,7 @@ mod edit {
         user: Option<User>,
         event: Event,
         spots: Vec<Spot>,
-        rsvp_counts: std::collections::HashMap<i64, i64>,
+        rsvp_counts: std::collections::HashMap<i64, SpotCounts>,
         has_flyer: bool,
         lists: Vec<ListWithCount>,
     }
@@ -257,8 +257,9 @@ mod edit {
                     }
                 }
 
-                // Only delete spots with no RSVPs
-                to_delete.retain(|&spot_id| rsvp_counts.get(&spot_id).copied().unwrap_or(0) == 0);
+                // Only delete spots with no confirmed RSVPs (cart items don't block deletion)
+                to_delete
+                    .retain(|&spot_id| rsvp_counts.get(&spot_id).map(|c| c.rsvp_count).unwrap_or(0) == 0);
 
                 Spot::add_to_event(&state.db, id, to_add).await?;
                 Spot::remove_from_event(&state.db, id, to_delete).await?;

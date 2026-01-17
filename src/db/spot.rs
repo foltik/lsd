@@ -3,6 +3,15 @@ use sqlx::QueryBuilder;
 use crate::db::rsvp::EventRsvp;
 use crate::prelude::*;
 
+/// RSVP counts per spot split by status.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SpotCounts {
+    /// Confirmed RSVPs (payment_pending or payment_confirmed)
+    pub rsvp_count: i64,
+    /// In-progress checkouts (selection, attendees, contribution)
+    pub cart_count: i64,
+}
+
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Spot {
     pub id: i64,
@@ -83,11 +92,17 @@ impl Spot {
     }
 
     /// Get RSVP counts per spot for an event.
+    /// Returns (rsvp_count, cart_count) where:
+    /// - rsvp_count: confirmed RSVPs (payment_pending or payment_confirmed)
+    /// - cart_count: in-progress checkouts (selection, attendees, contribution)
     pub async fn rsvp_counts_for_event(
         db: &Db, event_id: i64,
-    ) -> Result<std::collections::HashMap<i64, i64>> {
+    ) -> Result<std::collections::HashMap<i64, SpotCounts>> {
         let rows = sqlx::query!(
-            r#"SELECT r.spot_id, COUNT(*) as count
+            r#"SELECT
+                 r.spot_id,
+                 SUM(CASE WHEN rs.status IN ('payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) as "rsvp_count!: i64",
+                 SUM(CASE WHEN rs.status IN ('selection', 'attendees', 'contribution') THEN 1 ELSE 0 END) as "cart_count!: i64"
                FROM rsvps r
                JOIN rsvp_sessions rs ON rs.id = r.session_id
                WHERE rs.event_id = ?
@@ -97,7 +112,10 @@ impl Spot {
         .fetch_all(db)
         .await?;
 
-        Ok(rows.into_iter().map(|r| (r.spot_id, r.count)).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.spot_id, SpotCounts { rsvp_count: r.rsvp_count, cart_count: r.cart_count }))
+            .collect())
     }
 
     /// Create a new spot.
