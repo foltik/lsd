@@ -8,6 +8,9 @@
 
 {% block content %}
   <article>
+    {% if let Some(flyer) = flyer %}
+      <img src="{{ "" | url }}/e/{{ event.slug }}/flyer" alt="flyer" />
+    {% endif %}
     <h1 class="title">
       {% if let Some(subject) = event.dayof_subject.as_deref() %}
         {{ subject }}
@@ -16,22 +19,14 @@
       {% endif %}
     </h1>
     <div class="details">
-      <time aria-label="date" datetime="{{ event.start }}"
-        >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
-      >
+      <time aria-label="date" datetime="{{ event.start }}">{{ event.start | format_datetime("%a %m.%d.%Y") }}</time>
       <div>
-        <time aria-label="start" datetime="{{ event.start }}"
-          >{{ event.start | format_datetime("%-I:%M%p") }}</time
-        >
-        -
-        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}"
-          >{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time
-        >
+        <time aria-label="start" datetime="{{ event.start }}">{{ event.start | format_datetime("%-I:%M%p") }}</time>
+        &ndash;
+        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}">{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time>
       </div>
     </div>
-    {% if let Some(dayof_html) = event.dayof_html %}
-      {{ dayof_html | safe }}
-    {% endif %}
+    {{ event.dayof_html.as_ref().unwrap() | safe }}
   </article>
 {% endblock %}
 
@@ -45,6 +40,7 @@
     .details {
       display: flex;
       justify-content: space-between;
+      gap: 16px;
       color: #878787;
       margin-bottom: 24px;
     }
