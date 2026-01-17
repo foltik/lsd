@@ -211,6 +211,42 @@ impl Spot {
 
         Ok(())
     }
+
+    /// Duplicate all spots from one event to another.
+    /// Creates new spot records (copies) and links them to the new event.
+    pub async fn duplicate_for_event(db: &Db, source_event_id: i64, target_event_id: i64) -> Result<()> {
+        let spots = Spot::list_for_event(db, source_event_id).await?;
+        let mut new_spot_ids = Vec::with_capacity(spots.len());
+
+        for spot in spots {
+            let new_spot_id = sqlx::query!(
+                r#"INSERT INTO spots
+                   (name, description, qty_total, qty_per_person, kind, sort,
+                    required_contribution, min_contribution, max_contribution,
+                    suggested_contribution, required_notice_hours)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+                spot.name,
+                spot.description,
+                spot.qty_total,
+                spot.qty_per_person,
+                spot.kind,
+                spot.sort,
+                spot.required_contribution,
+                spot.min_contribution,
+                spot.max_contribution,
+                spot.suggested_contribution,
+                spot.required_notice_hours,
+            )
+            .execute(db)
+            .await?
+            .last_insert_rowid();
+
+            new_spot_ids.push(new_spot_id);
+        }
+
+        Spot::add_to_event(db, target_event_id, new_spot_ids).await?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, serde::Serialize)]

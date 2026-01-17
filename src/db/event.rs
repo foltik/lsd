@@ -54,9 +54,35 @@ pub struct UpdateEvent {
     pub spots_per_person: Option<i64>,
 }
 
+/// Event with RSVP count for the admin list page.
+#[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
+pub struct EventWithRsvpCount {
+    pub id: i64,
+    pub title: String,
+    pub slug: String,
+    pub start: NaiveDateTime,
+    pub guest_list_id: Option<i64>,
+    pub rsvp_count: i64,
+}
+
 impl Event {
-    pub async fn list(db: &Db) -> Result<Vec<Event>> {
-        let events = sqlx::query_as!(Self, "SELECT * FROM events").fetch_all(db).await?;
+    pub async fn list(db: &Db) -> Result<Vec<EventWithRsvpCount>> {
+        let events = sqlx::query_as!(
+            EventWithRsvpCount,
+            r#"SELECT
+                 e.id, e.title, e.slug, e.start, e.guest_list_id,
+                 COALESCE(
+                     (SELECT COUNT(*)
+                      FROM rsvps r
+                      JOIN rsvp_sessions rs ON rs.id = r.session_id
+                      WHERE rs.event_id = e.id
+                        AND rs.status IN ('payment_pending', 'payment_confirmed')),
+                     0
+                 ) as "rsvp_count!: i64"
+               FROM events e"#
+        )
+        .fetch_all(db)
+        .await?;
         Ok(events)
     }
 
@@ -234,8 +260,30 @@ impl Event {
         Ok(())
     }
 
-    // Delete an event.
+    /// Delete an event and all related records (cascade delete).
+    /// Deletes: rsvps, rsvp_sessions, event_spots, event_flyers, then the event itself.
+    /// Note: emails are NOT deleted (kept for history).
     pub async fn delete(db: &Db, id: i64) -> Result<()> {
+        // Delete RSVPs for this event (via sessions)
+        sqlx::query!(
+            "DELETE FROM rsvps WHERE session_id IN (SELECT id FROM rsvp_sessions WHERE event_id = ?)",
+            id
+        )
+        .execute(db)
+        .await?;
+        // Delete RSVP sessions for this event
+        sqlx::query!("DELETE FROM rsvp_sessions WHERE event_id = ?", id)
+            .execute(db)
+            .await?;
+        // Delete event-spot associations
+        sqlx::query!("DELETE FROM event_spots WHERE event_id = ?", id)
+            .execute(db)
+            .await?;
+        // Delete event flyer
+        sqlx::query!("DELETE FROM event_flyers WHERE event_id = ?", id)
+            .execute(db)
+            .await?;
+        // Finally delete the event itself
         sqlx::query!("DELETE FROM events WHERE id = ?", id).execute(db).await?;
         Ok(())
     }
@@ -269,6 +317,74 @@ impl Event {
 pub struct EventLimits {
     pub total_limit: i64,
     pub spot_limits: HashMap<i64, i64>,
+}
+
+impl Event {
+    /// Duplicate an event, including spots and flyer.
+    /// Returns the ID and slug of the new event.
+    pub async fn duplicate(db: &Db, event_id: i64) -> Result<(i64, String)> {
+        let event = Event::lookup_by_id(db, event_id)
+            .await?
+            .ok_or_else(|| any!("Event not found"))?;
+
+        // Generate unique slug by appending an incrementing suffix
+        let mut suffix = 1;
+        let new_slug = loop {
+            let new_slug = format!("{}-{}", event.slug, suffix);
+            if Event::lookup_by_slug(db, &new_slug).await?.is_none() {
+                break new_slug;
+            }
+            suffix += 1;
+        };
+
+        let new_title = format!("{} (copy)", event.title);
+
+        // Create the new event
+        let new_event_id = sqlx::query!(
+            r#"INSERT INTO events
+               (title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person,
+                description_html, description_updated_at,
+                invite_subject, invite_html, invite_updated_at,
+                confirmation_subject, confirmation_html, confirmation_updated_at,
+                dayof_subject, dayof_html, dayof_updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?,
+                       ?, ?, ?,
+                       ?, ?, ?,
+                       ?, ?, ?)"#,
+            new_title,
+            new_slug,
+            event.start,
+            event.end,
+            event.capacity,
+            event.unlisted,
+            event.closed,
+            event.guest_list_id,
+            event.spots_per_person,
+            event.description_html,
+            event.description_updated_at,
+            event.invite_subject,
+            event.invite_html,
+            event.invite_updated_at,
+            event.confirmation_subject,
+            event.confirmation_html,
+            event.confirmation_updated_at,
+            event.dayof_subject,
+            event.dayof_html,
+            event.dayof_updated_at,
+        )
+        .execute(db)
+        .await?
+        .last_insert_rowid();
+
+        // Duplicate spots (create new spot records and link to new event)
+        Spot::duplicate_for_event(db, event_id, new_event_id).await?;
+
+        // Duplicate flyer if exists
+        EventFlyer::duplicate(db, event_id, new_event_id).await?;
+
+        Ok((new_event_id, new_slug))
+    }
 }
 
 impl Event {

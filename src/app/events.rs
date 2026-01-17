@@ -1,6 +1,6 @@
 use image::DynamicImage;
 
-use crate::db::event::*;
+use crate::db::event::{Event, EventLimits, EventWithRsvpCount, UpdateEvent};
 use crate::db::event_flyer::*;
 use crate::db::rsvp_session::*;
 use crate::db::spot::*;
@@ -27,7 +27,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/sessions/{id}", delete(read::delete_session))
                 .route("/events/new", get(edit::new_page))
                 .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
-                .route("/events/{slug}/delete", get(edit::delete_page).post(edit::delete_form))
+                .route("/events/{slug}/delete", post(edit::delete_form))
                 .route("/events/{slug}/duplicate", post(edit::duplicate_form))
                 .route("/events/{slug}/attendees", get(edit::attendees_page))
                 .route("/events/{slug}/attendees/{rsvp_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
@@ -71,7 +71,7 @@ mod read {
     #[template(path = "events/list.html")]
     struct ListHtml {
         user: Option<User>,
-        events: Vec<Event>,
+        events: Vec<EventWithRsvpCount>,
     }
 
     pub async fn list_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
@@ -836,22 +836,6 @@ mod edit {
         Ok(Html { user: Some(user), event, rsvps }.into_response())
     }
 
-    /// Delete confirmation page.
-    pub async fn delete_page(
-        user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
-    ) -> HtmlResult {
-        #[derive(Template, WebTemplate)]
-        #[template(path = "events/delete_confirm.html")]
-        struct Html {
-            user: Option<User>,
-            event: Event,
-            stats: EventDeleteStats,
-        }
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        let stats = Event::delete_stats(&state.db, event.id).await?;
-        Ok(Html { user, event, stats }.into_response())
-    }
-
     /// Handle delete submission.
     pub async fn delete_form(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
@@ -1471,7 +1455,10 @@ mod rsvp {
                     .reply_to(reply_to.clone())
                     .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
                     .header(lettre::message::header::ContentType::TEXT_HTML)
-                    .body(DayofEmailHtml { email_id: dayof_email.id, event: event.clone() }.render()?)
+                    .body(
+                        DayofEmailHtml { email_id: dayof_email.id, event: event.clone(), flyer: dayof_flyer }
+                            .render()?,
+                    )
                     .unwrap();
 
                 match state.mailer.send(&dayof_message).await {

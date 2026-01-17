@@ -112,6 +112,26 @@
             </svg>
             <span>Attendees</span>
           </a>
+          <form
+            action="/events/{{ event.slug }}/duplicate"
+            method="post"
+            class="inline"
+            onsubmit="return confirm('Duplicate this event?')"
+          >
+            <button type="submit" class="ext/button :icon">
+              <span>Duplicate</span>
+            </button>
+          </form>
+          <form
+            action="/events/{{ event.slug }}/delete"
+            method="post"
+            class="inline"
+            onsubmit="return confirm('Permanently delete this event? This action cannot be undone.{% if event.rsvp_count > 0 %}\n\nWARNING: This event has {{ event.rsvp_count }} confirmed RSVP{% if event.rsvp_count != 1 %}s{% endif %} which will be permanently lost.{% endif %}')"
+          >
+            <button type="submit" class="ext/button :icon :red">
+              <span>Delete</span>
+            </button>
+          </form>
         </div>
       </div>
     {% endfor %}
