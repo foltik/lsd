@@ -1,0 +1,8 @@
+#events\/attendees\/add {
+  .actions {
+    @apply flex flex-wrap justify-between text-xs;
+    a {
+      @apply flex items-center gap-2 p-2 py-1;
+    }
+  }
+}

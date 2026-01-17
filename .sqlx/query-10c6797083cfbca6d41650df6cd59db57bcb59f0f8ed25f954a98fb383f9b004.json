@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE manual_rsvps SET checkin_at = CURRENT_TIMESTAMP WHERE event_id = ? AND user_id = ? RETURNING checkin_at AS 'checkin_at!'",
+  "describe": {
+    "columns": [
+      {
+        "name": "checkin_at!",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "10c6797083cfbca6d41650df6cd59db57bcb59f0f8ed25f954a98fb383f9b004"
+}

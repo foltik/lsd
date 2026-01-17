@@ -5,7 +5,15 @@
   <section id="events/attendees" class="ext/layout">
     <header>
       <h1>{{ event.title }}</h1>
-      <button id="download" class="ext/button">Download CSV</button>
+      <div class="actions">
+        <a
+          href="/events/{{ event.slug }}/attendees/add"
+          class="ext/button :icon"
+        >
+          Add attendee
+        </a>
+        <button id="download" class="ext/button">Download CSV</button>
+      </div>
     </header>
     <table class="attendees">
       <thead>
@@ -16,16 +24,25 @@
           <th>Spot</th>
           <th>Created</th>
           <th>Checkin</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for rsvp in rsvps %}
-          <tr data-rsvp-id="{{ rsvp.rsvp_id }}">
+          <tr
+            data-user-id="{{ rsvp.user_id }}"
+            data-is-manual="{{ rsvp.is_manual }}"
+          >
             <td class="name">{{ rsvp.last_name }}, {{ rsvp.first_name }}</td>
             <td class="email">{{ rsvp.email }}</td>
             <td class="guest-of">{{ rsvp.guest_of | unwrap_or_empty }}</td>
             <td class="spot">
-              {{ rsvp.spot_name }} (${{ rsvp.contribution }})
+              {% if rsvp.is_manual %}
+                <em>Added by an organizer</em>
+              {% else %}
+                {{ rsvp.spot_name | unwrap_or_empty }}
+                (${{ rsvp.contribution }})
+              {% endif %}
             </td>
             <td class="created">
               <time datetime="{{ rsvp.created_at }}">
@@ -65,6 +82,21 @@
                   </svg>
                 </button>
               {% endif %}
+            </td>
+            <td class="delete">
+              <button class="delete" title="Delete attendee">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 48 48"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M20 10.5v.5h8v-.5a4 4 0 1 0-8 0Zm-2.5.5v-.5a6.5 6.5 0 1 1 13 0v.5h8.75a1.25 1.25 0 1 1 0 2.5h-2.077l-2.027 23.315A6.25 6.25 0 0 1 28.914 42H19.086a6.25 6.25 0 0 1-6.232-5.685L10.827 13H8.75a1.25 1.25 0 1 1 0-2.5h8.75Zm3.75 8.25a1.25 1.25 0 1 0-2.5 0v16a1.25 1.25 0 1 0 2.5 0v-16Zm7.5-1.25a1.25 1.25 0 0 0-1.25 1.25v16a1.25 1.25 0 1 0 2.5 0v-16a1.25 1.25 0 0 0-1.25-1.25Z"
+                  />
+                </svg>
+              </button>
             </td>
           </tr>
         {% endfor %}
@@ -115,13 +147,33 @@
       if (!btn) return;
 
       const row = btn.closest("tr");
-      const rsvpId = row.dataset.rsvpId;
+      const userId = row.dataset.userId;
+      const isManual = row.dataset.isManual === "true";
+      const manualParam = isManual ? "?manual=true" : "";
+
+      // Handle delete button
+      if (btn.classList.contains("delete")) {
+        if (!confirm("Are you sure you want to permanently delete this RSVP?\n\nThis action cannot be undone, and will not notify the attendee.")) return;
+        try {
+          const resp = await fetch(
+            `/events/${slug}/attendees/${userId}${manualParam}`,
+            { method: "DELETE" },
+          );
+          if (!resp.ok) throw new Error(await resp.text());
+          row.remove();
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        }
+        return;
+      }
+
+      // Handle check-in buttons
       const cell = row.querySelector(".checkin");
       const isSet = btn.classList.contains("set");
 
       try {
         const resp = await fetch(
-          `/events/${slug}/attendees/${rsvpId}/checkin`,
+          `/events/${slug}/attendees/${userId}/checkin${manualParam}`,
           {
             method: isSet ? "POST" : "DELETE",
           },

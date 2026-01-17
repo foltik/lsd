@@ -30,7 +30,9 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{slug}/delete", post(edit::delete_form))
                 .route("/events/{slug}/duplicate", post(edit::duplicate_form))
                 .route("/events/{slug}/attendees", get(edit::attendees_page))
-                .route("/events/{slug}/attendees/{rsvp_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
+                .route("/events/{slug}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
+                .route("/events/{slug}/attendees/{user_id}", delete(edit::delete_attendee))
+                .route("/events/{slug}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
                 .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
                 .route("/events/{id}/invite/preview", get(edit::preview_invite_page))
                 .route("/events/{id}/invite/send", get(edit::send_invite_page).post(edit::send_invite_form))
@@ -135,7 +137,9 @@ mod edit {
 
     use super::*;
     use crate::db::list::{List, ListWithCount};
+    use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AdminAttendeesRsvp, Rsvp};
+    use crate::db::user::CreateUser;
     use crate::utils::editor::{Editor, EditorContent};
 
     #[derive(Template, WebTemplate)]
@@ -851,24 +855,107 @@ mod edit {
     }
 
     #[derive(serde::Deserialize)]
-    pub struct CheckinPath {
-        #[allow(unused)]
+    pub struct AttendeePath {
         slug: String,
-        rsvp_id: i64,
+        user_id: i64,
+    }
+
+    #[derive(serde::Deserialize)]
+    pub struct CheckinQuery {
+        #[serde(default)]
+        manual: bool,
     }
 
     pub async fn set_checkin(
-        State(state): State<SharedAppState>, Path(path): Path<CheckinPath>,
+        State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
+        Query(query): Query<CheckinQuery>,
     ) -> JsonResult<()> {
-        Rsvp::set_checkin_at(&state.db, path.rsvp_id).await?;
+        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        if query.manual {
+            ManualRsvp::set_checkin_at(&state.db, event.id, path.user_id).await?;
+        } else {
+            Rsvp::set_checkin_at_for_event(&state.db, event.id, path.user_id).await?;
+        }
         Ok(Json(()))
     }
 
     pub async fn clear_checkin(
-        State(state): State<SharedAppState>, Path(path): Path<CheckinPath>,
+        State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
+        Query(query): Query<CheckinQuery>,
     ) -> JsonResult<()> {
-        Rsvp::clear_checkin_at(&state.db, path.rsvp_id).await?;
+        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        if query.manual {
+            ManualRsvp::clear_checkin_at(&state.db, event.id, path.user_id).await?;
+        } else {
+            Rsvp::clear_checkin_at_for_event(&state.db, event.id, path.user_id).await?;
+        }
         Ok(Json(()))
+    }
+
+    pub async fn delete_attendee(
+        State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
+        Query(query): Query<CheckinQuery>,
+    ) -> JsonResult<()> {
+        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        if query.manual {
+            ManualRsvp::delete(&state.db, event.id, path.user_id).await?;
+        } else {
+            Rsvp::delete_for_event(&state.db, event.id, path.user_id).await?;
+        }
+        Ok(Json(()))
+    }
+
+    /// Display the form to add a manual attendee.
+    pub async fn add_attendee_page(
+        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/attendees_add.html")]
+        struct Html {
+            user: Option<User>,
+            event: Event,
+        }
+        Ok(Html { user: Some(user), event }.into_response())
+    }
+
+    #[derive(serde::Deserialize)]
+    pub struct AddAttendeeForm {
+        first_name: String,
+        last_name: String,
+        email: String,
+    }
+
+    /// Handle add attendee form submission.
+    pub async fn add_attendee_form(
+        admin: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Form(form): Form<AddAttendeeForm>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+
+        let user = User::update_or_create(
+            &state.db,
+            &CreateUser {
+                first_name: Some(form.first_name),
+                last_name: Some(form.last_name),
+                email: form.email,
+                phone: None,
+            },
+        )
+        .await?;
+
+        // Check if already has an RSVP (manual or regular) for this event
+        if ManualRsvp::exists(&state.db, event.id, user.id).await?
+            || Rsvp::exists_for_event(&state.db, event.id, user.id).await?
+        {
+            return Ok(Redirect::to(&format!("/events/{slug}/attendees")).into_response());
+        }
+
+        // Create manual RSVP
+        ManualRsvp::create(&state.db, event.id, user.id, admin.id).await?;
+
+        Ok(Redirect::to(&format!("/events/{slug}/attendees")).into_response())
     }
 }
 

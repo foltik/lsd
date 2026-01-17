@@ -261,7 +261,7 @@ impl Event {
     }
 
     /// Delete an event and all related records (cascade delete).
-    /// Deletes: rsvps, rsvp_sessions, event_spots, event_flyers, then the event itself.
+    /// Deletes: rsvps, rsvp_sessions, manual_rsvps, event_spots, event_flyers, then the event itself.
     /// Note: emails are NOT deleted (kept for history).
     pub async fn delete(db: &Db, id: i64) -> Result<()> {
         // Delete RSVPs for this event (via sessions)
@@ -273,6 +273,10 @@ impl Event {
         .await?;
         // Delete RSVP sessions for this event
         sqlx::query!("DELETE FROM rsvp_sessions WHERE event_id = ?", id)
+            .execute(db)
+            .await?;
+        // Delete manual RSVPs for this event
+        sqlx::query!("DELETE FROM manual_rsvps WHERE event_id = ?", id)
             .execute(db)
             .await?;
         // Delete event-spot associations
