@@ -8,6 +8,9 @@
 
 {% block content %}
   <article>
+    {% if let Some(flyer) = flyer %}
+      <img src="{{ "" | url }}/e/{{ event.slug }}/flyer" alt="flyer" />
+    {% endif %}
     <h1 class="title">
       {% if let Some(subject) = event.confirmation_subject.as_deref() %}
         {{ subject }}
@@ -16,17 +19,11 @@
       {% endif %}
     </h1>
     <div class="details">
-      <time aria-label="date" datetime="{{ event.start }}"
-        >{{ event.start | format_datetime("%a %m.%d.%Y") }}</time
-      >
+      <time aria-label="date" datetime="{{ event.start }}">{{ event.start | format_datetime("%a %m.%d.%Y") }}</time>
       <div>
-        <time aria-label="start" datetime="{{ event.start }}"
-          >{{ event.start | format_datetime("%-I:%M%p") }}</time
-        >
-        -
-        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}"
-          >{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time
-        >
+        <time aria-label="start" datetime="{{ event.start }}">{{ event.start | format_datetime("%-I:%M%p") }}</time>
+        &ndash;
+        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}">{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time>
       </div>
     </div>
     {% if let Some(confirmation_html) = event.confirmation_html %}
@@ -36,7 +33,7 @@
     {% endif %}
     <div class="center">
       <a
-        class="rsvp"
+        class="manage"
         href="{{ "" | url }}/e/{{ event.slug }}/rsvp/manage?reservation={{ token }}"
         >View your confirmation</a
       >
@@ -54,6 +51,7 @@
     .details {
       display: flex;
       justify-content: space-between;
+      gap: 16px;
       color: #878787;
       margin-bottom: 24px;
     }
@@ -61,7 +59,7 @@
       display: flex;
       justify-content: center;
     }
-    .rsvp {
+    .manage {
       text-decoration: none;
       border-radius: 8px;
       padding: 16px 64px;
