@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block title %}Add Attendee - {{ event.title }}{% endblock title %}
+
+{% block content %}
+  <section id="events/attendees/add" class="ext/layout thin">
+    <header>
+      <h1>Add Attendee</h1>
+    </header>
+    <form
+      id="form"
+      class="ext/form"
+      method="POST"
+      action="/events/{{ event.slug }}/attendees/add"
+    >
+      <div class="field">
+        <label for="first_name">First name</label>
+        <input
+          type="text"
+          name="first_name"
+          autocomplete="given-name"
+          required
+        />
+      </div>
+      <div class="field">
+        <label for="last_name">Last name</label>
+        <input
+          type="text"
+          name="last_name"
+          autocomplete="family-name"
+          required
+        />
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" name="email" autocomplete="email" required />
+      </div>
+      <div class="actions">
+        <a href="/events/{{ event.slug }}/attendees" class="ext/button"
+          >&larr; Back</a
+        >
+        <button id="continue" class="ext/button :green" type="submit">
+          Add attendee
+        </button>
+      </div>
+    </form>
+  </section>
+{% endblock content %}

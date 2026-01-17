@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rsvps\n               WHERE id = (\n                   SELECT r.id FROM rsvps r\n                   JOIN rsvp_sessions rs ON rs.id = r.session_id\n                   WHERE rs.event_id = ? AND r.user_id = ?\n                     AND rs.status IN ('payment_pending', 'payment_confirmed')\n               )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "45c365566ab12e5c6d67e50cbe40ca1ccfa427b41a89154308b6d36712580931"
+}

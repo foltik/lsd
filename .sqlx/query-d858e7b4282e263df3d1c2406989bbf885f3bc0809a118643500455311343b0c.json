@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM manual_rsvps WHERE event_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "d858e7b4282e263df3d1c2406989bbf885f3bc0809a118643500455311343b0c"
+}
