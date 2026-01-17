@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO event_flyers (event_id, width, height, image_full, image_lg, image_md, image_sm, image_thumb, updated_at)\n               SELECT ?, width, height, image_full, image_lg, image_md, image_sm, image_thumb, CURRENT_TIMESTAMP\n               FROM event_flyers WHERE event_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3d32def4ae65927da56ccbd9870afe3c1c8dc8d6e1cf616eb34d5c869b6ccbd8"
+}
