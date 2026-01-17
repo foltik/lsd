@@ -96,4 +96,19 @@ impl EventFlyer {
             .await?;
         Ok(result.count > 0)
     }
+
+    /// Duplicate a flyer from one event to another.
+    /// Does nothing if the source event has no flyer.
+    pub async fn duplicate(db: &Db, source_event_id: i64, target_event_id: i64) -> Result<()> {
+        sqlx::query!(
+            r#"INSERT INTO event_flyers (event_id, width, height, image_full, image_lg, image_md, image_sm, image_thumb, updated_at)
+               SELECT ?, width, height, image_full, image_lg, image_md, image_sm, image_thumb, CURRENT_TIMESTAMP
+               FROM event_flyers WHERE event_id = ?"#,
+            target_event_id,
+            source_event_id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
 }

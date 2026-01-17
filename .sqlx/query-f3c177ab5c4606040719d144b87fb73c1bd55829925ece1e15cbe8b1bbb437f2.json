@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM event_flyers WHERE event_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f3c177ab5c4606040719d144b87fb73c1bd55829925ece1e15cbe8b1bbb437f2"
+}

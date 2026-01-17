@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                 e.id, e.title, e.slug, e.start, e.guest_list_id,\n                 COALESCE(\n                     (SELECT COUNT(*)\n                      FROM rsvps r\n                      JOIN rsvp_sessions rs ON rs.id = r.session_id\n                      WHERE rs.event_id = e.id\n                        AND rs.status IN ('payment_pending', 'payment_confirmed')),\n                     0\n                 ) as \"rsvp_count!: i64\"\n               FROM events e",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "start",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "guest_list_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rsvp_count!: i64",
+        "ordinal": 5,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "cda387b02687b974762bb8f9bbf4f71c09d93beb491192969e543cd0fa8a8c00"
+}
