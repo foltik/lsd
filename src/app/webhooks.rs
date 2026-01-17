@@ -12,6 +12,7 @@ pub mod stripe {
 
     use super::*;
     use crate::db::event::Event;
+    use crate::db::event_flyer::EventFlyer;
     use crate::db::rsvp_session::RsvpSession;
 
     type HmacSha256 = Hmac<Sha256>;
@@ -138,6 +139,7 @@ pub mod stripe {
 
                 if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
                     let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
+                    let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
                     #[derive(Template, WebTemplate)]
                     #[template(path = "emails/event_confirmation.html")]
@@ -145,6 +147,7 @@ pub mod stripe {
                         email_id: i64,
                         event: Event,
                         token: String,
+                        flyer: Option<EventFlyer>,
                     }
 
                     let from = &state.config.email.from;
@@ -165,6 +168,7 @@ pub mod stripe {
                                 email_id: email.id,
                                 event: event.clone(),
                                 token: session.token,
+                                flyer,
                             }
                             .render()?,
                         )
