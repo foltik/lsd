@@ -15,16 +15,17 @@
         <button id="download" class="ext/button">Download CSV</button>
       </div>
     </header>
-    <table class="attendees">
+    <div class="table-wrapper">
+      <table class="attendees">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Guest of</th>
-          <th>Spot</th>
-          <th>Created</th>
-          <th>Checkin</th>
-          <th></th>
+          <th class="name">Name</th>
+          <th class="email">Email</th>
+          <th class="guest-of">Guest of</th>
+          <th class="spot">Spot</th>
+          <th class="created">Created</th>
+          <th class="checkin">Checkin</th>
+          <th class="delete"></th>
         </tr>
       </thead>
       <tbody>
@@ -38,7 +39,7 @@
             <td class="guest-of">{{ rsvp.guest_of | unwrap_or_empty }}</td>
             <td class="spot">
               {% if rsvp.is_manual %}
-                <em>Added by an organizer</em>
+                <em>Added manually</em>
               {% else %}
                 {{ rsvp.spot_name | unwrap_or_empty }}
                 (${{ rsvp.contribution }})
@@ -101,7 +102,8 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+      </table>
+    </div>
   </section>
   <script>
     /* ---------- UI ---------------------------------------------------------- */

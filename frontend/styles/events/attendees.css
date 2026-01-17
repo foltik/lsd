@@ -1,13 +1,41 @@
 #events\/attendees {
-  table {
-    @apply text-xs;
+  header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
   }
-  td {
-    @apply px-1;
+
+  .table-wrapper {
+    @apply overflow-x-scroll;
   }
-  .checkin {
-    @apply flex items-center gap-2;
+
+  table.attendees {
+    @apply w-full text-xs whitespace-nowrap;
+    border-spacing: 1rem 0;
+    border-collapse: separate;
   }
+
+  th:first-child,
+  td:first-child {
+    @apply pl-0;
+  }
+
+  th:last-child,
+  td:last-child {
+    @apply pr-0;
+  }
+
+  td.checkin time,
+  td.checkin button {
+    @apply align-middle;
+  }
+
+  td.checkin time {
+    @apply mr-2;
+  }
+
+  td.delete button {
+    @apply opacity-50 hover:opacity-100;
+  }
+
   .actions {
     @apply flex flex-wrap gap-2 text-xs;
     a {
