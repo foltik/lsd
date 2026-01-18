@@ -62,7 +62,9 @@ async fn create_list_page(user: User) -> HtmlResult {
 }
 
 /// Process the form and create or edit a list.
-async fn edit_list_form(State(state): State<SharedAppState>, Form(form): Form<UpdateList>) -> HtmlResult {
+async fn edit_list_form(
+    user: User, State(state): State<SharedAppState>, Form(form): Form<UpdateList>,
+) -> HtmlResult {
     let id = match form.id {
         Some(id) => {
             List::update(&state.db, id, &form).await?;
@@ -71,18 +73,40 @@ async fn edit_list_form(State(state): State<SharedAppState>, Form(form): Form<Up
         None => List::create(&state.db, &form).await?,
     };
 
-    let emails = form.emails.split_whitespace().collect::<Vec<_>>();
-    for email in &emails {
-        if let Err(e) = email.parse::<Mailbox>() {
-            tracing::debug!("Invalid email: {e}");
-            return Ok(StatusCode::BAD_REQUEST.into_response());
+    // Parse one email per line, extracting from formats like "Name <email>" or just "email"
+    let mut emails = Vec::new();
+    for line in form.emails.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        // Try to find an email in the line - look for something with @ in it
+        let email = line
+            .split([' ', ',', '\t', '<', '>'])
+            .map(|s| s.trim())
+            .find(|s| s.contains('@'));
+        match email {
+            Some(email) if email.parse::<Mailbox>().is_ok() => {
+                emails.push(email.to_string());
+            }
+            _ => {
+                return Ok(ErrorHtml {
+                    user: Some(user),
+                    title: "Invalid email".into(),
+                    message: format!("Could not find a valid email address in line: '{line}'"),
+                    context: None,
+                    backtrace: None,
+                }
+                .into_response());
+            }
         }
     }
     if !emails.is_empty() {
-        List::add_members(&state.db, id, &emails).await?;
+        let email_refs: Vec<&str> = emails.iter().map(|s| s.as_str()).collect();
+        List::add_members(&state.db, id, &email_refs).await?;
     }
 
-    Ok(Redirect::to("/lists").into_response())
+    Ok(Redirect::to(&format!("/lists/{id}")).into_response())
 }
 
 async fn remove_list_member(
