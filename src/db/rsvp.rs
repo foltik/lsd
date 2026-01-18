@@ -281,23 +281,6 @@ impl Rsvp {
         Ok(())
     }
 
-    pub async fn set_checkin_at(db: &Db, rsvp_id: i64) -> Result<NaiveDateTime> {
-        let row = sqlx::query!(
-            "UPDATE rsvps SET checkin_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING checkin_at AS 'checkin_at!'",
-            rsvp_id
-        )
-        .fetch_one(db)
-        .await?;
-        Ok(row.checkin_at)
-    }
-
-    pub async fn clear_checkin_at(db: &Db, rsvp_id: i64) -> Result<()> {
-        sqlx::query!("UPDATE rsvps SET checkin_at = NULL WHERE id = ?", rsvp_id)
-            .execute(db)
-            .await?;
-        Ok(())
-    }
-
     /// Set check-in for an attendee by event and user ID.
     /// Works for confirmed RSVPs (payment_pending or payment_confirmed).
     pub async fn set_checkin_at_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<NaiveDateTime> {
