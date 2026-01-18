@@ -143,9 +143,13 @@ impl List {
             )
             .await?;
 
-            sqlx::query!("INSERT INTO list_members (list_id, user_id) VALUES (?, ?)", list_id, user.id,)
-                .execute(db)
-                .await?;
+            sqlx::query!(
+                "INSERT OR IGNORE INTO list_members (list_id, user_id) VALUES (?, ?)",
+                list_id,
+                user.id,
+            )
+            .execute(db)
+            .await?;
         }
         Ok(())
     }
