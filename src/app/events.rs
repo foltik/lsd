@@ -985,14 +985,9 @@ mod rsvp {
         message: String,
     }
 
-    #[derive(serde::Deserialize)]
-    pub struct RsvpQuery {
-        email: Option<String>,
-    }
     /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
         session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
-        Query(query): Query<RsvpQuery>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
@@ -1011,13 +1006,7 @@ mod rsvp {
                         goto::guestlist_page(&event)
                     }
                 }
-                _ => match query.email {
-                    Some(email) => match List::has_email(&state.db, guest_list_id, &email).await? {
-                        true => goto::selection_page(&state.db, &None, &session, &event).await,
-                        false => goto::error_not_on_guestlist(),
-                    },
-                    _ => goto::guestlist_page(&event),
-                },
+                _ => goto::guestlist_page(&event),
             },
         }
     }
