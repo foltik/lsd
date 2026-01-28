@@ -12,7 +12,7 @@
       <img src="{{ "" | url }}/e/{{ event.slug }}/flyer?size=md" alt="flyer" />
     {% endif %}
     <h1 class="title">
-      <a href="{{ "" | url }}/e/{{ event.slug }}/rsvp?email={{ email }}"
+      <a href="{{ "" | url }}/e/{{ event.slug }}/rsvp"
         >{% if let Some(subject) = event.invite_subject.as_deref() %}
           {{ subject }}
         {% else %}
@@ -34,7 +34,7 @@
     <div class="center">
       <a
         class="rsvp"
-        href="{{ "" | url }}/e/{{ event.slug }}/rsvp?email={{ email }}"
+        href="{{ "" | url }}/e/{{ event.slug }}/rsvp"
         >RSVP Now</a
       >
     </div>
