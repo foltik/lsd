@@ -125,7 +125,7 @@ impl Rsvp {
             JOIN users cu ON cu.id = mr.creator_user_id
             WHERE mr.event_id = ?
 
-            ORDER BY 3;
+            ORDER BY 9;
             "#,
             event_id,
             event_id
