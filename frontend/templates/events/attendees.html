@@ -34,7 +34,7 @@
             data-user-id="{{ rsvp.user_id }}"
             data-is-manual="{{ rsvp.is_manual }}"
           >
-            <td class="name">{{ rsvp.last_name }}, {{ rsvp.first_name }}</td>
+            <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
             <td class="email">{{ rsvp.email }}</td>
             <td class="guest-of">{{ rsvp.guest_of | unwrap_or_empty }}</td>
             <td class="spot">
