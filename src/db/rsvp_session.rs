@@ -96,6 +96,7 @@ impl RsvpSession {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let user = user.as_ref();
         let user_id = user.map(|u| u.id);
+        let user_email = user.map(|u| u.email.as_str());
         let user_version = user.map(|u| u.version);
 
         let session = sqlx::query_as!(
@@ -113,10 +114,20 @@ impl RsvpSession {
         .fetch_one(db)
         .await?;
 
+        tracing::info!(
+            "Created RSVP session with session_id={} event_id={event_id} user_id={user_id:?} user_email={user_email:?}",
+            session.id
+        );
         Ok(session)
     }
 
     pub async fn delete(&self, db: &Db) -> Result<()> {
+        tracing::info!(
+            "Deleting RSVP session with session_id={} event_id={} status={:?}",
+            self.id,
+            self.event_id,
+            self.status
+        );
         sqlx::query!("DELETE FROM rsvps WHERE session_id = ?", self.id)
             .execute(db)
             .await?;
@@ -127,6 +138,11 @@ impl RsvpSession {
     }
 
     pub async fn takeover_for_event(&self, db: &Db, event: &Event, email: &str) -> Result<()> {
+        tracing::info!(
+            "RSVP session takeover with session_id={} event_id={} taking_over_email={email:?}",
+            self.id,
+            event.id,
+        );
         sqlx::query!(
             "DELETE FROM rsvp_sessions
              WHERE user_id IN (
@@ -147,6 +163,13 @@ impl RsvpSession {
 
     /// Update
     pub async fn set_user(&mut self, db: &Db, user: &User) -> Result<()> {
+        tracing::info!(
+            "Setting user on RSVP session with session_id={} event_id={} user_id={} user_email={:?}",
+            self.id,
+            self.event_id,
+            user.id,
+            user.email
+        );
         sqlx::query!(
             "UPDATE rsvp_sessions
                 SET user_id = ?,
@@ -165,6 +188,13 @@ impl RsvpSession {
     }
 
     pub async fn set_status(&self, db: &Db, status: &str) -> Result<()> {
+        tracing::info!(
+            "RSVP status transition with session_id={} event_id={} user_id={:?} status={:?} -> {status:?}",
+            self.id,
+            self.event_id,
+            self.user_id,
+            self.status,
+        );
         sqlx::query!(
             "UPDATE rsvp_sessions
              SET status = ?,
