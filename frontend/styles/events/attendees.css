@@ -3,6 +3,13 @@
     @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
   }
 
+  .info {
+    @apply flex flex-col;
+    time, .stats {
+      @apply text-lsd-gray text-xs;
+    }
+  }
+
   .table-wrapper {
     @apply overflow-x-scroll;
   }
