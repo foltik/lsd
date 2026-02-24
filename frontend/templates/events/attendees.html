@@ -4,7 +4,13 @@
 {% block content %}
   <section id="events/attendees" class="ext/layout">
     <header>
-      <h1>{{ event.title }}</h1>
+      <div class="info">
+        <h1>{{ event.title }}</h1>
+        <time datetime="{{ event.start.date() }}">
+          {{ event.start | format_datetime("%a %b %d, %Y") }}
+        </time>
+        <span class="stats">{{ rsvp_count }} RSVPs • ${{ total_contributions }} in contributions</span>
+      </div>
       <div class="actions">
         <a
           href="/events/{{ event.slug }}/attendees/add"
