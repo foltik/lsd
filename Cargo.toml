@@ -49,3 +49,7 @@ opt-level = 1
 # And since they don't get recompiled often, fully optimize dependencies
 [profile.dev.package."*"]
 opt-level = 3
+
+# Include line tables so Sentry stack traces show function names and line numbers
+[profile.release]
+debug = 1
