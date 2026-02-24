@@ -56,19 +56,20 @@ pub struct UpdateEvent {
 
 /// Event with RSVP count for the admin list page.
 #[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
-pub struct EventWithRsvpCount {
+pub struct EventWithStats {
     pub id: i64,
     pub title: String,
     pub slug: String,
     pub start: NaiveDateTime,
     pub guest_list_id: Option<i64>,
     pub rsvp_count: i64,
+    pub total_contributions: i64,
 }
 
 impl Event {
-    pub async fn list(db: &Db) -> Result<Vec<EventWithRsvpCount>> {
+    pub async fn list(db: &Db) -> Result<Vec<EventWithStats>> {
         let events = sqlx::query_as!(
-            EventWithRsvpCount,
+            EventWithStats,
             r#"SELECT
                  e.id, e.title, e.slug, e.start, e.guest_list_id,
                  COALESCE(
@@ -78,7 +79,15 @@ impl Event {
                       WHERE rs.event_id = e.id
                         AND rs.status IN ('payment_pending', 'payment_confirmed')),
                      0
-                 ) as "rsvp_count!: i64"
+                 ) as "rsvp_count!: i64",
+                 COALESCE(
+                     (SELECT SUM(r.contribution)
+                      FROM rsvps r
+                      JOIN rsvp_sessions rs ON rs.id = r.session_id
+                      WHERE rs.event_id = e.id
+                        AND rs.status IN ('payment_pending', 'payment_confirmed')),
+                     0
+                 ) as "total_contributions!: i64"
                FROM events e"#
         )
         .fetch_all(db)
