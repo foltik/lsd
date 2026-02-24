@@ -241,6 +241,14 @@ mod edit {
 
         let form = form.ok_or_else(invalid)?;
 
+        // Validate slug: must be non-empty and only contain alphanumeric characters and dashes
+        if form.event.slug.is_empty()
+            || !form.event.slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        {
+            return Ok((StatusCode::BAD_REQUEST, "Slug can only contain letters, numbers, and dashes.")
+                .into_response());
+        }
+
         match form.id {
             Some(id) => {
                 Event::update(&state.db, id, &form.event, &flyer).await?;

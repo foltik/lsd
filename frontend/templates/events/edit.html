@@ -26,6 +26,8 @@
           id="slug"
           name="slug"
           value="{{ event.slug }}"
+          pattern="[a-zA-Z0-9\-]+"
+          title="Only letters, numbers, and dashes allowed"
           required
         />
       </div>
@@ -346,6 +348,12 @@
       e.preventDefault();
       if (ui.spots().length == 0) {
         alert("Add at least one reservation!");
+        return;
+      }
+
+      const slug = $("slug").value;
+      if (!slug || !/^[a-zA-Z0-9\-]+$/.test(slug)) {
+        alert("Slug can only contain letters, numbers, and dashes.");
         return;
       }
 
