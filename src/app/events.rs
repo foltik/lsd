@@ -1057,6 +1057,13 @@ mod rsvp {
 
         match List::has_user_id(&state.db, guest_list_id, user.id).await? {
             true => {
+                tracing::info!(
+                    "Guestlist check passed with event_id={} user_id={} user_email={:?}",
+                    event.id,
+                    user.id,
+                    user.email
+                );
+
                 // Check for conflicts
                 let other_users =
                     Rsvp::list_reserved_users_for_event(&state.db, &event, session.as_ref()).await?;
@@ -1064,6 +1071,10 @@ mod rsvp {
                 if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
                     validate::no_conflicts(&other_users, &primary_user, &[])
                 {
+                    tracing::info!(
+                        "RSVP conflict detected with event_id={} conflict_email={email:?} status={status:?}",
+                        event.id
+                    );
                     return goto::error_conflict(&email, &status);
                 }
 
