@@ -16,7 +16,7 @@
         <time datetime="{{ event.start.date() }}">
           {{ event.start | format_datetime("%a %b %d, %Y") }}
         </time>
-        <span class="stats">{{ event.rsvp_count }} RSVPs • ${{ event.total_contributions }} in contributions</span>
+      <span class="stats">{{ event.rsvp_count }}/{{ event.capacity }} RSVPed • ${{ event.total_contributions }} in contributions</span>
         <div class="actions">
           <a class="ext/button :icon" href="/events/{{ event.slug }}/edit">
             <svg

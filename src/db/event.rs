@@ -62,6 +62,7 @@ pub struct EventWithStats {
     pub slug: String,
     pub start: NaiveDateTime,
     pub guest_list_id: Option<i64>,
+    pub capacity: i64,
     pub rsvp_count: i64,
     pub total_contributions: i64,
 }
@@ -71,7 +72,7 @@ impl Event {
         let events = sqlx::query_as!(
             EventWithStats,
             r#"SELECT
-                 e.id, e.title, e.slug, e.start, e.guest_list_id,
+                 e.id, e.title, e.slug, e.start, e.guest_list_id, e.capacity,
                  COALESCE(
                      (SELECT COUNT(*)
                       FROM rsvps r
