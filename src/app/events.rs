@@ -842,10 +842,14 @@ mod edit {
         struct Html {
             pub user: Option<User>,
             event: Event,
+            rsvp_count: usize,
+            total_contributions: i64,
             rsvps: Vec<AdminAttendeesRsvp>,
         }
 
-        Ok(Html { user: Some(user), event, rsvps }.into_response())
+        let rsvp_count = rsvps.len();
+        let total_contributions = rsvps.iter().map(|r| r.contribution).sum();
+        Ok(Html { user: Some(user), event, rsvp_count, total_contributions, rsvps }.into_response())
     }
 
     /// Handle delete submission.
