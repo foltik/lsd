@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                 e.id, e.title, e.slug, e.start, e.guest_list_id,\n                 COALESCE(\n                     (SELECT COUNT(*)\n                      FROM rsvps r\n                      JOIN rsvp_sessions rs ON rs.id = r.session_id\n                      WHERE rs.event_id = e.id\n                        AND rs.status IN ('payment_pending', 'payment_confirmed')),\n                     0\n                 ) as \"rsvp_count!: i64\",\n                 COALESCE(\n                     (SELECT SUM(r.contribution)\n                      FROM rsvps r\n                      JOIN rsvp_sessions rs ON rs.id = r.session_id\n                      WHERE rs.event_id = e.id\n                        AND rs.status IN ('payment_pending', 'payment_confirmed')),\n                     0\n                 ) as \"total_contributions!: i64\"\n               FROM events e",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "start",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "guest_list_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rsvp_count!: i64",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "total_contributions!: i64",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "2e4338535090b9a9ee75ed43780fd0c7fd2b1a16eb78c6fb6ab0215eec1ce39c"
+}

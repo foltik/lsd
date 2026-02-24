@@ -1,6 +1,6 @@
 use image::DynamicImage;
 
-use crate::db::event::{Event, EventLimits, EventWithRsvpCount, UpdateEvent};
+use crate::db::event::{Event, EventLimits, EventWithStats, UpdateEvent};
 use crate::db::event_flyer::*;
 use crate::db::rsvp_session::*;
 use crate::db::spot::*;
@@ -73,7 +73,7 @@ mod read {
     #[template(path = "events/list.html")]
     struct ListHtml {
         user: Option<User>,
-        events: Vec<EventWithRsvpCount>,
+        events: Vec<EventWithStats>,
     }
 
     pub async fn list_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
