@@ -12,6 +12,9 @@
     time {
       @apply text-lsd-gray mb-0.5 text-xs;
     }
+    .stats {
+      @apply text-lsd-gray mb-1 text-xs;
+    }
 
     .actions {
       @apply flex flex-wrap gap-2 text-xs;
