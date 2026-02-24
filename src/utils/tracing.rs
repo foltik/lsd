@@ -2,7 +2,8 @@ use axum::http::Request;
 use tower::ServiceBuilder;
 use tower_http::ServiceBuilderExt as _;
 use tower_http::request_id::{MakeRequestId, RequestId};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::trace::{DefaultOnResponse, MakeSpan, TraceLayer};
+use tracing::Span;
 use uuid::Uuid;
 
 use crate::prelude::*;
@@ -17,6 +18,17 @@ impl MakeRequestId for MakeRequestUuidV7 {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct LoggingMakeSpan;
+impl<B> MakeSpan<B> for LoggingMakeSpan {
+    fn make_span(&mut self, request: &Request<B>) -> Span {
+        let method = request.method();
+        let path = request.uri().path();
+        tracing::info!("{method} {path:?}");
+        tracing::span!(tracing::Level::DEBUG, "request", %method, %path)
+    }
+}
+
 /// Register tracing-related middleware into the router.
 pub fn add_middleware(router: AxumRouter) -> AxumRouter {
     router.layer(
@@ -24,7 +36,7 @@ pub fn add_middleware(router: AxumRouter) -> AxumRouter {
             .set_x_request_id(MakeRequestUuidV7)
             .layer(
                 TraceLayer::new_for_http()
-                    .make_span_with(DefaultMakeSpan::new())
+                    .make_span_with(LoggingMakeSpan)
                     .on_response(DefaultOnResponse::new()),
             )
             .propagate_x_request_id(),
