@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rsvp_sessions\n             WHERE user_id IN (\n                 SELECT u.id\n                 FROM users u\n                 WHERE u.email = ? COLLATE NOCASE\n             )\n             AND id != ?\n             AND event_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "3082723b6deb04e91870f0b33cbd3046cfb4d50bc1e4e8f28d80c322e2425d84"
+}
