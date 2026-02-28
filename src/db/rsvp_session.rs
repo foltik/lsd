@@ -148,7 +148,7 @@ impl RsvpSession {
              WHERE user_id IN (
                  SELECT u.id
                  FROM users u
-                 WHERE u.email = ?
+                 WHERE u.email = ? COLLATE NOCASE
              )
              AND id != ?
              AND event_id = ?",

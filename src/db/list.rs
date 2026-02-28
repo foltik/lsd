@@ -122,7 +122,7 @@ impl List {
                 FROM list_members lm
                 LEFT JOIN users u ON u.id = lm.user_id
                 WHERE lm.list_id = ?
-                  AND u.email = ?
+                  AND u.email = ? COLLATE NOCASE
             ) AS "exists!: bool"
             "#,
             id,
