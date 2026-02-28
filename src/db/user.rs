@@ -47,7 +47,6 @@ macro_rules! map_row {
         }
     };
 }
-pub use map_row;
 
 macro_rules! map_row_fuck {
     ($row:expr) => {
@@ -212,14 +211,14 @@ impl User {
             FROM users u
             LEFT JOIN user_roles r ON r.user_id = u.id
             JOIN user_history h ON h.user_id = u.id
-            WHERE u.email = ?
+            WHERE u.email = ? COLLATE NOCASE
             GROUP BY u.id
             "#,
             email
         )
         .fetch_optional(db)
         .await?;
-        Ok(row.map(|r| map_row!(r)))
+        Ok(row.map(|r| map_row_fuck!(r)))
     }
     /// Lookup a user by a login token, if it's valid.
     pub async fn lookup_by_login_token(db: &Db, token: &str) -> Result<Option<User>> {

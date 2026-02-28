@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM list_members lm\n                LEFT JOIN users u ON u.id = lm.user_id\n                WHERE lm.list_id = ?\n                  AND u.email = ? COLLATE NOCASE\n            ) AS \"exists!: bool\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ba023e2eb9e9d2cef3ef523fcbb3011dd8331929b30236a5b138003f4e72af22"
+}
