@@ -1790,8 +1790,8 @@ mod rsvp {
 
         #[derive(thiserror::Error, Debug)]
         pub enum ParseSelectionError {
-            #[error("failed to parse request JSON")]
-            Parse,
+            #[error("failed to parse request: {0}")]
+            Parse(#[from] serde_json::Error),
             #[error("unknown spot_id={spot_id}")]
             UnknownSpot { spot_id: i64 },
 
@@ -1810,7 +1810,7 @@ mod rsvp {
                 contribution: Option<i64>,
             }
 
-            let rsvps: Vec<RsvpForm> = serde_json::from_str(selection).map_err(|_| Error::Parse)?;
+            let rsvps: Vec<RsvpForm> = serde_json::from_str(selection)?;
             let mut parsed = vec![];
 
             for rsvp in rsvps {
@@ -1849,8 +1849,8 @@ mod rsvp {
         }
         #[derive(thiserror::Error, Debug)]
         pub enum ParseAttendeesError {
-            #[error("failed to parse request JSON")]
-            Parse,
+            #[error("failed to parse request: {0}")]
+            Parse(#[from] serde_json::Error),
 
             #[error("unknown or duplicate rsvp_id={rsvp_id}")]
             UnknownOrDuplicateRsvp { rsvp_id: i64 },
@@ -1887,7 +1887,7 @@ mod rsvp {
 
                 is_me: bool,
             }
-            let attendees: Vec<AttendeeForm> = serde_json::from_str(attendees).map_err(|_| Error::Parse)?;
+            let attendees: Vec<AttendeeForm> = serde_json::from_str(attendees)?;
 
             // Track available rsvp_ids, seen email/phones for duplicate detection
             let mut remaining_rsvps: HashSet<i64> = HashSet::from_iter(rsvps.iter().map(|r| r.rsvp_id));
