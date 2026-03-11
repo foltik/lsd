@@ -41,9 +41,9 @@ impl Cloudflare {
         #[derive(serde::Deserialize, serde::Serialize, Debug)]
         struct Response {
             success: bool,
-            hostname: String,
-            challenge_ts: DateTime<Utc>,
-            #[serde(rename = "error-codes")]
+            hostname: Option<String>,
+            challenge_ts: Option<DateTime<Utc>>,
+            #[serde(default, rename = "error-codes")]
             error_codes: Vec<String>,
         }
         let res: Response = req.json().await?;
@@ -54,10 +54,18 @@ impl Cloudflare {
         let challenge_ok = res.success;
         let domain_ok = match self.app_domain.as_str() {
             "localhost" => true,
-            domain => res.hostname == domain,
+            domain => res.hostname.is_some_and(|host| host == domain),
         };
-        let age_ok = Utc::now().signed_duration_since(res.challenge_ts).num_minutes() < 5;
+        let age_ok = res
+            .challenge_ts
+            .is_some_and(|ts| Utc::now().signed_duration_since(ts).num_minutes() < 5);
+        let ok = challenge_ok && domain_ok && age_ok;
 
-        Ok(challenge_ok && domain_ok && age_ok)
+        tracing::info!(
+            "Turnstile token={token} client_ip={client_ip} -> ok={ok} challenge_ok={challenge_ok} domain_ok={domain_ok} age_ok={age_ok} errors={:?}",
+            res.error_codes
+        );
+
+        Ok(ok)
     }
 }
