@@ -75,7 +75,7 @@ pub mod stripe {
             object: T,
         }
         let event: Type = serde_json::from_str(&body).map_err(|_| invalid())?;
-        fn parse<T: serde::de::DeserializeOwned>(body: &str) -> AppResult<T> {
+        fn parse<T: serde::de::DeserializeOwned>(body: &str) -> Result<T, AppError> {
             let event: Event<T> = serde_json::from_str(body).map_err(|_| invalid())?;
             Ok(event.data.object)
         }
