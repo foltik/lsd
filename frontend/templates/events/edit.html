@@ -10,9 +10,6 @@
     <form
       id="form"
       class="ext/form"
-      action="/events/{{ event.id }}/update"
-      method="post"
-      enctype="multipart/form-data"
     >
       <div class="field">
         <label for="title">Title</label>
@@ -351,12 +348,6 @@
         return;
       }
 
-      const slug = $("slug").value;
-      if (!slug || !/^[a-zA-Z0-9\-]+$/.test(slug)) {
-        alert("Slug can only contain letters, numbers, and dashes.");
-        return;
-      }
-
       // Retrieve the value of an input, with adjustments for HTML input type weirdness
       let value = (name, root = ui.form) => {
         const el = root.querySelector(`[name="${name}"]`);
@@ -399,10 +390,16 @@
         return [start, end];
       })();
 
+      const slug = value("slug");
+      if (!slug || !/^[a-zA-Z0-9\-]+$/.test(slug)) {
+        alert("Slug can only contain letters, numbers, and dashes.");
+        return;
+      }
+
       const body = {
-        id: parseInt("{{ event.id }}") || undefined,
+        id: parseInt(`{{ event.id }}`),
         title: value("title"),
-        slug: value("slug"),
+        slug,
         start,
         end,
         capacity: value("capacity"),
@@ -436,7 +433,6 @@
         }),
       };
 
-      const slug = value("slug");
       try {
         const formData = new FormData();
         formData.append("data", JSON.stringify(body));
@@ -452,7 +448,12 @@
         });
 
         if (resp.ok) {
-          window.location.href = `/e/${slug}`;
+          const payload = await resp.json();
+          if (payload?.error) {
+            alert(`Error: ${payload.error}`);
+          } else {
+            window.location.href = `/e/${slug}`;
+          }
         } else {
           alert(`Error: ${await resp.text()}`);
         }

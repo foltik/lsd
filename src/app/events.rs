@@ -213,14 +213,14 @@ mod edit {
     // Handle edit submission.
     #[derive(Debug, serde::Deserialize)]
     pub struct EditForm {
-        id: Option<i64>,
+        id: i64,
         #[serde(flatten)]
         event: UpdateEvent,
         spots: Vec<UpdateSpot>,
     }
     pub async fn edit_form(
         State(state): State<SharedAppState>, mut multipart: axum::extract::Multipart,
-    ) -> HtmlResult {
+    ) -> JsonResult<()> {
         let mut form: Option<EditForm> = None;
         let mut flyer: Option<DynamicImage> = None;
 
@@ -245,12 +245,24 @@ mod edit {
         if form.event.slug.is_empty()
             || !form.event.slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
         {
-            return Ok((StatusCode::BAD_REQUEST, "Slug can only contain letters, numbers, and dashes.")
-                .into_response());
+            bail!("Slug can only contain letters, numbers, and dashes.");
         }
 
         match form.id {
-            Some(id) => {
+            0 => {
+                tracing::info!("create: {:?}", &form.event);
+                let event_id = Event::create(&state.db, &form.event, &flyer).await?;
+
+                let mut spot_ids = vec![];
+                for spot in form.spots {
+                    let id = Spot::create(&state.db, &spot).await?;
+                    spot_ids.push(id);
+                }
+
+                Spot::add_to_event(&state.db, event_id, spot_ids).await?;
+            }
+            id => {
+                tracing::info!("edit: {:?}", &form.event);
                 Event::update(&state.db, id, &form.event, &flyer).await?;
 
                 let rsvp_counts = Spot::rsvp_counts_for_event(&state.db, id).await?;
@@ -277,20 +289,9 @@ mod edit {
                 Spot::add_to_event(&state.db, id, to_add).await?;
                 Spot::remove_from_event(&state.db, id, to_delete).await?;
             }
-            None => {
-                let event_id = Event::create(&state.db, &form.event, &flyer).await?;
-
-                let mut spot_ids = vec![];
-                for spot in form.spots {
-                    let id = Spot::create(&state.db, &spot).await?;
-                    spot_ids.push(id);
-                }
-
-                Spot::add_to_event(&state.db, event_id, spot_ids).await?;
-            }
         }
 
-        Ok(Redirect::to("/events").into_response())
+        Ok(Json(()))
     }
 
     // Edit invite page.
