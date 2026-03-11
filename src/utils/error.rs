@@ -57,10 +57,10 @@ impl<E: Error + Send + Sync + 'static> From<E> for AnyError {
 #[macro_export]
 macro_rules! bail {
     ( $fmt:expr ) => {
-        return Err(AnyError::new($fmt));
+        return Err(AnyError::new($fmt).into());
     };
     ( $fmt:expr, $($arg:expr),* $(,)?) => {
-        return Err(AnyError::new(format!("{}", format_args!($fmt, $($arg),*))));
+        return Err(AnyError::new(format!("{}", format_args!($fmt, $($arg),*))).into());
     }
 }
 pub use bail;
@@ -84,7 +84,6 @@ pub enum AppError {
     Unauthorized(Backtrace),
     Invalid(Backtrace),
 }
-pub type AppResult<T> = Result<T, AppError>;
 
 impl AppError {
     pub fn message(&self) -> &'static str {
