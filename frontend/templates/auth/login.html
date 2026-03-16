@@ -15,11 +15,9 @@
       <div class="field">
         <button type="submit">Login</button>
       </div>
-      <input
-        name="redirect"
-        type="hidden"
-        value="{{ redirect | unwrap_or_empty }}"
-      />
+      {% if let Some(redirect) = redirect %}
+        <input name="redirect" type="hidden" value="{{ redirect }}" />
+      {% endif %}
     </form>
   </section>
 {% endblock content %}
