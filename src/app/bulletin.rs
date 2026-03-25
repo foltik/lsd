@@ -3,7 +3,6 @@ use axum::extract::Query;
 use axum::http::header;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
@@ -18,7 +17,6 @@ struct Flyer {
     y: i64,
     rotation: i64,
     link_url: Option<String>,
-    remove_after_time: NaiveDateTime,
 }
 
 async fn create_flyer(
@@ -27,7 +25,6 @@ async fn create_flyer(
     let mut image_data: Option<Vec<u8>> = None;
     let mut link_url: Option<String> = None;
     let mut flyer_name: Option<String> = None;
-    let mut remove_after_time: Option<NaiveDateTime> = None;
     let mut x: Option<i64> = None;
     let mut y: Option<i64> = None;
 
@@ -47,12 +44,6 @@ async fn create_flyer(
             "flyer_name" => {
                 flyer_name = Some(field.text().await?);
             }
-            "remove_after_time" => {
-                let v = field.text().await?;
-                remove_after_time = NaiveDateTime::parse_from_str(&v, "%Y-%m-%dT%H:%M:%S")
-                    .ok()
-                    .or_else(|| NaiveDateTime::parse_from_str(&v, "%Y-%m-%dT%H:%M").ok());
-            }
             "x" => {
                 x = field.text().await?.parse().ok();
             }
@@ -65,32 +56,29 @@ async fn create_flyer(
 
     let image_data = image_data.ok_or_else(|| crate::utils::error::invalid())?;
     let flyer_name = flyer_name.unwrap_or_default();
-    let remove_after_time = remove_after_time.ok_or_else(|| crate::utils::error::invalid())?;
     let x = x.unwrap_or(0);
     let y = y.unwrap_or(0);
 
     sqlx::query!(
-        r#"INSERT INTO flyers (user_id, x, y, image_data, link_url, flyer_name, remove_after_time)
-           VALUES (?, ?, ?, ?, ?, ?, ?)"#,
+        r#"INSERT INTO flyers (user_id, x, y, image_data, link_url, flyer_name)
+           VALUES (?, ?, ?, ?, ?, ?)"#,
         user.id,
         x,
         y,
         image_data,
         link_url,
         flyer_name,
-        remove_after_time
     )
     .execute(&state.db)
     .await?;
 
-    Ok(Redirect::to("/bulletin").into_response())
+    Ok(Redirect::to(&format!("/bulletin#x={x}&y={y}")).into_response())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FlyerUpdate {
     link_url: Option<String>,
     flyer_name: String,
-    remove_after_time: NaiveDateTime,
 }
 
 async fn update_flyer(
@@ -100,7 +88,6 @@ async fn update_flyer(
     let mut image_data: Option<Vec<u8>> = None;
     let mut link_url: Option<String> = None;
     let mut flyer_name: Option<String> = None;
-    let mut remove_after_time: Option<NaiveDateTime> = None;
 
     while let Some(field) = multipart.next_field().await? {
         match field.name().unwrap_or("") {
@@ -118,33 +105,28 @@ async fn update_flyer(
             "flyer_name" => {
                 flyer_name = Some(field.text().await?);
             }
-            "remove_after_time" => {
-                let v = field.text().await?;
-                remove_after_time = NaiveDateTime::parse_from_str(&v, "%Y-%m-%dT%H:%M:%S")
-                    .ok()
-                    .or_else(|| NaiveDateTime::parse_from_str(&v, "%Y-%m-%dT%H:%M").ok());
-            }
             _ => {}
         }
     }
 
     let flyer_name = flyer_name.unwrap_or_default();
-    let remove_after_time = remove_after_time.ok_or_else(|| crate::utils::error::invalid())?;
 
     if user.has_role(User::ADMIN) {
         if let Some(data) = image_data {
             sqlx::query!(
-                "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ?, remove_after_time = ? WHERE id = ?",
-                data, link_url, flyer_name, remove_after_time, id,
+                "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ? WHERE id = ?",
+                data,
+                link_url,
+                flyer_name,
+                id,
             )
             .execute(&state.db)
             .await?;
         } else {
             sqlx::query!(
-                "UPDATE flyers SET link_url = ?, flyer_name = ?, remove_after_time = ? WHERE id = ?",
+                "UPDATE flyers SET link_url = ?, flyer_name = ? WHERE id = ?",
                 link_url,
                 flyer_name,
-                remove_after_time,
                 id,
             )
             .execute(&state.db)
@@ -152,21 +134,31 @@ async fn update_flyer(
         }
     } else if let Some(data) = image_data {
         sqlx::query!(
-            "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ?, remove_after_time = ? WHERE id = ? AND user_id = ?",
-            data, link_url, flyer_name, remove_after_time, id, user.id,
+            "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ? WHERE id = ? AND user_id = ?",
+            data,
+            link_url,
+            flyer_name,
+            id,
+            user.id,
         )
         .execute(&state.db)
         .await?;
     } else {
         sqlx::query!(
-            "UPDATE flyers SET link_url = ?, flyer_name = ?, remove_after_time = ? WHERE id = ? AND user_id = ?",
-            link_url, flyer_name, remove_after_time, id, user.id,
+            "UPDATE flyers SET link_url = ?, flyer_name = ? WHERE id = ? AND user_id = ?",
+            link_url,
+            flyer_name,
+            id,
+            user.id,
         )
         .execute(&state.db)
         .await?;
     }
 
-    Ok(Redirect::to("/bulletin").into_response())
+    let pos = sqlx::query!("SELECT x, y FROM flyers WHERE id = ?", id)
+        .fetch_one(&state.db)
+        .await?;
+    Ok(Redirect::to(&format!("/bulletin#x={}&y={}", pos.x, pos.y)).into_response())
 }
 
 async fn admin_update_flyer(
@@ -177,7 +169,6 @@ async fn admin_update_flyer(
     let mut image_data: Option<Vec<u8>> = None;
     let mut link_url: Option<String> = None;
     let mut flyer_name: Option<String> = None;
-    let mut remove_after_time: Option<NaiveDateTime> = None;
 
     while let Some(field) = multipart.next_field().await? {
         match field.name().unwrap_or("") {
@@ -195,32 +186,27 @@ async fn admin_update_flyer(
             "flyer_name" => {
                 flyer_name = Some(field.text().await?);
             }
-            "remove_after_time" => {
-                let v = field.text().await?;
-                remove_after_time = NaiveDateTime::parse_from_str(&v, "%Y-%m-%dT%H:%M:%S")
-                    .ok()
-                    .or_else(|| NaiveDateTime::parse_from_str(&v, "%Y-%m-%dT%H:%M").ok());
-            }
             _ => {}
         }
     }
 
     let flyer_name = flyer_name.unwrap_or_default();
-    let remove_after_time = remove_after_time.ok_or_else(|| crate::utils::error::invalid())?;
 
     if let Some(data) = image_data {
         sqlx::query!(
-            "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ?, remove_after_time = ? WHERE id = ?",
-            data, link_url, flyer_name, remove_after_time, id,
+            "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ? WHERE id = ?",
+            data,
+            link_url,
+            flyer_name,
+            id,
         )
         .execute(&state.db)
         .await?;
     } else {
         sqlx::query!(
-            "UPDATE flyers SET link_url = ?, flyer_name = ?, remove_after_time = ? WHERE id = ?",
+            "UPDATE flyers SET link_url = ?, flyer_name = ? WHERE id = ?",
             link_url,
             flyer_name,
-            remove_after_time,
             id,
         )
         .execute(&state.db)
@@ -285,13 +271,9 @@ async fn delete_flyer(
 }
 
 async fn flyer_details(State(state): State<SharedAppState>, Path(id): Path<i64>) -> JsonResult<FlyerUpdate> {
-    let flyer = sqlx::query_as!(
-        FlyerUpdate,
-        "SELECT flyer_name, link_url, remove_after_time FROM flyers WHERE id = ?",
-        id
-    )
-    .fetch_one(&state.db)
-    .await?;
+    let flyer = sqlx::query_as!(FlyerUpdate, "SELECT flyer_name, link_url FROM flyers WHERE id = ?", id)
+        .fetch_one(&state.db)
+        .await?;
 
     Ok(Json(flyer))
 }
@@ -313,12 +295,10 @@ async fn serve_flyer_image(State(state): State<SharedAppState>, Path(id): Path<i
 }
 
 async fn bulletin_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-    let flyers = sqlx::query_as!(
-        Flyer,
-        "SELECT id, user_id, flyer_name, x, y, rotation, link_url, remove_after_time FROM flyers"
-    )
-    .fetch_all(&state.db)
-    .await?;
+    let flyers =
+        sqlx::query_as!(Flyer, "SELECT id, user_id, flyer_name, x, y, rotation, link_url FROM flyers")
+            .fetch_all(&state.db)
+            .await?;
 
     let (editable_flyers, read_only_flyers) = if let Some(ref u) = user {
         let is_admin = u.has_role(User::ADMIN);
@@ -359,7 +339,7 @@ async fn admin_flyer_list(
 
     let flyers = sqlx::query_as!(
         Flyer,
-        "SELECT id, user_id, flyer_name, x, y, rotation, link_url, remove_after_time
+        "SELECT id, user_id, flyer_name, x, y, rotation, link_url
          FROM flyers ORDER BY id DESC LIMIT ? OFFSET ?",
         PAGE_SIZE,
         offset

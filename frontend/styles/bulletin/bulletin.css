@@ -112,7 +112,7 @@ body:has(#board) {
 .edit-button {
   @apply bg-lsd-white absolute rounded-full border border-[#eee] p-[6px];
   top: -14px;
-  right: -14px;
+  left: -14px;
 }
 
 .add-button {
@@ -172,11 +172,12 @@ body:has(#board) {
   footer {
     @apply absolute right-0 bottom-0 left-0 m-[10px] flex flex-row justify-between;
   }
+}
 
-  button {
-    all: unset;
-    @apply cursor-pointer;
-  }
+/* :where() zeroes out the scope's specificity so class-based overrides (e.g. .edit-button) win */
+:where(body:has(#board)) button {
+  all: unset;
+  @apply cursor-pointer;
 }
 
 body:has(#board) .footer-btn {

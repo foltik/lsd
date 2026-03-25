@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, user_id, flyer_name, x, y, rotation, link_url, remove_after_time\n         FROM flyers ORDER BY id DESC LIMIT ? OFFSET ?",
+  "query": "SELECT id, user_id, flyer_name, x, y, rotation, link_url FROM flyers",
   "describe": {
     "columns": [
       {
@@ -37,15 +37,10 @@
         "name": "link_url",
         "ordinal": 6,
         "type_info": "Text"
-      },
-      {
-        "name": "remove_after_time",
-        "ordinal": 7,
-        "type_info": "Datetime"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 0
     },
     "nullable": [
       false,
@@ -54,9 +49,8 @@
       false,
       false,
       false,
-      true,
-      false
+      true
     ]
   },
-  "hash": "ad89bc59c94c69675e8e9a579584a5d2c569267ccc08d684066981e48515eb07"
+  "hash": "2cfa47fd3d38cbbb84901b022699b1bdd9113a41dcececd557308fc5ecf61d8a"
 }

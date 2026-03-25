@@ -9,15 +9,6 @@
       await fetch(`/bulletin/flyer/${id}`, { method: "DELETE" });
       btn.closest("tr").remove();
     }
-
-    function normalizeDateTime(e) {
-      e.preventDefault();
-      const form = e.target;
-      const inputA = form.querySelector('[name="remove_after_time_select"]');
-      const inputB = form.querySelector('[name="remove_after_time"]');
-      inputB.value = inputA.value + ":00";
-      form.submit();
-    }
   </script>
 {% endblock scripts %}
 
@@ -44,7 +35,6 @@
           <th class="col-user">User ID</th>
           <th class="col-link">Link</th>
           <th class="col-pos">Position</th>
-          <th class="col-remove">Remove after</th>
           <th class="col-actions">Actions</th>
         </tr>
       </thead>
@@ -73,9 +63,6 @@
               {{ flyer.x }}, {{ flyer.y }} / {{ flyer.rotation }}°
               <a href="/bulletin#x={{ flyer.x }}&y={{ flyer.y }}">(Jump)</a>
             </td>
-            <td class="col-remove">
-              {{ flyer.remove_after_time|format_datetime("%Y-%m-%d %H:%M") }}
-            </td>
             <td class="col-actions">
               <details>
                 <summary>Edit</summary>
@@ -84,7 +71,6 @@
                   method="post"
                   enctype="multipart/form-data"
                   action="/bulletin/admin/flyer/{{ flyer.id }}/edit"
-                  onsubmit="normalizeDateTime(event)"
                 >
                   <input
                     type="file"
@@ -104,12 +90,6 @@
                     placeholder="Event Name"
                     required
                   />
-                  <input
-                    type="datetime-local"
-                    name="remove_after_time_select"
-                    value="{{ flyer.remove_after_time|format_datetime("%Y-%m-%dT%H:%M") }}"
-                  />
-                  <input type="hidden" name="remove_after_time" />
                   <button type="submit">Save</button>
                 </form>
               </details>

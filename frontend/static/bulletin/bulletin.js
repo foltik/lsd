@@ -66,12 +66,18 @@ function hideAddPosterButton() {
 // Unhide the edit UI for a given flyer
 function showEditUI(element) {
   clickedElement = element;
-  clickedElement.querySelector(".edit-ui").hidden = false;
+  // TODO(sam) all in one div?
+  clickedElement.querySelector(".rotate-dot").hidden = false;
+  clickedElement.querySelector(".rotate-link").hidden = false;
+  clickedElement.querySelector(".edit-button").hidden = false;
 }
 
 function hideEditUI() {
   if (clickedElement) {
-    clickedElement.querySelector(".edit-ui").hidden = true;
+    clickedElement.querySelector(".rotate-dot").hidden = true;
+    clickedElement.querySelector(".rotate-link").hidden = true;
+    clickedElement.querySelector(".edit-button").hidden = true;
+
     clickedElement = null;
   }
 }
@@ -125,11 +131,6 @@ function setupEventListeners(element) {
           flyerDetails.link_url ?? "";
         App.editForm.querySelector('input[name="flyer_name"]').value =
           flyerDetails.flyer_name;
-        App.editForm.querySelector(
-          'input[name="remove_after_time_select"]',
-        ).value = flyerDetails.remove_after_time;
-        App.editForm.querySelector('input[name="remove_after_time"]').value =
-          flyerDetails.remove_after_time;
 
         App.editForm.action = `/bulletin/flyer/${id}/edit`;
 
