@@ -18,6 +18,26 @@ const AppState = {
   isInLoadingAnimation: false,
 };
 
+// Read #x=N&y=N from the URL hash and apply it as the board center.
+// If missing or invalid, pick a random nearby starting position and write it to the hash.
+function updateCoordinatesFromHash() {
+  const params = new URLSearchParams(globalThis.location.hash.slice(1));
+  let x = parseInt(params.get("x") || "NaN");
+  let y = parseInt(params.get("y") || "NaN");
+
+  if (isNaN(x) || isNaN(y)) {
+    const range = 2000;
+    x = Math.round((Math.random() * 2 - 1) * range);
+    y = Math.round((Math.random() * 2 - 1) * range);
+    history.replaceState(null, "", `#x=${x}&y=${y}`);
+  }
+
+  AppState.centerX = x;
+  AppState.centerY = y;
+  App.board.style.setProperty("--center-x", `${x}px`);
+  App.board.style.setProperty("--center-y", `${y}px`);
+}
+
 // Get the x, y coordinates on the bulletin board of the mouse pointer
 function getWorldMousePosition(event) {
   const x =
@@ -39,24 +59,19 @@ function showAddPosterButton(x, y) {
 }
 
 function hideAddPosterButton() {
+  if (!App.addPosterButton) return;
   App.addPosterButton.hidden = true;
 }
 
 // Unhide the edit UI for a given flyer
 function showEditUI(element) {
   clickedElement = element;
-  // TODO(sam) all in one div?
-  clickedElement.querySelector(".rotate-dot").hidden = false;
-  clickedElement.querySelector(".rotate-link").hidden = false;
-  clickedElement.querySelector(".edit-button").hidden = false;
+  clickedElement.querySelector(".edit-ui").hidden = false;
 }
 
 function hideEditUI() {
   if (clickedElement) {
-    clickedElement.querySelector(".rotate-dot").hidden = true;
-    clickedElement.querySelector(".rotate-link").hidden = true;
-    clickedElement.querySelector(".edit-button").hidden = true;
-
+    clickedElement.querySelector(".edit-ui").hidden = true;
     clickedElement = null;
   }
 }
@@ -106,8 +121,8 @@ function setupEventListeners(element) {
           await fetch(`/bulletin/flyer/${id}`)
         ).json();
 
-        App.editForm.querySelector('input[name="image_url"]').value =
-          flyerDetails.image_url;
+        App.editForm.querySelector('input[name="link_url"]').value =
+          flyerDetails.link_url ?? "";
         App.editForm.querySelector('input[name="flyer_name"]').value =
           flyerDetails.flyer_name;
         App.editForm.querySelector(
@@ -173,9 +188,8 @@ function setupEventListeners(element) {
         newX = e.clientX / AppState.scale - startX;
         newY = -e.clientY / AppState.scale - startY;
 
-        // TODO(sam) remove/adjust this limit or make it more explicit
-        newX = Math.max(-500000, Math.min(500000, newX));
-        newY = Math.max(-500000, Math.min(500000, newY));
+        newX = Math.max(-10000, Math.min(6000, newX));
+        newY = Math.max(-10000, Math.min(6000, newY));
 
         requestAnimationFrame(() => {
           element.style.setProperty("--x", `${Math.round(newX)}px`);
@@ -262,13 +276,15 @@ function setupEventListeners(element) {
 }
 
 // Duration in milliseconds of initial zoom-in on page load
-// TODO(sam) have some way to disable this so it doesn't occur whenever a form is submitted and the page is reloaded
 const START_ANIMATION_DURATION = 2000;
 
 function setup() {
   setupDocumentEventListeners();
 
   setupFlyerEventListeners();
+
+  globalThis.addEventListener("hashchange", updateCoordinatesFromHash);
+  updateCoordinatesFromHash();
 
   App.board.style.setProperty("--scale", "0.5");
 
@@ -412,7 +428,11 @@ function setupDocumentEventListeners() {
       dragState.isDraggingWindow = false;
       dragState.hasDragged = false;
 
-      // TODO(sam) make sure window.replace hash side effects are covered
+      history.replaceState(
+        null,
+        "",
+        `#x=${AppState.centerX}&y=${AppState.centerY}`,
+      );
     },
     { passive: true },
   );

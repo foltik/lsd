@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT flyer_name, image_url, remove_after_time FROM flyers WHERE id = ?",
+  "query": "SELECT flyer_name, link_url, remove_after_time FROM flyers WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Text"
       },
       {
-        "name": "image_url",
+        "name": "link_url",
         "ordinal": 1,
         "type_info": "Text"
       },
@@ -24,9 +24,9 @@
     },
     "nullable": [
       false,
-      false,
+      true,
       false
     ]
   },
-  "hash": "163ee08a9d61ebe9bc8da22e75ef1305819314a3ba2b33dcba56d1ce38bea432"
+  "hash": "52670fec26c60dbeed5a8f962ef7da92bda8413bba0df36457e00d4b765289bd"
 }

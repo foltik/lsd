@@ -1,0 +1,189 @@
+/* Scoped to pages that have a bulletin board */
+body:has(#board) {
+  @apply overflow-hidden;
+  touch-action: none;
+}
+
+#board {
+  --center-x: 0px;
+  --center-y: 0px;
+  --scale: 1;
+  @apply absolute z-0;
+  width: 200vw;
+  height: 200vh;
+  left: -50vw;
+  top: -50vh;
+  background-image: url("/static/bulletin/corkboard.jpg");
+  background-position: calc(0px - var(--center-x)) calc(var(--center-y));
+  background-size: 800px 400px;
+  background-repeat: repeat;
+  transform: scale(var(--scale));
+
+  &:active {
+    @apply cursor-move;
+  }
+}
+
+.board-boundary {
+  @apply pointer-events-none absolute box-border;
+  left: 50%;
+  top: 50%;
+  transform: translate3d(
+    calc(-10000px - var(--center-x)),
+    calc(var(--center-y) - 6000px),
+    0
+  );
+  width: 20000px;
+  height: 12000px;
+  border: 4px dashed rgba(0, 0, 0, 0.55);
+}
+
+.flyer {
+  --x: 0px;
+  --y: 0px;
+  --rotation: 0deg;
+  @apply absolute border border-black p-[5px];
+  left: 50%;
+  top: 50%;
+  background: var(--color-lsd-white);
+  font-family: Georgia, "Times New Roman", Times, serif;
+  transform: translate3d(
+      calc(var(--x) - var(--center-x)),
+      calc(var(--center-y) - var(--y)),
+      0
+    )
+    rotate(var(--rotation));
+  box-shadow: calc(3px * cos(45deg - var(--rotation)))
+    calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+
+  &.editable {
+    @apply cursor-grab;
+
+    &:active {
+      @apply cursor-grabbing;
+    }
+  }
+
+  a {
+    @apply no-underline;
+    color: inherit;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  img {
+    -webkit-user-drag: none;
+    @apply max-h-[200px] max-w-[200px] select-none;
+    -webkit-user-select: none;
+    width: auto;
+    height: auto;
+  }
+
+  &:has(> img.qr) {
+    @apply p-0;
+  }
+}
+
+.rotate-dot {
+  @apply border-lsd-white absolute rounded-full border select-none;
+  top: -25px;
+  left: calc(50% - 6.5px);
+  height: 12px;
+  width: 12px;
+  background-color: var(--color-lsd-green);
+  -webkit-user-select: none;
+}
+
+.rotate-link {
+  @apply absolute;
+  width: 1px;
+  height: 11px;
+  background-color: var(--color-lsd-green);
+  top: -12px;
+  left: calc(50% - 1px);
+  border: 1px solid var(--color-lsd-white);
+  border-top: none;
+  border-bottom: none;
+}
+
+.edit-button {
+  @apply bg-lsd-white absolute rounded-full border border-[#eee] p-[6px];
+  top: -14px;
+  right: -14px;
+}
+
+.add-button {
+  --x: 0px;
+  --y: 0px;
+  @apply absolute flex cursor-pointer items-center justify-center rounded-lg p-[5px] select-none;
+  -webkit-user-select: none;
+  width: 30px;
+  height: 30px;
+  background-color: var(--color-lsd-black);
+  font-weight: bold;
+  font-size: x-large;
+  left: 50%;
+  top: 50%;
+  transform: translate3d(
+    calc(var(--x) - var(--center-x)),
+    calc(var(--center-y) - var(--y)),
+    0
+  );
+  box-shadow: calc(3px * cos(45deg - var(--rotation)))
+    calc(3px * sin(45deg - var(--rotation))) 2px rgba(0, 0, 0, 0.6);
+}
+
+[popover] {
+  @apply border-none bg-transparent;
+}
+
+.outer-popover:has(> :popover-open) {
+  @apply absolute inset-0 z-[999999998];
+  backdrop-filter: blur(3px);
+}
+
+.middle-popover {
+  @apply select-none;
+  -webkit-user-select: none;
+}
+
+.inner-popover {
+  @apply text-lsd-white fixed flex flex-col items-center gap-[25px] rounded-xl;
+  background: rgba(8, 5, 4, 0.9);
+  text-align: center;
+  padding: 3rem;
+  width: fit-content;
+  height: fit-content;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: default;
+}
+
+.flyer-form {
+  @apply flex h-full flex-col items-center justify-between gap-[10px] p-[20px];
+}
+
+/* Scoped so these generic selectors don't bleed into the rest of the site */
+body:has(#board) {
+  footer {
+    @apply absolute right-0 bottom-0 left-0 m-[10px] flex flex-row justify-between;
+  }
+
+  button {
+    all: unset;
+    @apply cursor-pointer;
+  }
+}
+
+body:has(#board) .footer-btn {
+  @apply text-lsd-white rounded-md no-underline;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}

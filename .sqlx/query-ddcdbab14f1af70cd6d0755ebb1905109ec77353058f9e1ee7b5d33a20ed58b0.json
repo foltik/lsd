@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, user_id, flyer_name, x, y, rotation, image_url, remove_after_time FROM flyers",
+  "query": "SELECT id, user_id, flyer_name, x, y, rotation, link_url, remove_after_time FROM flyers",
   "describe": {
     "columns": [
       {
@@ -34,7 +34,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "image_url",
+        "name": "link_url",
         "ordinal": 6,
         "type_info": "Text"
       },
@@ -54,9 +54,9 @@
       false,
       false,
       false,
-      false,
+      true,
       false
     ]
   },
-  "hash": "0c519d3a3eea44373ecfe7d896bddbdecae8f956c253b481f0578e36b584ec1f"
+  "hash": "ddcdbab14f1af70cd6d0755ebb1905109ec77353058f9e1ee7b5d33a20ed58b0"
 }
