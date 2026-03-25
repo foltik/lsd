@@ -17,6 +17,7 @@ struct Flyer {
     y: i64,
     rotation: i64,
     link_url: Option<String>,
+    image_version: i64,
 }
 
 async fn create_flyer(
@@ -114,7 +115,7 @@ async fn update_flyer(
     if user.has_role(User::ADMIN) {
         if let Some(data) = image_data {
             sqlx::query!(
-                "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ? WHERE id = ?",
+                "UPDATE flyers SET image_data = ?, image_version = image_version + 1, link_url = ?, flyer_name = ? WHERE id = ?",
                 data,
                 link_url,
                 flyer_name,
@@ -134,7 +135,7 @@ async fn update_flyer(
         }
     } else if let Some(data) = image_data {
         sqlx::query!(
-            "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ? WHERE id = ? AND user_id = ?",
+            "UPDATE flyers SET image_data = ?, image_version = image_version + 1, link_url = ?, flyer_name = ? WHERE id = ? AND user_id = ?",
             data,
             link_url,
             flyer_name,
@@ -194,7 +195,7 @@ async fn admin_update_flyer(
 
     if let Some(data) = image_data {
         sqlx::query!(
-            "UPDATE flyers SET image_data = ?, link_url = ?, flyer_name = ? WHERE id = ?",
+            "UPDATE flyers SET image_data = ?, image_version = image_version + 1, link_url = ?, flyer_name = ? WHERE id = ?",
             data,
             link_url,
             flyer_name,
@@ -295,10 +296,12 @@ async fn serve_flyer_image(State(state): State<SharedAppState>, Path(id): Path<i
 }
 
 async fn bulletin_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-    let flyers =
-        sqlx::query_as!(Flyer, "SELECT id, user_id, flyer_name, x, y, rotation, link_url FROM flyers")
-            .fetch_all(&state.db)
-            .await?;
+    let flyers = sqlx::query_as!(
+        Flyer,
+        "SELECT id, user_id, flyer_name, x, y, rotation, link_url, image_version FROM flyers"
+    )
+    .fetch_all(&state.db)
+    .await?;
 
     let (editable_flyers, read_only_flyers) = if let Some(ref u) = user {
         let is_admin = u.has_role(User::ADMIN);
@@ -339,7 +342,7 @@ async fn admin_flyer_list(
 
     let flyers = sqlx::query_as!(
         Flyer,
-        "SELECT id, user_id, flyer_name, x, y, rotation, link_url
+        "SELECT id, user_id, flyer_name, x, y, rotation, link_url, image_version
          FROM flyers ORDER BY id DESC LIMIT ? OFFSET ?",
         PAGE_SIZE,
         offset

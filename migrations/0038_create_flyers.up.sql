@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS flyers (
     y INTEGER NOT NULL,
     rotation INTEGER NOT NULL DEFAULT 0,
     image_data BLOB NOT NULL DEFAULT X'',
+    image_version INTEGER NOT NULL DEFAULT 1,
     link_url TEXT,
     flyer_name TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

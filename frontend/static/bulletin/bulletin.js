@@ -283,6 +283,7 @@ function setup() {
   setupDocumentEventListeners();
 
   setupFlyerEventListeners();
+  setupFlyerPins();
 
   globalThis.addEventListener("hashchange", updateCoordinatesFromHash);
   updateCoordinatesFromHash();
@@ -480,6 +481,25 @@ function setupDocumentEventListeners() {
 function setupFlyerEventListeners() {
   App.board.querySelectorAll(".flyer.editable").forEach((element) => {
     setupEventListeners(element);
+  });
+}
+
+// Set --flyer-half-height on each flyer so the pin's transform-origin
+// can be anchored to the flyer's center, keeping the pin at the visual top.
+function setupFlyerPins() {
+  App.board.querySelectorAll(".flyer").forEach((element) => {
+    const img = element.querySelector("img");
+    if (!img) return;
+    const update = () =>
+      element.style.setProperty(
+        "--flyer-half-height",
+        `${element.offsetHeight / 2}px`,
+      );
+    if (img.complete) {
+      update();
+    } else {
+      img.addEventListener("load", update, { once: true });
+    }
   });
 }
 

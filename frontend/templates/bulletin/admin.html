@@ -42,7 +42,7 @@
         {% for flyer in flyers %}
           <tr>
             <td class="col-image">
-              <img src="/bulletin/flyer/{{ flyer.id }}/image" />
+              <img src="/bulletin/flyer/{{ flyer.id }}/image?v={{ flyer.image_version }}" />
             </td>
             <td class="col-name">{{ flyer.flyer_name|unwrap_or_empty }}</td>
             <td class="col-user">{{ flyer.user_id }}</td>

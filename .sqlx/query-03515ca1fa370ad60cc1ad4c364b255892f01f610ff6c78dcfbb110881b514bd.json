@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, user_id, flyer_name, x, y, rotation, link_url\n         FROM flyers ORDER BY id DESC LIMIT ? OFFSET ?",
+  "query": "SELECT id, user_id, flyer_name, x, y, rotation, link_url, image_version\n         FROM flyers ORDER BY id DESC LIMIT ? OFFSET ?",
   "describe": {
     "columns": [
       {
@@ -37,6 +37,11 @@
         "name": "link_url",
         "ordinal": 6,
         "type_info": "Text"
+      },
+      {
+        "name": "image_version",
+        "ordinal": 7,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -49,8 +54,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "616d8fa150db9075665c968ae249e9b6a86a9f6a46a434b03721c8b2b41de57f"
+  "hash": "03515ca1fa370ad60cc1ad4c364b255892f01f610ff6c78dcfbb110881b514bd"
 }
