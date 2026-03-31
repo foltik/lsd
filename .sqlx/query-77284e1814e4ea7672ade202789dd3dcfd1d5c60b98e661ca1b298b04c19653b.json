@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvp_sessions WHERE token = ?",
+  "query": "SELECT * FROM rsvp_sessions\n               WHERE user_id = ? AND event_id = ?\n                 AND status IN ('payment_pending', 'payment_confirmed')\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -65,7 +65,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       false,
@@ -82,5 +82,5 @@
       false
     ]
   },
-  "hash": "d5ed71da563d1e1ec855dc3043100b349da6f365d7c011616ee37d551169e3cc"
+  "hash": "77284e1814e4ea7672ade202789dd3dcfd1d5c60b98e661ca1b298b04c19653b"
 }
