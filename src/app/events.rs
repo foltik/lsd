@@ -1025,7 +1025,8 @@ mod rsvp {
 
     /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
-        session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        session: Option<RsvpSession>, user: Option<User>, State(state): State<SharedAppState>,
+        Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
@@ -1033,13 +1034,13 @@ mod rsvp {
         }
 
         match event.guest_list_id {
-            None => goto::selection_page(&state.db, &None, &session, &event).await,
+            None => goto::selection_page(&state.db, &user, &session, &event).await,
             Some(guest_list_id) => match session {
                 Some(session) => {
                     if let Some(user_id) = session.user_id
                         && List::has_user_id(&state.db, guest_list_id, user_id).await?
                     {
-                        goto::selection_page(&state.db, &None, &Some(session), &event).await
+                        goto::selection_page(&state.db, &user, &Some(session), &event).await
                     } else {
                         goto::guestlist_page(&event)
                     }
