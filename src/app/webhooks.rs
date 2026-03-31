@@ -83,6 +83,8 @@ pub mod stripe {
             "checkout.session.completed" => {
                 checkout_session_completed(state, parse::<CheckoutSessionCompleted>(&body)?).await?
             }
+            "charge.refunded" => charge_refunded(state, parse::<ChargeRefunded>(&body)?).await?,
+            "refund.failed" => refund_failed(state, parse::<RefundFailed>(&body)?).await?,
             ty => tracing::debug!("Stripe: unhandled webhook of type={ty:?}"),
         }
 
@@ -202,6 +204,71 @@ pub mod stripe {
                 )
             }
         }
+
+        Ok(())
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct ChargeRefunded {
+        payment_intent: String,
+        refunded: bool,
+    }
+    async fn charge_refunded(state: SharedAppState, payload: ChargeRefunded) -> Result<()> {
+        if !payload.refunded {
+            tracing::warn!(
+                "Stripe[charge.refunded]: refunded=false for payment_intent={}",
+                payload.payment_intent
+            );
+            return Ok(());
+        }
+
+        let session = sqlx::query_as!(
+            RsvpSession,
+            r#"SELECT * FROM rsvp_sessions WHERE stripe_payment_intent_id = ?"#,
+            payload.payment_intent,
+        )
+        .fetch_optional(&state.db)
+        .await?;
+
+        let Some(session) = session else {
+            tracing::warn!(
+                "Stripe[charge.refunded]: no session found for payment_intent={}",
+                payload.payment_intent
+            );
+            return Ok(());
+        };
+
+        if session.status != RsvpSession::REFUND_PENDING {
+            tracing::warn!(
+                "Stripe[charge.refunded]: session={} has status={:?}, expected refund_pending",
+                session.id,
+                session.status
+            );
+            return Ok(());
+        }
+
+        tracing::info!(
+            "Stripe[charge.refunded]: confirming refund for session={} payment_intent={}",
+            session.id,
+            payload.payment_intent
+        );
+        session.set_status(&state.db, RsvpSession::REFUND_CONFIRMED).await?;
+        Ok(())
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct RefundFailed {
+        payment_intent: Option<String>,
+        failure_reason: Option<String>,
+    }
+    async fn refund_failed(_state: SharedAppState, payload: RefundFailed) -> Result<()> {
+        let payment_intent = payload.payment_intent.as_deref().unwrap_or("unknown");
+        let failure_reason = payload.failure_reason.as_deref().unwrap_or("unknown");
+
+        let message =
+            format!("Stripe[refund.failed]: payment_intent={payment_intent} failure_reason={failure_reason}");
+        tracing::error!("{message}");
+        crate::utils::sentry::report(message);
 
         Ok(())
     }

@@ -32,6 +32,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{slug}/attendees", get(edit::attendees_page))
                 .route("/events/{slug}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
                 .route("/events/{slug}/attendees/{user_id}", delete(edit::delete_attendee))
+                .route("/events/{slug}/attendees/{user_id}/refund", post(edit::refund_attendee))
                 .route("/events/{slug}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
                 .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
                 .route("/events/{id}/invite/preview", get(edit::preview_invite_page))
@@ -122,8 +123,13 @@ mod read {
 
     pub async fn delete_session(State(state): State<SharedAppState>, Path(id): Path<i64>) -> JsonResult<()> {
         let session = RsvpSession::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
-        if session.status == RsvpSession::PAYMENT_PENDING || session.status == RsvpSession::PAYMENT_CONFIRMED
-        {
+        if matches!(
+            session.status.as_str(),
+            RsvpSession::PAYMENT_PENDING
+                | RsvpSession::PAYMENT_CONFIRMED
+                | RsvpSession::REFUND_PENDING
+                | RsvpSession::REFUND_CONFIRMED
+        ) {
             bail_invalid!();
         }
         session.delete(&state.db).await?;
@@ -918,6 +924,25 @@ mod edit {
         Ok(Json(()))
     }
 
+    pub async fn refund_attendee(
+        State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
+    ) -> JsonResult<()> {
+        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        let session = RsvpSession::lookup_active_by_user_and_event(&state.db, path.user_id, event.id)
+            .await?
+            .ok_or_else(not_found)?;
+
+        if let Some(ref payment_intent_id) = session.stripe_payment_intent_id {
+            let refund_id = state.stripe.refund(payment_intent_id).await?;
+            session.set_refund_id(&state.db, &refund_id).await?;
+            session.set_status(&state.db, RsvpSession::REFUND_PENDING).await?;
+        } else {
+            session.set_status(&state.db, RsvpSession::REFUND_CONFIRMED).await?;
+        }
+
+        Ok(Json(()))
+    }
+
     /// Display the form to add a manual attendee.
     pub async fn add_attendee_page(
         user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
@@ -1271,10 +1296,12 @@ mod rsvp {
                     RsvpSession::ATTENDEES | RsvpSession::SELECTION => {
                         our_session.takeover_for_event(&state.db, &event, &email).await?;
                     }
-                    // If reserved, show an error.
+                    // If reserved or refunded, show an error.
                     RsvpSession::CONTRIBUTION
                     | RsvpSession::PAYMENT_PENDING
-                    | RsvpSession::PAYMENT_CONFIRMED => {
+                    | RsvpSession::PAYMENT_CONFIRMED
+                    | RsvpSession::REFUND_PENDING
+                    | RsvpSession::REFUND_CONFIRMED => {
                         return goto::error_conflict(&email, &status);
                     }
                     _ => unreachable!(),
@@ -1473,6 +1500,7 @@ mod rsvp {
             RsvpSession::CONTRIBUTION => session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?,
             // If pending or confirmed, you're good.
             RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
+            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {}
             _ => unreachable!(),
         }
 
@@ -1726,6 +1754,7 @@ mod rsvp {
             let wording = match status {
                 RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => "is currently in the process of RSVPing",
                 RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => "has already RSVPed",
+                RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => "has been refunded",
                 _ => unreachable!()
             };
             Ok(ErrorHtml {
@@ -2033,7 +2062,10 @@ impl axum::extract::FromRequestParts<SharedAppState> for RsvpSession {
         match parts.extensions.get::<RsvpSession>().cloned() {
             Some(session) => match session.status.as_str() {
                 RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => Ok(session),
-                RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {
+                RsvpSession::PAYMENT_PENDING
+                | RsvpSession::PAYMENT_CONFIRMED
+                | RsvpSession::REFUND_PENDING
+                | RsvpSession::REFUND_CONFIRMED => {
                     match parts.uri.path().contains("manage") {
                         true => Ok(session), // avoid redirect loop
                         false => Err(Redirect::to(&format!(

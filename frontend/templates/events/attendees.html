@@ -31,7 +31,7 @@
           <th class="spot">Spot</th>
           <th class="created">Created</th>
           <th class="checkin">Checkin</th>
-          <th class="delete"></th>
+          <th class="actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -39,6 +39,8 @@
           <tr
             data-user-id="{{ rsvp.user_id }}"
             data-is-manual="{{ rsvp.is_manual }}"
+            data-session-id="{{ rsvp.session_id }}"
+            data-status="{{ rsvp.status }}"
           >
             <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
             <td class="email">{{ rsvp.email }}</td>
@@ -90,7 +92,22 @@
                 </button>
               {% endif %}
             </td>
-            <td class="delete">
+            <td class="actions">
+              {% if rsvp.guest_of.is_none() && !rsvp.is_manual %}
+                <button class="refund" title="Refund purchase">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M13.91 2.91L11.83 5H14a8 8 0 0 1 8 8h-2a6 6 0 0 0-6-6h-2.17l2.09 2.09l-1.42 1.41L8 6l1.41-1.41L12.5 1.5l1.41 1.41zM2 12v10h16V12H2zm2 6.56v-3.11A4 4 0 0 0 5.45 14h9.1A4 4 0 0 0 16 15.45v3.11A3.996 3.996 0 0 0 14.57 20H5.45A3.996 3.996 0 0 0 4 18.56zm6 .44c.828 0 1.5-.895 1.5-2s-.672-2-1.5-2s-1.5.895-1.5 2s.672 2 1.5 2z"
+                    />
+                  </svg>
+                </button>
+              {% endif %}
               <button class="delete" title="Delete attendee">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -158,6 +175,26 @@
       const userId = row.dataset.userId;
       const isManual = row.dataset.isManual === "true";
       const manualParam = isManual ? "?manual=true" : "";
+
+      // Handle refund button
+      if (btn.classList.contains("refund")) {
+        const name = row.querySelector(".name").textContent.trim();
+        if (!confirm(`Are you sure you want to refund ${name}'s contribution?\n\nThis will issue a full Stripe refund.`)) return;
+        try {
+          const resp = await fetch(
+            `/events/${slug}/attendees/${userId}/refund`,
+            { method: "POST" },
+          );
+          if (!resp.ok) {
+            const data = await resp.json();
+            throw new Error(data.error || resp.statusText);
+          }
+          location.reload();
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        }
+        return;
+      }
 
       // Handle delete button
       if (btn.classList.contains("delete")) {

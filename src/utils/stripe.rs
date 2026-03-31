@@ -109,4 +109,46 @@ impl Stripe {
             any!(msg)
         })
     }
+
+    /// Issue a full refund for a payment intent. Returns the Stripe refund ID.
+    pub async fn refund(&self, payment_intent_id: &str) -> Result<String> {
+        let form_data = format!("payment_intent={payment_intent_id}&reason=requested_by_customer");
+
+        #[derive(serde::Deserialize)]
+        struct Response {
+            id: Option<String>,
+            error: Option<StripeError>,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct StripeError {
+            message: String,
+            #[serde(rename = "type")]
+            error_type: String,
+        }
+
+        #[rustfmt::skip]
+        let res: Response = self.http
+            .post("https://api.stripe.com/v1/refunds")
+            .header("Stripe-Version", API_VERSION)
+            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(form_data)
+            .send().await?.json().await?;
+
+        if let Some(err) = res.error {
+            let msg = format!(
+                "Stripe::refund(): {} (type={}), payment_intent={payment_intent_id}",
+                err.message, err.error_type
+            );
+            crate::utils::sentry::report(msg.clone());
+            bail!(msg);
+        }
+
+        res.id.ok_or_else(|| {
+            let msg = format!("Stripe::refund(): response missing id, payment_intent={payment_intent_id}");
+            crate::utils::sentry::report(msg.clone());
+            any!(msg)
+        })
+    }
 }

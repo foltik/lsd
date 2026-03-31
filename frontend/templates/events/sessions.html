@@ -38,12 +38,12 @@
             <td>{{ s.created_at | format_datetime("%-I:%M%p") }}</td>
             <td>{{ s.updated_at | format_datetime("%-I:%M%p") }}</td>
             <td>
-              {% if s.status != "payment_pending" && s.status != "payment_confirmed" %}{% if s.expires_in > 0 %}{{ s.expires_in }}m{% else %}expired{% endif %}{% endif %}
+              {% if s.status != "payment_pending" && s.status != "payment_confirmed" && s.status != "refund_pending" && s.status != "refund_confirmed" %}{% if s.expires_in > 0 %}{{ s.expires_in }}m{% else %}expired{% endif %}{% endif %}
             </td>
             <td>
               <button
                 class="delete ext/button :red"
-                {% if s.status == "payment_pending" || s.status == "payment_confirmed" %}disabled{% endif %}
+                {% if s.status == "payment_pending" || s.status == "payment_confirmed" || s.status == "refund_pending" || s.status == "refund_confirmed" %}disabled{% endif %}
               >
                 Delete
               </button>

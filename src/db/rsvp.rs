@@ -73,6 +73,9 @@ pub struct AdminAttendeesRsvp {
     pub is_manual: bool,
     pub created_at: NaiveDateTime,
     pub checkin_at: Option<NaiveDateTime>,
+
+    pub session_id: i64,
+    pub status: String,
 }
 
 impl Rsvp {
@@ -96,7 +99,10 @@ impl Rsvp {
 
                 FALSE AS "is_manual!: bool",
                 r.created_at,
-                r.checkin_at
+                r.checkin_at,
+
+                rs.id AS "session_id!: i64",
+                rs.status AS "status!"
             FROM rsvps r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
             JOIN spots sp ON sp.id = r.spot_id
@@ -119,13 +125,16 @@ impl Rsvp {
 
                 TRUE AS "is_manual!: bool",
                 mr.created_at,
-                mr.checkin_at
+                mr.checkin_at,
+
+                0 AS "session_id!: i64",
+                'manual' AS "status!"
             FROM manual_rsvps mr
             JOIN users u ON u.id = mr.user_id
             JOIN users cu ON cu.id = mr.creator_user_id
             WHERE mr.event_id = ?
 
-            ORDER BY 9;
+            ORDER BY 11;
             "#,
             event_id,
             event_id
@@ -326,7 +335,7 @@ impl Rsvp {
                    SELECT 1 FROM rsvps r
                    JOIN rsvp_sessions rs ON rs.id = r.session_id
                    WHERE rs.event_id = ? AND r.user_id = ?
-                     AND rs.status IN ('payment_pending', 'payment_confirmed')
+                     AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
                ) as "exists!: bool""#,
             event_id,
             user_id

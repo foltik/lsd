@@ -17,9 +17,9 @@ pub struct RsvpSession {
     pub user_version: Option<i64>,
 
     pub stripe_client_secret: Option<String>,
-    pub stripe_payment_intent_id: Option<i64>,
+    pub stripe_payment_intent_id: Option<String>,
     pub stripe_charge_id: Option<i64>,
-    pub stripe_refund_id: Option<i64>,
+    pub stripe_refund_id: Option<String>,
 
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -31,6 +31,8 @@ impl RsvpSession {
     pub const CONTRIBUTION: &str = "contribution";
     pub const PAYMENT_PENDING: &str = "payment_pending";
     pub const PAYMENT_CONFIRMED: &str = "payment_confirmed";
+    pub const REFUND_PENDING: &str = "refund_pending";
+    pub const REFUND_CONFIRMED: &str = "refund_confirmed";
 
     pub const EXPIRY_TIME_SQL: &str = "-31 minutes";
     pub const STRIPE_EXPIRY_MINUTES: i64 = 30;
@@ -74,6 +76,22 @@ impl RsvpSession {
         Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvp_sessions WHERE token = ?"#, token)
             .fetch_optional(db)
             .await?)
+    }
+
+    pub async fn lookup_active_by_user_and_event(
+        db: &Db, user_id: i64, event_id: i64,
+    ) -> Result<Option<RsvpSession>> {
+        Ok(sqlx::query_as!(
+            Self,
+            r#"SELECT * FROM rsvp_sessions
+               WHERE user_id = ? AND event_id = ?
+                 AND status IN ('payment_pending', 'payment_confirmed')
+               LIMIT 1"#,
+            user_id,
+            event_id,
+        )
+        .fetch_optional(db)
+        .await?)
     }
 
     pub async fn get_or_create(
@@ -215,6 +233,20 @@ impl RsvpSession {
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
             payment_intent_id,
+            self.id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn set_refund_id(&self, db: &Db, refund_id: &str) -> Result<()> {
+        sqlx::query!(
+            "UPDATE rsvp_sessions
+             SET stripe_refund_id = ?,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?",
+            refund_id,
             self.id
         )
         .execute(db)

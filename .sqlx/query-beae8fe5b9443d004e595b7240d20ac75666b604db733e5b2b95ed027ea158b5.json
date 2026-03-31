@@ -41,7 +41,7 @@
       {
         "name": "stripe_payment_intent_id",
         "ordinal": 7,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
         "name": "stripe_charge_id",
@@ -51,7 +51,7 @@
       {
         "name": "stripe_refund_id",
         "ordinal": 9,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
         "name": "created_at",
