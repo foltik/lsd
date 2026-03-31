@@ -39,8 +39,8 @@
     @apply mr-2;
   }
 
-  td.delete button {
-    @apply opacity-50 hover:opacity-100;
+  td.actions button {
+    @apply cursor-pointer;
   }
 
   .actions {
