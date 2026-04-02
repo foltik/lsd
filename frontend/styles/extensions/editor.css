@@ -1,4 +1,4 @@
-body:has(#ext\/editor) > header {
+body:has(#ext\/editor) > nav {
   @apply hidden;
 }
 
@@ -7,7 +7,7 @@ body:has(#ext\/editor) > header {
 }
 
 #ext\/editor #form {
-  @apply relative flex h-full w-full flex-col;
+  @apply relative flex h-screen w-full flex-col;
 
   .navbar {
     @apply sticky top-0 flex items-center justify-between gap-x-4 px-8 py-2;
@@ -19,20 +19,19 @@ body:has(#ext\/editor) > header {
   }
 
   .split {
-    @apply grid min-h-screen w-full;
+    @apply grid min-h-0 w-full flex-1;
     grid-template-columns: 1fr 1fr 1fr 1fr;
-    grid-template-rows: auto;
+    grid-template-rows: 1fr;
 
     .center {
-      @apply col-span-3 pt-4;
-      @apply flex w-full justify-center;
+      @apply col-span-3 overflow-y-auto;
       .editor {
-        @apply w-full max-w-3xl overflow-y-auto;
+        @apply mx-auto w-full max-w-3xl;
       }
     }
 
     .sidebar {
-      @apply col-span-1 px-4 pt-4;
+      @apply col-span-1 overflow-y-auto px-4 pt-4;
       @apply border-lsd-white/10 border-l;
     }
   }
@@ -40,7 +39,7 @@ body:has(#ext\/editor) > header {
 
 #ext\/editor .editor {
   #actions {
-    @apply bg-lsd-black sticky top-0 mt-4 py-2.5;
+    @apply bg-lsd-black sticky top-0 pt-4 pb-2.5;
     @apply flex items-center gap-2.5;
 
     button {
@@ -53,7 +52,7 @@ body:has(#ext\/editor) > header {
   }
   #content {
     @apply text-lg leading-relaxed;
-    @apply bg-lsd-white/5 grow overflow-y-auto p-8 focus:outline-none;
+    @apply bg-lsd-white/5 p-8 focus:outline-none;
     @apply mt-4;
     a {
       @apply decoration-lsd-blue underline;
