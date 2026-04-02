@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE flyers SET image_data = ?, image_version = image_version + 1, link_url = ?, flyer_name = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "56772e16ee9e6e011c62533dabba11808fd31342fdea7b16f449c592e7e55b75"
+}

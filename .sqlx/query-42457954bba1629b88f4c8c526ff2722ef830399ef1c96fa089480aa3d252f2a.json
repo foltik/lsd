@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE flyers\n               SET x = ?, y = ?, rotation = ?\n               WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "42457954bba1629b88f4c8c526ff2722ef830399ef1c96fa089480aa3d252f2a"
+}

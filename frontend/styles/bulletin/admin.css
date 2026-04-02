@@ -1,0 +1,76 @@
+.admin-flyers {
+  @apply w-full border-collapse;
+  table-layout: fixed;
+
+  th,
+  td {
+    @apply overflow-hidden border-b border-b-[#333] px-[14px] py-[10px] text-left align-top text-ellipsis whitespace-nowrap;
+  }
+
+  th {
+    @apply bg-[#1a1a1a] text-[0.8rem] font-semibold tracking-[0.05em] whitespace-nowrap text-[#aaa] uppercase;
+  }
+
+  img {
+    @apply block h-[80px] w-auto rounded-sm;
+  }
+
+  td.col-link {
+    @apply text-lsd-blue;
+
+    a {
+      @apply text-inherit no-underline hover:underline;
+    }
+  }
+
+  details summary {
+    @apply text-lsd-blue cursor-pointer;
+  }
+
+  .edit-form {
+    @apply mt-[10px] flex flex-col gap-[6px];
+
+    input {
+      @apply box-border w-full rounded-[3px] border border-[#444] bg-[#222] px-[6px] py-[4px] text-[#eee];
+    }
+
+    button {
+      @apply mt-[4px] cursor-pointer rounded-[3px] border border-[#555] bg-[#333] px-[12px] py-[4px] text-[#eee];
+    }
+  }
+
+  .delete-btn {
+    @apply text-lsd-red mt-[6px] block cursor-pointer;
+  }
+}
+
+.col-image {
+  width: 110px;
+}
+.col-name {
+  width: 140px;
+}
+.col-user {
+  width: 70px;
+}
+.col-link {
+  width: 180px;
+}
+.col-pos {
+  width: 130px;
+}
+.col-actions {
+  width: 160px;
+}
+
+.bulletin-admin {
+  @apply p-[24px];
+
+  h1 {
+    @apply my-[16px];
+  }
+
+  .pagination {
+    @apply my-[16px] flex items-center gap-[12px];
+  }
+}

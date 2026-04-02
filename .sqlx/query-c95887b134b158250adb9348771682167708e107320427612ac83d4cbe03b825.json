@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT x, y FROM flyers WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "x",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "y",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c95887b134b158250adb9348771682167708e107320427612ac83d4cbe03b825"
+}
