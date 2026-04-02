@@ -30,7 +30,6 @@
 @import "./lists/list.css";
 @import "./lists/edit.css";
 /* Posts */
-@import "./posts/edit.css";
 @import "./posts/list.css";
 @import "./posts/send.css";
 @import "./posts/view.css";
