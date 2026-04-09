@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT image_data FROM flyers WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "image_data",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8b2901c2986e903b41284ecfd5d4d593cfb716359c2c464bcff71ce876d9ea04"
+}
