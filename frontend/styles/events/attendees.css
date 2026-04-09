@@ -12,10 +12,11 @@
 
   .table-wrapper {
     @apply overflow-x-scroll;
+    scrollbar-color: theme(colors.lsd-charcoal) transparent;
   }
 
   table.attendees {
-    @apply w-full text-xs whitespace-nowrap;
+    @apply text-xs whitespace-nowrap ml-auto mr-auto;
     border-spacing: 1rem 0;
     border-collapse: separate;
   }
@@ -44,7 +45,7 @@
   }
 
   .actions {
-    @apply flex flex-wrap gap-2 text-xs;
+    @apply flex gap-2 text-xs;
     a {
       @apply flex items-center gap-2 p-2 py-1;
     }

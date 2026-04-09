@@ -82,6 +82,11 @@
           >Edit guests</a
         >
       {% endif %}
+      {% if can_add_guests %}
+        <form action="/e/{{ event.slug }}/rsvp/add-guests?reservation={{ session.token }}" method="POST">
+          <button class="add-guests">Add guests</button>
+        </form>
+      {% endif %}
       <a
         class="contact"
         href="{{ "" | mailto }}?subject=Help%20with%20reservation%20{{ session.token }}"

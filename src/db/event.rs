@@ -403,17 +403,27 @@ impl Event {
 
 impl Event {
     /// Calculate number of spots available of each type for this event.
-    pub fn compute_limits(&self, user: &Option<User>, spots: &[Spot], rsvps: &[EventRsvp]) -> EventLimits {
+    /// `all_rsvps` = all reserved RSVPs counted toward capacity (may or may not include current session).
+    /// `user_rsvps` = this user's reserved RSVPs across all their sessions (for per-person limits).
+    pub fn compute_limits(
+        &self, spots: &[Spot], all_rsvps: &[EventRsvp], user_rsvps: &[EventRsvp],
+    ) -> EventLimits {
         // Overall event limits
-        let capacity_limit = self.capacity - rsvps.len() as i64;
+        let capacity_limit = self.capacity - all_rsvps.len() as i64;
         let per_person_limit = self.spots_per_person.unwrap_or(i64::MAX);
-        let this_user_limit = user.as_ref().map(|_| i64::MAX).unwrap_or(i64::MAX); // TODO
-        let limit = capacity_limit.min(per_person_limit).min(this_user_limit);
+        let this_person_limit = per_person_limit - user_rsvps.len() as i64;
+        let limit = capacity_limit.min(this_person_limit);
 
         // Count rsvps per spot
         let mut spot_num_rsvps: HashMap<i64, i64> = Default::default();
-        for rsvp in rsvps {
+        for rsvp in all_rsvps {
             *spot_num_rsvps.entry(rsvp.spot_id).or_default() += 1;
+        }
+
+        // Count user's own rsvps per spot
+        let mut user_spot_counts: HashMap<i64, i64> = Default::default();
+        for rsvp in user_rsvps {
+            *user_spot_counts.entry(rsvp.spot_id).or_default() += 1;
         }
 
         // Per-spot limits
@@ -422,7 +432,8 @@ impl Event {
         for spot in spots {
             let spot_total_limit = spot.qty_total - spot_num_rsvps.get(&spot.id).unwrap_or(&0);
             let spot_per_person_limit = spot.qty_per_person;
-            let spot_limit = spot_total_limit.min(spot_per_person_limit);
+            let spot_this_person_limit = spot_per_person_limit - user_spot_counts.get(&spot.id).unwrap_or(&0);
+            let spot_limit = spot_total_limit.min(spot_this_person_limit);
 
             sum_spot_limits += spot_limit;
             spot_limits.insert(spot.id, spot_limit);
