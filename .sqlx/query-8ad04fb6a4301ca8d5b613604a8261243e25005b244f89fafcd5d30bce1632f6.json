@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvp_sessions WHERE token = ?",
+  "query": "INSERT INTO rsvp_sessions\n               (event_id, token, status, user_id, user_version, parent_session_id)\n               VALUES (?, ?, ?, ?, ?, ?)\n               RETURNING *",
   "describe": {
     "columns": [
       {
@@ -75,7 +75,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 6
     },
     "nullable": [
       false,
@@ -94,5 +94,5 @@
       true
     ]
   },
-  "hash": "d5ed71da563d1e1ec855dc3043100b349da6f365d7c011616ee37d551169e3cc"
+  "hash": "8ad04fb6a4301ca8d5b613604a8261243e25005b244f89fafcd5d30bce1632f6"
 }

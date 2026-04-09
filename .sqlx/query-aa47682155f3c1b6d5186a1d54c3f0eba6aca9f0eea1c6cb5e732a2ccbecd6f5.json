@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvp_sessions\n               WHERE user_id = ? AND event_id = ?\n                 AND status IN ('payment_pending', 'payment_confirmed')\n               LIMIT 1",
+  "query": "SELECT * FROM rsvp_sessions\n               WHERE parent_session_id = ?\n                 AND status IN (?, ?, ?)\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -62,10 +62,20 @@
         "name": "updated_at",
         "ordinal": 11,
         "type_info": "Datetime"
+      },
+      {
+        "name": "parent_session_id",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_checkout_session_id",
+        "ordinal": 13,
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 4
     },
     "nullable": [
       false,
@@ -79,8 +89,10 @@
       true,
       true,
       false,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "77284e1814e4ea7672ade202789dd3dcfd1d5c60b98e661ca1b298b04c19653b"
+  "hash": "aa47682155f3c1b6d5186a1d54c3f0eba6aca9f0eea1c6cb5e732a2ccbecd6f5"
 }

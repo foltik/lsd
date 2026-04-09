@@ -11,6 +11,7 @@
         <tr>
           <th>Event</th>
           <th>Reservation #</th>
+          <th>Parent</th>
           <th>Status</th>
           <th>User</th>
           <th>RSVPs</th>
@@ -25,6 +26,7 @@
           <tr data-id="{{ s.id }}">
             <td><a href="/e/{{ s.event_slug }}">{{ s.event_title }}</a></td>
             <td>{{ s.token }}</td>
+            <td>{{ s.parent_token|unwrap_or_empty }}</td>
             <td>{{ s.status }}</td>
             <td>{{ s.user_email|unwrap_or_empty }}</td>
             <td class="rsvps">

@@ -60,6 +60,12 @@ pub struct UserRsvp {
     pub email: String,
 }
 
+struct UserRsvpRow {
+    session_id: i64,
+    status: String,
+    email: String,
+}
+
 pub struct AdminAttendeesRsvp {
     pub user_id: i64,
     pub first_name: String,
@@ -75,6 +81,7 @@ pub struct AdminAttendeesRsvp {
     pub checkin_at: Option<NaiveDateTime>,
 
     pub session_id: i64,
+    pub session_token: Option<String>,
     pub status: String,
 }
 
@@ -102,6 +109,7 @@ impl Rsvp {
                 r.checkin_at,
 
                 rs.id AS "session_id!: i64",
+                rs.token AS session_token,
                 rs.status AS "status!"
             FROM rsvps r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
@@ -128,6 +136,7 @@ impl Rsvp {
                 mr.checkin_at,
 
                 0 AS "session_id!: i64",
+                NULL AS session_token,
                 'manual' AS "status!"
             FROM manual_rsvps mr
             JOIN users u ON u.id = mr.user_id
@@ -159,21 +168,14 @@ impl Rsvp {
     pub async fn list_for_attendees(db: &Db, session_id: i64) -> Result<Vec<AttendeeRsvp>> {
         Ok(sqlx::query_as!(
             AttendeeRsvp,
-            r#"SELECT
-                r.id AS rsvp_id,
-                r.user_id,
-                s.name AS spot_name,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.phone,
-                r.contribution
-               FROM rsvps r
-               JOIN spots s ON s.id = r.spot_id
-               JOIN rsvp_sessions rs ON rs.id = r.session_id
-               LEFT JOIN users u ON u.id = r.user_id
-               WHERE rs.id = ?
-            "#,
+            r#"SELECT r.id AS rsvp_id, r.user_id, s.name AS spot_name,
+                    u.first_name, u.last_name, u.email, u.phone, r.contribution
+             FROM rsvps r
+             JOIN spots s ON s.id = r.spot_id
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             LEFT JOIN users u ON u.id = r.user_id
+             WHERE rs.id = ?
+             ORDER BY r.created_at"#,
             session_id
         )
         .fetch_all(db)
@@ -183,20 +185,83 @@ impl Rsvp {
     pub async fn list_for_contributions(db: &Db, session_id: i64) -> Result<Vec<ContributionRsvp>> {
         Ok(sqlx::query_as!(
             ContributionRsvp,
-            r#"SELECT
-                s.name AS spot_name,
-                u.first_name AS "first_name!: String",
-                u.last_name AS "last_name!: String",
-                u.email,
-                u.phone,
-                r.contribution
-               FROM rsvps r
-               JOIN spots s ON s.id = r.spot_id
-               JOIN rsvp_sessions rs ON rs.id = r.session_id
-               JOIN users u ON u.id = r.user_id
-               WHERE rs.id = ?
-            "#,
+            r#"SELECT s.name AS spot_name,
+                    u.first_name AS "first_name!: String",
+                    u.last_name AS "last_name!: String",
+                    u.email, u.phone, r.contribution
+             FROM rsvps r
+             JOIN spots s ON s.id = r.spot_id
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             JOIN users u ON u.id = r.user_id
+             WHERE rs.id = ?
+             ORDER BY r.created_at"#,
             session_id
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
+    /// List attendee info for all RSVPs across a user's active sessions for an event.
+    pub async fn list_family_attendees(db: &Db, event: &Event, user_id: i64) -> Result<Vec<AttendeeRsvp>> {
+        Ok(sqlx::query_as!(
+            AttendeeRsvp,
+            r#"SELECT r.id AS rsvp_id, r.user_id, s.name AS spot_name,
+                    u.first_name, u.last_name, u.email, u.phone, r.contribution
+             FROM rsvps r
+             JOIN spots s ON s.id = r.spot_id
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             LEFT JOIN users u ON u.id = r.user_id
+             WHERE rs.event_id = ? AND rs.user_id = ?
+               AND rs.status IN (?, ?)
+             ORDER BY r.created_at"#,
+            event.id,
+            user_id,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
+    /// List contribution info for all RSVPs across a user's active sessions for an event.
+    pub async fn list_family_contributions(
+        db: &Db, event: &Event, user_id: i64,
+    ) -> Result<Vec<ContributionRsvp>> {
+        Ok(sqlx::query_as!(
+            ContributionRsvp,
+            r#"SELECT s.name AS spot_name,
+                    u.first_name AS "first_name!: String",
+                    u.last_name AS "last_name!: String",
+                    u.email, u.phone, r.contribution
+             FROM rsvps r
+             JOIN spots s ON s.id = r.spot_id
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             JOIN users u ON u.id = r.user_id
+             WHERE rs.event_id = ? AND rs.user_id = ?
+               AND rs.status IN (?, ?)
+             ORDER BY r.created_at"#,
+            event.id,
+            user_id,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
+    /// List all RSVPs for a user's family (parent + children) for an event.
+    pub async fn list_family_rsvps(db: &Db, event: &Event, user_id: i64) -> Result<Vec<EventRsvp>> {
+        Ok(sqlx::query_as!(
+            EventRsvp,
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+             FROM rsvps r
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             WHERE rs.event_id = ? AND rs.user_id = ?
+               AND rs.status IN (?, ?)",
+            event.id,
+            user_id,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -225,31 +290,67 @@ impl Rsvp {
         .await?)
     }
 
-    pub async fn list_reserved_users_for_event(
-        db: &Db, event: &Event, session: Option<&RsvpSession>,
-    ) -> Result<Vec<UserRsvp>> {
-        let session_id = session.map(|s| s.id).unwrap_or(0);
+    /// List the user's reserved RSVPs for an event across all their sessions (for per-person limits).
+    /// Only includes rsvps from sessions at CONTRIBUTION status or later.
+    pub async fn list_user_reserved_for_event(
+        db: &Db, event: &Event, user_id: Option<i64>,
+    ) -> Result<Vec<EventRsvp>> {
+        let Some(user_id) = user_id else { return Ok(vec![]) };
         Ok(sqlx::query_as!(
-            UserRsvp,
-            r#"SELECT rs.status, u.email
-               FROM users u
-               JOIN rsvps r ON r.user_id = u.id
-               JOIN rsvp_sessions rs ON rs.id = r.session_id
-               WHERE rs.event_id = ?
-                 AND rs.id != ?
-            "#,
+            EventRsvp,
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+             FROM rsvps r
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             WHERE rs.event_id = ? AND rs.user_id = ?
+               AND rs.status IN (?, ?, ?)",
             event.id,
-            session_id,
+            user_id,
+            RsvpSession::CONTRIBUTION,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
     }
 
-    // pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<Rsvp>> {
-    //     Ok(sqlx::query_as!(Self, r#"SELECT * FROM rsvps WHERE id = ?"#, id)
-    //         .fetch_optional(db)
-    //         .await?)
-    // }
+    /// List all reserved spots for an event (no exclusion).
+    pub async fn list_all_reserved_for_event(db: &Db, event: &Event) -> Result<Vec<EventRsvp>> {
+        Ok(sqlx::query_as!(
+            EventRsvp,
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+             FROM rsvps r
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             WHERE rs.event_id = ?
+               AND rs.status IN (?, ?, ?)",
+            event.id,
+            RsvpSession::CONTRIBUTION,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
+    pub async fn list_reserved_users_for_event(
+        db: &Db, event: &Event, exclude_session_ids: &[i64],
+    ) -> Result<Vec<UserRsvp>> {
+        let rows = sqlx::query_as!(
+            UserRsvpRow,
+            r#"SELECT rs.id AS session_id, rs.status, u.email
+             FROM users u
+             JOIN rsvps r ON r.user_id = u.id
+             JOIN rsvp_sessions rs ON rs.id = r.session_id
+             WHERE rs.event_id = ?"#,
+            event.id,
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .filter(|r| !exclude_session_ids.contains(&r.session_id))
+            .map(|r| UserRsvp { status: r.status, email: r.email })
+            .collect())
+    }
 
     pub async fn create(db: &Db, rsvp: CreateRsvp) -> Result<i64> {
         let row = sqlx::query!(
