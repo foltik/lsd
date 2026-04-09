@@ -4,7 +4,7 @@
   height: 240px;
   transition: height 0.15s ease;
   @media (min-width: 768px) {
-    @apply w-full max-w-3xl cursor-default;
+    @apply w-full max-w-3xl;
     height: 384px;
   }
 
@@ -47,7 +47,8 @@
     a,
     button {
       @apply grow cursor-pointer rounded-lg py-4 text-center;
-      &.edit {
+      &.edit,
+      &.add-guests {
         @apply bg-lsd-charcoal;
       }
       &.contact {

@@ -19,6 +19,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
                 .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page).post(rsvp::contribution_form))
                 .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page)) // REMOVEME .post(rsvp::temp_delete))
+                .route("/e/{slug}/rsvp/add-guests", post(rsvp::add_guests_form))
                 .route("/e/{slug}/rsvp/edit", get(rsvp::edit_guests_page).post(rsvp::edit_guests_form))
         })
         .restricted_routes(User::ADMIN, |r| {
@@ -132,7 +133,7 @@ mod read {
         ) {
             bail_invalid!();
         }
-        session.delete(&state.db).await?;
+        session.delete(&state.db, &state.stripe).await?;
         Ok(Json(()))
     }
 }
@@ -928,16 +929,19 @@ mod edit {
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> JsonResult<()> {
         let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
-        let session = RsvpSession::lookup_active_by_user_and_event(&state.db, path.user_id, event.id)
-            .await?
-            .ok_or_else(not_found)?;
+        let sessions = RsvpSession::list_for_user(&state.db, path.user_id, event.id).await?;
+        if sessions.is_empty() {
+            bail_not_found!();
+        }
 
-        if let Some(ref payment_intent_id) = session.stripe_payment_intent_id {
-            let refund_id = state.stripe.refund(payment_intent_id).await?;
-            session.set_refund_id(&state.db, &refund_id).await?;
-            session.set_status(&state.db, RsvpSession::REFUND_PENDING).await?;
-        } else {
-            session.set_status(&state.db, RsvpSession::REFUND_CONFIRMED).await?;
+        for session in &sessions {
+            if let Some(payment_intent_id) = &session.stripe_payment_intent_id {
+                let refund_id = state.stripe.refund(payment_intent_id).await?;
+                session.set_refund_id(&state.db, &refund_id).await?;
+                session.set_status(&state.db, RsvpSession::REFUND_PENDING).await?;
+            } else {
+                session.set_status(&state.db, RsvpSession::REFUND_CONFIRMED).await?;
+            }
         }
 
         Ok(Json(()))
@@ -1006,7 +1010,7 @@ mod rsvp {
     use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, EventRsvp, Rsvp};
     use crate::db::rsvp_session::RsvpSession;
     use crate::db::user::CreateUser;
-    use crate::utils::sentry;
+    use crate::utils::{sentry, stripe};
 
     #[derive(Template, WebTemplate)]
     #[template(path = "error_simple.html")]
@@ -1030,7 +1034,7 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &None).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
         match event.guest_list_id {
@@ -1054,7 +1058,7 @@ mod rsvp {
     pub async fn guestlist_page(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &None).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
         let _guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
@@ -1080,7 +1084,7 @@ mod rsvp {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &None).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
         // If they're on the list, there must be a corresponding user.
@@ -1104,8 +1108,9 @@ mod rsvp {
                 );
 
                 // Check for conflicts
+                let exclude_ids: Vec<i64> = session.as_ref().map(|s| vec![s.id]).unwrap_or_default();
                 let other_users =
-                    Rsvp::list_reserved_users_for_event(&state.db, &event, session.as_ref()).await?;
+                    Rsvp::list_reserved_users_for_event(&state.db, &event, &exclude_ids).await?;
                 use validate::Conflict;
                 if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
                     validate::no_conflicts(&other_users, &primary_user, &[])
@@ -1134,10 +1139,9 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &Some(session)).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
-        let user = session.user(&state.db).await?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
 
         let our_rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
@@ -1148,12 +1152,21 @@ mod rsvp {
             our_contributions.insert(rsvp.spot_id, rsvp.contribution);
         }
 
-        let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-        let limits = event.compute_limits(&user, &spots, &other_rsvps);
+        let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
+        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
         if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &None).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
-        let stats = Spot::stats(&spots, &other_rsvps);
+        let stats = Spot::stats(&spots, &all_rsvps);
+
+        let parent_token = match session.parent_session_id {
+            Some(parent_id) => {
+                let parent = RsvpSession::lookup_by_id(&state.db, parent_id).await?.unwrap();
+                Some(parent.token)
+            }
+            None => None,
+        };
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_selection.html")]
@@ -1164,8 +1177,12 @@ mod rsvp {
             our_contributions: HashMap<i64, i64>,
             limits: EventLimits,
             stats: SpotStats,
+            parent_token: Option<String>,
         }
-        Ok(SelectionHtml { event, spots, our_qtys, our_contributions, limits, stats }.into_response())
+        Ok(
+            SelectionHtml { event, spots, our_qtys, our_contributions, limits, stats, parent_token }
+                .into_response(),
+        )
     }
 
     // Handle submission of the "Choose a contribution" form
@@ -1179,10 +1196,9 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &Some(session)).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
-        let user = session.user(&state.db).await?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
 
         // Parse and validate form
@@ -1192,13 +1208,14 @@ mod rsvp {
         })?;
 
         // Verify limits
-        let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-        let limits = event.compute_limits(&user, &spots, &other_rsvps);
+        let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
+        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
         if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &None).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
         if !validate::within_limits(&limits, &our_rsvps) {
-            return goto::error_spot_taken(&state.db, &session).await;
+            return goto::error_spot_taken(&state.db, &state.stripe, &session).await;
         }
 
         // Delete any old and create new RSVPs
@@ -1237,6 +1254,7 @@ mod rsvp {
         session: RsvpSession,
         attendees: Vec<AttendeeRsvp>,
         price: i64,
+        is_adding_guests: bool,
     }
     // Display the "Who will be attending?" page after submitting spots
     pub async fn attendees_page(
@@ -1245,13 +1263,14 @@ mod rsvp {
         let user = session.user(&state.db).await?;
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &Some(session)).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
+        let is_adding_guests = session.parent_session_id.is_some();
         let attendees = Rsvp::list_for_attendees(&state.db, session.id).await?;
         let price = attendees.iter().map(|r| r.contribution).sum::<i64>();
         let mode = AttendeesMode::Create;
-        Ok(AttendeesHtml { mode, event, user, session, attendees, price }.into_response())
+        Ok(AttendeesHtml { mode, event, user, session, attendees, price, is_adding_guests }.into_response())
     }
 
     // Handle submission of the "Who will be attending?" form
@@ -1265,66 +1284,90 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &Some(our_session)).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(our_session)).await;
         }
 
         let user = our_session.user(&state.db).await?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let our_rsvps = Rsvp::list_for_session(&state.db, our_session.id).await?;
 
+        let is_adding_guests = our_session.parent_session_id.is_some();
+
         // Parse and validate form
         let (primary_attendee, guest_attendees) =
-            parse::attendees_form(&user, &our_rsvps, &form.attendees).await.map_err(|e| {
-                sentry::report(format!("attendees_form(): session={} form={form:?}: {e}", our_session.token));
-                invalid()
-            })?;
-        // Collect all users
-        let primary_user = primary_attendee.user.clone();
-        let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
-        let mut all_users = guest_users.clone();
-        all_users.push(primary_user.clone());
+            parse::attendees_form(&user, &our_rsvps, &form.attendees, is_adding_guests)
+                .await
+                .map_err(|e| {
+                    sentry::report(format!(
+                        "attendees_form(): session={} form={form:?}: {e}",
+                        our_session.token
+                    ));
+                    invalid()
+                })?;
 
         // Check for conflicts
-        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, Some(&our_session)).await?;
-        if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users) {
-            use validate::Conflict;
-            match conflict {
-                // For guest conflicts, always show an error.
-                Conflict::Guest { email, status } => return goto::error_conflict(&email, &status),
-                // For primary conflicts...
-                Conflict::Primary { email, status } => match status.as_str() {
-                    // If in a draft status, "take it over" by deleting the conflicting session
-                    RsvpSession::ATTENDEES | RsvpSession::SELECTION => {
-                        our_session.takeover_for_event(&state.db, &event, &email).await?;
-                    }
-                    // If reserved or refunded, show an error.
-                    RsvpSession::CONTRIBUTION
-                    | RsvpSession::PAYMENT_PENDING
-                    | RsvpSession::PAYMENT_CONFIRMED
-                    | RsvpSession::REFUND_PENDING
-                    | RsvpSession::REFUND_CONFIRMED => {
-                        return goto::error_conflict(&email, &status);
-                    }
-                    _ => unreachable!(),
-                },
+        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &[our_session.id]).await?;
+        if is_adding_guests {
+            // First check new guests' emails/phones don't overlap with existing family attendees
+            let user_id = our_session.user_id.unwrap();
+            let family_attendees = Rsvp::list_family_attendees(&state.db, &event, user_id).await?;
+            if let Some(value) = validate::no_family_overlaps(&family_attendees, &guest_attendees) {
+                return goto::error_guest_conflict(&value);
+            }
+
+            // When adding guests, only check guest conflicts (parent user is already reserved)
+            let dummy_primary =
+                CreateUser { first_name: None, last_name: None, email: String::new(), phone: None };
+            let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
+            if let Some(conflict) = validate::no_conflicts(&other_users, &dummy_primary, &guest_users) {
+                use validate::Conflict;
+                match conflict {
+                    Conflict::Guest { email, status } => return goto::error_conflict(&email, &status),
+                    Conflict::Primary { .. } => unreachable!(),
+                }
+            }
+        } else {
+            let primary_user = primary_attendee.as_ref().unwrap().user.clone();
+            let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
+            if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users) {
+                use validate::Conflict;
+                match conflict {
+                    Conflict::Guest { email, status } => return goto::error_conflict(&email, &status),
+                    Conflict::Primary { email, status } => match status.as_str() {
+                        RsvpSession::ATTENDEES | RsvpSession::SELECTION => {
+                            our_session.takeover_for_event(&state.db, &event, &email).await?;
+                        }
+                        RsvpSession::CONTRIBUTION
+                        | RsvpSession::PAYMENT_PENDING
+                        | RsvpSession::PAYMENT_CONFIRMED
+                        | RsvpSession::REFUND_PENDING
+                        | RsvpSession::REFUND_CONFIRMED => {
+                            return goto::error_conflict(&email, &status);
+                        }
+                        _ => unreachable!(),
+                    },
+                }
             }
         }
 
         // Verify limits in case of preemption since `selection_form()` submission.
         // Once we transition to CONTRIBUTION, our rsvps spots are held.
-        let other_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
-        let limits = event.compute_limits(&user, &spots, &other_rsvps);
+        let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
+        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, our_session.user_id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
         if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &None).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
         if !validate::within_limits(&limits, &our_rsvps) {
-            return goto::error_spot_taken(&state.db, &our_session).await;
+            return goto::error_spot_taken(&state.db, &state.stripe, &our_session).await;
         }
 
         // Create and store primary user on RsvpSession and Rsvp
-        let primary_user = User::update_or_create(&state.db, &primary_user).await?;
-        our_session.set_user(&state.db, &primary_user).await?;
-        Rsvp::set_user(&state.db, primary_attendee.rsvp_id, &primary_user).await?;
+        if let Some(primary_attendee) = &primary_attendee {
+            let primary_user = User::update_or_create(&state.db, &primary_attendee.user).await?;
+            our_session.set_user(&state.db, &primary_user).await?;
+            Rsvp::set_user(&state.db, primary_attendee.rsvp_id, &primary_user).await?;
+        }
 
         // Create and store users on guest Rsvps
         for ParsedAttendee { rsvp_id, user } in guest_attendees {
@@ -1342,7 +1385,7 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &Some(session)).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
         // A user is guaranteed to exist, since either:
@@ -1362,12 +1405,12 @@ mod rsvp {
             }
 
             if session.stripe_client_secret.is_none() {
-                let stripe_client_secret = state
+                let stripe::CheckoutSession { id, client_secret } = state
                     .stripe
                     .create_session(session.id, &user.email, line_items, return_url)
                     .await?;
 
-                session.set_stripe_client_secret(&state.db, &stripe_client_secret).await?;
+                session.set_stripe_checkout_session(&state.db, &id, &client_secret).await?;
             }
         }
 
@@ -1396,7 +1439,7 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
-            return goto::error_registration_closed(&state.db, &Some(session)).await;
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
@@ -1404,6 +1447,18 @@ mod rsvp {
         match price {
             0 => session.set_status(&state.db, RsvpSession::PAYMENT_CONFIRMED).await?,
             _ => bail_invalid!(),
+        }
+
+        // For child sessions: clear child cookie and redirect to child manage
+        // (manage_page handles child → parent resolution and status transition)
+        if session.parent_session_id.is_some() {
+            let clear = Cookie::build(("rsvp_child_session", ""))
+                .max_age(cookie::time::Duration::ZERO)
+                .domain(&config().app.domain)
+                .path(format!("/e/{slug}"))
+                .to_string();
+            let redirect = Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token));
+            return Ok(([(header::SET_COOKIE, clear)], redirect).into_response());
         }
 
         // Send confirmation email
@@ -1477,10 +1532,39 @@ mod rsvp {
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
         Path(slug): Path<String>,
     ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.reservation).await? else {
-            let error = ErrorHtml { user: user.clone(), message: "Reservation not found.".into() };
-            return Ok(error.into_response());
+            return goto::error_rsvp_not_found();
         };
+
+        // Child session tokens resolve to parent (Stripe return_url may use child token)
+        let session = match session.parent_session_id {
+            Some(parent_id) => {
+                // First transition child state
+                match session.status.as_str() {
+                    RsvpSession::SELECTION => {
+                        return goto::selection_page(&state.db, &None, &Some(session), &event).await;
+                    }
+                    RsvpSession::ATTENDEES => return goto::attendees_page(&event),
+                    // If you get here, we hold your spot and assume payment is coming later via webhook.
+                    // This is technically exploitable, but we could check for still unpaid rsvps at event start.
+                    RsvpSession::CONTRIBUTION => {
+                        session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?
+                    }
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
+                    RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
+                        return goto::error_rsvp_refunded();
+                    }
+                    _ => unreachable!(),
+                }
+                // Then resolve to parent session, and proceed as normal
+                RsvpSession::lookup_by_id(&state.db, parent_id)
+                    .await?
+                    .expect("invalid parent_session_id")
+            }
+            None => session,
+        };
+
         let Some(user_id) = session.user_id else {
             bail_invalid!()
         };
@@ -1488,9 +1572,7 @@ mod rsvp {
             bail_invalid!()
         };
 
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
+        // Transition state
         match session.status.as_str() {
             RsvpSession::SELECTION => {
                 return goto::selection_page(&state.db, &None, &Some(session), &event).await;
@@ -1499,11 +1581,14 @@ mod rsvp {
             // If you get here, we hold your spot and assume payment is coming later via webhook.
             // This is technically exploitable, but we could check for still unpaid rsvps at event start.
             RsvpSession::CONTRIBUTION => session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?,
-            // If pending or confirmed, you're good.
             RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
-            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {}
+            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
+                return goto::error_rsvp_refunded();
+            }
             _ => unreachable!(),
         }
+
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
             let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
@@ -1613,8 +1698,21 @@ mod rsvp {
             }
         }
 
-        let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
+        // Aggregate RSVPs from parent + all confirmed children
+        let user_id = session.user_id.unwrap();
+        let rsvps = Rsvp::list_family_contributions(&state.db, &event, user_id).await?;
         let price = rsvps.iter().map(|r| r.contribution).sum::<i64>();
+
+        // Check if user can add more guests
+        let can_add_guests = if validate::registration_open(&event) {
+            let spots = Spot::list_for_event(&state.db, event.id).await?;
+            let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+            let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
+            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+            limits.total_limit > 0
+        } else {
+            false
+        };
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_manage.html")]
@@ -1625,9 +1723,62 @@ mod rsvp {
             flyer: Option<EventFlyer>,
             rsvps: Vec<ContributionRsvp>,
             price: i64,
+            can_add_guests: bool,
         }
-        Ok(ManageHtml { user, session, event, flyer, rsvps, price }.into_response())
+        let mut response =
+            ManageHtml { user, session, event, flyer, rsvps, price, can_add_guests }.into_response();
+
+        // Always clear stale child cookie on manage page
+        let clear = Cookie::build(("rsvp_child_session", ""))
+            .max_age(cookie::time::Duration::ZERO)
+            .domain(&config().app.domain)
+            .path(format!("/e/{slug}"))
+            .to_string();
+        response.headers_mut().append(header::SET_COOKIE, clear.parse().unwrap());
+
+        Ok(response)
     }
+
+    /// Handle "Add guests" form submission from the manage page.
+    /// Creates or resumes a child session and redirects into the checkout flow.
+    pub async fn add_guests_form(
+        State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !validate::registration_open(&event) {
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
+        }
+
+        // Lookup parent session and validate it's confirmed
+        let parent = RsvpSession::lookup_by_token(&state.db, &query.reservation)
+            .await?
+            .ok_or_else(not_found)?;
+        match parent.status.as_str() {
+            RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
+            _ => bail_invalid!(),
+        }
+
+        // Check capacity
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, parent.user_id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+        if limits.total_limit == 0 {
+            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+        }
+
+        // Delete any existing draft child
+        if let Some(draft_child) = RsvpSession::lookup_draft_child(&state.db, parent.id).await? {
+            draft_child.delete(&state.db, &state.stripe).await?;
+        }
+        // And create a new one
+        let child = RsvpSession::create_child(&state.db, &parent).await?;
+
+        let cookie = child.child_cookie(&format!("/e/{slug}"));
+        let redirect_to = format!("/e/{slug}/rsvp/selection");
+        Ok(([(header::SET_COOKIE, cookie)], Redirect::to(&redirect_to)).into_response())
+    }
+
     // Show the "Manage your RSVP" page.
     #[allow(unused)]
     pub async fn temp_delete(
@@ -1636,7 +1787,7 @@ mod rsvp {
         let session = RsvpSession::lookup_by_token(&state.db, &query.reservation)
             .await?
             .ok_or_else(not_found)?;
-        session.delete(&state.db).await?;
+        session.delete(&state.db, &state.stripe).await?;
         Ok(Redirect::to(&format!("/e/{slug}")).into_response())
     }
 
@@ -1647,13 +1798,23 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let Some(session) = RsvpSession::lookup_by_token(&state.db, &query.reservation).await? else {
-            // A nonexistant session should never reach /edit, and a confirmed session should never be deleted.
             bail_not_found!();
         };
 
-        let rsvps = Rsvp::list_for_attendees(&state.db, session.id).await?;
+        // Load RSVPs from parent + all confirmed children
+        let user_id = session.user_id.unwrap();
+        let rsvps = Rsvp::list_family_attendees(&state.db, &event, user_id).await?;
         let mode = AttendeesMode::Edit;
-        Ok(AttendeesHtml { mode, event, user, session, attendees: rsvps, price: 0 }.into_response())
+        Ok(AttendeesHtml {
+            mode,
+            event,
+            user,
+            session,
+            attendees: rsvps,
+            price: 0,
+            is_adding_guests: false,
+        }
+        .into_response())
     }
     pub async fn edit_guests_form(
         State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
@@ -1664,21 +1825,31 @@ mod rsvp {
             .await?
             .ok_or_else(invalid)?;
         let user = session.user(&state.db).await?;
-        let our_rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
+
+        // Collect rsvps from parent + all confirmed children for validation
+        let user_id = session.user_id.unwrap();
+        let our_rsvps = Rsvp::list_family_rsvps(&state.db, &event, user_id).await?;
 
         // Parse and validate form. NOTE that we only allow editing guest info.
         // The primary_attendee form is disabled on the frontend, and changes are ignored here.
         let (primary_attendee, guest_attendees) =
-            parse::attendees_form(&user, &our_rsvps, &form.attendees).await.map_err(|e| {
-                sentry::report(format!("edit_form(): session={} form={form:?}: {e}", session.token));
-                tracing::error!("{}", format!("edit_form(): session={} form={form:?}: {e}", session.token));
-                invalid()
-            })?;
+            parse::attendees_form(&user, &our_rsvps, &form.attendees, false)
+                .await
+                .map_err(|e| {
+                    sentry::report(format!("edit_form(): session={} form={form:?}: {e}", session.token));
+                    tracing::error!(
+                        "{}",
+                        format!("edit_form(): session={} form={form:?}: {e}", session.token)
+                    );
+                    invalid()
+                })?;
 
         // Check for conflicts
-        let primary_user = primary_attendee.user.clone();
+        let primary_user = primary_attendee.unwrap().user.clone();
         let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
-        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, Some(&session)).await?;
+        let family_sessions = RsvpSession::list_for_user(&state.db, user_id, event.id).await?;
+        let family_ids: Vec<i64> = family_sessions.iter().map(|s| s.id).collect();
+        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &family_ids).await?;
         use validate::Conflict;
         if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
             validate::no_conflicts(&other_users, &primary_user, &guest_users)
@@ -1699,13 +1870,24 @@ mod rsvp {
     #[rustfmt::skip]
     pub mod goto {
         use super::*;
+        use crate::utils::stripe::Stripe;
 
         pub fn guestlist_page(event: &Event) -> HtmlResult {
             Ok(Redirect::to(&format!("/e/{}/rsvp/guestlist", &event.slug)).into_response())
         }
         pub async fn selection_page(db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event: &Event) -> HtmlResult {
-            let headers = RsvpSession::get_or_create(db, user, session, event.id).await?;
-            Ok((headers, Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug))).into_response())
+            let redirect = Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug));
+            match session {
+                Some(_) => Ok(redirect.into_response()),
+                None => {
+                    let session = RsvpSession::create(db, event.id, user).await?;
+
+                    let cookie = session.cookie(&format!("/e/{}", event.slug));
+                    let header = (header::SET_COOKIE, cookie);
+
+                    Ok(([header], redirect).into_response())
+                }
+            }
         }
         pub fn attendees_page(event: &Event) -> HtmlResult {
             Ok(Redirect::to(&format!("/e/{}/rsvp/attendees", &event.slug)).into_response())
@@ -1721,9 +1903,9 @@ mod rsvp {
             let error = ErrorHtml { user: None, message: "Sorry, you're not on the list.".into() };
             Ok(error.into_response())
         }
-        pub async fn error_at_capacity(db: &Db, session: &Option<RsvpSession>) -> HtmlResult {
+        pub async fn error_at_capacity(db: &Db, stripe: &Stripe, session: &Option<RsvpSession>) -> HtmlResult {
             if let Some(session) = session {
-                session.delete(db).await?;
+                session.delete(db, stripe).await?;
             }
             Ok(MessageHtml {
                 user: None,
@@ -1732,9 +1914,9 @@ mod rsvp {
             }
             .into_response())
         }
-        pub async fn error_registration_closed(db: &Db, session: &Option<RsvpSession>) -> HtmlResult {
+        pub async fn error_registration_closed(db: &Db, stripe: &Stripe, session: &Option<RsvpSession>) -> HtmlResult {
             if let Some(session) = session {
-                session.delete(db).await?;
+                session.delete(db, stripe).await?;
             }
             Ok(MessageHtml {
                 user: None,
@@ -1743,8 +1925,8 @@ mod rsvp {
             }
             .into_response())
         }
-        pub async fn error_spot_taken(db: &Db, session: &RsvpSession) -> HtmlResult {
-            session.delete(db).await?;
+        pub async fn error_spot_taken(db: &Db, stripe: &Stripe, session: &RsvpSession) -> HtmlResult {
+            session.delete(db, stripe).await?;
             Ok(ErrorHtml {
                 user: None,
                 message: "Sorry, a spot you selected was taken. Please try again.".to_string(),
@@ -1752,22 +1934,45 @@ mod rsvp {
             .into_response())
         }
         pub fn error_conflict(email: &str, status: &str) -> HtmlResult {
-            let wording = match status {
-                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => "is currently in the process of RSVPing",
-                RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => "has already RSVPed",
-                RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => "has been refunded",
+            let message = match status {
+                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
+                    format!("{email} is currently in the process of RSVPing for this event."),
+                RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                    format!("{email} has already RSVPed for this event."),
+                RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
+                    format!("{email} has already received a refund for this event."),
                 _ => unreachable!()
             };
             Ok(ErrorHtml {
-                message: format!("Someone {wording} for {email}."),
+                message,
                 user: None,
             }.into_response())
+        }
+        pub fn error_guest_conflict(value: &str) -> HtmlResult {
+            Ok(ErrorHtml {
+                user: None,
+                message: format!("{value} is already in use by another guest in your reservation."),
+            }.into_response())
+        }
+        pub fn error_rsvp_not_found() -> HtmlResult {
+            let error = ErrorHtml {
+                user: None,
+                message: "Reservation not found.".into()
+            };
+            Ok(error.into_response())
+        }
+        pub fn error_rsvp_refunded() -> HtmlResult {
+            let error = ErrorHtml {
+                user: None,
+                message: "Your reservation has been refunded.".into()
+            };
+            Ok(error.into_response())
         }
     }
 
     mod validate {
         use super::*;
-        use crate::db::rsvp::UserRsvp;
+        use crate::db::rsvp::{AttendeeRsvp, UserRsvp};
 
         pub fn registration_open(event: &Event) -> bool {
             !event.closed
@@ -1810,6 +2015,26 @@ mod rsvp {
                     if guest.email == other_user.email {
                         return Some(Conflict::Guest { email: other_user.email.clone(), status: other_user.status.clone() });
                     }
+                }
+            }
+            None
+        }
+
+        /// Check that new guests don't duplicate email/phone of existing family attendees.
+        /// Returns the conflicting value (email or phone) if found.
+        pub fn no_family_overlaps(
+            existing: &[AttendeeRsvp], new_guests: &[parse::ParsedAttendee],
+        ) -> Option<String> {
+            let emails: HashSet<&str> = existing.iter().filter_map(|a| a.email.as_deref()).collect();
+            let phones: HashSet<&str> = existing.iter().filter_map(|a| a.phone.as_deref()).collect();
+            for guest in new_guests {
+                if emails.contains(guest.user.email.as_str()) {
+                    return Some(guest.user.email.clone());
+                }
+                if let Some(ref phone) = guest.user.phone
+                    && phones.contains(phone.as_str())
+                {
+                    return Some(phone.clone());
                 }
             }
             None
@@ -1903,8 +2128,8 @@ mod rsvp {
             DuplicatePhone { phone: String },
         }
         pub async fn attendees_form(
-            session_user: &Option<User>, rsvps: &[EventRsvp], attendees: &str,
-        ) -> Result<(ParsedAttendee, Vec<ParsedAttendee>), ParseAttendeesError> {
+            session_user: &Option<User>, rsvps: &[EventRsvp], attendees: &str, is_adding_guests: bool,
+        ) -> Result<(Option<ParsedAttendee>, Vec<ParsedAttendee>), ParseAttendeesError> {
             type Error = ParseAttendeesError;
 
             #[derive(Debug, serde::Deserialize)]
@@ -1967,10 +2192,10 @@ mod rsvp {
                     guest_attendees.push(attendee);
                 }
             }
-            // Ensure exactle one primary attendee.
-            let Some(primary_attendee) = primary_attendee else {
+            // Ensure exactly one primary attendee (unless adding guests to an existing session).
+            if !is_adding_guests && primary_attendee.is_none() {
                 return Err(Error::MissingPrimary);
-            };
+            }
 
             // Ensure no remaining rsvps without an attendee specified
             if !remaining_rsvps.is_empty() {
@@ -1999,18 +2224,33 @@ mod rsvp {
 }
 
 pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
-    /// Middleware layer to lookup add an `RsvpSession` to the request if an rsvp_session token is present.
-    /// Also blocks RSVP pages (except manage/edit) when registration is closed.
+    /// Middleware layer to resolve an `RsvpSession` from cookies and insert it into the request.
+    /// Prefers `rsvp_child_session` over `rsvp_session` so the add-guests flow takes priority.
+    /// Cleans up stale child cookies (session expired/deleted) by appending a Max-Age=0 Set-Cookie.
     pub async fn rsvp_session_middleware(
         State(state): State<SharedAppState>, cookies: CookieJar, mut request: Request, next: Next,
     ) -> HtmlResult {
-        let is_rsvp_path = request.uri().path().contains("/rsvp");
+        let path = request.uri().path().to_owned();
+        let is_rsvp_path = path.contains("/rsvp");
+        let mut stale_child_cookie = false;
 
-        if let Some(token) = cookies.get("rsvp_session")
+        // Try child session first (add-guests flow takes priority)
+        let mut resolved = false;
+        if let Some(token) = cookies.get("rsvp_child_session") {
+            match RsvpSession::lookup_by_token(&state.db, token.value()).await? {
+                Some(session) => {
+                    request.extensions_mut().insert(session);
+                    resolved = true;
+                }
+                None => stale_child_cookie = true,
+            }
+        }
+
+        // Fall back to main session
+        if !resolved
+            && let Some(token) = cookies.get("rsvp_session")
             && let Some(session) = RsvpSession::lookup_by_token(&state.db, token.value()).await?
         {
-            // Don't remove stale cookies if session is not found (e.g. it expired).
-            // They will be overwritten when a new session is created.
             request.extensions_mut().insert(session);
         }
 
@@ -2020,6 +2260,16 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
             // Prevent browser from storing these stateful pages in the back-forward cache
             res.headers_mut()
                 .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+        }
+
+        // Clean up stale child cookie (path must match the path it was set on)
+        if stale_child_cookie && let Some(slug) = path.strip_prefix("/e/").and_then(|s| s.split('/').next()) {
+            let clear = Cookie::build(("rsvp_child_session", ""))
+                .max_age(cookie::time::Duration::ZERO)
+                .domain(&config().app.domain)
+                .path(format!("/e/{slug}"))
+                .to_string();
+            res.headers_mut().append(header::SET_COOKIE, clear.parse().unwrap());
         }
 
         Ok(res)
