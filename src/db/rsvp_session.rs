@@ -4,7 +4,7 @@ use rand::rngs::OsRng;
 use crate::db::event::Event;
 use crate::db::rsvp::ContributionRsvp;
 use crate::prelude::*;
-use crate::utils::stripe;
+use crate::utils::stripe::{self, Stripe};
 
 #[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
 pub struct RsvpSession {
@@ -15,7 +15,9 @@ pub struct RsvpSession {
 
     pub user_id: Option<i64>,
     pub user_version: Option<i64>,
+    pub parent_session_id: Option<i64>,
 
+    pub stripe_checkout_session_id: Option<String>,
     pub stripe_client_secret: Option<String>,
     pub stripe_payment_intent_id: Option<String>,
     pub stripe_charge_id: Option<i64>,
@@ -44,8 +46,18 @@ impl RsvpSession {
         age.num_minutes() >= Self::STRIPE_EXPIRY_MINUTES
     }
 
-    fn cookie(&self, path: &str) -> String {
+    pub fn cookie(&self, path: &str) -> String {
         Cookie::build(("rsvp_session", &self.token))
+            .secure(config().acme.is_some())
+            .http_only(true)
+            .same_site(cookie::SameSite::Strict)
+            .domain(&config().app.domain)
+            .path(path)
+            .to_string()
+    }
+
+    pub fn child_cookie(&self, path: &str) -> String {
+        Cookie::build(("rsvp_child_session", &self.token))
             .secure(config().acme.is_some())
             .http_only(true)
             .same_site(cookie::SameSite::Strict)
@@ -78,36 +90,36 @@ impl RsvpSession {
             .await?)
     }
 
-    pub async fn lookup_active_by_user_and_event(
-        db: &Db, user_id: i64, event_id: i64,
-    ) -> Result<Option<RsvpSession>> {
+    pub async fn lookup_draft_child(db: &Db, parent_id: i64) -> Result<Option<Self>> {
         Ok(sqlx::query_as!(
             Self,
             r#"SELECT * FROM rsvp_sessions
-               WHERE user_id = ? AND event_id = ?
-                 AND status IN ('payment_pending', 'payment_confirmed')
+               WHERE parent_session_id = ?
+                 AND status IN (?, ?, ?)
                LIMIT 1"#,
-            user_id,
-            event_id,
+            parent_id,
+            Self::SELECTION,
+            Self::ATTENDEES,
+            Self::CONTRIBUTION,
         )
         .fetch_optional(db)
         .await?)
     }
 
-    pub async fn get_or_create(
-        db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event_id: i64,
-    ) -> Result<[(HeaderName, String); 1]> {
-        let session = match session {
-            Some(session) => session.clone(),
-            None => RsvpSession::create(db, event_id, user).await?,
-        };
-
-        let event = Event::lookup_by_id(db, event_id)
-            .await?
-            .ok_or_else(|| any!("RsvpSession::get_or_create(): no such event_id={event_id}"))?;
-        let path = format!("/e/{}", event.slug);
-
-        Ok([(header::SET_COOKIE, session.cookie(&path))])
+    /// List all sessions (parent + children) for a user.
+    pub async fn list_for_user(db: &Db, user_id: i64, event_id: i64) -> Result<Vec<Self>> {
+        Ok(sqlx::query_as!(
+            Self,
+            r#"SELECT * FROM rsvp_sessions
+               WHERE user_id = ? AND event_id = ?
+                 AND status IN (?, ?)"#,
+            user_id,
+            event_id,
+            Self::PAYMENT_PENDING,
+            Self::PAYMENT_CONFIRMED,
+        )
+        .fetch_all(db)
+        .await?)
     }
 
     pub async fn create(db: &Db, event_id: i64, user: &Option<User>) -> Result<Self> {
@@ -139,13 +151,46 @@ impl RsvpSession {
         Ok(session)
     }
 
-    pub async fn delete(&self, db: &Db) -> Result<()> {
+    pub async fn create_child(db: &Db, parent: &RsvpSession) -> Result<Self> {
+        let token = format!("{:08x}", OsRng.r#gen::<u64>());
+        let session = sqlx::query_as!(
+            Self,
+            r#"INSERT INTO rsvp_sessions
+               (event_id, token, status, user_id, user_version, parent_session_id)
+               VALUES (?, ?, ?, ?, ?, ?)
+               RETURNING *"#,
+            parent.event_id,
+            token,
+            Self::SELECTION,
+            parent.user_id,
+            parent.user_version,
+            parent.id,
+        )
+        .fetch_one(db)
+        .await?;
+
+        tracing::info!(
+            "Created child RSVP session with session_id={} parent_session_id={} event_id={}",
+            session.id,
+            parent.id,
+            parent.event_id,
+        );
+        Ok(session)
+    }
+
+    pub async fn delete(&self, db: &Db, stripe: &Stripe) -> Result<()> {
         tracing::info!(
             "Deleting RSVP session with session_id={} event_id={} status={:?}",
             self.id,
             self.event_id,
             self.status
         );
+
+        if let Some(checkout_session_id) = self.stripe_checkout_session_id.as_ref() {
+            tracing::info!("Expiring stripe_checkout_session_id={checkout_session_id}");
+            stripe.expire_session(checkout_session_id).await?;
+        }
+
         sqlx::query!("DELETE FROM rsvps WHERE session_id = ?", self.id)
             .execute(db)
             .await?;
@@ -254,17 +299,21 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn set_stripe_client_secret(&mut self, db: &Db, stripe_client_secret: &str) -> Result<()> {
+    pub async fn set_stripe_checkout_session(
+        &mut self, db: &Db, checkout_session_id: &str, client_secret: &str,
+    ) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
-             SET stripe_client_secret = ?, updated_at = CURRENT_TIMESTAMP
+             SET stripe_checkout_session_id = ?, stripe_client_secret = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?",
-            stripe_client_secret,
+            checkout_session_id,
+            client_secret,
             self.id
         )
         .execute(db)
         .await?;
-        self.stripe_client_secret = Some(stripe_client_secret.into());
+        self.stripe_checkout_session_id = Some(checkout_session_id.into());
+        self.stripe_client_secret = Some(client_secret.into());
         Ok(())
     }
 
@@ -334,10 +383,12 @@ impl RsvpSession {
                 s.updated_at,
                 e.title AS event_title,
                 e.slug AS event_slug,
-                u.email AS user_email
+                u.email AS user_email,
+                ps.token AS parent_token
             FROM rsvp_sessions s
             JOIN events e ON e.id = s.event_id
             LEFT JOIN users u ON u.id = s.user_id
+            LEFT JOIN rsvp_sessions ps ON ps.id = s.parent_session_id
             WHERE e.start > datetime('now', '-24 hours')
             ORDER BY s.updated_at DESC"#
         )
@@ -377,6 +428,7 @@ impl RsvpSession {
                     event_title: s.event_title,
                     event_slug: s.event_slug,
                     user_email: s.user_email,
+                    parent_token: s.parent_token,
                     rsvps: rsvps_by_session.remove(&s.id).unwrap_or_default(),
                     expires_in,
                 }
@@ -394,6 +446,7 @@ struct DebugSessionRow {
     event_title: String,
     event_slug: String,
     user_email: Option<String>,
+    parent_token: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -406,6 +459,7 @@ pub struct DebugSession {
     pub event_title: String,
     pub event_slug: String,
     pub user_email: Option<String>,
+    pub parent_token: Option<String>,
     pub rsvps: Vec<DebugRsvp>,
     pub expires_in: i64,
 }

@@ -62,6 +62,16 @@
         "name": "updated_at",
         "ordinal": 11,
         "type_info": "Datetime"
+      },
+      {
+        "name": "parent_session_id",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_checkout_session_id",
+        "ordinal": 13,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -79,7 +89,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true,
+      true
     ]
   },
   "hash": "b4c62be45767038bd8a4bc1ae18f1563047d3602e275a3d7199e086e0d7af88c"

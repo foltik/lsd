@@ -10,6 +10,12 @@ pub struct Stripe {
 }
 
 #[derive(Debug)]
+pub struct CheckoutSession {
+    pub id: String,
+    pub client_secret: String,
+}
+
+#[derive(Debug)]
 pub struct LineItem {
     /// Item name.
     pub name: String,
@@ -28,10 +34,10 @@ impl Stripe {
         }
     }
 
-    /// Begin a stripe transaction, returning the client secret.
+    /// Begin a stripe transaction, returning (checkout_session_id, client_secret).
     pub async fn create_session(
         &self, session_id: i64, email: &str, line_items: Vec<LineItem>, return_path: String,
-    ) -> Result<String> {
+    ) -> Result<CheckoutSession> {
         let return_url = format!("{}{}", self.app_url, return_path);
 
         // Log line_items for debugging before we consume them
@@ -72,6 +78,7 @@ impl Stripe {
 
         #[derive(serde::Deserialize)]
         struct Response {
+            id: Option<String>,
             client_secret: Option<String>,
             error: Option<StripeError>,
         }
@@ -101,13 +108,57 @@ impl Stripe {
             bail!(msg);
         }
 
-        res.client_secret.ok_or_else(|| {
+        let id = res.id.ok_or_else(|| {
+            let msg = format!(
+                "Stripe::create_session(): response missing id, session_id={session_id}, email={email}, line_items={line_items_debug}"
+            );
+            crate::utils::sentry::report(msg.clone());
+            any!(msg)
+        })?;
+        let client_secret = res.client_secret.ok_or_else(|| {
             let msg = format!(
                 "Stripe::create_session(): response missing client_secret, session_id={session_id}, email={email}, line_items={line_items_debug}"
             );
             crate::utils::sentry::report(msg.clone());
             any!(msg)
-        })
+        })?;
+        Ok(CheckoutSession { id, client_secret })
+    }
+
+    /// Expire a checkout session so it can no longer be completed.
+    pub async fn expire_session(&self, checkout_session_id: &str) -> Result<()> {
+        let url = format!("https://api.stripe.com/v1/checkout/sessions/{checkout_session_id}/expire");
+
+        #[derive(serde::Deserialize)]
+        struct Response {
+            error: Option<StripeError>,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct StripeError {
+            message: String,
+            #[serde(rename = "type")]
+            error_type: String,
+        }
+
+        #[rustfmt::skip]
+        let res: Response = self.http
+            .post(&url)
+            .header("Stripe-Version", API_VERSION)
+            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
+            .header(header::CONTENT_LENGTH, "0")
+            .send().await?.json().await?;
+
+        if let Some(err) = res.error {
+            // "resource_missing" or "invalid_request_error" for already-expired sessions is ok
+            tracing::warn!(
+                "Stripe::expire_session(): {} (type={}), checkout_session_id={checkout_session_id}",
+                err.message,
+                err.error_type
+            );
+        }
+
+        Ok(())
     }
 
     /// Issue a full refund for a payment intent. Returns the Stripe refund ID.

@@ -35,7 +35,9 @@
         <div class="attendee" data-rsvp-id="{{ attendee.rsvp_id }}">
           <div class="header">
             <p class="index">Guest #{{ loop.index }}</p>
-            {% if mode == AttendeesMode::Create && attendees.len() > 1 %}
+            {% if is_adding_guests %}
+              <input type="hidden" name="is_me" value="false" />
+            {% else if mode == AttendeesMode::Create && attendees.len() > 1 %}
               <label class="is-me">
                 <input
                   class="ext/input radio"
@@ -151,7 +153,7 @@
         </button>
       {% else %}
         <button id="next" class="next">
-          <span>Update</span>
+          <span>Save</span>
           <span>&rarr;</span>
         </button>
       {% endif %}
@@ -232,6 +234,7 @@
     }
 
     /* ---------- Handle "Me" selection and autofill ----------------- */
+    const isAddingGuests = parseInt(`{% if is_adding_guests %}1{% else %}0{% endif %}`);
     const updateIsMe = () => {
       // If no user, nothing to do but the radio itself
       if (!user) return;
@@ -269,10 +272,12 @@
       email.disabled = true;
       phone.disabled = !!user.phone;
     };
-    ui.form.addEventListener("change", (e) => {
-      if (user && e.target.name == "is_me") updateIsMe();
-    });
-    updateIsMe();
+    if (!isAddingGuests) {
+      updateIsMe();
+      ui.form.addEventListener("change", (e) => {
+        if (user && e.target.name == "is_me") updateIsMe();
+      });
+    }
 
     /* ---------- Next button ------------------------------------------------ */
     ui.next.addEventListener("click", async () => {

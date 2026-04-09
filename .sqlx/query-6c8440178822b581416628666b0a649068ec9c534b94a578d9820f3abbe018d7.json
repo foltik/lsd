@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.name AS spot_name,\n                    u.first_name AS \"first_name!: String\",\n                    u.last_name AS \"last_name!: String\",\n                    u.email, u.phone, r.contribution\n             FROM rsvps r\n             JOIN spots s ON s.id = r.spot_id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             JOIN users u ON u.id = r.user_id\n             WHERE rs.event_id = ? AND rs.user_id = ?\n               AND rs.status IN (?, ?)\n             ORDER BY r.created_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "spot_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "phone",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 5,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "6c8440178822b581416628666b0a649068ec9c534b94a578d9820f3abbe018d7"
+}

@@ -29,6 +29,7 @@
           <th class="email">Email</th>
           <th class="guest-of">Guest of</th>
           <th class="spot">Spot</th>
+          <th class="reservation">Reservation #</th>
           <th class="created">Created</th>
           <th class="checkin">Checkin</th>
           <th class="actions"></th>
@@ -53,6 +54,7 @@
                 (${{ rsvp.contribution }})
               {% endif %}
             </td>
+            <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
             <td class="created">
               <time datetime="{{ rsvp.created_at }}">
                 {{ rsvp.created_at | format_datetime("%m/%d %-I:%M%p") }}
@@ -93,7 +95,20 @@
               {% endif %}
             </td>
             <td class="actions">
-              {% if rsvp.guest_of.is_none() && !rsvp.is_manual %}
+              <button class="delete" title="Delete attendee">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 48 48"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M20 10.5v.5h8v-.5a4 4 0 1 0-8 0Zm-2.5.5v-.5a6.5 6.5 0 1 1 13 0v.5h8.75a1.25 1.25 0 1 1 0 2.5h-2.077l-2.027 23.315A6.25 6.25 0 0 1 28.914 42H19.086a6.25 6.25 0 0 1-6.232-5.685L10.827 13H8.75a1.25 1.25 0 1 1 0-2.5h8.75Zm3.75 8.25a1.25 1.25 0 1 0-2.5 0v16a1.25 1.25 0 1 0 2.5 0v-16Zm7.5-1.25a1.25 1.25 0 0 0-1.25 1.25v16a1.25 1.25 0 1 0 2.5 0v-16a1.25 1.25 0 0 0-1.25-1.25Z"
+                  />
+                </svg>
+              </button>
+              {% if !rsvp.is_manual %}
                 <button class="refund" title="Refund purchase">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -108,19 +123,6 @@
                   </svg>
                 </button>
               {% endif %}
-              <button class="delete" title="Delete attendee">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 48 48"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M20 10.5v.5h8v-.5a4 4 0 1 0-8 0Zm-2.5.5v-.5a6.5 6.5 0 1 1 13 0v.5h8.75a1.25 1.25 0 1 1 0 2.5h-2.077l-2.027 23.315A6.25 6.25 0 0 1 28.914 42H19.086a6.25 6.25 0 0 1-6.232-5.685L10.827 13H8.75a1.25 1.25 0 1 1 0-2.5h8.75Zm3.75 8.25a1.25 1.25 0 1 0-2.5 0v16a1.25 1.25 0 1 0 2.5 0v-16Zm7.5-1.25a1.25 1.25 0 0 0-1.25 1.25v16a1.25 1.25 0 1 0 2.5 0v-16a1.25 1.25 0 0 0-1.25-1.25Z"
-                  />
-                </svg>
-              </button>
             </td>
           </tr>
         {% endfor %}
@@ -140,7 +142,7 @@
 
     /* ---------- CSV Download ------------------------------------------------ */
     ui.download.addEventListener("click", () => {
-      const headers = ["Name", "Email", "Guest of", "Spot", "Created"];
+      const headers = ["Name", "Email", "Guest of", "Spot", "Reservation #", "Created"];
       const rows = ui
         .rows()
         .map((row) => [
@@ -148,6 +150,7 @@
           row.querySelector(".email").textContent.trim(),
           row.querySelector(".guest-of").textContent.trim(),
           row.querySelector(".spot").textContent.trim(),
+          row.querySelector(".reservation").textContent.trim(),
           row.querySelector(".created time").textContent.trim(),
         ]);
 
@@ -179,7 +182,7 @@
       // Handle refund button
       if (btn.classList.contains("refund")) {
         const name = row.querySelector(".name").textContent.trim();
-        if (!confirm(`Are you sure you want to refund ${name}'s contribution?\n\nThis will issue a full Stripe refund.`)) return;
+        if (!confirm(`Are you sure you want to refund all RSVPs by ${name}?\n\nThis will issue full Stripe refunds for all associated reservations.`)) return;
         try {
           const resp = await fetch(
             `/events/${slug}/attendees/${userId}/refund`,

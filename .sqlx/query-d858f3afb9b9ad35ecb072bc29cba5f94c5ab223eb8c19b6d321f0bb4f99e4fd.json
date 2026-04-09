@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                s.name AS spot_name,\n                u.first_name AS \"first_name!: String\",\n                u.last_name AS \"last_name!: String\",\n                u.email,\n                u.phone,\n                r.contribution\n               FROM rsvps r\n               JOIN spots s ON s.id = r.spot_id\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               JOIN users u ON u.id = r.user_id\n               WHERE rs.id = ?\n            ",
+  "query": "SELECT s.name AS spot_name,\n                    u.first_name AS \"first_name!: String\",\n                    u.last_name AS \"last_name!: String\",\n                    u.email, u.phone, r.contribution\n             FROM rsvps r\n             JOIN spots s ON s.id = r.spot_id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             JOIN users u ON u.id = r.user_id\n             WHERE rs.id = ?\n             ORDER BY r.created_at",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "4d491f9fa61509759db0864629f2c38d4a895451f4a16bde94c601f5bee1c2e7"
+  "hash": "d858f3afb9b9ad35ecb072bc29cba5f94c5ab223eb8c19b6d321f0bb4f99e4fd"
 }
