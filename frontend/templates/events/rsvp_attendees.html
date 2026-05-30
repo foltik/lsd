@@ -176,7 +176,7 @@
     };
 
     // Provide current user data for autofill; null if not logged in.
-    const user = JSON.parse(`{{ user | json | safe }}`);
+    const user = {{ user | json | safe }};
 
     /* ---------- Validation: throws on error, returns formatted value -------- */
     const validate = {
