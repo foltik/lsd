@@ -682,27 +682,33 @@ mod edit {
             Counts,
             r#"
             SELECT
-                COUNT(r.user_id) AS count,
+                COUNT(*) AS count,
                 COALESCE(SUM(
                     CASE WHEN EXISTS (
                         SELECT 1
                         FROM emails e
                         WHERE e.kind = ?
-                          AND e.user_id = r.user_id
-                          AND e.event_id = rs.event_id
+                          AND e.user_id = a.user_id
+                          AND e.event_id = ?
                           AND e.sent_at IS NOT NULL
                     )
                     THEN 1 ELSE 0 END
                 ), 0) AS sent
-            FROM rsvps r
-            JOIN rsvp_sessions rs ON rs.id = r.session_id
-            WHERE rs.event_id = ?
-                AND (rs.status = ? OR rs.status = ?)
+            FROM (
+                SELECT r.user_id
+                FROM rsvps r
+                JOIN rsvp_sessions rs ON rs.id = r.session_id
+                WHERE rs.event_id = ?
+                UNION
+                SELECT m.user_id
+                FROM manual_rsvps m
+                WHERE m.event_id = ?
+            ) a
             "#,
             Email::EVENT_DAYOF,
             event.id,
-            RsvpSession::PAYMENT_PENDING,
-            RsvpSession::PAYMENT_CONFIRMED,
+            event.id,
+            event.id,
         )
         .fetch_one(&state.db)
         .await?;
