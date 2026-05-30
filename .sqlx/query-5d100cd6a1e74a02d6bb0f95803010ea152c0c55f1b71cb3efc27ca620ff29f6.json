@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n             INSERT INTO emails (kind, user_id, user_version, event_id)\n                 SELECT ?, u.id, uh.version, ?\n                 FROM rsvps r\n                 JOIN rsvp_sessions rs ON rs.id = r.session_id\n                 JOIN users u ON u.id = r.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE rs.event_id = ?\n                   AND NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
+  "query": "\n             INSERT INTO emails (kind, user_id, user_version, event_id)\n                 SELECT ?, u.id, uh.version, ?\n                 FROM (\n                     SELECT r.user_id\n                     FROM rsvps r\n                     JOIN rsvp_sessions rs ON rs.id = r.session_id\n                     WHERE rs.event_id = ?\n                     UNION\n                     SELECT m.user_id\n                     FROM manual_rsvps m\n                     WHERE m.event_id = ?\n                 ) attendees\n                 JOIN users u ON u.id = attendees.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
   "describe": {
     "columns": [
       {
@@ -70,7 +70,7 @@
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 6
     },
     "nullable": [
       false,
@@ -88,5 +88,5 @@
       true
     ]
   },
-  "hash": "702e14ed9775fd047cde8b96c7bacd3de56302002ddd5dd13c38fe3b6a2d459a"
+  "hash": "5d100cd6a1e74a02d6bb0f95803010ea152c0c55f1b71cb3efc27ca620ff29f6"
 }
