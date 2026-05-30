@@ -271,6 +271,7 @@ impl Email {
                  JOIN rsvp_sessions rs ON rs.id = r.session_id
                  JOIN users u ON u.id = r.user_id
                  JOIN user_history uh ON uh.user_id = u.id
+                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE rs.event_id = ?
                    AND NOT EXISTS (
                        SELECT 1
@@ -284,10 +285,10 @@ impl Email {
                 WHERE u.id = emails.user_id
              ) AS "address!"
              "#,
-            Email::EVENT_INVITE,
+            Email::EVENT_DAYOF,
             event_id,
             event_id,
-            Email::EVENT_INVITE,
+            Email::EVENT_DAYOF,
             event_id,
         )
         .fetch_all(db)
