@@ -267,13 +267,20 @@ impl Email {
             r#"
              INSERT INTO emails (kind, user_id, user_version, event_id)
                  SELECT ?, u.id, uh.version, ?
-                 FROM rsvps r
-                 JOIN rsvp_sessions rs ON rs.id = r.session_id
-                 JOIN users u ON u.id = r.user_id
+                 FROM (
+                     SELECT r.user_id
+                     FROM rsvps r
+                     JOIN rsvp_sessions rs ON rs.id = r.session_id
+                     WHERE rs.event_id = ?
+                     UNION
+                     SELECT m.user_id
+                     FROM manual_rsvps m
+                     WHERE m.event_id = ?
+                 ) attendees
+                 JOIN users u ON u.id = attendees.user_id
                  JOIN user_history uh ON uh.user_id = u.id
                    AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
-                 WHERE rs.event_id = ?
-                   AND NOT EXISTS (
+                 WHERE NOT EXISTS (
                        SELECT 1
                        FROM emails ee
                        WHERE ee.kind = ?
@@ -286,6 +293,7 @@ impl Email {
              ) AS "address!"
              "#,
             Email::EVENT_DAYOF,
+            event_id,
             event_id,
             event_id,
             Email::EVENT_DAYOF,
