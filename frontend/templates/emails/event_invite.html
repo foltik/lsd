@@ -20,14 +20,18 @@
         {% endif %}</a
       >
     </h1>
-    <div class="details">
-      <time aria-label="date" datetime="{{ event.start }}">{{ event.start | format_datetime("%a %m.%d.%Y") }}</time>
-      <div>
-        <time aria-label="start" datetime="{{ event.start }}">{{ event.start | format_datetime("%-I:%M%p") }}</time>
-        &ndash;
-        <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}">{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time>
-      </div>
-    </div>
+    <table class="details" role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="left">
+          <time aria-label="date" datetime="{{ event.start }}">{{ event.start | format_datetime("%a %m.%d.%Y") }}</time>
+        </td>
+        <td align="right">
+          <time aria-label="start" datetime="{{ event.start }}">{{ event.start | format_datetime("%-I:%M%p") }}</time>
+          &ndash;
+          <time aria-label="end" datetime="{{ event.end | unwrap_or_empty }}">{% if let Some(end) = event.end %}{{ end | format_datetime("%-I:%M%p") }}{% else %}??{% endif %}</time>
+        </td>
+      </tr>
+    </table>
     {% if let Some(invite_html) = event.invite_html %}
       {{ invite_html | safe }}
     {% endif %}
@@ -49,17 +53,18 @@
       text-transform: uppercase;
     }
     .details {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
+      width: 100%;
       color: #878787;
       margin-bottom: 24px;
     }
+    .details td {
+      color: #878787;
+    }
     .center {
-      display: flex;
-      justify-content: center;
+      text-align: center;
     }
     .rsvp {
+      display: inline-block;
       text-decoration: none;
       border-radius: 8px;
       padding: 16px 64px;
