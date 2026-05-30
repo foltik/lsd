@@ -181,7 +181,7 @@
     };
 
     /* ---------- Rendering ----------------------------------------------------- */
-    const rsvpCounts = JSON.parse(`{{ rsvp_counts | json | safe }}`);
+    const rsvpCounts = {{ rsvp_counts | json | safe }};
 
     const template = (t) => {
       const counts = rsvpCounts[t.id] || { rsvp_count: 0, cart_count: 0 };
@@ -312,7 +312,7 @@
     });
 
     /* ---------- Flyer preview handler ------------------------------------------ */
-    const hasExistingFlyer = JSON.parse(`{{ has_flyer | json | safe }}`);
+    const hasExistingFlyer = {{ has_flyer | json | safe }};
     const updateFlyerPreview = () => {
       const flyer = ui.flyer.input.files[0];
 
@@ -463,7 +463,7 @@
     });
 
     // Populate existing spots from the backend
-    let spots = JSON.parse(`{{ spots | json | safe }}`);
+    let spots = {{ spots | json | safe }};
     // Add an empty spot if there are none
     spots = spots.length > 0 ? spots : [{}];
 
