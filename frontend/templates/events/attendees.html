@@ -154,7 +154,8 @@
           row.querySelector(".created time").textContent.trim(),
         ]);
 
-      const escape = (s) => `"${s.replace(/"/g, '""')}"`;
+      // Collapse embedded newlines (e.g. multi-line spot descriptions) so rows don't break.
+      const escape = (s) => `"${s.replace(/\s*[\r\n]+\s*/g, " ").replace(/"/g, '""')}"`;
       const csv = [headers, ...rows]
         .map((r) => r.map(escape).join(","))
         .join("\n");
