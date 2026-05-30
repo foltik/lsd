@@ -1107,19 +1107,15 @@ mod rsvp {
                     user.email
                 );
 
-                // Check for conflicts
+                // Check for conflicts (no guests, so only a primary conflict is possible).
                 let exclude_ids: Vec<i64> = session.as_ref().map(|s| vec![s.id]).unwrap_or_default();
                 let other_users =
                     Rsvp::list_reserved_users_for_event(&state.db, &event, &exclude_ids).await?;
-                use validate::Conflict;
-                if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
-                    validate::no_conflicts(&other_users, &primary_user, &[])
-                {
-                    tracing::info!(
-                        "RSVP conflict detected with event_id={} conflict_email={email:?} status={status:?}",
-                        event.id
-                    );
-                    return goto::error_conflict(&email, &status);
+                if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[]) {
+                    let exclude = session.as_ref().map(|s| s.id);
+                    if let Some(resp) = resolve_conflict(&state, &event, exclude, conflict).await? {
+                        return Ok(resp);
+                    }
                 }
 
                 // Set user on session if already exists
@@ -1315,41 +1311,26 @@ mod rsvp {
             let user_id = our_session.user_id.unwrap();
             let family_attendees = Rsvp::list_family_attendees(&state.db, &event, user_id).await?;
             if let Some(value) = validate::no_family_overlaps(&family_attendees, &guest_attendees) {
-                return goto::error_guest_conflict(&value);
+                return goto::error_guest_contact_overlap(&value);
             }
 
-            // When adding guests, only check guest conflicts (parent user is already reserved)
+            // Only check guests; the parent user is already reserved. The empty dummy primary
+            // can't match, so any conflict here is a guest collision.
             let dummy_primary =
                 CreateUser { first_name: None, last_name: None, email: String::new(), phone: None };
             let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
-            if let Some(conflict) = validate::no_conflicts(&other_users, &dummy_primary, &guest_users) {
-                use validate::Conflict;
-                match conflict {
-                    Conflict::Guest { email, status } => return goto::error_conflict(&email, &status),
-                    Conflict::Primary { .. } => unreachable!(),
-                }
+            if let Some(conflict) = validate::no_conflicts(&other_users, &dummy_primary, &guest_users)
+                && let Some(resp) = resolve_conflict(&state, &event, Some(our_session.id), conflict).await?
+            {
+                return Ok(resp);
             }
         } else {
             let primary_user = primary_attendee.as_ref().unwrap().user.clone();
             let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
-            if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users) {
-                use validate::Conflict;
-                match conflict {
-                    Conflict::Guest { email, status } => return goto::error_conflict(&email, &status),
-                    Conflict::Primary { email, status } => match status.as_str() {
-                        RsvpSession::ATTENDEES | RsvpSession::SELECTION => {
-                            our_session.takeover_for_event(&state.db, &event, &email).await?;
-                        }
-                        RsvpSession::CONTRIBUTION
-                        | RsvpSession::PAYMENT_PENDING
-                        | RsvpSession::PAYMENT_CONFIRMED
-                        | RsvpSession::REFUND_PENDING
-                        | RsvpSession::REFUND_CONFIRMED => {
-                            return goto::error_conflict(&email, &status);
-                        }
-                        _ => unreachable!(),
-                    },
-                }
+            if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users)
+                && let Some(resp) = resolve_conflict(&state, &event, Some(our_session.id), conflict).await?
+            {
+                return Ok(resp);
             }
         }
 
@@ -1859,11 +1840,10 @@ mod rsvp {
         let family_sessions = RsvpSession::list_for_user(&state.db, user_id, event.id).await?;
         let family_ids: Vec<i64> = family_sessions.iter().map(|s| s.id).collect();
         let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &family_ids).await?;
-        use validate::Conflict;
-        if let Some(Conflict::Guest { email, status } | Conflict::Primary { email, status }) =
-            validate::no_conflicts(&other_users, &primary_user, &guest_users)
+        if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users)
+            && let Some(resp) = resolve_conflict(&state, &event, None, conflict).await?
         {
-            return goto::error_conflict(&email, &status);
+            return Ok(resp);
         }
 
         // Update guests
@@ -1873,6 +1853,36 @@ mod rsvp {
         }
 
         goto::manage_page(&session, &event)
+    }
+
+    // Resolve an RSVP conflict. Returns:
+    // * Ok(None) to proceed: the primary's own pre-payment draft was taken over.
+    // * Ok(Some(resp)) for the caller to return: a guest collision, the primary's own committed
+    //   RSVP, or someone else's reservation listing them.
+    // exclude_session_id is the caller's current session, which is spared from takeover.
+    async fn resolve_conflict(
+        state: &SharedAppState, event: &Event, exclude_session_id: Option<i64>, conflict: validate::Conflict,
+    ) -> std::result::Result<Option<Response>, HtmlError> {
+        use validate::Conflict;
+        let Conflict::Primary { is_own_session, ref status, ref email, .. } = conflict else {
+            // A guest collision is never takeoverable.
+            return Ok(Some(goto::error_conflict(&conflict)?));
+        };
+        tracing::info!(
+            "RSVP primary conflict event_id={} email={email:?} status={status:?} is_own_session={is_own_session}",
+            event.id,
+        );
+        let pre_payment = matches!(
+            status.as_str(),
+            RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION
+        );
+        if is_own_session && pre_payment {
+            RsvpSession::delete_drafts_for_email(&state.db, &state.stripe, event, email, exclude_session_id)
+                .await?;
+            Ok(None)
+        } else {
+            Ok(Some(goto::error_conflict(&conflict)?))
+        }
     }
 
     /// Helpers for changing RSVP session state and redirecting.
@@ -1942,22 +1952,49 @@ mod rsvp {
             }
             .into_response())
         }
-        pub fn error_conflict(email: &str, status: &str) -> HtmlResult {
-            let message = match status {
-                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
-                    format!("{email} is currently in the process of RSVPing for this event."),
-                RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
-                    format!("{email} has already RSVPed for this event."),
-                RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
-                    format!("{email} has already received a refund for this event."),
-                _ => unreachable!()
+        #[rustfmt::skip]
+        pub fn error_conflict(conflict: &validate::Conflict) -> HtmlResult {
+            use validate::Conflict;
+            let message = match conflict {
+                // A guest the user is adding is already reserved.
+                Conflict::Guest { email, status } => match status.as_str() {
+                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
+                        format!("{email} is currently in the process of RSVPing for this event."),
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                        format!("{email} has already RSVPed for this event."),
+                    RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
+                        format!("{email} has already received a refund for this event."),
+                    _ => unreachable!(),
+                },
+                // Their own committed session. Pre-payment drafts were taken over, so they never reach here.
+                Conflict::Primary { is_own_session: true, status, .. } => match status.as_str() {
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                        "You're already confirmed for this event! Manage your RSVP via the link sent to your email.".to_string(),
+                    RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
+                        "You have already received a refund for this event.".to_string(),
+                    _ => unreachable!(),
+                },
+                // They are listed as a guest on someone else's reservation.
+                Conflict::Primary { is_own_session: false, status, owner_name, .. } => {
+                    let who = owner_name.as_deref().unwrap_or("another attendee");
+                    let contact = config().email.contact_to.as_ref().unwrap_or(&config().email.from);
+                    match status.as_str() {
+                        RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                            format!("You've already been RSVPed to this event by {who}! You'll receive a confirmation email with more details on the day of the event."),
+                        RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
+                            format!("{who} is currently RSVPing with you listed as a guest. Please check with them, otherwise contact {contact}."),
+                        RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
+                            format!("{who} has already RSVPed with you listed as a guest and has received a refund. Please contact {contact}."),
+                        _ => unreachable!(),
+                    }
+                }
             };
             Ok(ErrorHtml {
                 message,
                 user: None,
             }.into_response())
         }
-        pub fn error_guest_conflict(value: &str) -> HtmlResult {
+        pub fn error_guest_contact_overlap(value: &str) -> HtmlResult {
             Ok(ErrorHtml {
                 user: None,
                 message: format!("{value} is already in use by another guest in your reservation."),
@@ -2008,8 +2045,18 @@ mod rsvp {
         }
 
         pub enum Conflict {
-            Primary { email: String, status: String },
-            Guest { email: String, status: String },
+            // The primary's email is already reserved. is_own_session distinguishes whether they
+            // own it (their prior attempt) or are a guest on owner_name's reservation.
+            Primary {
+                email: String,
+                status: String,
+                is_own_session: bool,
+                owner_name: Option<String>,
+            },
+            Guest {
+                email: String,
+                status: String,
+            },
         }
         #[rustfmt::skip]
         pub fn no_conflicts(
@@ -2017,7 +2064,18 @@ mod rsvp {
         ) -> Option<Conflict> {
             for other_user in other_users {
                 if primary.email == other_user.email {
-                    return Some(Conflict::Primary { email: other_user.email.clone(), status: other_user.status.clone() })
+                    let is_own_session = other_user.owner_user_id == Some(other_user.attendee_user_id);
+                    let owner_name = match (&other_user.owner_first_name, &other_user.owner_last_name) {
+                        (Some(f), Some(l)) => Some(format!("{f} {l}")),
+                        (Some(f), None) => Some(f.clone()),
+                        _ => None,
+                    };
+                    return Some(Conflict::Primary {
+                        email: other_user.email.clone(),
+                        status: other_user.status.clone(),
+                        is_own_session,
+                        owner_name,
+                    })
                 }
 
                 for guest in guests {

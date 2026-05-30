@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM rsvp_sessions\n               WHERE user_id IN (SELECT u.id FROM users u WHERE u.email = ? COLLATE NOCASE)\n                 AND status IN (?, ?, ?)\n                 AND id != ?\n                 AND event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_version",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_client_secret",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "stripe_charge_id",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_refund_id",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "parent_session_id",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_checkout_session_id",
+        "ordinal": 13,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "ad5d5375471ca6e8078853d7497c767eccd8ab4f9cc8b7dafb66d1890624e0fe"
+}

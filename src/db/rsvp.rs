@@ -58,12 +58,22 @@ pub struct EventRsvp {
 pub struct UserRsvp {
     pub status: String,
     pub email: String,
+    /// The user_id of the attendee whose email this is.
+    pub attendee_user_id: i64,
+    /// The user_id who owns the session this attendee is reserved under.
+    pub owner_user_id: Option<i64>,
+    pub owner_first_name: Option<String>,
+    pub owner_last_name: Option<String>,
 }
 
 struct UserRsvpRow {
     session_id: i64,
     status: String,
     email: String,
+    attendee_user_id: i64,
+    owner_user_id: Option<i64>,
+    owner_first_name: Option<String>,
+    owner_last_name: Option<String>,
 }
 
 pub struct AdminAttendeesRsvp {
@@ -336,10 +346,15 @@ impl Rsvp {
     ) -> Result<Vec<UserRsvp>> {
         let rows = sqlx::query_as!(
             UserRsvpRow,
-            r#"SELECT rs.id AS session_id, rs.status, u.email
+            r#"SELECT rs.id AS session_id, rs.status, u.email,
+                      u.id AS attendee_user_id,
+                      rs.user_id AS owner_user_id,
+                      owner.first_name AS owner_first_name,
+                      owner.last_name AS owner_last_name
              FROM users u
              JOIN rsvps r ON r.user_id = u.id
              JOIN rsvp_sessions rs ON rs.id = r.session_id
+             LEFT JOIN users owner ON owner.id = rs.user_id
              WHERE rs.event_id = ?"#,
             event.id,
         )
@@ -348,7 +363,14 @@ impl Rsvp {
         Ok(rows
             .into_iter()
             .filter(|r| !exclude_session_ids.contains(&r.session_id))
-            .map(|r| UserRsvp { status: r.status, email: r.email })
+            .map(|r| UserRsvp {
+                status: r.status,
+                email: r.email,
+                attendee_user_id: r.attendee_user_id,
+                owner_user_id: r.owner_user_id,
+                owner_first_name: r.owner_first_name,
+                owner_last_name: r.owner_last_name,
+            })
             .collect())
     }
 
