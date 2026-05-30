@@ -177,6 +177,7 @@
 
     // Provide current user data for autofill; null if not logged in.
     const user = {{ user | json | safe }};
+    const lockPrimary = {% if event.guest_list_id.is_some() || mode == AttendeesMode::Edit %}true{% else %}false{% endif %};
 
     /* ---------- Validation: throws on error, returns formatted value -------- */
     const validate = {
@@ -267,10 +268,10 @@
       last.value = user.last_name;
       email.value = user.email;
       phone.value = user.phone;
-      first.disabled = !!user.first_name;
-      last.disabled = !!user.last_name;
-      email.disabled = true;
-      phone.disabled = !!user.phone;
+      first.disabled = lockPrimary && !!user.first_name;
+      last.disabled = lockPrimary && !!user.last_name;
+      email.disabled = lockPrimary;
+      phone.disabled = lockPrimary && !!user.phone;
     };
     if (!isAddingGuests) {
       updateIsMe();

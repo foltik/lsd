@@ -1292,10 +1292,13 @@ mod rsvp {
         let our_rsvps = Rsvp::list_for_session(&state.db, our_session.id).await?;
 
         let is_adding_guests = our_session.parent_session_id.is_some();
+        // On public events in the Create flow, the primary attendee fields are editable so a
+        // logged-in user can buy a ticket for someone else. Private events are locked to yourself.
+        let lock_primary = event.guest_list_id.is_some();
 
         // Parse and validate form
         let (primary_attendee, guest_attendees) =
-            parse::attendees_form(&user, &our_rsvps, &form.attendees, is_adding_guests)
+            parse::attendees_form(&user, &our_rsvps, &form.attendees, is_adding_guests, lock_primary)
                 .await
                 .map_err(|e| {
                     sentry::report(format!(
@@ -1365,7 +1368,13 @@ mod rsvp {
         // Create and store primary user on RsvpSession and Rsvp
         if let Some(primary_attendee) = &primary_attendee {
             let primary_user = User::update_or_create(&state.db, &primary_attendee.user).await?;
-            our_session.set_user(&state.db, &primary_user).await?;
+            if our_session.user_id.is_none() {
+                // For an anonymous user, tie the RsvpSession to the "Is me" primary attendee.
+                our_session.set_user(&state.db, &primary_user).await?;
+            } else {
+                // For an already logged in user who may be buying a ticket for someone else,
+                // keep the original user which would have been set at creation time.
+            }
             Rsvp::set_user(&state.db, primary_attendee.rsvp_id, &primary_user).await?;
         }
 
@@ -1833,7 +1842,7 @@ mod rsvp {
         // Parse and validate form. NOTE that we only allow editing guest info.
         // The primary_attendee form is disabled on the frontend, and changes are ignored here.
         let (primary_attendee, guest_attendees) =
-            parse::attendees_form(&user, &our_rsvps, &form.attendees, false)
+            parse::attendees_form(&user, &our_rsvps, &form.attendees, false, true)
                 .await
                 .map_err(|e| {
                     sentry::report(format!("edit_form(): session={} form={form:?}: {e}", session.token));
@@ -2129,6 +2138,7 @@ mod rsvp {
         }
         pub async fn attendees_form(
             session_user: &Option<User>, rsvps: &[EventRsvp], attendees: &str, is_adding_guests: bool,
+            lock_primary: bool,
         ) -> Result<(Option<ParsedAttendee>, Vec<ParsedAttendee>), ParseAttendeesError> {
             type Error = ParseAttendeesError;
 
@@ -2179,8 +2189,9 @@ mod rsvp {
                     CreateUser { first_name: Some(first_name), last_name: Some(last_name), email, phone };
                 let attendee = ParsedAttendee { rsvp_id, user };
                 if is_me {
-                    // Disallow changing is_me email when it's already set on the session (it's disabled on the frontend)
-                    if session_user.as_ref().is_some_and(|u| attendee.user.email != u.email) {
+                    // When the primary attendee is locked on the frontend (private events, or Edit mode),
+                    // reject any attempt to change the email from the session user's email.
+                    if lock_primary && session_user.as_ref().is_some_and(|u| attendee.user.email != u.email) {
                         return Err(Error::PrimaryChanged);
                     }
 
