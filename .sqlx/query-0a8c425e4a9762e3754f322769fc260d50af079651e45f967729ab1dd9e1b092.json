@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT rs.id AS session_id, rs.status, u.email,\n                      u.id AS attendee_user_id,\n                      rs.user_id AS owner_user_id,\n                      owner.first_name AS owner_first_name,\n                      owner.last_name AS owner_last_name\n             FROM users u\n             JOIN rsvps r ON r.user_id = u.id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             LEFT JOIN users owner ON owner.id = rs.user_id\n             WHERE rs.event_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "session_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "status",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "attendee_user_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "owner_user_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "owner_first_name",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "owner_last_name",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0a8c425e4a9762e3754f322769fc260d50af079651e45f967729ab1dd9e1b092"
+}

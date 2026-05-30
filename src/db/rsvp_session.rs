@@ -200,27 +200,37 @@ impl RsvpSession {
         Ok(())
     }
 
-    pub async fn takeover_for_event(&self, db: &Db, event: &Event, email: &str) -> Result<()> {
-        tracing::info!(
-            "RSVP session takeover with session_id={} event_id={} taking_over_email={email:?}",
-            self.id,
-            event.id,
-        );
-        sqlx::query!(
-            "DELETE FROM rsvp_sessions
-             WHERE user_id IN (
-                 SELECT u.id
-                 FROM users u
-                 WHERE u.email = ? COLLATE NOCASE
-             )
-             AND id != ?
-             AND event_id = ?",
+    // Take over a stale draft. Deletes this email's draft sessions for the event (expiring their
+    // Stripe checkouts via delete()), except exclude. Committed sessions are never touched.
+    pub async fn delete_drafts_for_email(
+        db: &Db, stripe: &Stripe, event: &Event, email: &str, exclude: Option<i64>,
+    ) -> Result<()> {
+        let exclude = exclude.unwrap_or(-1);
+        let stale = sqlx::query_as!(
+            Self,
+            r#"SELECT * FROM rsvp_sessions
+               WHERE user_id IN (SELECT u.id FROM users u WHERE u.email = ? COLLATE NOCASE)
+                 AND status IN (?, ?, ?)
+                 AND id != ?
+                 AND event_id = ?"#,
             email,
-            self.id,
-            event.id
+            Self::SELECTION,
+            Self::ATTENDEES,
+            Self::CONTRIBUTION,
+            exclude,
+            event.id,
         )
-        .execute(db)
+        .fetch_all(db)
         .await?;
+
+        tracing::info!(
+            "Deleting stale drafts for taking_over_email={email:?} event_id={} count={}",
+            event.id,
+            stale.len(),
+        );
+        for session in &stale {
+            session.delete(db, stripe).await?;
+        }
         Ok(())
     }
 
