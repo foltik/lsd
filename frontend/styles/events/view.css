@@ -9,23 +9,10 @@
     img {
       @apply block h-auto w-full;
     }
-    &::after {
-      @apply pointer-events-none absolute w-full;
-      content: "";
-      height: 140px;
-      top: calc(100% - 140px);
-      background: linear-gradient(
-        to bottom,
-        transparent 0%,
-        color-mix(in oklab, var(--color-lsd-black) 80%, transparent) 60%,
-        color-mix(in oklab, var(--color-lsd-black) 90%, transparent) 70%,
-        var(--color-lsd-black) 100%
-      );
-    }
   }
 
   .info {
-    @apply mx-auto w-full max-w-3xl px-6;
+    @apply mx-auto mt-4 w-full max-w-3xl px-6;
 
     @media (max-width: 768px) {
       &:not(.nofloat) {
