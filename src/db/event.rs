@@ -73,24 +73,33 @@ impl Event {
             EventWithStats,
             r#"SELECT
                  e.id, e.title, e.slug, e.start, e.guest_list_id, e.capacity,
-                 COALESCE(
-                     (SELECT COUNT(*)
-                      FROM rsvps r
-                      JOIN rsvp_sessions rs ON rs.id = r.session_id
-                      WHERE rs.event_id = e.id
-                        AND rs.status IN ('payment_pending', 'payment_confirmed')),
-                     0
-                 ) + (SELECT COUNT(*) FROM manual_rsvps m WHERE m.event_id = e.id)
-                 as "rsvp_count!: i64",
-                 COALESCE(
-                     (SELECT SUM(r.contribution)
-                      FROM rsvps r
-                      JOIN rsvp_sessions rs ON rs.id = r.session_id
-                      WHERE rs.event_id = e.id
-                        AND rs.status IN ('payment_pending', 'payment_confirmed')),
-                     0
-                 ) as "total_contributions!: i64"
-               FROM events e"#
+                 CAST(
+                   COALESCE(sr.session_rsvp_count, 0) + COALESCE(mr.manual_rsvp_count, 0)
+                   AS INT
+                 ) AS "rsvp_count!: i64",
+                 CAST(
+                   COALESCE(sr.session_contributions, 0)
+                   AS INT
+                 ) AS "total_contributions!: i64"
+               FROM events e
+               LEFT JOIN (
+                 SELECT
+                   rs.event_id,
+                   COUNT(r.id) AS session_rsvp_count,
+                   SUM(r.contribution) AS session_contributions
+                 FROM rsvp_sessions rs
+                 JOIN rsvps r ON r.session_id = rs.id
+                 WHERE rs.status IN ('payment_pending', 'payment_confirmed')
+                 GROUP BY rs.event_id
+               ) sr ON sr.event_id = e.id
+               LEFT JOIN (
+                 SELECT
+                   m.event_id,
+                   COUNT(*) AS manual_rsvp_count
+                 FROM manual_rsvps m
+                 GROUP BY m.event_id
+               ) mr ON mr.event_id = e.id
+               ORDER BY e.start DESC"#
         )
         .fetch_all(db)
         .await?;
