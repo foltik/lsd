@@ -1013,6 +1013,7 @@ mod rsvp {
     use super::*;
     use crate::app::events::rsvp::parse::ParsedAttendee;
     use crate::db::list::List;
+    use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, EventRsvp, Rsvp};
     use crate::db::rsvp_session::RsvpSession;
     use crate::db::user::CreateUser;
@@ -1156,7 +1157,8 @@ mod rsvp {
 
         let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
         let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
@@ -1212,7 +1214,8 @@ mod rsvp {
         // Verify limits
         let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
         let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
@@ -1344,7 +1347,8 @@ mod rsvp {
         // Once we transition to CONTRIBUTION, our rsvps spots are held.
         let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
         let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, our_session.user_id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
@@ -1704,7 +1708,8 @@ mod rsvp {
             let spots = Spot::list_for_event(&state.db, event.id).await?;
             let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
             let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
-            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+            let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
             limits.total_limit > 0
         } else {
             false
@@ -1758,7 +1763,8 @@ mod rsvp {
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
         let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, parent.user_id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps);
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }

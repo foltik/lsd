@@ -30,6 +30,13 @@ impl ManualRsvp {
         Ok(())
     }
 
+    pub async fn count_for_event(db: &Db, event_id: i64) -> Result<i64> {
+        let row = sqlx::query!("SELECT COUNT(*) AS 'count!' FROM manual_rsvps WHERE event_id = ?", event_id)
+            .fetch_one(db)
+            .await?;
+        Ok(row.count)
+    }
+
     pub async fn exists(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
         let row = sqlx::query!(
             "SELECT event_id FROM manual_rsvps WHERE event_id = ? AND user_id = ?",

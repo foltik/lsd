@@ -80,7 +80,8 @@ impl Event {
                       WHERE rs.event_id = e.id
                         AND rs.status IN ('payment_pending', 'payment_confirmed')),
                      0
-                 ) as "rsvp_count!: i64",
+                 ) + (SELECT COUNT(*) FROM manual_rsvps m WHERE m.event_id = e.id)
+                 as "rsvp_count!: i64",
                  COALESCE(
                      (SELECT SUM(r.contribution)
                       FROM rsvps r
@@ -405,11 +406,12 @@ impl Event {
     /// Calculate number of spots available of each type for this event.
     /// `all_rsvps` = all reserved RSVPs counted toward capacity (may or may not include current session).
     /// `user_rsvps` = this user's reserved RSVPs across all their sessions (for per-person limits).
+    /// `manual_count` = all manually added RSVPs counted toward capacity
     pub fn compute_limits(
-        &self, spots: &[Spot], all_rsvps: &[EventRsvp], user_rsvps: &[EventRsvp],
+        &self, spots: &[Spot], all_rsvps: &[EventRsvp], user_rsvps: &[EventRsvp], manual_count: i64,
     ) -> EventLimits {
         // Overall event limits
-        let capacity_limit = self.capacity - all_rsvps.len() as i64;
+        let capacity_limit = (self.capacity - all_rsvps.len() as i64 - manual_count).max(0);
         let per_person_limit = self.spots_per_person.unwrap_or(i64::MAX);
         let this_person_limit = per_person_limit - user_rsvps.len() as i64;
         let limit = capacity_limit.min(this_person_limit);
