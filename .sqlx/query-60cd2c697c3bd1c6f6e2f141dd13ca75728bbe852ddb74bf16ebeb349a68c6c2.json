@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT flyer_name, link_url FROM flyers WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "flyer_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "link_url",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "60cd2c697c3bd1c6f6e2f141dd13ca75728bbe852ddb74bf16ebeb349a68c6c2"
+}

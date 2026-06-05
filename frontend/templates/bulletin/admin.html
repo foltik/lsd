@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+
+{% block title %}Bulletin Admin{% endblock title %}
+
+{% block scripts %}
+  <script>
+    async function deleteFlyer(id, btn) {
+      if (!confirm("Delete this flyer?")) return;
+      await fetch(`/bulletin/flyer/${id}`, { method: "DELETE" });
+      btn.closest("tr").remove();
+    }
+  </script>
+{% endblock scripts %}
+
+{% block content %}
+  <div class="bulletin-admin">
+    <a href="/bulletin">← Bulletin</a>
+    <h1>Bulletin Admin</h1>
+
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="/bulletin/admin?page={{ page - 1 }}">← Prev</a>
+      {% endif %}
+      <span>Page {{ page }} of {{ total_pages }}</span>
+      {% if page < total_pages %}
+        <a href="/bulletin/admin?page={{ page + 1 }}">Next →</a>
+      {% endif %}
+    </div>
+
+    <table class="admin-flyers">
+      <thead>
+        <tr>
+          <th class="col-image">Image</th>
+          <th class="col-name">Name</th>
+          <th class="col-user">User ID</th>
+          <th class="col-link">Link</th>
+          <th class="col-pos">Position</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for flyer in flyers %}
+          <tr>
+            <td class="col-image">
+              <img src="/bulletin/flyer/{{ flyer.id }}/image?v={{ flyer.image_version }}" />
+            </td>
+            <td class="col-name">{{ flyer.flyer_name|unwrap_or_empty }}</td>
+            <td class="col-user">{{ flyer.user_id }}</td>
+            <td class="col-link">
+              {% if let Some(url) = flyer.link_url.as_ref() %}
+                <a
+                  href="{{ url }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="{{ url }}"
+                  >{{ url }}</a
+                >
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="col-pos">
+              {{ flyer.x }}, {{ flyer.y }} / {{ flyer.rotation }}°
+              <a href="/bulletin#x={{ flyer.x }}&y={{ flyer.y }}">(Jump)</a>
+            </td>
+            <td class="col-actions">
+              <details>
+                <summary>Edit</summary>
+                <form
+                  class="edit-form"
+                  method="post"
+                  enctype="multipart/form-data"
+                  action="/bulletin/admin/flyer/{{ flyer.id }}/edit"
+                >
+                  <input
+                    type="file"
+                    name="image_file"
+                    accept="image/png,image/jpeg"
+                  />
+                  <input
+                    type="url"
+                    name="link_url"
+                    value="{{ flyer.link_url|unwrap_or_empty }}"
+                    placeholder="Link URL (optional)"
+                  />
+                  <input
+                    type="text"
+                    name="flyer_name"
+                    value="{{ flyer.flyer_name|unwrap_or_empty }}"
+                    placeholder="Event Name"
+                    required
+                  />
+                  <button type="submit">Save</button>
+                </form>
+              </details>
+              <button
+                class="delete-btn"
+                onclick="deleteFlyer({{ flyer.id }}, this)"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="/bulletin/admin?page={{ page - 1 }}">← Prev</a>
+      {% endif %}
+      <span>Page {{ page }} of {{ total_pages }}</span>
+      {% if page < total_pages %}
+        <a href="/bulletin/admin?page={{ page + 1 }}">Next →</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}

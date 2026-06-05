@@ -26,6 +26,9 @@
 @import "./events/rsvp_contribution.css";
 @import "./events/rsvp_manage.css";
 @import "./events/sessions.css";
+/* Bulletin */
+@import "./bulletin/bulletin.css";
+@import "./bulletin/admin.css";
 /* Lists */
 @import "./lists/list.css";
 @import "./lists/edit.css";

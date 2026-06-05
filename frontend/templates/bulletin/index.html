@@ -1,0 +1,171 @@
+{% extends "layout.html" %}
+
+{% block title %}LSD Bulletin{% endblock title %}
+
+{% block head %}
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
+{% endblock head %}
+
+{% block scripts %}
+  <script src="/static/bulletin/bulletin.js"></script>
+{% endblock scripts %}
+
+{% block content %}
+  <div id="board">
+    <div class="board-boundary"></div>
+    {# Separate editable and non-editable flyers depending on user owner and role: admin #}
+    {% for flyer in read_only_flyers %}
+      <div
+        id="{{ flyer.id }}"
+        class="flyer"
+        style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.id }};"
+      >
+        {% if let Some(url) = flyer.link_url %}
+          <a
+            href="{{ url }}"
+            draggable="false"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img draggable="false" src="/bulletin/flyer/{{ flyer.id }}/image?v={{ flyer.image_version }}" />
+          </a>
+        {% else %}
+          <img draggable="false" src="/bulletin/flyer/{{ flyer.id }}/image?v={{ flyer.image_version }}" />
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% for flyer in editable_flyers %}
+      <div
+        id="{{ flyer.id }}"
+        class="flyer editable"
+        style="--x: {{ flyer.x }}px; --y: {{ flyer.y }}px; --rotation: {{ flyer.rotation }}deg; z-index: {{ flyer.id }};"
+      >
+        <div class="rotate-dot" hidden></div>
+        <div class="rotate-link" hidden></div>
+        <button class="edit-button" type="button" hidden>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style="vertical-align:middle;"
+          >
+            <path
+              d="M15.5 2.5L17.5 4.5C18.1667 5.16667 18.1667 6.16667 17.5 6.83333L7.5 16.8333L3 17.5L3.66667 13L13.6667 3C14.3333 2.33333 15.3333 2.33333 16 3Z"
+              stroke="#333"
+              stroke-width="2"
+              fill="none"
+            />
+          </svg>
+        </button>
+        {% if let Some(url) = flyer.link_url %}
+          <a
+            href="{{ url }}"
+            draggable="false"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img draggable="false" src="/bulletin/flyer/{{ flyer.id }}/image?v={{ flyer.image_version }}" />
+          </a>
+        {% else %}
+          <img draggable="false" src="/bulletin/flyer/{{ flyer.id }}/image?v={{ flyer.image_version }}" />
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if user.is_some() %}
+      <div id="add-poster-button" class="add-button" hidden>+</div>
+
+      <div class="outer-popover">
+        <div id="about-modal" class="middle-popover" popover>
+          <div class="inner-popover">
+            <p>
+              This bulletin board is free to use for anyone who has previously
+              attended an event at LSD.
+              <br />
+              <br />
+              Feel free to post flyers for upcoming events, classes, workshops,
+              personal ads or anything else you think the community would be
+              interested in.
+              <br />
+              <br />
+              Although you can place a flyer anywhere on the board, please be
+              considerate of others' space. In particular, don't cover up flyers
+              that others have posted unless the event on the flyer has already
+              passed.
+              <br />
+              <br />
+              Be aware that this website is publicly accessible, and anyone with
+              the link can view flyers. Do not share anything you wouldn't want
+              a 🐷 or 🤖 to see.
+            </p>
+          </div>
+        </div>
+
+        <div id="create-flyer" class="middle-popover" popover>
+          <div class="inner-popover">
+            <form
+              class="flyer-form"
+              action="/bulletin/flyer/new"
+              method="post"
+              enctype="multipart/form-data"
+            >
+              <input
+                type="file"
+                name="image_file"
+                accept="image/png,image/jpeg"
+                required
+              />
+              <input
+                type="url"
+                name="link_url"
+                placeholder="Link URL (optional)"
+              />
+              <input type="text" name="flyer_name" placeholder="Event Name" />
+              <input type="hidden" name="x" />
+              <input type="hidden" name="y" />
+              <button type="submit">Add Flyer</button>
+            </form>
+          </div>
+        </div>
+        <div id="edit-flyer" class="middle-popover" popover>
+          <div class="inner-popover">
+            <form
+              id="edit-flyer-form"
+              class="flyer-form"
+              method="post"
+              enctype="multipart/form-data"
+            >
+              <input
+                type="file"
+                name="image_file"
+                accept="image/png,image/jpeg"
+              />
+              <input
+                type="url"
+                name="link_url"
+                placeholder="Link URL (optional)"
+              />
+              <input type="text" name="flyer_name" placeholder="Event Name" />
+              <button type="submit">Edit Flyer</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+  <footer>
+    {% if user | has_role("admin") %}
+      <a href="/bulletin/admin" class="footer-btn">Admin</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+    <button id="about-button" popovertarget="about-modal" class="footer-btn">
+      About
+    </button>
+  </footer>
+{% endblock content %}

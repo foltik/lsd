@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, user_id, flyer_name, x, y, rotation, link_url, image_version FROM flyers",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "flyer_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "x",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "y",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rotation",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "link_url",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "image_version",
+        "ordinal": 7,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "3ff50282363379c28198475231ca81b26e1596512e2d8a01f9c98e4da947323e"
+}
