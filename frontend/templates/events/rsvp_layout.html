@@ -10,4 +10,11 @@
     {% block progress %}
     {% endblock progress %}
   </div>
+  <script>
+    document.getElementById("back")?.addEventListener("click", e => {
+      e.preventDefault();
+      if (history.length > 1) history.back();
+      else location.replace(e.currentTarget.href);
+    });
+  </script>
 {% endblock nav %}
