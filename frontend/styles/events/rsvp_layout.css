@@ -92,13 +92,12 @@
 
   @media (max-width: 768px) {
     &:not(.nofloat) {
-      @apply fixed right-0 bottom-0 left-0 mx-6 flex h-32 w-full;
+      @apply fixed right-0 bottom-0 left-0 mx-6 flex h-24 w-full;
       content: "";
       background: linear-gradient(
         to bottom,
         transparent 0%,
-        color-mix(in oklab, var(--color-lsd-black) 80%, transparent)
-          calc(100% - var(--spacing) * 16),
+        color-mix(in oklab, var(--color-lsd-black) 80%, transparent) calc(100% - var(--spacing) * 8),
         var(--color-lsd-black) calc(100% - var(--spacing) * 4)
       );
     }
