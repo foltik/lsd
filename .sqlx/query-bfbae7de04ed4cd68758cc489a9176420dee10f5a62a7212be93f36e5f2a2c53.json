@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO events\n               (token, title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share,\n                description_html, description_updated_at,\n                invite_subject, invite_html, invite_updated_at,\n                confirmation_subject, confirmation_html, confirmation_updated_at,\n                dayof_subject, dayof_html, dayof_updated_at)\n               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,\n                       ?, ?,\n                       ?, ?, ?,\n                       ?, ?, ?,\n                       ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 22
+    },
+    "nullable": []
+  },
+  "hash": "bfbae7de04ed4cd68758cc489a9176420dee10f5a62a7212be93f36e5f2a2c53"
+}

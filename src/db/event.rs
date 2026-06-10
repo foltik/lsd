@@ -1,4 +1,6 @@
 use image::DynamicImage;
+use rand::Rng;
+use rand::rngs::OsRng;
 
 use crate::db::event_flyer::EventFlyer;
 use crate::db::rsvp::EventRsvp;
@@ -8,6 +10,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Event {
     pub id: i64,
+    pub token: String,
     pub title: String,
     pub slug: String,
     pub start: NaiveDateTime,
@@ -17,6 +20,7 @@ pub struct Event {
     pub closed: bool,
     pub guest_list_id: Option<i64>,
     pub spots_per_person: Option<i64>,
+    pub artist_share: i64,
 
     pub description_html: Option<String>,
     pub description_updated_at: Option<NaiveDateTime>,
@@ -52,12 +56,14 @@ pub struct UpdateEvent {
     pub closed: bool,
     pub guest_list_id: Option<i64>,
     pub spots_per_person: Option<i64>,
+    pub artist_share: i64,
 }
 
 /// Event with RSVP count for the admin list page.
 #[derive(Clone, Debug, sqlx::FromRow, serde::Serialize)]
 pub struct EventWithStats {
     pub id: i64,
+    pub token: String,
     pub title: String,
     pub slug: String,
     pub start: NaiveDateTime,
@@ -72,7 +78,7 @@ impl Event {
         let events = sqlx::query_as!(
             EventWithStats,
             r#"SELECT
-                 e.id, e.title, e.slug, e.start, e.guest_list_id, e.capacity,
+                 e.id, e.token, e.title, e.slug, e.start, e.guest_list_id, e.capacity,
                  CAST(
                    COALESCE(sr.session_rsvp_count, 0) + COALESCE(mr.manual_rsvp_count, 0)
                    AS INT
@@ -134,10 +140,12 @@ impl Event {
 
     // Create a new event.
     pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> Result<i64> {
+        let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let event_id = sqlx::query!(
             r#"INSERT INTO events
-               (title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+               (token, title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+            token,
             event.title,
             event.slug,
             event.start,
@@ -147,6 +155,7 @@ impl Event {
             event.closed,
             event.guest_list_id,
             event.spots_per_person,
+            event.artist_share,
         )
         .execute(db)
         .await?
@@ -171,7 +180,8 @@ impl Event {
                     unlisted = ?,
                     closed = ?,
                     guest_list_id = ?,
-                    spots_per_person = ?
+                    spots_per_person = ?,
+                    artist_share = ?
                 WHERE id = ?"#,
             event.title,
             event.slug,
@@ -182,6 +192,7 @@ impl Event {
             event.closed,
             event.guest_list_id,
             event.spots_per_person,
+            event.artist_share,
             id
         )
         .execute(db)
@@ -336,6 +347,11 @@ impl Event {
 
         now <= self.start || self.end.is_some_and(|end| now <= end)
     }
+
+    /// Artist's share of `total` dollars per `artist_share` percent, fractional dollars round to the artist.
+    pub fn artist_share(&self, total: i64) -> i64 {
+        (total * self.artist_share).div_ceil(100)
+    }
 }
 
 pub struct EventLimits {
@@ -364,18 +380,20 @@ impl Event {
         let new_title = format!("{} (copy)", event.title);
 
         // Create the new event
+        let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let new_event_id = sqlx::query!(
             r#"INSERT INTO events
-               (title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person,
+               (token, title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share,
                 description_html, description_updated_at,
                 invite_subject, invite_html, invite_updated_at,
                 confirmation_subject, confirmation_html, confirmation_updated_at,
                 dayof_subject, dayof_html, dayof_updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                        ?, ?,
                        ?, ?, ?,
                        ?, ?, ?,
                        ?, ?, ?)"#,
+            token,
             new_title,
             new_slug,
             event.start,
@@ -385,6 +403,7 @@ impl Event {
             event.closed,
             event.guest_list_id,
             event.spots_per_person,
+            event.artist_share,
             event.description_html,
             event.description_updated_at,
             event.invite_subject,
