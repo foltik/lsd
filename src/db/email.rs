@@ -92,6 +92,7 @@ impl Email {
                  FROM list_members lm
                  JOIN users u ON u.id = lm.user_id
                  JOIN user_history uh ON uh.user_id = u.id
+                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE lm.list_id = ?
                    AND NOT EXISTS (
                        SELECT 1
@@ -151,6 +152,7 @@ impl Email {
                  FROM list_members lm
                  JOIN users u ON u.id = lm.user_id
                  JOIN user_history uh ON uh.user_id = u.id
+                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE lm.list_id = ?
                    AND NOT EXISTS (
                        SELECT 1
@@ -201,6 +203,7 @@ impl Email {
                  SELECT ?, u.id, uh.version, ?
                  FROM users u
                  JOIN user_history uh ON uh.user_id = u.id
+                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE u.id = ?
              RETURNING *, (
                 SELECT u.email FROM users u
@@ -224,6 +227,7 @@ impl Email {
                  SELECT ?, u.id, uh.version, ?
                  FROM users u
                  JOIN user_history uh ON uh.user_id = u.id
+                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE u.id = ?
              RETURNING *, (
                 SELECT u.email FROM users u
@@ -340,6 +344,7 @@ impl Email {
                 FROM list_members lm
                 JOIN users u ON u.id = lm.user_id
                 JOIN user_history uh ON uh.user_id = u.id
+                  AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                 WHERE lm.list_id = ?
                   AND NOT EXISTS (
                       SELECT 1

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n             INSERT INTO emails (kind, user_id, user_version, post_id, list_id)\n                 SELECT ?, u.id, uh.version, ?, lm.list_id\n                 FROM list_members lm\n                 JOIN users u ON u.id = lm.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                 WHERE lm.list_id = ?\n                   AND NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.user_id = u.id\n                         AND ee.post_id = ?\n                         AND ee.list_id = lm.list_id\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS address\n             ",
+  "query": "\n            INSERT INTO emails (kind, user_id, user_version, post_id, list_id)\n                SELECT ?, u.id, uh.version, ?, lm.list_id\n                FROM list_members lm\n                JOIN users u ON u.id = lm.user_id\n                JOIN user_history uh ON uh.user_id = u.id\n                  AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                WHERE lm.list_id = ?\n                  AND NOT EXISTS (\n                      SELECT 1\n                      FROM emails e\n                      WHERE e.user_id = u.id\n                        AND e.post_id = ?\n                        AND e.list_id = lm.list_id\n                        AND e.sent_at IS NULL\n                  )\n            RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n            ) as address\n            ",
   "describe": {
     "columns": [
       {
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "904ebe16d0f2c64b9e640f2724d84cd930cf530ae70f29c677a26d79d7828684"
+  "hash": "6fce47ef0e05a07f918699b4cae1a7dc05251a44eff44140537333ade6deb689"
 }
