@@ -118,6 +118,33 @@ impl Spot {
             .collect())
     }
 
+    /// Get per-spot signup counts and contribution totals for the organizer stats page.
+    pub async fn stats_for_event(db: &Db, event_id: i64) -> Result<Vec<SpotStats>> {
+        Ok(sqlx::query_as!(
+            SpotStats,
+            r#"SELECT
+                 s.id, s.name, s.kind, s.qty_total, s.required_contribution,
+                 CAST(COALESCE(c.rsvp_count, 0) AS INT) AS "rsvp_count!: i64",
+                 CAST(COALESCE(c.contributions, 0) AS INT) AS "contributions!: i64"
+               FROM spots s
+               JOIN event_spots es ON es.spot_id = s.id
+               LEFT JOIN (
+                 SELECT r.spot_id, COUNT(*) AS rsvp_count, SUM(r.contribution) AS contributions
+                 FROM rsvps r
+                 JOIN rsvp_sessions rs ON rs.id = r.session_id
+                 WHERE rs.event_id = ?
+                   AND rs.status IN ('payment_pending', 'payment_confirmed')
+                 GROUP BY r.spot_id
+               ) c ON c.spot_id = s.id
+               WHERE es.event_id = ?
+               ORDER BY s.sort"#,
+            event_id,
+            event_id,
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
     /// Create a new spot.
     pub async fn create(db: &Db, spot: &UpdateSpot) -> Result<i64> {
         let row = sqlx::query!(
@@ -249,8 +276,46 @@ impl Spot {
     }
 }
 
-#[derive(Debug, serde::Serialize)]
+/// Per-spot signups and contributions for the organizer stats page.
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct SpotStats {
+    pub id: i64,
+    pub name: String,
+    pub kind: String,
+    pub qty_total: i64,
+    pub required_contribution: Option<i64>,
+    pub rsvp_count: i64,
+    pub contributions: i64,
+}
+
+impl SpotStats {
+    /// Percent of qty_total claimed, clamped to 0-100.
+    pub fn pct(&self) -> i64 {
+        match self.qty_total {
+            // Qty can be lowered to 0 after signups; any signups read as full
+            0 if self.rsvp_count > 0 => 100,
+            0 => 0,
+            qty => (self.rsvp_count * 100 / qty).min(100),
+        }
+    }
+
+    /// Spots left, clamped at 0.
+    pub fn remaining(&self) -> i64 {
+        (self.qty_total - self.rsvp_count).max(0)
+    }
+
+    /// Display price per spot; variable spots have no single price.
+    pub fn price(&self) -> Option<i64> {
+        match self.kind.as_str() {
+            Spot::FIXED => self.required_contribution,
+            Spot::FREE | Spot::WORK => Some(0),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct VariableSpotStats {
     pub stats: HashMap<i64, Vec<SpotStat>>,
 }
 
@@ -263,7 +328,7 @@ pub struct SpotStat {
 
 impl Spot {
     /// Compute contribution statistics for VARIABLE spots given a list of rsvps.
-    pub fn stats(spots: &[Spot], rsvps: &[EventRsvp]) -> SpotStats {
+    pub fn stats(spots: &[Spot], rsvps: &[EventRsvp]) -> VariableSpotStats {
         let mut contributions: HashMap<i64, Vec<i64>> = HashMap::default();
         for rsvp in rsvps {
             contributions.entry(rsvp.spot_id).or_default().push(rsvp.contribution);
@@ -296,6 +361,6 @@ impl Spot {
             variable_stats.insert(spot.id, stats);
         }
 
-        SpotStats { stats: variable_stats }
+        VariableSpotStats { stats: variable_stats }
     }
 }

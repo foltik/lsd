@@ -1,5 +1,6 @@
 // No idea why this fires...
 #![allow(redundant_semicolons)]
+#![feature(int_roundings)]
 
 mod app;
 mod db;

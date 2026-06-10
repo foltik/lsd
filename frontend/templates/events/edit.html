@@ -29,6 +29,35 @@
         />
       </div>
 
+      <div class="field">
+        <label for="date">Date</label>
+        <input
+          type="date"
+          name="date"
+          value="{{ event.start | format_datetime("%Y-%m-%d") }}"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="start">Start</label>
+        <input
+          type="time"
+          name="start"
+          value="{{ event.start | format_datetime("%H:%M") }}"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="end">End (Optional)</label>
+        <input
+          type="time"
+          name="end"
+          value="{{ event.end | format_optional_datetime("%H:%M") }}"
+        />
+      </div>
+
       <div class="field flyer">
         <label for="flyer">Flyer</label>
         <div class="wrapper">
@@ -47,16 +76,6 @@
           </div>
         </div>
         <img id="flyer-preview" class="hidden" />
-      </div>
-
-      <div class="field">
-        <label for="capacity">Capacity</label>
-        <input
-          name="capacity"
-          type="number"
-          value="{{ event.capacity }}"
-          step="1"
-        />
       </div>
 
       <div class="field">
@@ -98,6 +117,16 @@
       </div>
 
       <div class="field">
+        <label for="capacity">Capacity</label>
+        <input
+          name="capacity"
+          type="number"
+          value="{{ event.capacity }}"
+          step="1"
+        />
+      </div>
+
+      <div class="field">
         <label for="spots_per_person">Max spots per person</label>
         <input
           name="spots_per_person"
@@ -110,31 +139,15 @@
       </div>
 
       <div class="field">
-        <label for="date">Date</label>
+        <label for="artist_share">Artist contribution share (%)</label>
         <input
-          type="date"
-          name="date"
-          value="{{ event.start | format_datetime("%Y-%m-%d") }}"
+          name="artist_share"
+          type="number"
+          value="{{ event.artist_share }}"
+          step="1"
+          min="0"
+          max="100"
           required
-        />
-      </div>
-
-      <div class="field">
-        <label for="start">Start</label>
-        <input
-          type="time"
-          name="start"
-          value="{{ event.start | format_datetime("%H:%M") }}"
-          required
-        />
-      </div>
-
-      <div class="field">
-        <label for="end">End (Optional)</label>
-        <input
-          type="time"
-          name="end"
-          value="{{ event.end | format_optional_datetime("%H:%M") }}"
         />
       </div>
 
@@ -407,6 +420,7 @@
         closed: value("closed"),
         guest_list_id: value("guest_list_id"),
         spots_per_person: value("spots_per_person") || null,
+        artist_share: value("artist_share"),
         spots: ui.spots().map((t, i) => {
           const kind = value("kind", t);
           const spot = {
