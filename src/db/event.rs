@@ -350,7 +350,7 @@ impl Event {
 
     /// Artist's share of `total` dollars per `artist_share` percent, fractional dollars round to the artist.
     pub fn artist_share(&self, total: i64) -> i64 {
-        (total * self.artist_share).div_ceil(100)
+        (total * self.artist_share + 99) / 100
     }
 }
 
