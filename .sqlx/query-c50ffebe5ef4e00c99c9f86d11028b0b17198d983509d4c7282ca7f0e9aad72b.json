@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                 s.id, s.name, s.kind, s.qty_total, s.required_contribution,\n                 CAST(COALESCE(c.rsvp_count, 0) AS INT) AS \"rsvp_count!: i64\",\n                 CAST(COALESCE(c.contributions, 0) AS INT) AS \"contributions!: i64\"\n               FROM spots s\n               JOIN event_spots es ON es.spot_id = s.id\n               LEFT JOIN (\n                 SELECT r.spot_id, COUNT(*) AS rsvp_count, SUM(r.contribution) AS contributions\n                 FROM rsvps r\n                 JOIN rsvp_sessions rs ON rs.id = r.session_id\n                 WHERE rs.event_id = ?\n                   AND rs.status IN ('payment_pending', 'payment_confirmed')\n                 GROUP BY r.spot_id\n               ) c ON c.spot_id = s.id\n               WHERE es.event_id = ?\n               ORDER BY s.sort",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "kind",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "qty_total",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "required_contribution",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rsvp_count!: i64",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "contributions!: i64",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "c50ffebe5ef4e00c99c9f86d11028b0b17198d983509d4c7282ca7f0e9aad72b"
+}

@@ -1,0 +1,94 @@
+#events\/stats {
+  @apply mx-auto w-full max-w-3xl p-6;
+
+  header {
+    @apply mb-6;
+    h1 {
+      @apply text-2xl;
+    }
+    .date {
+      @apply text-lsd-gray mt-1;
+    }
+  }
+
+  .card {
+    @apply border-lsd-white mt-6 flex flex-col rounded-lg border p-6;
+
+    .name {
+      @apply mb-2 text-2xl;
+    }
+    .split {
+      @apply mb-3 flex items-baseline justify-between;
+      .remaining {
+        @apply text-lsd-gray;
+      }
+    }
+    .bar {
+      @apply bg-lsd-charcoal h-2 w-full overflow-hidden rounded-full;
+      .fill {
+        @apply bg-lsd-green h-full rounded-full;
+      }
+    }
+    .items {
+      @apply grid grid-cols-[max-content_max-content_max-content_1fr] gap-x-1;
+      .amount {
+        @apply text-right;
+      }
+    }
+    .row {
+      @apply flex justify-between;
+    }
+    .rule {
+      @apply bg-lsd-gray my-4 h-px;
+    }
+
+    &.total {
+      @apply mt-0 rounded-none;
+    }
+    &.spot .name {
+      @apply text-xl;
+    }
+    &.contributions {
+      @apply rounded-none border-b-0 p-0;
+      .info {
+        @apply flex flex-col p-6 pb-0;
+      }
+      .spacer {
+        aspect-ratio: 32;
+        @media (min-width: 768px) {
+          aspect-ratio: 48;
+        }
+      }
+      .zigzag {
+        @apply relative h-6 w-full;
+        .stroke {
+          @apply bg-lsd-white absolute inset-0;
+          mask: conic-gradient(
+              from -45deg at bottom,
+              #0000,
+              #000 1deg 89deg,
+              #0000 90deg
+            )
+            50% / calc(100% / 16) 100%;
+          @media (min-width: 768px) {
+            mask-size: calc(100% / 32) 100%;
+          }
+        }
+        .fill {
+          @apply bg-lsd-black absolute inset-0;
+          mask: conic-gradient(
+              from -45deg at bottom,
+              #0000,
+              #000 1deg 89deg,
+              #0000 90deg
+            )
+            50% / calc(100% / 16) 100%;
+          @media (min-width: 768px) {
+            mask-size: calc(100% / 32) 100%;
+          }
+          transform: translateY(-1.5px);
+        }
+      }
+    }
+  }
+}

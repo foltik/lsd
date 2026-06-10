@@ -13,6 +13,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
                 .route("/e/{slug}/flyer", get(read::flyer))
+                .route("/e/{slug}/stats", get(read::stats_page))
                 .route("/e/{slug}/rsvp", get(rsvp::rsvp_form))
                 .route("/e/{slug}/rsvp/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
@@ -50,6 +51,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 // View and list events.
 mod read {
     use super::*;
+    use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp_session;
 
     /// View an event.
@@ -110,6 +112,70 @@ mod read {
             .into_response())
     }
 
+    #[derive(serde::Deserialize)]
+    pub struct StatsQuery {
+        secret: String,
+    }
+
+    /// Semi-public stats page for event organizers, gated by the event token.
+    pub async fn stats_page(
+        user: Option<User>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Query(query): Query<StatsQuery>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if query.secret != event.token {
+            bail_not_found!();
+        }
+
+        let mut spots = Spot::stats_for_event(&state.db, event.id).await?;
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+
+        // Display only: a spot can't offer more than the overall event capacity
+        for spot in &mut spots {
+            spot.qty_total = spot.qty_total.min(event.capacity);
+        }
+
+        let rsvp_count: i64 = spots.iter().map(|s| s.rsvp_count).sum();
+        let attendees = rsvp_count + manual_count;
+        let remaining = (event.capacity - attendees).max(0);
+        let capacity_pct = match event.capacity {
+            0 => 0,
+            capacity => (attendees * 100 / capacity).min(100),
+        };
+
+        let total_contributions: i64 = spots.iter().map(|s| s.contributions).sum();
+        let artist_total = event.artist_share(total_contributions);
+        let studio_total = total_contributions - artist_total;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/stats.html")]
+        struct StatsHtml {
+            user: Option<User>,
+            event: Event,
+            spots: Vec<SpotStats>,
+            manual_count: i64,
+            attendees: i64,
+            remaining: i64,
+            capacity_pct: i64,
+            total_contributions: i64,
+            artist_total: i64,
+            studio_total: i64,
+        }
+        Ok(StatsHtml {
+            user,
+            event,
+            spots,
+            manual_count,
+            attendees,
+            remaining,
+            capacity_pct,
+            total_contributions,
+            artist_total,
+            studio_total,
+        }
+        .into_response())
+    }
+
     /// Debug view for RSVP sessions.
     #[derive(Template, WebTemplate)]
     #[template(path = "events/sessions.html")]
@@ -167,6 +233,7 @@ mod edit {
             user: Some(user),
             event: Event {
                 id: 0,
+                token: "".into(),
                 title: "".into(),
                 slug: "".into(),
                 start: Utc::now().naive_utc(),
@@ -176,6 +243,7 @@ mod edit {
                 closed: false,
                 guest_list_id: None,
                 spots_per_person: None,
+                artist_share: 60,
 
                 description_html: None,
                 description_updated_at: None,
@@ -1180,7 +1248,7 @@ mod rsvp {
             our_qtys: HashMap<i64, usize>,
             our_contributions: HashMap<i64, i64>,
             limits: EventLimits,
-            stats: SpotStats,
+            stats: VariableSpotStats,
             parent_token: Option<String>,
         }
         Ok(
