@@ -1,3 +1,6 @@
+use std::net::SocketAddr;
+
+use axum::extract::ConnectInfo;
 use axum::http::Request;
 use tower::ServiceBuilder;
 use tower_http::ServiceBuilderExt as _;
@@ -25,7 +28,8 @@ impl<B> MakeSpan<B> for LoggingMakeSpan {
         let method = request.method();
         let path = request.uri().path();
         let version = request.version();
-        tracing::info!("{method} {path:?} {version:?}");
+        let ip = request.extensions().get::<ConnectInfo<SocketAddr>>().unwrap().ip();
+        tracing::info!("{method} {path:?} {version:?} {ip}");
         tracing::span!(tracing::Level::DEBUG, "request", %method, %path)
     }
 }
