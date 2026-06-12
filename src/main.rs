@@ -67,6 +67,8 @@ async fn main() -> Result<()> {
     }
 
     let (router, state) = app::build(config.clone()).await?;
+    // HTTP/3 sidesteps make_service, so utils::h3 injects ConnectInfo itself
+    let router_h3 = router.clone();
     let app = router.into_make_service_with_connect_info::<SocketAddr>();
     tracing::info!("Live at {}", &config.app.url);
 
@@ -94,7 +96,10 @@ async fn main() -> Result<()> {
             // default_rustls_config() advertises no ALPN protocols, forcing every client onto HTTP/1.1
             let mut rustls_config = (*acme.default_rustls_config()).clone();
             rustls_config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-            let acceptor = acme.axum_acceptor(Arc::new(rustls_config));
+            let acceptor = acme.axum_acceptor(Arc::new(rustls_config.clone()));
+
+            // Serve HTTP/3 on the same port over UDP, sharing the ACME certificates
+            utils::h3::spawn(config.net.https_addr, rustls_config, router_h3);
 
             tokio::spawn(async move {
                 loop {
@@ -112,6 +117,7 @@ async fn main() -> Result<()> {
             let cert = include_bytes!("../config/selfsigned.cert");
             let key = include_bytes!("../config/selfsigned.key");
             let rustls = RustlsConfig::from_pem(cert.into(), key.into()).await?;
+            utils::h3::spawn(config.net.https_addr, (*rustls.get_inner()).clone(), router_h3);
             axum_server::bind_rustls(config.net.https_addr, rustls).serve(app).await?;
         }
     }
