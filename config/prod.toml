@@ -12,7 +12,7 @@ http_addr = "[::]:80"
 https_addr = "[::]:443"
 
 [acme]
-domains = ["lightandsound.design", "beta.lightandsound.design"]
+domains = ["lightandsound.design", "www.lightandsound.design", "beta.lightandsound.design"]
 email = "$EMAIL_FROM"
 dir = "acme"
 prod = true
