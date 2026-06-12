@@ -87,6 +87,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     // Register middleware
     let r = auth::add_middleware(r, Arc::clone(&state));
     let r = events::add_middleware(r, Arc::clone(&state));
+    let r = r.layer(axum::middleware::from_fn(redirect_secondary_hosts));
     let r = crate::utils::tracing::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
     let r = r.layer(
@@ -99,4 +100,20 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = r.with_state(Arc::clone(&state));
 
     Ok((r, state))
+}
+
+/// Permanently redirect requests for non-canonical hosts to AppConfig::url.
+async fn redirect_secondary_hosts(req: Request, next: Next) -> Response {
+    let host = req.uri().host();
+    let host = host.map(|host| host.split(':').next().unwrap());
+
+    // * Serve hostless requests as-is
+    // * Exempt stripe webhooks, which don't support redirects
+    let canonical_host = host.is_none_or(|host| host == config().app.domain);
+    if canonical_host || req.uri().path() == "/webhooks/stripe" {
+        return next.run(req).await;
+    }
+
+    let path_and_query = req.uri().path_and_query().map_or("/", |pq| pq.as_str());
+    Redirect::permanent(&format!("{}{path_and_query}", config().app.url)).into_response()
 }
