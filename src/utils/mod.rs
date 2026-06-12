@@ -3,6 +3,7 @@ pub mod config;
 pub mod editor;
 pub mod emailer;
 pub mod error;
+pub mod h3;
 pub mod image;
 pub mod routing;
 pub mod sentry;
