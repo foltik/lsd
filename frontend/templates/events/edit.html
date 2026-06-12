@@ -5,12 +5,20 @@
 {% block content %}
   <section id="events/edit" class="ext/layout standard">
     <header>
-      <h1>Edit Event</h1>
+      <h1>{% if event.id == 0 %}Create{% else %}Edit{% endif %} Event</h1>
     </header>
     <form
       id="form"
       class="ext/form"
     >
+      <div class="field">
+        <label for="kind">Type</label>
+        <select name="kind" id="kind" {% if event.id != 0 %}disabled{% endif %}>
+          <option value="internal" {% if !event.is_external() %}selected{% endif %}>Internal</option>
+          <option value="external" {% if event.is_external() %}selected{% endif %}>External</option>
+        </select>
+      </div>
+
       <div class="field">
         <label for="title">Title</label>
         <input type="text" name="title" value="{{ event.title }}" required />
@@ -25,6 +33,17 @@
           value="{{ event.slug }}"
           pattern="[a-zA-Z0-9\-]+"
           title="Only letters, numbers, and dashes allowed"
+          required
+        />
+      </div>
+
+      <div id="external-url" class="field">
+        <label for="url">Url</label>
+        <input
+          type="url"
+          id="url"
+          name="url"
+          value="{% if let Some(url) = event.url %}{{ url }}{% endif %}"
           required
         />
       </div>
@@ -78,83 +97,85 @@
         <img id="flyer-preview" class="hidden" />
       </div>
 
-      <div class="field">
-        <label for="unlisted">Unlisted</label>
-        <input
-          name="unlisted"
-          type="checkbox"
-          {% if event.unlisted %}checked{% endif %}
-        />
-      </div>
+      <div id="internal-fields">
+        <div class="field">
+          <label for="unlisted">Unlisted</label>
+          <input
+            name="unlisted"
+            type="checkbox"
+            {% if event.unlisted %}checked{% endif %}
+          />
+        </div>
 
-      <div class="field">
-        <label for="closed">Close registration</label>
-        <input
-          name="closed"
-          type="checkbox"
-          {% if event.closed %}checked{% endif %}
-        />
-      </div>
+        <div class="field">
+          <label for="closed">Close registration</label>
+          <input
+            name="closed"
+            type="checkbox"
+            {% if event.closed %}checked{% endif %}
+          />
+        </div>
 
-      <div class="field">
-        <label for="guest_list_id">Guest List</label>
-        <select name="guest_list_id" id="guest_list_id" data-type="number">
-          <option
-            value=""
-            {% if event.guest_list_id.is_none() %}selected{% endif %}
-          >
-            None (Public)
-          </option>
-          {% for list in lists %}
+        <div class="field">
+          <label for="guest_list_id">Guest List</label>
+          <select name="guest_list_id" id="guest_list_id" data-type="number">
             <option
-              value="{{ list.id }}"
-              {% if event.guest_list_id == Some(*list.id) %}selected{% endif %}
+              value=""
+              {% if event.guest_list_id.is_none() %}selected{% endif %}
             >
-              {{ list.name }} ({{ list.count }} members)
+              None (Public)
             </option>
-          {% endfor %}
-        </select>
-      </div>
+            {% for list in lists %}
+              <option
+                value="{{ list.id }}"
+                {% if event.guest_list_id == Some(*list.id) %}selected{% endif %}
+              >
+                {{ list.name }} ({{ list.count }} members)
+              </option>
+            {% endfor %}
+          </select>
+        </div>
 
-      <div class="field">
-        <label for="capacity">Capacity</label>
-        <input
-          name="capacity"
-          type="number"
-          value="{{ event.capacity }}"
-          step="1"
-        />
-      </div>
+        <div class="field">
+          <label for="capacity">Capacity</label>
+          <input
+            name="capacity"
+            type="number"
+            value="{{ event.capacity }}"
+            step="1"
+          />
+        </div>
 
-      <div class="field">
-        <label for="spots_per_person">Max spots per person</label>
-        <input
-          name="spots_per_person"
-          type="number"
-          value="{% if let Some(n) = event.spots_per_person %}{{ n }}{% endif %}"
-          step="1"
-          min="0"
-          placeholder="Unlimited"
-        />
-      </div>
+        <div class="field">
+          <label for="spots_per_person">Max spots per person</label>
+          <input
+            name="spots_per_person"
+            type="number"
+            value="{% if let Some(n) = event.spots_per_person %}{{ n }}{% endif %}"
+            step="1"
+            min="0"
+            placeholder="Unlimited"
+          />
+        </div>
 
-      <div class="field">
-        <label for="artist_share">Artist contribution share (%)</label>
-        <input
-          name="artist_share"
-          type="number"
-          value="{{ event.artist_share }}"
-          step="1"
-          min="0"
-          max="100"
-          required
-        />
-      </div>
+        <div class="field">
+          <label for="artist_share">Artist contribution share (%)</label>
+          <input
+            name="artist_share"
+            type="number"
+            value="{{ event.artist_share }}"
+            step="1"
+            min="0"
+            max="100"
+            required
+          />
+        </div>
 
-      <div id="spots">
-        <div class="header">
-          <h2>Available Spots</h2>
-          <button type="button" id="add">+</button>
+        <div id="spots">
+          <div class="header">
+            <h2>Available Spots</h2>
+            <button type="button" id="add">+</button>
+          </div>
         </div>
       </div>
 
@@ -342,7 +363,7 @@
       } else if (hasExistingFlyer) {
         ui.flyer.text.textContent = "Flyer unchanged";
         ui.flyer.filename.textContent = "";
-        ui.flyer.preview.src = `/e/{{ event.slug }}/flyer?size=md`;
+        ui.flyer.preview.src = `/events/{{ event.id }}/flyer?size=md`;
         ui.flyer.preview.classList.remove("hidden");
       } else {
         ui.flyer.text.textContent = "No flyer chosen";
@@ -356,7 +377,7 @@
     /* ---------- Form submit handler ------------------------------------------- */
     ui.form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (ui.spots().length == 0) {
+      if (!isExternal() && ui.spots().length == 0) {
         alert("Add at least one reservation!");
         return;
       }
@@ -409,10 +430,18 @@
         return;
       }
 
+      const url = value("url");
+      if (isExternal() && (!url || !url.startsWith('https://'))) {
+        alert("Url must be of the form https://...");
+        return;
+      }
+
       const body = {
         id: parseInt(`{{ event.id }}`),
+        kind: $("kind").value,
         title: value("title"),
         slug,
+        url,
         start,
         end,
         capacity: value("capacity"),
@@ -421,7 +450,7 @@
         guest_list_id: value("guest_list_id"),
         spots_per_person: value("spots_per_person") || null,
         artist_share: value("artist_share"),
-        spots: ui.spots().map((t, i) => {
+        spots: isExternal() ? [] : ui.spots().map((t, i) => {
           const kind = value("kind", t);
           const spot = {
             id: value("id", t),
@@ -456,7 +485,7 @@
           formData.append("flyer", flyer);
         }
 
-        const resp = await fetch(`/events/${slug}/edit`, {
+        const resp = await fetch(`/events/{{ event.id }}/edit`, {
           method: "POST",
           body: formData,
         });
@@ -466,7 +495,7 @@
           if (payload?.error) {
             alert(`Error: ${payload.error}`);
           } else {
-            window.location.href = `/e/${slug}`;
+            window.location.href = "/events";
           }
         } else {
           alert(`Error: ${await resp.text()}`);
@@ -484,5 +513,23 @@
     // Initial render
     ui.list.insertAdjacentHTML("beforeend", spots.map(template).join(""));
     render();
+
+    /* ---------- Kind toggle ----------------------------------------------------- */
+    const isExternal = () => $("kind").value == "external";
+
+    const setHidden = (el, hidden) => {
+      el.hidden = hidden;
+      // Disabled controls are skipped by native validation, so hidden required fields don't block submit
+      for (const input of el.querySelectorAll("input, select, textarea, button")) {
+        input.disabled = hidden;
+      }
+    };
+
+    const updateKind = () => {
+      setHidden($("internal-fields"), isExternal());
+      setHidden($("external-url"), !isExternal());
+    };
+    $("kind").addEventListener("change", updateKind);
+    updateKind();
   </script>
 {% endblock content %}

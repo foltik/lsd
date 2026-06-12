@@ -11,8 +11,10 @@ use crate::prelude::*;
 pub struct Event {
     pub id: i64,
     pub token: String,
+    pub kind: String,
     pub title: String,
     pub slug: String,
+    pub url: Option<String>,
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
     pub capacity: i64,
@@ -45,8 +47,10 @@ pub struct Event {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct UpdateEvent {
+    pub kind: String,
     pub title: String,
     pub slug: String,
+    pub url: Option<String>,
 
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
@@ -64,8 +68,10 @@ pub struct UpdateEvent {
 pub struct EventWithStats {
     pub id: i64,
     pub token: String,
+    pub kind: String,
     pub title: String,
     pub slug: String,
+    pub url: Option<String>,
     pub start: NaiveDateTime,
     pub guest_list_id: Option<i64>,
     pub capacity: i64,
@@ -73,12 +79,25 @@ pub struct EventWithStats {
     pub total_contributions: i64,
 }
 
+impl EventWithStats {
+    pub fn is_external(&self) -> bool {
+        self.kind == Event::EXTERNAL
+    }
+}
+
 impl Event {
+    pub const INTERNAL: &'static str = "internal";
+    pub const EXTERNAL: &'static str = "external";
+
+    pub fn is_external(&self) -> bool {
+        self.kind == Self::EXTERNAL
+    }
+
     pub async fn list(db: &Db) -> Result<Vec<EventWithStats>> {
         let events = sqlx::query_as!(
             EventWithStats,
             r#"SELECT
-                 e.id, e.token, e.title, e.slug, e.start, e.guest_list_id, e.capacity,
+                 e.id, e.token, e.kind, e.title, e.slug, e.url, e.start, e.guest_list_id, e.capacity,
                  CAST(
                    COALESCE(sr.session_rsvp_count, 0) + COALESCE(mr.manual_rsvp_count, 0)
                    AS INT
@@ -143,11 +162,13 @@ impl Event {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let event_id = sqlx::query!(
             r#"INSERT INTO events
-               (token, title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+               (token, kind, title, slug, url, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
             token,
+            event.kind,
             event.title,
             event.slug,
+            event.url,
             event.start,
             event.end,
             event.capacity,
@@ -174,6 +195,7 @@ impl Event {
             r#"UPDATE events
                 SET title = ?,
                     slug = ?,
+                    url = ?,
                     start = ?,
                     end = ?,
                     capacity = ?,
@@ -185,6 +207,7 @@ impl Event {
                 WHERE id = ?"#,
             event.title,
             event.slug,
+            event.url,
             event.start,
             event.end,
             event.capacity,
@@ -361,8 +384,8 @@ pub struct EventLimits {
 
 impl Event {
     /// Duplicate an event, including spots and flyer.
-    /// Returns the ID and slug of the new event.
-    pub async fn duplicate(db: &Db, event_id: i64) -> Result<(i64, String)> {
+    /// Returns the ID of the new event.
+    pub async fn duplicate(db: &Db, event_id: i64) -> Result<i64> {
         let event = Event::lookup_by_id(db, event_id)
             .await?
             .ok_or_else(|| any!("Event not found"))?;
@@ -383,19 +406,21 @@ impl Event {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let new_event_id = sqlx::query!(
             r#"INSERT INTO events
-               (token, title, slug, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share,
+               (token, kind, title, slug, url, start, end, capacity, unlisted, closed, guest_list_id, spots_per_person, artist_share,
                 description_html, description_updated_at,
                 invite_subject, invite_html, invite_updated_at,
                 confirmation_subject, confirmation_html, confirmation_updated_at,
                 dayof_subject, dayof_html, dayof_updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                        ?, ?,
                        ?, ?, ?,
                        ?, ?, ?,
                        ?, ?, ?)"#,
             token,
+            event.kind,
             new_title,
             new_slug,
+            event.url,
             event.start,
             event.end,
             event.capacity,
@@ -426,7 +451,7 @@ impl Event {
         // Duplicate flyer if exists
         EventFlyer::duplicate(db, event_id, new_event_id).await?;
 
-        Ok((new_event_id, new_slug))
+        Ok(new_event_id)
     }
 }
 

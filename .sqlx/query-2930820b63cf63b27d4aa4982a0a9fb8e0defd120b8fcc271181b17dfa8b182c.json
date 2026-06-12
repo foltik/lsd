@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE events\n                SET title = ?,\n                    slug = ?,\n                    url = ?,\n                    start = ?,\n                    end = ?,\n                    capacity = ?,\n                    unlisted = ?,\n                    closed = ?,\n                    guest_list_id = ?,\n                    spots_per_person = ?,\n                    artist_share = ?\n                WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "2930820b63cf63b27d4aa4982a0a9fb8e0defd120b8fcc271181b17dfa8b182c"
+}
