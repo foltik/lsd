@@ -1,5 +1,5 @@
 use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 
 use axum::body::Bytes;
 use axum::extract::ConnectInfo;
@@ -46,7 +46,7 @@ async fn serve_connection(incoming: quinn::Incoming, router: axum::Router) -> Re
                 let router = router.clone();
                 tokio::spawn(async move {
                     if let Err(err) = serve_request(resolver, client, router).await {
-                        tracing::debug!("h3 request: {}", err.message());
+                        tracing::info!("h3 request error: {}", err.message());
                     }
                 });
             }
@@ -90,7 +90,17 @@ impl IncomingBody {
 
 impl Drop for IncomingBody {
     fn drop(&mut self) {
-        self.stream.stop_sending(h3::error::Code::H3_NO_ERROR);
+        let mut cx = Context::from_waker(Waker::noop());
+        while !self.done {
+            match self.stream.poll_recv_data(&mut cx) {
+                Poll::Ready(Ok(Some(_))) => continue,
+                Poll::Ready(Ok(None)) | Poll::Ready(Err(_)) => return,
+                Poll::Pending => {
+                    self.stream.stop_sending(h3::error::Code::H3_NO_ERROR);
+                    return;
+                }
+            }
+        }
     }
 }
 
