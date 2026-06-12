@@ -91,7 +91,10 @@ async fn main() -> Result<()> {
                 .directory_lets_encrypt(acme.prod)
                 .state();
 
-            let acceptor = acme.axum_acceptor(acme.default_rustls_config());
+            // default_rustls_config() advertises no ALPN protocols, forcing every client onto HTTP/1.1
+            let mut rustls_config = (*acme.default_rustls_config()).clone();
+            rustls_config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+            let acceptor = acme.axum_acceptor(Arc::new(rustls_config));
 
             tokio::spawn(async move {
                 loop {
