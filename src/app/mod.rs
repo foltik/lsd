@@ -104,7 +104,14 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
 
 /// Permanently redirect requests for non-canonical hosts to AppConfig::url.
 async fn redirect_secondary_hosts(req: Request, next: Next) -> Response {
-    let host = req.uri().host();
+    // Use HOST for HTTP/1, otherwise URI authority
+    let host = req
+        .headers()
+        .get(header::HOST)
+        .and_then(|host| host.to_str().ok())
+        .or_else(|| req.uri().host());
+
+    // Strip an explicit port, e.g. localhost:4433 in dev
     let host = host.map(|host| host.split(':').next().unwrap());
 
     // * Serve hostless requests as-is
