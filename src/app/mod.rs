@@ -90,6 +90,11 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = r.layer(axum::middleware::from_fn(redirect_secondary_hosts));
     let r = crate::utils::tracing::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
+    // Advertise HTTP/3 so browsers upgrade on subsequent requests
+    let r = r.layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
+        header::ALT_SVC,
+        HeaderValue::from_str(&format!("h3=\":{}\"; ma=86400", config.net.https_addr.port())).unwrap(),
+    ));
     let r = r.layer(
         CompressionLayer::new().compress_when(
             compression::DefaultPredicate::new()
