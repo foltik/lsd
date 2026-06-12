@@ -11,7 +11,7 @@
       id="form"
       class="ext/form"
       method="POST"
-      action="/events/{{ event.slug }}/attendees/add"
+      action="/events/{{ event.id }}/attendees/add"
     >
       <div class="field">
         <label for="first_name">First name</label>
@@ -36,7 +36,7 @@
         <input type="email" name="email" autocomplete="email" required />
       </div>
       <div class="actions">
-        <a href="/events/{{ event.slug }}/attendees" class="ext/button"
+        <a href="/events/{{ event.id }}/attendees" class="ext/button"
           >&larr; Back</a
         >
         <button id="continue" class="ext/button :green" type="submit">

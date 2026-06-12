@@ -14,128 +14,138 @@
         "type_info": "Text"
       },
       {
-        "name": "title",
+        "name": "kind",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "slug",
+        "name": "title",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "start",
+        "name": "slug",
         "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "start",
+        "ordinal": 6,
         "type_info": "Datetime"
       },
       {
         "name": "end",
-        "ordinal": 5,
+        "ordinal": 7,
         "type_info": "Datetime"
       },
       {
         "name": "capacity",
-        "ordinal": 6,
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "unlisted",
-        "ordinal": 7,
+        "ordinal": 9,
         "type_info": "Bool"
       },
       {
         "name": "closed",
-        "ordinal": 8,
+        "ordinal": 10,
         "type_info": "Bool"
       },
       {
         "name": "guest_list_id",
-        "ordinal": 9,
-        "type_info": "Integer"
-      },
-      {
-        "name": "spots_per_person",
-        "ordinal": 10,
-        "type_info": "Integer"
-      },
-      {
-        "name": "artist_share",
         "ordinal": 11,
         "type_info": "Integer"
       },
       {
-        "name": "description_html",
+        "name": "spots_per_person",
         "ordinal": 12,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "description_updated_at",
+        "name": "artist_share",
         "ordinal": 13,
-        "type_info": "Datetime"
+        "type_info": "Integer"
       },
       {
-        "name": "invite_subject",
+        "name": "description_html",
         "ordinal": 14,
         "type_info": "Text"
       },
       {
-        "name": "invite_html",
+        "name": "description_updated_at",
         "ordinal": 15,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "invite_subject",
+        "ordinal": 16,
+        "type_info": "Text"
+      },
+      {
+        "name": "invite_html",
+        "ordinal": 17,
         "type_info": "Text"
       },
       {
         "name": "invite_updated_at",
-        "ordinal": 16,
+        "ordinal": 18,
         "type_info": "Datetime"
       },
       {
         "name": "invite_sent_at",
-        "ordinal": 17,
+        "ordinal": 19,
         "type_info": "Datetime"
       },
       {
         "name": "confirmation_subject",
-        "ordinal": 18,
+        "ordinal": 20,
         "type_info": "Text"
       },
       {
         "name": "confirmation_html",
-        "ordinal": 19,
-        "type_info": "Text"
-      },
-      {
-        "name": "confirmation_updated_at",
-        "ordinal": 20,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "dayof_subject",
         "ordinal": 21,
         "type_info": "Text"
       },
       {
-        "name": "dayof_html",
+        "name": "confirmation_updated_at",
         "ordinal": 22,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "dayof_subject",
+        "ordinal": 23,
+        "type_info": "Text"
+      },
+      {
+        "name": "dayof_html",
+        "ordinal": 24,
         "type_info": "Text"
       },
       {
         "name": "dayof_updated_at",
-        "ordinal": 23,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "dayof_sent_at",
-        "ordinal": 24,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "created_at",
         "ordinal": 25,
         "type_info": "Datetime"
       },
       {
-        "name": "updated_at",
+        "name": "dayof_sent_at",
         "ordinal": 26,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 27,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 28,
         "type_info": "Datetime"
       }
     ],
@@ -147,6 +157,8 @@
       false,
       false,
       false,
+      false,
+      true,
       false,
       true,
       false,

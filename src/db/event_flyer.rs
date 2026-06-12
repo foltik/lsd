@@ -5,14 +5,6 @@ use sqlx::Row;
 
 use crate::prelude::*;
 
-#[derive(Debug, Clone, Copy)]
-pub enum EventFlyerSize {
-    Small,
-    Medium,
-    Large,
-    Full,
-}
-
 pub struct EventFlyer {
     pub width: i64,
     pub height: i64,
@@ -76,18 +68,30 @@ impl EventFlyer {
         }))
     }
 
-    pub async fn serve(db: &Db, event_id: i64, size: EventFlyerSize) -> Result<Option<Vec<u8>>> {
-        let column = match size {
-            EventFlyerSize::Small => "image_sm",
-            EventFlyerSize::Medium => "image_md",
-            EventFlyerSize::Large => "image_lg",
-            EventFlyerSize::Full => "image_full",
+    pub async fn serve(db: &Db, event_id: i64, size: Option<&String>) -> HtmlResult {
+        let column = match size.map(|s| s.as_str()) {
+            Some("sm") => "image_sm",
+            Some("md") => "image_md",
+            Some("lg") => "image_lg",
+            Some(_) => bail_invalid!(),
+            None => "image_full",
         };
 
         let query = format!("SELECT {column} FROM event_flyers WHERE event_id = ?");
-        let flyer = sqlx::query(&query).bind(event_id).fetch_optional(db).await?;
+        let Some(row) = sqlx::query(&query).bind(event_id).fetch_optional(db).await? else {
+            bail_not_found!();
+        };
 
-        Ok(flyer.and_then(|row| row.try_get::<Vec<u8>, _>(0).ok()))
+        let bytes = row.try_get::<Vec<u8>, _>(0)?;
+        Ok((
+            [
+                (header::CONTENT_TYPE, EventFlyer::CONTENT_TYPE),
+                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+                (HeaderName::from_static("priority"), "u=1"), // urgency below main.css (u=0) and above default (u=3)
+            ],
+            bytes,
+        )
+            .into_response())
     }
 
     pub async fn exists_for_event(db: &Db, event_id: i64) -> Result<bool> {

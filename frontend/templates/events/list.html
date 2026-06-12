@@ -11,14 +11,20 @@
     {% for event in events %}
       <div class="event">
         <h2 class="title">
-          <a href="/e/{{ event.slug }}">{{ event.title }}</a>
+          {% if event.is_external() %}
+            <a href="{{ event.url.as_ref().unwrap() }}">{{ event.title }}</a>
+          {% else %}
+            <a href="/e/{{ event.slug }}">{{ event.title }}</a>
+          {% endif %}
         </h2>
         <time datetime="{{ event.start.date() }}">
           {{ event.start | format_datetime("%a %b %d, %Y") }}
         </time>
-      <span class="stats">{{ event.rsvp_count }}/{{ event.capacity }} RSVPed • ${{ event.total_contributions }} in contributions</span>
+        {% if !event.is_external() %}
+        <span class="stats">{{ event.rsvp_count }}/{{ event.capacity }} RSVPed • ${{ event.total_contributions }} in contributions</span>
+        {% endif %}
         <div class="actions">
-          <a class="ext/button :icon" href="/events/{{ event.slug }}/edit">
+          <a class="ext/button :icon" href="/events/{{ event.id }}/edit">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -32,6 +38,7 @@
             </svg>
             <span>Edit</span>
           </a>
+          {% if !event.is_external() %}
           <a
             class="ext/button :icon"
             href="/events/{{ event.id }}/description/edit"
@@ -99,7 +106,7 @@
             </svg>
             <span>Day-of</span>
           </a>
-          <a class="ext/button :icon" href="/events/{{ event.slug }}/attendees">
+          <a class="ext/button :icon" href="/events/{{ event.id }}/attendees">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -133,7 +140,7 @@
             <span>Stats</span>
           </a>
           <form
-            action="/events/{{ event.slug }}/duplicate"
+            action="/events/{{ event.id }}/duplicate"
             method="post"
             class="inline"
             onsubmit="return confirm('Duplicate this event?')"
@@ -142,8 +149,9 @@
               <span>Duplicate</span>
             </button>
           </form>
+          {% endif %}
           <form
-            action="/events/{{ event.slug }}/delete"
+            action="/events/{{ event.id }}/delete"
             method="post"
             class="inline"
             onsubmit="return confirm('Permanently delete this event? This action cannot be undone.{% if event.rsvp_count > 0 %}\n\nWARNING: This event has {{ event.rsvp_count }} confirmed RSVP{% if event.rsvp_count != 1 %}s{% endif %} which will be permanently lost.{% endif %}')"

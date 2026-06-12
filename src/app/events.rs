@@ -12,7 +12,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
-                .route("/e/{slug}/flyer", get(read::flyer))
+                .route("/e/{slug}/flyer", get(read::flyer_by_slug))
                 .route("/e/{slug}/stats", get(read::stats_page))
                 .route("/e/{slug}/rsvp", get(rsvp::rsvp_form))
                 .route("/e/{slug}/rsvp/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
@@ -28,14 +28,15 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/sessions", get(read::sessions_page))
                 .route("/events/sessions/{id}", delete(read::delete_session))
                 .route("/events/new", get(edit::new_page))
-                .route("/events/{slug}/edit", get(edit::edit_page).post(edit::edit_form))
-                .route("/events/{slug}/delete", post(edit::delete_form))
-                .route("/events/{slug}/duplicate", post(edit::duplicate_form))
-                .route("/events/{slug}/attendees", get(edit::attendees_page))
-                .route("/events/{slug}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
-                .route("/events/{slug}/attendees/{user_id}", delete(edit::delete_attendee))
-                .route("/events/{slug}/attendees/{user_id}/refund", post(edit::refund_attendee))
-                .route("/events/{slug}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
+                .route("/events/{id}/edit", get(edit::edit_page).post(edit::edit_form))
+                .route("/events/{id}/delete", post(edit::delete_form))
+                .route("/events/{id}/duplicate", post(edit::duplicate_form))
+                .route("/events/{id}/flyer", get(read::flyer_by_id))
+                .route("/events/{id}/attendees", get(edit::attendees_page))
+                .route("/events/{id}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
+                .route("/events/{id}/attendees/{user_id}", delete(edit::delete_attendee))
+                .route("/events/{id}/attendees/{user_id}/refund", post(edit::refund_attendee))
+                .route("/events/{id}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
                 .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
                 .route("/events/{id}/invite/preview", get(edit::preview_invite_page))
                 .route("/events/{id}/invite/send", get(edit::send_invite_page).post(edit::send_invite_form))
@@ -85,31 +86,18 @@ mod read {
     }
 
     /// Serve an event flyer.
-    pub async fn flyer(
+    pub async fn flyer_by_id(
+        State(state): State<SharedAppState>, Path(id): Path<i64>,
+        Query(params): Query<std::collections::HashMap<String, String>>,
+    ) -> HtmlResult {
+        EventFlyer::serve(&state.db, id, params.get("size")).await
+    }
+    pub async fn flyer_by_slug(
         State(state): State<SharedAppState>, Path(slug): Path<String>,
         Query(params): Query<std::collections::HashMap<String, String>>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-
-        let size = match params.get("size").map(|s| s.as_str()) {
-            Some("sm") => EventFlyerSize::Small,
-            Some("md") => EventFlyerSize::Medium,
-            Some("lg") => EventFlyerSize::Large,
-            Some(_) => bail_invalid!(),
-            None => EventFlyerSize::Full,
-        };
-
-        let bytes = EventFlyer::serve(&state.db, event.id, size).await?.ok_or_else(not_found)?;
-
-        Ok((
-            [
-                (header::CONTENT_TYPE, EventFlyer::CONTENT_TYPE),
-                (header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
-                (HeaderName::from_static("priority"), "u=1"), // urgency below main.css (u=0) and above default (u=3)
-            ],
-            bytes,
-        )
-            .into_response())
+        EventFlyer::serve(&state.db, event.id, params.get("size")).await
     }
 
     #[derive(serde::Deserialize)]
@@ -234,8 +222,10 @@ mod edit {
             event: Event {
                 id: 0,
                 token: "".into(),
+                kind: Event::INTERNAL.into(),
                 title: "".into(),
                 slug: "".into(),
+                url: None,
                 start: Utc::now().naive_utc(),
                 end: None,
                 capacity: 0,
@@ -275,9 +265,9 @@ mod edit {
 
     /// Display the form to edit an event.
     pub async fn edit_page(
-        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
     ) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let rsvp_counts = Spot::rsvp_counts_for_event(&state.db, event.id).await?;
         let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
@@ -314,13 +304,40 @@ mod edit {
             }
         }
 
-        let form = form.ok_or_else(invalid)?;
+        let mut form = form.ok_or_else(invalid)?;
+
+        // Kind is chosen at creation and immutable afterwards; ignore the submitted kind on update.
+        if form.id != 0 {
+            let event = Event::lookup_by_id(&state.db, form.id).await?.ok_or_else(not_found)?;
+            form.event.kind = event.kind;
+        }
 
         // Validate slug: must be non-empty and only contain alphanumeric characters and dashes
         if form.event.slug.is_empty()
             || !form.event.slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
         {
             bail!("Slug can only contain letters, numbers, and dashes.");
+        }
+
+        match form.event.kind.as_str() {
+            Event::INTERNAL => {
+                // Internal events have no url.
+                form.event.url = None;
+            }
+            Event::EXTERNAL => {
+                // External events are links elsewhere: a url and no RSVP machinery.
+                if url::Url::parse(form.event.url.as_deref().unwrap_or("")).is_err() {
+                    bail!("Invalid url.");
+                }
+                form.event.capacity = 0;
+                form.event.unlisted = false;
+                form.event.closed = false;
+                form.event.guest_list_id = None;
+                form.event.spots_per_person = None;
+                form.event.artist_share = 0;
+                form.spots = vec![];
+            }
+            _ => bail_invalid!(),
         }
 
         match form.id {
@@ -914,9 +931,9 @@ mod edit {
 
     /// View an event.
     pub async fn attendees_page(
-        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
     ) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
         let rsvps = Rsvp::list_for_admin_attendees(&state.db, event.id).await?;
 
         #[derive(Template, WebTemplate)]
@@ -935,22 +952,22 @@ mod edit {
     }
 
     /// Handle delete submission.
-    pub async fn delete_form(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+    pub async fn delete_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
         Event::delete(&state.db, event.id).await?;
         Ok(Redirect::to("/events").into_response())
     }
 
     /// Handle duplicate submission.
-    pub async fn duplicate_form(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        let (_, new_slug) = Event::duplicate(&state.db, event.id).await?;
-        Ok(Redirect::to(&format!("/events/{new_slug}/edit")).into_response())
+    pub async fn duplicate_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
+        let new_id = Event::duplicate(&state.db, event.id).await?;
+        Ok(Redirect::to(&format!("/events/{new_id}/edit")).into_response())
     }
 
     #[derive(serde::Deserialize)]
     pub struct AttendeePath {
-        slug: String,
+        id: i64,
         user_id: i64,
     }
 
@@ -964,7 +981,7 @@ mod edit {
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
         Query(query): Query<CheckinQuery>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
         if query.manual {
             ManualRsvp::set_checkin_at(&state.db, event.id, path.user_id).await?;
         } else {
@@ -977,7 +994,7 @@ mod edit {
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
         Query(query): Query<CheckinQuery>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
         if query.manual {
             ManualRsvp::clear_checkin_at(&state.db, event.id, path.user_id).await?;
         } else {
@@ -990,7 +1007,7 @@ mod edit {
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
         Query(query): Query<CheckinQuery>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
         if query.manual {
             ManualRsvp::delete(&state.db, event.id, path.user_id).await?;
         } else {
@@ -1002,7 +1019,7 @@ mod edit {
     pub async fn refund_attendee(
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_slug(&state.db, &path.slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
         let sessions = RsvpSession::list_for_user(&state.db, path.user_id, event.id).await?;
         if sessions.is_empty() {
             bail_not_found!();
@@ -1023,9 +1040,9 @@ mod edit {
 
     /// Display the form to add a manual attendee.
     pub async fn add_attendee_page(
-        user: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
     ) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/attendees_add.html")]
@@ -1045,10 +1062,10 @@ mod edit {
 
     /// Handle add attendee form submission.
     pub async fn add_attendee_form(
-        admin: User, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        admin: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
         Form(form): Form<AddAttendeeForm>,
     ) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
 
         let user = User::update_or_create(
             &state.db,
@@ -1065,13 +1082,13 @@ mod edit {
         if ManualRsvp::exists(&state.db, event.id, user.id).await?
             || Rsvp::exists_for_event(&state.db, event.id, user.id).await?
         {
-            return Ok(Redirect::to(&format!("/events/{slug}/attendees")).into_response());
+            return Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response());
         }
 
         // Create manual RSVP
         ManualRsvp::create(&state.db, event.id, user.id, admin.id).await?;
 
-        Ok(Redirect::to(&format!("/events/{slug}/attendees")).into_response())
+        Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response())
     }
 }
 
