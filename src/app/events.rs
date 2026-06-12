@@ -1228,7 +1228,7 @@ mod rsvp {
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
         }
         let stats = Spot::stats(&spots, &all_rsvps);
 
@@ -1285,7 +1285,7 @@ mod rsvp {
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
         }
         if !validate::within_limits(&limits, &our_rsvps) {
             return goto::error_spot_taken(&state.db, &state.stripe, &session).await;
@@ -1333,6 +1333,11 @@ mod rsvp {
     pub async fn attendees_page(
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
+        // CONTRIBUTION may arrive by navigating backwards
+        if session.status != RsvpSession::ATTENDEES && session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
         let user = session.user(&state.db).await?;
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
@@ -1355,6 +1360,11 @@ mod rsvp {
         mut our_session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
         Form(form): Form<AttendeesForm>,
     ) -> HtmlResult {
+        // CONTRIBUTION may arrive by navigating backwards
+        if our_session.status != RsvpSession::ATTENDEES && our_session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(our_session)).await;
@@ -1418,7 +1428,7 @@ mod rsvp {
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &Some(our_session)).await;
         }
         if !validate::within_limits(&limits, &our_rsvps) {
             return goto::error_spot_taken(&state.db, &state.stripe, &our_session).await;
@@ -1451,14 +1461,16 @@ mod rsvp {
     pub async fn contribution_page(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
+        if session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
-        // A user is guaranteed to exist, since either:
-        // * There already was one in rsvp_form() and we redirected straight here (TODO, we don't redirect yet)
-        // * We've collected their info and just linked one in attendees_form()
+        // A user is guaranteed to exist: attendees_form() links one before setting CONTRIBUTION status
         let user = User::lookup_by_id(&state.db, session.user_id.unwrap()).await?.unwrap();
         let rsvps = Rsvp::list_for_contributions(&state.db, session.id).await?;
 
@@ -1505,6 +1517,10 @@ mod rsvp {
     pub async fn contribution_form(
         State(state): State<SharedAppState>, session: RsvpSession, Path(slug): Path<String>,
     ) -> HtmlResult {
+        if session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !validate::registration_open(&event) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
@@ -1997,7 +2013,6 @@ mod rsvp {
         pub fn manage_page(session: &RsvpSession, event: &Event) -> HtmlResult {
             Ok(Redirect::to(&format!("/e/{}/rsvp/manage?reservation={}", &event.slug, &session.token)).into_response())
         }
-
         pub fn error_not_on_guestlist() -> HtmlResult {
             let error = ErrorHtml { user: None, message: "Sorry, you're not on the list.".into() };
             Ok(error.into_response())
