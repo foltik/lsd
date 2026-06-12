@@ -46,7 +46,7 @@ async fn serve_connection(incoming: quinn::Incoming, router: axum::Router) -> Re
                 let router = router.clone();
                 tokio::spawn(async move {
                     if let Err(err) = serve_request(resolver, client, router).await {
-                        tracing::info!("h3 request error: {}", err.message());
+                        tracing::debug!("h3 request: {}", err.message());
                     }
                 });
             }
