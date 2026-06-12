@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
     match config.acme {
         // If ACME is configured, request a TLS certificate from Let's Encrypt
         Some(acme) => {
-            let mut acme = rustls_acme::AcmeConfig::new([&acme.domain])
+            let mut acme = rustls_acme::AcmeConfig::new(&acme.domains)
                 .contact_push(format!("mailto:{}", &acme.email))
                 .cache(rustls_acme::caches::DirCache::new(acme.dir.clone()))
                 .directory_lets_encrypt(acme.prod)

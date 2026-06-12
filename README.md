@@ -53,7 +53,7 @@ mailtutan
 ## Workflow
 
 - Make commits in a separate branch, and open a PR against `main`
-- When new commits land in `main`, a github action will automatically deploy the app to https://beta.lightandsound.design
+- When new commits land in `main`, a github action will automatically deploy the app to https://lightandsound.design
 
 
 # Special thanks

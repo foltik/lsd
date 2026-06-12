@@ -1,6 +1,6 @@
 [app]
-domain = "beta.lightandsound.design"
-url = "https://beta.lightandsound.design"
+domain = "lightandsound.design"
+url = "https://lightandsound.design"
 tz = "America/New_York"
 session_expiry_days = 30
 
@@ -12,7 +12,7 @@ http_addr = "[::]:80"
 https_addr = "[::]:443"
 
 [acme]
-domain = "beta.lightandsound.design"
+domains = ["lightandsound.design", "beta.lightandsound.design"]
 email = "$EMAIL_FROM"
 dir = "acme"
 prod = true

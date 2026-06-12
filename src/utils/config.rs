@@ -74,8 +74,8 @@ pub struct NetConfig {
 /// LetsEncrypt ACME TLS certificate configuration.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct AcmeConfig {
-    /// Domain to request a cert for.
-    pub domain: String,
+    /// Domains to request a cert for.
+    pub domains: Vec<String>,
     /// Contact email.
     pub email: String,
     /// Directory to store certs and credentials in.
