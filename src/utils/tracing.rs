@@ -24,7 +24,8 @@ impl<B> MakeSpan<B> for LoggingMakeSpan {
     fn make_span(&mut self, request: &Request<B>) -> Span {
         let method = request.method();
         let path = request.uri().path();
-        tracing::info!("{method} {path:?}");
+        let version = request.version();
+        tracing::info!("{method} {path:?} {version:?}");
         tracing::span!(tracing::Level::DEBUG, "request", %method, %path)
     }
 }
