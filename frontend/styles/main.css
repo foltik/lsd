@@ -57,7 +57,7 @@
 
 :root,
 main {
-  @apply bg-lsd-black text-lsd-white flex w-full flex-col font-sans;
+  @apply bg-lsd-black text-lsd-white flex w-full flex-col font-sans wrap-anywhere;
 }
 
 main {
