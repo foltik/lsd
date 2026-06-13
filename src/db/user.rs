@@ -317,6 +317,38 @@ impl User {
         Ok(rows.into_iter().map(|r| map_row!(r)).collect())
     }
 
+    /// Delete orphaned users, typically from expired anonymous RSVP sessions.
+    pub async fn delete_orphaned(db: &Db) -> Result<()> {
+        let deleted = sqlx::query!(
+            r#"
+            DELETE FROM users
+            WHERE NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM rsvps r WHERE r.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM rsvp_sessions rs WHERE rs.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM manual_rsvps m WHERE m.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM list_members lm WHERE lm.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM emails e WHERE e.user_id = users.id)
+            RETURNING email
+            "#
+        )
+        .fetch_all(db)
+        .await?;
+
+        sqlx::query!("DELETE FROM user_history WHERE user_id NOT IN (SELECT id FROM users)")
+            .execute(db)
+            .await?;
+        sqlx::query!("DELETE FROM user_attrs WHERE user_id NOT IN (SELECT id FROM users)")
+            .execute(db)
+            .await?;
+
+        for row in &deleted {
+            tracing::info!("Deleted orphaned user: {}", row.email);
+        }
+
+        Ok(())
+    }
+
     pub fn has_role(&self, role: &str) -> bool {
         self.roles.iter().any(|r| r == role)
     }
