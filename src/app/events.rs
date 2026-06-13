@@ -1453,7 +1453,8 @@ mod rsvp {
 
         // Create and store primary user on RsvpSession and Rsvp
         if let Some(primary_attendee) = &primary_attendee {
-            let primary_user = User::update_or_create(&state.db, &primary_attendee.user).await?;
+            let primary_user =
+                User::upsert_for_rsvp(&state.db, &primary_attendee.user, our_session.created_at).await?;
             if our_session.user_id.is_none() {
                 // For an anonymous user, tie the RsvpSession to the "Is me" primary attendee.
                 our_session.set_user(&state.db, &primary_user).await?;
@@ -1466,7 +1467,7 @@ mod rsvp {
 
         // Create and store users on guest Rsvps
         for ParsedAttendee { rsvp_id, user } in guest_attendees {
-            let user = User::update_or_create(&state.db, &user).await?;
+            let user = User::upsert_for_rsvp(&state.db, &user, our_session.created_at).await?;
             Rsvp::set_user(&state.db, rsvp_id, &user).await?;
         }
 
@@ -1961,7 +1962,7 @@ mod rsvp {
 
         // Update guests
         for ParsedAttendee { rsvp_id, user } in guest_attendees {
-            let user = User::update_or_create(&state.db, &user).await?;
+            let user = User::upsert_for_rsvp(&state.db, &user, session.created_at).await?;
             Rsvp::set_user(&state.db, rsvp_id, &user).await?;
         }
 
