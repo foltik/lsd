@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM users\n            WHERE NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = users.id)\n              AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.user_id = users.id)\n              AND NOT EXISTS (SELECT 1 FROM rsvps r WHERE r.user_id = users.id)\n              AND NOT EXISTS (SELECT 1 FROM rsvp_sessions rs WHERE rs.user_id = users.id)\n              AND NOT EXISTS (SELECT 1 FROM manual_rsvps m WHERE m.user_id = users.id)\n              AND NOT EXISTS (SELECT 1 FROM list_members lm WHERE lm.user_id = users.id)\n              AND NOT EXISTS (SELECT 1 FROM emails e WHERE e.user_id = users.id)\n            RETURNING email\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "email",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1b558254c047b7671ddf28f66597c1b8d98b495e0e5897f31e10cd37078994cb"
+}

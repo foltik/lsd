@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM user_history WHERE user_id NOT IN (SELECT id FROM users)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "b535fa1e46b8736b1545854734b3837cd38e06dfbd42d4bc8ae8ca15c40bef8d"
+}
