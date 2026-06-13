@@ -147,8 +147,6 @@ async fn signup_page(
 }
 
 /// Process the list signup form.
-//
-// XXX: We really should rate limit this.
 async fn signup_form(
     user: Option<User>, State(state): State<SharedAppState>, Form(form): Form<NewsletterForm>,
 ) -> HtmlResult {
@@ -162,20 +160,12 @@ async fn signup_form(
         bail_not_found!();
     };
 
-    if List::has_email(&state.db, form.list_id, form.email.email.as_ref()).await? {
-        return Ok(ErrorHtml {
-            user,
-            title: "Error.".into(),
-            message: "You're already on the list!".into(),
-            context: None,
-            backtrace: None,
-            contact_email: None,
-        }
-        .into_response());
-    } else {
+    // No-op if email is already on the list
+    if !List::has_email(&state.db, form.list_id, form.email.email.as_ref()).await? {
         List::add_members(&state.db, list.id, &[form.email.email.as_ref()]).await?;
     }
 
+    // Always render the same response, to avoid leaking whether emails were on the list.
     #[derive(Template, WebTemplate)]
     #[template(path = "lists/confirmation.html")]
     struct SuccessHtml {
