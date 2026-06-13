@@ -78,48 +78,50 @@ struct LoginEmailSentHtml {
 /// Process a login form and send either a login or registration link via email.
 async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginForm>) -> HtmlResult {
     let email = form.email.email.to_string();
-    let Some(user) = User::lookup_by_email(&state.db, &email).await? else {
-        bail_unauthorized!();
-    };
 
-    let email_id = Email::create_login(&state.db, &user).await?;
+    // Only registered users get a link
+    if let Some(user) = User::lookup_by_email(&state.db, &email).await? {
+        let email_id = Email::create_login(&state.db, &user).await?;
 
-    // Delete any existing tokens and re-create
-    LoginToken::delete_by_user(&state.db, &user).await?;
-    let login_token = LoginToken::create(&state.db, &user).await?;
+        // Delete any existing tokens and re-create
+        LoginToken::delete_by_user(&state.db, &user).await?;
+        let login_token = LoginToken::create(&state.db, &user).await?;
 
-    let base_url = &state.config.app.url;
-    let login_url = match form.redirect {
-        Some(redirect) => format!("{base_url}/login?token={login_token}&redirect={redirect}"),
-        None => format!("{base_url}/login?token={login_token}"),
-    };
-    let domain = &state.config.app.domain;
+        let base_url = &state.config.app.url;
+        let login_url = match form.redirect {
+            Some(redirect) => format!("{base_url}/login?token={login_token}&redirect={redirect}"),
+            None => format!("{base_url}/login?token={login_token}"),
+        };
+        let domain = state.config.app.domain.clone();
 
-    #[derive(Template)]
-    #[template(path = "emails/login.html")]
-    struct LoginEmailHtml {
-        email_id: i64,
-        login_url: String,
-    };
-
-    let msg = state
-        .mailer
-        .builder()
-        .header(ContentType::TEXT_HTML)
-        .to(form.email)
-        .subject(format!("Login to {domain}"))
-        .body(LoginEmailHtml { email_id, login_url }.render()?)?;
-
-    match state.mailer.send(&msg).await {
-        Ok(_) => {
-            Email::mark_sent(&state.db, email_id).await?;
-            Ok(LoginEmailSentHtml { user: None, email }.into_response())
+        #[derive(Template)]
+        #[template(path = "emails/login.html")]
+        struct LoginEmailHtml {
+            email_id: i64,
+            login_url: String,
+            domain: String,
         }
-        Err(e) => {
-            Email::mark_error(&state.db, email_id, e.message()).await?;
-            Err(e.into())
+
+        let msg = state
+            .mailer
+            .builder()
+            .header(ContentType::TEXT_HTML)
+            .to(form.email)
+            .subject(format!("Login to {domain}"))
+            .body(LoginEmailHtml { email_id, login_url, domain }.render()?)?;
+
+        match state.mailer.send(&msg).await {
+            Ok(_) => Email::mark_sent(&state.db, email_id).await?,
+            Err(e) => {
+                Email::mark_error(&state.db, email_id, e.message()).await?;
+                return Err(e.into());
+            }
         }
     }
+
+    // Always render the same response, to avoid leaking whether users exist.
+    // We *could* revisit this for better UX if it becomes a recurring problem.
+    Ok(LoginEmailSentHtml { user: None, email }.into_response())
 }
 #[derive(serde::Deserialize)]
 struct LoginForm {
