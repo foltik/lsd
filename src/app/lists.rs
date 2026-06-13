@@ -96,6 +96,7 @@ async fn edit_list_form(
                     message: format!("Could not find a valid email address in line: '{line}'"),
                     context: None,
                     backtrace: None,
+                    contact_email: None,
                 }
                 .into_response());
             }
@@ -168,6 +169,7 @@ async fn signup_form(
             message: "You're already on the list!".into(),
             context: None,
             backtrace: None,
+            contact_email: None,
         }
         .into_response());
     } else {

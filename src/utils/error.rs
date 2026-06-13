@@ -160,6 +160,7 @@ pub struct ErrorHtml {
     pub message: String,
     pub context: Option<String>,
     pub backtrace: Option<String>,
+    pub contact_email: Option<String>,
 }
 
 impl IntoResponse for HtmlError {
@@ -193,18 +194,18 @@ impl IntoResponse for HtmlError {
                 message: e.message().into(),
                 context,
                 backtrace,
+                contact_email: None,
             }),
             HtmlError::Any(_) => (StatusCode::INTERNAL_SERVER_ERROR, {
-                let contact_to = config().email.contact_to.as_ref();
                 let from = &config().email.from;
-                let email = contact_to.unwrap_or(from).to_string();
-                let mailto = format!(r#"<a href="mailto:{email}">{email}</a>"#);
+                let contact = config().email.contact_to.as_ref().unwrap_or(from);
                 ErrorHtml {
                     user: None,
-                    title: "We encountered an unexpected error".into(),
-                    message: format!("The team has been alerted that there is an issue. If you need assistance, please contact {mailto}."),
+                    title: "Unexpected error".into(),
+                    message: "Whoops, you found a bug. An alert has been sent to the developers.".into(),
                     context,
                     backtrace,
+                    contact_email: Some(contact.email.to_string()),
                 }
             })
         };
