@@ -4,7 +4,10 @@
 {% block content %}
   <section id="error" class="ext/layout thin">
     <h1>{{ title }}</h1>
-    <p>{{ message | safe }}</p>
+    <p>{{ message }}</p>
+    {% if let Some(contact) = contact_email %}
+      <p>If you need assistance, please contact <a href="mailto:{{ contact }}">{{ contact }}</a>.</p>
+    {% endif %}
   </section>
   {% if context.is_some() || backtrace.is_some() %}
     <section id="error-extra">
