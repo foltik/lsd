@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM user_attrs WHERE user_id NOT IN (SELECT id FROM users)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "4aca9b185f654d6d5538187493aaf3a3dba2f790e91b2a42788eb2f261b8e778"
+}

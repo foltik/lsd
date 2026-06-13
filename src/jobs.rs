@@ -4,6 +4,7 @@ use tokio_schedule::{Job, every};
 
 use crate::Config;
 use crate::db::rsvp_session::RsvpSession;
+use crate::db::user::User;
 use crate::utils::types::SharedAppState;
 
 pub async fn init(state: SharedAppState, config: Config) {
@@ -21,4 +22,5 @@ pub async fn init(state: SharedAppState, config: Config) {
 }
 async fn expire_rsvp_sessions(state: SharedAppState) {
     let _ = RsvpSession::delete_expired(&state.db).await;
+    let _ = User::delete_orphaned(&state.db).await;
 }
