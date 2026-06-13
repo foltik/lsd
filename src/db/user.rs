@@ -96,6 +96,35 @@ impl User {
         })
     }
 
+    /// Upsert a user encountered during an RSVP.
+    pub async fn upsert_for_rsvp(
+        db: &Db, info: &CreateUser, session_created_at: NaiveDateTime,
+    ) -> Result<User> {
+        // Always allow creating new users
+        let Some(existing) = Self::lookup_by_email(db, &info.email).await? else {
+            return Self::create(db, info).await;
+        };
+
+        // Only overwrite already-populated fields when the user was created in this session
+        let allow_overwrite = existing.created_at >= session_created_at;
+        let maybe_overwrite = |old: &Option<String>, new: &Option<String>| match old {
+            Some(_) if !allow_overwrite => old.clone(),
+            _ => new.clone(),
+        };
+
+        existing
+            .update(
+                db,
+                &UpdateUser {
+                    email: info.email.clone(),
+                    first_name: maybe_overwrite(&existing.first_name, &info.first_name),
+                    last_name: maybe_overwrite(&existing.last_name, &info.last_name),
+                    phone: maybe_overwrite(&existing.phone, &info.phone),
+                },
+            )
+            .await
+    }
+
     /// Create a new user.
     pub async fn create(db: &Db, user: &CreateUser) -> Result<User> {
         let row = sqlx::query!(
