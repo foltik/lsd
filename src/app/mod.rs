@@ -91,6 +91,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = events::add_middleware(r, Arc::clone(&state));
     let r = r.layer(axum::middleware::from_fn(redirect_secondary_hosts));
     let r = crate::utils::tracing::add_middleware(r);
+    let r = crate::utils::ratelimit::add_middleware(r);
     let r = r.layer(DefaultBodyLimit::max(16 * 1024 * 1024)); // 16MB limit
     // Advertise HTTP/3 so browsers upgrade on subsequent requests
     let r = r.layer(tower_http::set_header::SetResponseHeaderLayer::overriding(
