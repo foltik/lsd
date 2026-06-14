@@ -5,14 +5,14 @@ use crate::prelude::*;
 #[rustfmt::skip]
 pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| {
-        r.route("/emails/{id}/footer.gif", get(email_opened))
-         .route("/emails/{id}/unsubscribe", get(email_unsubscribe_view).post(email_unsubscribe_form))
+        r.route("/emails/{token}/footer.gif", get(email_opened))
+         .route("/emails/{token}/unsubscribe", get(email_unsubscribe_view).post(email_unsubscribe_form))
     })
 }
 
-async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppState>) -> HtmlResult {
+async fn email_opened(Path(token): Path<String>, State(state): State<SharedAppState>) -> HtmlResult {
     // Mark opened IF it exists. Not found is not an error, we still return the pixel.
-    Email::mark_opened(&state.db, email_id).await?;
+    Email::mark_opened_by_token(&state.db, &token).await?;
 
     let pixel = Response::builder()
         .status(StatusCode::OK)
@@ -23,10 +23,10 @@ async fn email_opened(Path(email_id): Path<i64>, State(state): State<SharedAppSt
 }
 
 async fn email_unsubscribe_view(
-    user: Option<User>, Path(email_id): Path<i64>, State(state): State<SharedAppState>,
+    user: Option<User>, Path(token): Path<String>, State(state): State<SharedAppState>,
 ) -> HtmlResult {
     // TODO: Better error handling rather than silently eating
-    if let Some(email) = Email::lookup(&state.db, email_id).await? {
+    if let Some(email) = Email::lookup_by_token(&state.db, &token).await? {
         let list_id = email.list_id.ok_or_else(invalid)?;
         let list = List::lookup_by_id(&state.db, list_id).await?.ok_or_else(invalid)?;
 
@@ -35,11 +35,10 @@ async fn email_unsubscribe_view(
         struct UnsubscribeHtml {
             user: Option<User>,
             list: List,
-            email_id: i64,
+            email_token: String,
         }
-        Ok(UnsubscribeHtml { user, list, email_id }.into_response())
+        Ok(UnsubscribeHtml { user, list, email_token: email.token }.into_response())
     } else {
-        // XXX: Use a unique unsubscribe id instead of sequential email ids.
         // TODO: Record unsubscription, rather than assuming no match means you already unsubscribed.
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/already_unsubscribed.html")]
@@ -51,10 +50,10 @@ async fn email_unsubscribe_view(
 }
 
 async fn email_unsubscribe_form(
-    Path(email_id): Path<i64>, State(state): State<SharedAppState>,
+    Path(token): Path<String>, State(state): State<SharedAppState>,
 ) -> HtmlResult {
     // TODO: Better error handling rather than silently eating
-    if let Some(email) = Email::lookup(&state.db, email_id).await?
+    if let Some(email) = Email::lookup_by_token(&state.db, &token).await?
         && let Some(list_id) = email.list_id
     {
         List::remove_member(&state.db, list_id, email.user_id).await?;
