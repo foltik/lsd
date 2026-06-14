@@ -12,11 +12,7 @@
       type="text"
       id="subject"
       name="subject"
-      value="{% if let Some(subject) = event.invite_subject.as_deref() %}
-        {{ subject }}
-      {% else %}
-        Invitation to {{ event.title }}
-      {% endif %}"
+      value="{% if let Some(subject) = event.invite_subject.as_deref() %}{{ subject }}{% else %}Invitation to {{ event.title }}{% endif %}"
       required
     />
   </div>
