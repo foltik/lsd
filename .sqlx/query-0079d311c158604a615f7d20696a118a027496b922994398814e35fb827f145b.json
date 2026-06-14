@@ -9,63 +9,68 @@
         "type_info": "Integer"
       },
       {
-        "name": "kind",
+        "name": "token",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "user_id",
+        "name": "kind",
         "ordinal": 2,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "user_version",
+        "name": "user_id",
         "ordinal": 3,
         "type_info": "Integer"
       },
       {
-        "name": "post_id",
+        "name": "user_version",
         "ordinal": 4,
         "type_info": "Integer"
       },
       {
-        "name": "list_id",
+        "name": "post_id",
         "ordinal": 5,
         "type_info": "Integer"
       },
       {
-        "name": "event_id",
+        "name": "list_id",
         "ordinal": 6,
         "type_info": "Integer"
       },
       {
-        "name": "notification_id",
+        "name": "event_id",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "error",
+        "name": "notification_id",
         "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "created_at",
-        "ordinal": 9,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "sent_at",
         "ordinal": 10,
         "type_info": "Datetime"
       },
       {
-        "name": "opened_at",
+        "name": "sent_at",
         "ordinal": 11,
         "type_info": "Datetime"
       },
       {
-        "name": "address",
+        "name": "opened_at",
         "ordinal": 12,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "address",
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
@@ -73,6 +78,7 @@
       "Right": 2
     },
     "nullable": [
+      false,
       false,
       false,
       false,

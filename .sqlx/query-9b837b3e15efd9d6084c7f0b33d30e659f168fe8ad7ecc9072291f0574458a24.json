@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n             INSERT INTO emails (kind, user_id, user_version, post_id, list_id)\n                 SELECT ?, u.id, uh.version, ?, lm.list_id\n                 FROM list_members lm\n                 JOIN users u ON u.id = lm.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE lm.list_id = ?\n                   AND NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.user_id = u.id\n                         AND ee.post_id = ?\n                         AND ee.list_id = lm.list_id\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS address\n             ",
+  "query": "SELECT e.*, u.email as address FROM emails e\n               JOIN users u ON u.id = e.user_id\n               WHERE e.token = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -9,70 +9,76 @@
         "type_info": "Integer"
       },
       {
-        "name": "kind",
+        "name": "token",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "user_id",
+        "name": "kind",
         "ordinal": 2,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "user_version",
+        "name": "user_id",
         "ordinal": 3,
         "type_info": "Integer"
       },
       {
-        "name": "post_id",
+        "name": "user_version",
         "ordinal": 4,
         "type_info": "Integer"
       },
       {
-        "name": "list_id",
+        "name": "post_id",
         "ordinal": 5,
         "type_info": "Integer"
       },
       {
-        "name": "event_id",
+        "name": "list_id",
         "ordinal": 6,
         "type_info": "Integer"
       },
       {
-        "name": "notification_id",
+        "name": "event_id",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "error",
+        "name": "notification_id",
         "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error",
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "created_at",
-        "ordinal": 9,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "sent_at",
         "ordinal": 10,
         "type_info": "Datetime"
       },
       {
-        "name": "opened_at",
+        "name": "sent_at",
         "ordinal": 11,
         "type_info": "Datetime"
       },
       {
-        "name": "address",
+        "name": "opened_at",
         "ordinal": 12,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "address",
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 4
+      "Right": 1
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -88,5 +94,5 @@
       false
     ]
   },
-  "hash": "af44d318eb404d865437b293dd9870170e970732a2d15f8a27727dcca75d3655"
+  "hash": "9b837b3e15efd9d6084c7f0b33d30e659f168fe8ad7ecc9072291f0574458a24"
 }

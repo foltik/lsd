@@ -62,13 +62,13 @@ mod read {
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/post.html")]
         struct EmailHtml {
-            email_id: i64,
+            email_token: String,
             post: Post,
             post_url: String,
         }
         Ok(EmailHtml {
             post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
-            email_id: 0,
+            email_token: String::new(),
             post,
         }
         .into_response())
@@ -241,7 +241,7 @@ mod send {
     #[derive(Template, WebTemplate)]
     #[template(path = "emails/post.html")]
     struct EmailHtml {
-        email_id: i64,
+        email_token: String,
         post: Post,
         post_url: String,
     }
@@ -268,18 +268,18 @@ mod send {
         };
 
         let mut email_template = EmailHtml {
-            email_id: 0,
+            email_token: String::new(),
             post: post.clone(),
             post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
         };
         let mut messages = vec![];
         let mut email_ids = vec![];
-        for Email { id, address, sent_at, .. } in emails {
+        for Email { id, address, sent_at, token, .. } in emails {
             if sent_at.is_some() {
                 continue;
             }
 
-            email_template.email_id = id;
+            email_template.email_token = token;
 
             let from = &state.config.email.from;
             let reply_to = state.config.email.newsletter_reply_to.as_ref().unwrap_or(from);

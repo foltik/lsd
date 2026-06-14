@@ -65,12 +65,12 @@ pub mod filters {
         Ok(format!("mailto:{email}"))
     }
 
-    pub fn opened_url(email_id: &i64) -> Result<String, askama::Error> {
-        Ok(format!("{}/emails/{email_id}/footer.gif", config().app.url))
+    pub fn opened_url(token: &str) -> Result<String, askama::Error> {
+        Ok(format!("{}/emails/{token}/footer.gif", config().app.url))
     }
 
-    pub fn unsubscribe_url(email_id: &i64) -> Result<String, askama::Error> {
-        Ok(format!("{}/emails/{email_id}/unsubscribe", config().app.url))
+    pub fn unsubscribe_url(token: &str) -> Result<String, askama::Error> {
+        Ok(format!("{}/emails/{token}/unsubscribe", config().app.url))
     }
 
     /// Livereload script enabled on debug builds.

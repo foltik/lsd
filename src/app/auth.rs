@@ -81,7 +81,7 @@ async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginF
 
     // Only registered users get a link
     if let Some(user) = User::lookup_by_email(&state.db, &email).await? {
-        let email_id = Email::create_login(&state.db, &user).await?;
+        let (email_id, email_token) = Email::create_login(&state.db, &user).await?;
 
         // Delete any existing tokens and re-create
         LoginToken::delete_by_user(&state.db, &user).await?;
@@ -97,7 +97,7 @@ async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginF
         #[derive(Template)]
         #[template(path = "emails/login.html")]
         struct LoginEmailHtml {
-            email_id: i64,
+            email_token: String,
             login_url: String,
             domain: String,
         }
@@ -108,7 +108,7 @@ async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginF
             .header(ContentType::TEXT_HTML)
             .to(form.email)
             .subject(format!("Login to {domain}"))
-            .body(LoginEmailHtml { email_id, login_url, domain }.render()?)?;
+            .body(LoginEmailHtml { email_token, login_url, domain }.render()?)?;
 
         match state.mailer.send(&msg).await {
             Ok(_) => Email::mark_sent(&state.db, email_id).await?,

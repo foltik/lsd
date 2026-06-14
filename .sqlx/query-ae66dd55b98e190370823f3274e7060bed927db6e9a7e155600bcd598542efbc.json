@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO emails (token, kind, user_id, user_version)\n               VALUES (lower(hex(randomblob(8))), ?, ?, ?)\n               RETURNING id AS \"id!: i64\", token AS \"token!: String\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "token!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ae66dd55b98e190370823f3274e7060bed927db6e9a7e155600bcd598542efbc"
+}
