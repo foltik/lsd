@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT e.*, u.email as address FROM emails e\n            JOIN users u ON u.id = e.user_id\n            WHERE e.kind = ? AND e.event_id = ? AND e.list_id = ?\n                AND ifnull(e.sent_at, '') = (\n                    SELECT ifnull(MAX(ee.sent_at), '')\n                    FROM emails ee\n                    WHERE ee.kind = e.kind\n                    AND ee.list_id = e.list_id\n                    AND ee.user_id = e.user_id\n                    AND ee.event_id = e.event_id\n                );\n            ",
+  "query": "\n             INSERT INTO emails (token, kind, user_id, user_version, event_id)\n                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?\n                 FROM (\n                     SELECT r.user_id\n                     FROM rsvps r\n                     JOIN rsvp_sessions rs ON rs.id = r.session_id\n                     WHERE rs.event_id = ?\n                     UNION\n                     SELECT m.user_id\n                     FROM manual_rsvps m\n                     WHERE m.event_id = ?\n                 ) attendees\n                 JOIN users u ON u.id = attendees.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
   "describe": {
     "columns": [
       {
@@ -69,13 +69,13 @@
         "type_info": "Datetime"
       },
       {
-        "name": "address",
+        "name": "address!",
         "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 6
     },
     "nullable": [
       false,
@@ -91,8 +91,8 @@
       false,
       true,
       true,
-      false
+      true
     ]
   },
-  "hash": "d6ace25a7ffcc03ee6a1b199371369ac0ecba36a7abd4470666ed6a77d3bac42"
+  "hash": "a5e3400b4757e787e450a6b7fdfb3133e7b3e3e67f0ce554ecf7e6618985e0ee"
 }

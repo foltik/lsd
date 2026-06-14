@@ -7,7 +7,7 @@
       <h1>Unsubscribe from {{ list.name }}</h1>
     </header>
     <p>Are you sure you want to unsubscribe from this mailing list?</p>
-    <form method="POST" action="/emails/{{ email_id }}/unsubscribe">
+    <form method="POST" action="/emails/{{ email_token }}/unsubscribe">
       <button class="ext/button" type="submit">Unsubscribe</button>
     </form>
   </section>

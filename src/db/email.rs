@@ -4,6 +4,7 @@ use crate::prelude::*;
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct Email {
     pub id: i64,
+    pub token: String,
     pub kind: String,
     pub user_id: i64,
     pub user_version: i64,
@@ -33,32 +34,34 @@ impl Email {
     /// An event day-of info email.
     pub const EVENT_DAYOF: &'static str = "event/dayof";
 
-    /// Lookup an email by id.
-    pub async fn lookup(db: &Db, id: i64) -> Result<Option<Email>> {
+    /// Lookup an email by its token.
+    pub async fn lookup_by_token(db: &Db, token: &str) -> Result<Option<Email>> {
         let res = sqlx::query_as!(
             Self,
             r#"SELECT e.*, u.email as address FROM emails e
                JOIN users u ON u.id = e.user_id
-               WHERE e.id = ?
+               WHERE e.token = ?
             "#,
-            id
+            token
         )
         .fetch_optional(db)
         .await?;
         Ok(res)
     }
 
-    /// Create a new email record.
-    pub async fn create_login(db: &Db, user: &User) -> Result<i64> {
-        let res = sqlx::query!(
-            "INSERT INTO emails (kind, user_id, user_version) VALUES (?, ?, ?)",
+    /// Create a new login email record. Returns the email id and its token.
+    pub async fn create_login(db: &Db, user: &User) -> Result<(i64, String)> {
+        let row = sqlx::query!(
+            r#"INSERT INTO emails (token, kind, user_id, user_version)
+               VALUES (lower(hex(randomblob(8))), ?, ?, ?)
+               RETURNING id AS "id!: i64", token AS "token!: String""#,
             Email::LOGIN,
             user.id,
             user.version
         )
-        .execute(db)
+        .fetch_one(db)
         .await?;
-        Ok(res.last_insert_rowid())
+        Ok((row.id, row.token))
     }
 
     /// Create email entries for sending the given post to all users on the given list.
@@ -87,8 +90,8 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, user_id, user_version, post_id, list_id)
-                 SELECT ?, u.id, uh.version, ?, lm.list_id
+             INSERT INTO emails (token, kind, user_id, user_version, post_id, list_id)
+                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?, lm.list_id
                  FROM list_members lm
                  JOIN users u ON u.id = lm.user_id
                  JOIN user_history uh ON uh.user_id = u.id
@@ -147,8 +150,8 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, user_id, user_version, event_id, list_id)
-                 SELECT ?, u.id, uh.version, ?, ?
+             INSERT INTO emails (token, kind, user_id, user_version, event_id, list_id)
+                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?, ?
                  FROM list_members lm
                  JOIN users u ON u.id = lm.user_id
                  JOIN user_history uh ON uh.user_id = u.id
@@ -199,8 +202,8 @@ impl Email {
         let row = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, user_id, user_version, event_id)
-                 SELECT ?, u.id, uh.version, ?
+             INSERT INTO emails (token, kind, user_id, user_version, event_id)
+                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?
                  FROM users u
                  JOIN user_history uh ON uh.user_id = u.id
                    AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
@@ -223,8 +226,8 @@ impl Email {
         let row = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, user_id, user_version, event_id)
-                 SELECT ?, u.id, uh.version, ?
+             INSERT INTO emails (token, kind, user_id, user_version, event_id)
+                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?
                  FROM users u
                  JOIN user_history uh ON uh.user_id = u.id
                    AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
@@ -269,8 +272,8 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-             INSERT INTO emails (kind, user_id, user_version, event_id)
-                 SELECT ?, u.id, uh.version, ?
+             INSERT INTO emails (token, kind, user_id, user_version, event_id)
+                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?
                  FROM (
                      SELECT r.user_id
                      FROM rsvps r
@@ -339,8 +342,8 @@ impl Email {
         let new = sqlx::query_as!(
             Email,
             r#"
-            INSERT INTO emails (kind, user_id, user_version, post_id, list_id)
-                SELECT ?, u.id, uh.version, ?, lm.list_id
+            INSERT INTO emails (token, kind, user_id, user_version, post_id, list_id)
+                SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?, lm.list_id
                 FROM list_members lm
                 JOIN users u ON u.id = lm.user_id
                 JOIN user_history uh ON uh.user_id = u.id
@@ -397,12 +400,12 @@ impl Email {
         Ok(())
     }
 
-    /// Mark an email as opened.
-    pub async fn mark_opened(db: &Db, id: i64) -> Result<()> {
+    /// Mark an email as opened, looked up by its token.
+    pub async fn mark_opened_by_token(db: &Db, token: &str) -> Result<()> {
         sqlx::query!(
             r#"UPDATE emails SET opened_at = CURRENT_TIMESTAMP
-               WHERE id = ? AND opened_at IS NULL"#,
-            id
+               WHERE token = ? AND opened_at IS NULL"#,
+            token
         )
         .execute(db)
         .await?;

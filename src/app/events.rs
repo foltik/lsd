@@ -449,7 +449,7 @@ mod edit {
     #[derive(Template, WebTemplate)]
     #[template(path = "emails/event_invite.html")]
     struct InviteEmailHtml {
-        email_id: i64,
+        email_token: String,
         email: String,
         event: Event,
         flyer: Option<EventFlyer>,
@@ -463,7 +463,7 @@ mod edit {
         };
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        Ok(InviteEmailHtml { email_id: 0, email: user.email, event, flyer }.into_response())
+        Ok(InviteEmailHtml { email_token: String::new(), email: user.email, event, flyer }.into_response())
     }
 
     /// Display the form to send a post.
@@ -537,15 +537,15 @@ mod edit {
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         let mut email_template =
-            InviteEmailHtml { email_id: 0, email: "".into(), event: event.clone(), flyer };
+            InviteEmailHtml { email_token: String::new(), email: "".into(), event: event.clone(), flyer };
         let mut messages = vec![];
         let mut email_ids = vec![];
-        for Email { id, address, sent_at, .. } in emails {
+        for Email { id, address, sent_at, token, .. } in emails {
             if sent_at.is_some() {
                 continue;
             }
 
-            email_template.email_id = id;
+            email_template.email_token = token;
             email_template.email = address.clone();
 
             let from = &state.config.email.from;
@@ -662,15 +662,18 @@ mod edit {
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/event_confirmation.html")]
         struct PreviewConfirmationHtml {
-            email_id: i64,
+            email_token: String,
             event: Event,
             token: String,
             flyer: Option<EventFlyer>,
         }
-        Ok(
-            PreviewConfirmationHtml { email_id: 0, event: event.clone(), token: "xxxxxxxx".into(), flyer }
-                .into_response(),
-        )
+        Ok(PreviewConfirmationHtml {
+            email_token: String::new(),
+            event: event.clone(),
+            token: "xxxxxxxx".into(),
+            flyer,
+        }
+        .into_response())
     }
 
     // Edit dayof page.
@@ -736,7 +739,7 @@ mod edit {
     #[derive(Template, WebTemplate)]
     #[template(path = "emails/event_dayof.html")]
     struct DayofEmailHtml {
-        email_id: i64,
+        email_token: String,
         event: Event,
         flyer: Option<EventFlyer>,
     }
@@ -747,7 +750,7 @@ mod edit {
         };
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        Ok(DayofEmailHtml { email_id: 0, event: event.clone(), flyer }.into_response())
+        Ok(DayofEmailHtml { email_token: String::new(), event: event.clone(), flyer }.into_response())
     }
 
     /// Display the form to send a post.
@@ -818,15 +821,15 @@ mod edit {
         let emails = Email::create_send_dayof_batch(&state.db, event.id).await?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        let mut email_template = DayofEmailHtml { email_id: 0, event: event.clone(), flyer };
+        let mut email_template = DayofEmailHtml { email_token: String::new(), event: event.clone(), flyer };
         let mut messages = vec![];
         let mut email_ids = vec![];
-        for Email { id, address, sent_at, .. } in emails {
+        for Email { id, address, sent_at, token, .. } in emails {
             if sent_at.is_some() {
                 continue;
             }
 
-            email_template.email_id = id;
+            email_template.email_token = token;
 
             let from = &state.config.email.from;
             let reply_to = config().email.contact_to.as_ref().unwrap_or(from);
@@ -1574,7 +1577,7 @@ mod rsvp {
             #[derive(Template, WebTemplate)]
             #[template(path = "emails/event_confirmation.html")]
             struct ConfirmationEmailHtml {
-                email_id: i64,
+                email_token: String,
                 event: Event,
                 token: String,
                 flyer: Option<EventFlyer>,
@@ -1595,7 +1598,7 @@ mod rsvp {
                 .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(
                     ConfirmationEmailHtml {
-                        email_id: email.id,
+                        email_token: email.token,
                         event: event.clone(),
                         token: session.token.clone(),
                         flyer,
@@ -1699,7 +1702,7 @@ mod rsvp {
             #[derive(Template, WebTemplate)]
             #[template(path = "emails/event_confirmation.html")]
             struct ConfirmationEmailHtml {
-                email_id: i64,
+                email_token: String,
                 event: Event,
                 token: String,
                 flyer: Option<EventFlyer>,
@@ -1721,7 +1724,7 @@ mod rsvp {
                 .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(
                     ConfirmationEmailHtml {
-                        email_id: email.id,
+                        email_token: email.token,
                         event: event.clone(),
                         token: session.token.clone(),
                         flyer,
@@ -1759,7 +1762,7 @@ mod rsvp {
                 #[derive(Template, WebTemplate)]
                 #[template(path = "emails/event_dayof.html")]
                 struct DayofEmailHtml {
-                    email_id: i64,
+                    email_token: String,
                     event: Event,
                     flyer: Option<EventFlyer>,
                 }
@@ -1772,8 +1775,12 @@ mod rsvp {
                     .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
                     .header(lettre::message::header::ContentType::TEXT_HTML)
                     .body(
-                        DayofEmailHtml { email_id: dayof_email.id, event: event.clone(), flyer: dayof_flyer }
-                            .render()?,
+                        DayofEmailHtml {
+                            email_token: dayof_email.token,
+                            event: event.clone(),
+                            flyer: dayof_flyer,
+                        }
+                        .render()?,
                     )
                     .unwrap();
 

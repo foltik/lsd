@@ -146,7 +146,7 @@ pub mod stripe {
                     #[derive(Template, WebTemplate)]
                     #[template(path = "emails/event_confirmation.html")]
                     struct ConfirmationEmailHtml {
-                        email_id: i64,
+                        email_token: String,
                         event: Event,
                         token: String,
                         flyer: Option<EventFlyer>,
@@ -167,7 +167,7 @@ pub mod stripe {
                         .header(lettre::message::header::ContentType::TEXT_HTML)
                         .body(
                             ConfirmationEmailHtml {
-                                email_id: email.id,
+                                email_token: email.token,
                                 event: event.clone(),
                                 token: session.token,
                                 flyer,
