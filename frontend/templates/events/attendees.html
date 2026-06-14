@@ -28,9 +28,10 @@
           <th class="name">Name</th>
           <th class="email">Email</th>
           <th class="guest-of">Guest of</th>
+          <th class="status">Status</th>
           <th class="spot">Spot</th>
-          <th class="reservation">Reservation #</th>
           <th class="created">Created</th>
+          <th class="reservation">Reservation #</th>
           <th class="checkin">Checkin</th>
           <th class="actions"></th>
         </tr>
@@ -46,6 +47,7 @@
             <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
             <td class="email">{{ rsvp.email }}</td>
             <td class="guest-of">{{ rsvp.guest_of | unwrap_or_empty }}</td>
+            <td class="status">{{ rsvp.status_label() }}</td>
             <td class="spot">
               {% if rsvp.is_manual %}
                 <em>Added manually</em>
@@ -54,12 +56,12 @@
                 (${{ rsvp.contribution }})
               {% endif %}
             </td>
-            <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
             <td class="created">
               <time datetime="{{ rsvp.created_at }}">
                 {{ rsvp.created_at | format_datetime("%m/%d %-I:%M%p") }}
               </time>
             </td>
+            <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
             <td class="checkin">
               {% if let Some(checkin_at) = rsvp.checkin_at %}
                 <time datetime="{{ checkin_at }}"
@@ -108,7 +110,7 @@
                   />
                 </svg>
               </button>
-              {% if !rsvp.is_manual %}
+              {% if !rsvp.is_manual && !rsvp.is_refunded() %}
                 <button class="refund" title="Refund purchase">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -143,16 +145,17 @@
 
     /* ---------- CSV Download ------------------------------------------------ */
     ui.download.addEventListener("click", () => {
-      const headers = ["Name", "Email", "Guest of", "Spot", "Reservation #", "Created"];
+      const headers = ["Name", "Email", "Guest of", "Status", "Spot", "Created", "Reservation #"];
       const rows = ui
         .rows()
         .map((row) => [
           row.querySelector(".name").textContent.trim(),
           row.querySelector(".email").textContent.trim(),
           row.querySelector(".guest-of").textContent.trim(),
+          row.querySelector(".status").textContent.trim(),
           row.querySelector(".spot").textContent.trim(),
-          row.querySelector(".reservation").textContent.trim(),
           row.querySelector(".created time").textContent.trim(),
+          row.querySelector(".reservation").textContent.trim(),
         ]);
 
       // Collapse embedded newlines (e.g. multi-line spot descriptions) so rows don't break.

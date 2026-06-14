@@ -95,6 +95,26 @@ pub struct AdminAttendeesRsvp {
     pub status: String,
 }
 
+impl AdminAttendeesRsvp {
+    pub fn is_refunded(&self) -> bool {
+        matches!(
+            self.status.as_str(),
+            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED
+        )
+    }
+
+    /// Human label for the status column.
+    pub fn status_label(&self) -> &'static str {
+        match self.status.as_str() {
+            RsvpSession::PAYMENT_CONFIRMED => "Confirmed",
+            RsvpSession::PAYMENT_PENDING => "Unpaid",
+            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => "Refunded",
+            "manual" => "Manual",
+            _ => "",
+        }
+    }
+}
+
 impl Rsvp {
     pub async fn list_for_admin_attendees(db: &Db, event_id: i64) -> Result<Vec<AdminAttendeesRsvp>> {
         Ok(sqlx::query_as!(
@@ -127,7 +147,7 @@ impl Rsvp {
             JOIN users u  ON u.id  = r.user_id
             JOIN users hu ON hu.id = rs.user_id
             WHERE rs.event_id = ?
-              AND rs.status IN ('payment_pending', 'payment_confirmed')
+              AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
 
             UNION ALL
 
