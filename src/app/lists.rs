@@ -1,3 +1,6 @@
+use std::net::SocketAddr;
+
+use axum::extract::ConnectInfo;
 use lettre::message::Mailbox;
 
 use crate::db::list::{List, UpdateList};
@@ -142,14 +145,25 @@ async fn signup_page(
     struct Html {
         user: Option<User>,
         list: List,
+        turnstile_site_key: String,
     }
-    Ok(Html { user, list }.into_response())
+    Ok(Html {
+        user,
+        list,
+        turnstile_site_key: state.config.cloudflare.turnstile_site_key.clone(),
+    }
+    .into_response())
 }
 
 /// Process the list signup form.
 async fn signup_form(
-    user: Option<User>, State(state): State<SharedAppState>, Form(form): Form<NewsletterForm>,
+    user: Option<User>, State(state): State<SharedAppState>, ConnectInfo(client): ConnectInfo<SocketAddr>,
+    Form(form): Form<NewsletterForm>,
 ) -> HtmlResult {
+    if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {
+        bail_invalid!();
+    }
+
     // XXX: Hard code only allow id 1 to be signed up to.
     // A flag should be added to List whether it's public or not, and what the signup page looks like.
     if form.list_id != 1 {
@@ -179,4 +193,6 @@ async fn signup_form(
 struct NewsletterForm {
     list_id: i64,
     email: Mailbox,
+    #[serde(rename = "cf-turnstile-response")]
+    turnstile_token: String,
 }
