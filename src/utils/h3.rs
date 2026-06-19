@@ -22,7 +22,6 @@ async fn serve(
     addr: std::net::SocketAddr, mut tls: rustls::ServerConfig, router: axum::Router,
 ) -> Result<()> {
     tls.alpn_protocols = vec![b"h3".to_vec()];
-    tls.max_early_data_size = u32::MAX; // Enable QUIC 0-RTT
     let tls = quinn::crypto::rustls::QuicServerConfig::try_from(tls)?;
     let endpoint = quinn::Endpoint::server(quinn::ServerConfig::with_crypto(Arc::new(tls)), addr)?;
 
@@ -38,12 +37,7 @@ async fn serve(
 }
 
 async fn serve_connection(incoming: quinn::Incoming, router: axum::Router) -> Result<()> {
-    // Continue without waiting for the handshake, letting us serve the full response in a single round-trip
-    let conn = match incoming.accept()?.into_0rtt() {
-        Ok((conn, _accepted)) => conn,
-        Err(connecting) => connecting.await?,
-    };
-
+    let conn = incoming.await?;
     let client = conn.remote_address();
     let mut conn = h3::server::Connection::new(h3_quinn::Connection::new(conn)).await?;
     loop {
