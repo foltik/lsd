@@ -31,12 +31,7 @@ async fn main() -> Result<()> {
         .with_default(Level::INFO);
 
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .pretty()
-                .with_target(true)
-                .with_line_number(true),
-        )
+        .with(tracing_subscriber::fmt::layer().with_target(false))
         .with(log_filter)
         .with(utils::sentry::layer())
         .init();
