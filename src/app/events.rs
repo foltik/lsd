@@ -1128,7 +1128,7 @@ mod rsvp {
         Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -1152,7 +1152,7 @@ mod rsvp {
     // Display the "Are you on the list?" page
     pub async fn guestlist_page(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -1178,7 +1178,7 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -1229,7 +1229,7 @@ mod rsvp {
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1287,7 +1287,7 @@ mod rsvp {
         Form(form): Form<SelectionForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1360,7 +1360,7 @@ mod rsvp {
 
         let user = session.user(&state.db).await?;
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1386,7 +1386,7 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(our_session)).await;
         }
 
@@ -1487,7 +1487,7 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1543,7 +1543,7 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1813,7 +1813,7 @@ mod rsvp {
         let price = rsvps.iter().map(|r| r.contribution).sum::<i64>();
 
         // Check if user can add more guests
-        let can_add_guests = if validate::registration_open(&event) {
+        let can_add_guests = if event.registration_open() {
             let spots = Spot::list_for_event(&state.db, event.id).await?;
             let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
             let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
@@ -1855,7 +1855,7 @@ mod rsvp {
         State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !validate::registration_open(&event) {
+        if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -2139,10 +2139,6 @@ mod rsvp {
     mod validate {
         use super::*;
         use crate::db::rsvp::{AttendeeRsvp, UserRsvp};
-
-        pub fn registration_open(event: &Event) -> bool {
-            !event.closed
-        }
 
         /// Returns true if rsvps satisfy total and per-spot limits.
         pub fn within_limits(limits: &EventLimits, rsvps: &[EventRsvp]) -> bool {
