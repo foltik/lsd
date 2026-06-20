@@ -83,7 +83,7 @@
           <span>Manage my reservation</span>
           <span>&rarr;</span>
         </a>
-      {% else %}
+      {% else if event.registration_open() %}
         <a class="rsvp" href="/e/{{ event.slug }}/rsvp">
           <span>Attend & Contribute</span>
           <span>&rarr;</span>

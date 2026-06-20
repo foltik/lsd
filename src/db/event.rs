@@ -1,3 +1,4 @@
+use chrono::{Days, TimeZone};
 use image::DynamicImage;
 use rand::Rng;
 use rand::rngs::OsRng;
@@ -369,6 +370,26 @@ impl Event {
         // let past = query.past.unwrap_or(false);
 
         now <= self.start || self.end.is_some_and(|end| now <= end)
+    }
+
+    /// True once the event is past its end time, or past midnight on the start day if none.
+    pub fn is_over(&self) -> bool {
+        let cutoff = match self.end {
+            Some(end) => end.and_utc(),
+            None => {
+                let tz = config().app.tz;
+                let start_day = self.start.and_utc().with_timezone(&tz).date_naive();
+                let midnight = (start_day + Days::new(1)).and_hms_opt(0, 0, 0).unwrap();
+                // New York has no midnight DST transition, so this is always unambiguous.
+                tz.from_local_datetime(&midnight).single().unwrap().to_utc()
+            }
+        };
+        Utc::now() >= cutoff
+    }
+
+    /// Whether to allow starting the RSVP process
+    pub fn registration_open(&self) -> bool {
+        !self.closed && !self.is_over()
     }
 
     /// Artist's share of `total` dollars per `artist_share` percent, fractional dollars round to the artist.
