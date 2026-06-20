@@ -1,6 +1,12 @@
 #events\/list {
+  header .buttons {
+    @apply flex gap-2;
+  }
+
   .event {
     @apply mb-4 flex flex-col;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 140px;
 
     .title {
       @apply font-bold;

@@ -94,7 +94,8 @@ impl Event {
         self.kind == Self::EXTERNAL
     }
 
-    pub async fn list(db: &Db) -> Result<Vec<EventWithStats>> {
+    /// List events with RSVP stats, newest first. When `recent`, only the last 3 months.
+    pub async fn list(db: &Db, recent: bool) -> Result<Vec<EventWithStats>> {
         let events = sqlx::query_as!(
             EventWithStats,
             r#"SELECT
@@ -125,7 +126,9 @@ impl Event {
                  FROM manual_rsvps m
                  GROUP BY m.event_id
                ) mr ON mr.event_id = e.id
-               ORDER BY e.start DESC"#
+               WHERE NOT ?1 OR e.start >= DATETIME(CURRENT_TIMESTAMP, '-3 months')
+               ORDER BY e.start DESC"#,
+            recent
         )
         .fetch_all(db)
         .await?;
