@@ -25,6 +25,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
+                .route("/events/all", get(read::list_all_page))
                 .route("/events/sessions", get(read::sessions_page))
                 .route("/events/sessions/{id}", delete(read::delete_session))
                 .route("/events/new", get(edit::new_page))
@@ -79,10 +80,17 @@ mod read {
     struct ListHtml {
         user: Option<User>,
         events: Vec<EventWithStats>,
+        all: bool,
     }
 
     pub async fn list_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-        Ok(ListHtml { user, events: Event::list(&state.db).await? }.into_response())
+        let events = Event::list(&state.db, true).await?;
+        Ok(ListHtml { user, events, all: false }.into_response())
+    }
+
+    pub async fn list_all_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
+        let events = Event::list(&state.db, false).await?;
+        Ok(ListHtml { user, events, all: true }.into_response())
     }
 
     /// Serve an event flyer.
