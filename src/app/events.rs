@@ -305,7 +305,9 @@ mod edit {
                 }
                 "flyer" => {
                     let data = field.bytes().await?;
-                    let img = crate::utils::image::decode(&data).await?;
+                    let img = crate::utils::image::decode(&data)
+                        .await
+                        .map_err(|_| bad_request("Unsupported or invalid image format."))?;
                     flyer = Some(img);
                 }
                 _ => {}
@@ -324,7 +326,7 @@ mod edit {
         if form.event.slug.is_empty()
             || !form.event.slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
         {
-            bail!("Slug can only contain letters, numbers, and dashes.");
+            bail_bad_request!("Slug can only contain letters, numbers, and dashes.");
         }
 
         match form.event.kind.as_str() {
@@ -335,7 +337,7 @@ mod edit {
             Event::EXTERNAL => {
                 // External events are links elsewhere: a url and no RSVP machinery.
                 if url::Url::parse(form.event.url.as_deref().unwrap_or("")).is_err() {
-                    bail!("Invalid url.");
+                    bail_bad_request!("Invalid url.");
                 }
                 form.event.capacity = 0;
                 form.event.unlisted = false;

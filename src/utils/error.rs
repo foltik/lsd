@@ -83,6 +83,7 @@ pub enum AppError {
     NotFound(Backtrace),
     Unauthorized(Backtrace),
     Invalid(Backtrace),
+    BadRequest(&'static str, Backtrace),
 }
 
 impl AppError {
@@ -91,6 +92,7 @@ impl AppError {
             AppError::NotFound { .. } => "Page not found.",
             AppError::Unauthorized { .. } => "Unauthorized.",
             AppError::Invalid { .. } => "Invalid request.",
+            AppError::BadRequest(msg, _) => msg,
         }
     }
 
@@ -98,13 +100,16 @@ impl AppError {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            AppError::Invalid(_) => StatusCode::BAD_REQUEST,
+            AppError::Invalid(_) | AppError::BadRequest(..) => StatusCode::BAD_REQUEST,
         }
     }
 
     pub fn backtrace(&self) -> &Backtrace {
         match self {
-            AppError::NotFound(bt) | AppError::Unauthorized(bt) | AppError::Invalid(bt) => bt,
+            AppError::NotFound(bt)
+            | AppError::Unauthorized(bt)
+            | AppError::Invalid(bt)
+            | AppError::BadRequest(_, bt) => bt,
         }
     }
 }
@@ -286,6 +291,18 @@ pub use bail_unauthorized;
 pub fn invalid() -> AppError {
     AppError::Invalid(Backtrace::new())
 }
+
+#[track_caller]
+pub fn bad_request(message: &'static str) -> AppError {
+    AppError::BadRequest(message, Backtrace::new())
+}
+#[macro_export]
+macro_rules! bail_bad_request {
+    ( $msg:expr ) => {
+        return Err(bad_request($msg).into())
+    };
+}
+pub use bail_bad_request;
 #[macro_export]
 macro_rules! bail_invalid {
     () => {
