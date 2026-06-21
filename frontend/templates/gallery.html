@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block title %}light and sound - gallery{% endblock title %}
+
+{% block content %}
+  <section id="gallery" class="ext/layout">
+    <div id="grid">
+      {% for flyer in flyers.iter() %}
+        <a class="flyer {% if flyer.unlisted %}unlisted{% endif %}"
+          href="/e/{{ flyer.slug }}"
+          data-w="{{ flyer.width }}"
+          data-h="{{ flyer.height }}"
+          style="--ratio: {{ flyer.width as f32 / flyer.height as f32 }};"
+        >
+          <span class="image">
+            <img
+              class="image-thumb"
+              loading="lazy"
+              src="/e/{{ flyer.slug }}/flyer?size=thumb"
+              alt=""
+              aria-hidden="true"
+            />
+            <img
+              class="image-sm"
+              loading="lazy"
+              src="/e/{{ flyer.slug }}/flyer?size=sm"
+              alt="{{ flyer.title }}"
+            />
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const grid = document.getElementById("grid");
+    const flyers = [...grid.children];
+
+    /* ---------- Masonry layout ---------------------------- */
+    let activeNumCols = 0;
+    function layout() {
+      // Re-layout if number of columns changes
+      let numCols = Math.round(grid.clientWidth / 260);
+      numCols = Math.max(3, Math.min(6, numCols));
+      if (numCols == activeNumCols)
+        return;
+
+      // Create columns with running height totals
+      const cols = [...Array(numCols)]
+        .map(() => Object.assign(
+          document.createElement("div"),
+          {className: "col", height: 0},
+        ));
+
+      // Insert each image into the shortest column so far
+      for (const flyer of flyers) {
+        const shortest = cols.reduce((a, b) => b.height < a.height ? b : a);
+        shortest.append(flyer);
+        shortest.height += flyer.dataset.h / flyer.dataset.w;
+      }
+
+      grid.replaceChildren(...cols);
+      activeNumCols = numCols;
+    }
+
+    // Fade from thumb to sm on load
+    for (const image of grid.querySelectorAll(".image-sm")) {
+      if (image.complete)
+        image.classList.add("loaded");
+      else
+        image.addEventListener("load", () => image.classList.add("loaded"), { once: true });
+    }
+
+    // Debounced re-layout on resize
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(layout, 150);
+    });
+
+    // Initial layout
+    layout();
+  </script>
+{% endblock scripts %}

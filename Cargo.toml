@@ -26,6 +26,7 @@ h3-util = "0.0.5"
 quinn = "0.11"
 http-body = "1"
 bytes = "1"
+dashmap = "6"
 reqwest = { version = "0.12", default-features = false, features = ["http2", "charset", "json", "multipart", "rustls-tls"] }
 sentry = { version = "0.46", default-features = false, features = ["tracing", "backtrace", "contexts", "debug-images", "panic", "release-health", "tower-axum-matched-path", "reqwest", "rustls"]}
 backtrace = "0.3"

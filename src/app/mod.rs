@@ -3,6 +3,7 @@ use axum::extract::DefaultBodyLimit;
 use tower::ServiceBuilder;
 use tower_http::compression::{self, CompressionLayer, Predicate};
 
+use crate::db::event_flyer::EventFlyer;
 use crate::prelude::*;
 use crate::utils::cloudflare::Cloudflare;
 use crate::utils::emailer::Emailer;
@@ -12,6 +13,7 @@ mod auth;
 mod contact;
 mod emails;
 mod events;
+mod gallery;
 mod home;
 mod lists;
 mod posts;
@@ -34,9 +36,13 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
         mailer: Emailer::connect(config.email).await?,
     });
 
+    // Pre-load event flyers into the cache
+    EventFlyer::populate_cache(&state.db);
+
     // Register business logic routes
     let r = AppRouter::new(&state);
     let r = home::add_routes(r);
+    let r = gallery::add_routes(r);
     let r = auth::add_routes(r);
     let r = posts::add_routes(r);
     let r = events::add_routes(r);

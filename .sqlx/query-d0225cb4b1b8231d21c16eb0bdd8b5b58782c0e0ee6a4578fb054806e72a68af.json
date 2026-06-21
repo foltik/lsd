@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT e.slug, f.image_thumb, f.image_sm\n               FROM event_flyers f\n               JOIN events e ON e.id = f.event_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "slug",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "image_thumb",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "image_sm",
+        "ordinal": 2,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d0225cb4b1b8231d21c16eb0bdd8b5b58782c0e0ee6a4578fb054806e72a68af"
+}
