@@ -66,6 +66,9 @@
   a,
   button {
     @apply bg-lsd-charcoal cursor-pointer touch-manipulation rounded-lg p-4;
+    &:disabled {
+      @apply text-lsd-gray cursor-not-allowed;
+    }
   }
 
   .share {
