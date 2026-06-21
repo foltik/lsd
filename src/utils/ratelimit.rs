@@ -6,9 +6,9 @@ use axum::extract::ConnectInfo;
 
 use crate::prelude::*;
 
-// 30req/min on successful requests
-const OK_CAPACITY: f64 = 30.0;
-const OK_REFILL_PER_SEC: f64 = 0.5;
+// 60req/min on successful requests
+const OK_CAPACITY: f64 = 120.0;
+const OK_REFILL_PER_SEC: f64 = 2.0;
 // 6req/min on requests returning an error
 const ERR_CAPACITY: f64 = 10.0;
 const ERR_REFILL_PER_SEC: f64 = 0.1;
@@ -48,6 +48,11 @@ pub fn add_middleware(router: AxumRouter) -> AxumRouter {
         move |ConnectInfo(addr): ConnectInfo<SocketAddr>, req: Request, next: Next| {
             let state = Arc::clone(&state);
             async move {
+                // Flyer images are immutable and cache-friendly; don't count them.
+                if req.uri().path().ends_with("/flyer") {
+                    return next.run(req).await;
+                }
+
                 let ip = addr.ip().to_canonical();
 
                 // Check limits pre-response

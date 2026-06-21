@@ -98,14 +98,16 @@ mod read {
         State(state): State<SharedAppState>, Path(id): Path<i64>,
         Query(params): Query<std::collections::HashMap<String, String>>,
     ) -> HtmlResult {
-        EventFlyer::serve(&state.db, id, params.get("size")).await
+        let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
+            bail_not_found!();
+        };
+        EventFlyer::serve(&state.db, &event.slug, params.get("size")).await
     }
     pub async fn flyer_by_slug(
         State(state): State<SharedAppState>, Path(slug): Path<String>,
         Query(params): Query<std::collections::HashMap<String, String>>,
     ) -> HtmlResult {
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        EventFlyer::serve(&state.db, event.id, params.get("size")).await
+        EventFlyer::serve(&state.db, &slug, params.get("size")).await
     }
 
     #[derive(serde::Deserialize)]
@@ -967,7 +969,7 @@ mod edit {
     /// Handle delete submission.
     pub async fn delete_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
         let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
-        Event::delete(&state.db, event.id).await?;
+        Event::delete(&state.db, event.id, &event.slug).await?;
         Ok(Redirect::to("/events").into_response())
     }
 

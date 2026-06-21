@@ -1,0 +1,37 @@
+#gallery {
+  @apply px-2 py-2;
+
+  #grid {
+    @apply flex items-start gap-2;
+  }
+
+  .col {
+    @apply flex w-0 flex-1 flex-col gap-2;
+  }
+
+  .flyer {
+    @apply block rounded;
+    position: relative;
+
+    &.unlisted .image {
+      --glow: hsl(47, 100%, 78%);
+      box-shadow: 0 0 3px -1px white, 0 0 3px 1px var(--glow), 0 0 12px 2px var(--glow), 0px 10px 20px -5px black, 0 0 40px -30px var(--glow), 0 0 50px -20px var(--glow);
+    }
+
+    & .image {
+      @apply bg-lsd-charcoal relative block w-full overflow-hidden rounded;
+      aspect-ratio: var(--ratio, 0.75);
+
+      & img {
+        @apply absolute inset-0 h-full w-full object-cover;
+      }
+
+      .image-sm {
+        @apply opacity-0 transition-opacity duration-500 ease-out;
+        &.loaded {
+          @apply opacity-100;
+        }
+      }
+    }
+  }
+}

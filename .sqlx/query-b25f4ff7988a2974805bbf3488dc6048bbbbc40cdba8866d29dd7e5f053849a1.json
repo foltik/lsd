@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT e.slug, e.title, e.unlisted, f.width, f.height\n               FROM event_flyers f JOIN events e ON e.id = f.event_id\n               WHERE ?1 OR NOT e.unlisted\n               ORDER BY e.start DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "slug",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "unlisted",
+        "ordinal": 2,
+        "type_info": "Bool"
+      },
+      {
+        "name": "width",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "height",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b25f4ff7988a2974805bbf3488dc6048bbbbc40cdba8866d29dd7e5f053849a1"
+}

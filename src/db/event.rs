@@ -187,7 +187,7 @@ impl Event {
         .last_insert_rowid();
 
         if let Some(image) = flyer {
-            EventFlyer::create_or_update(db, event_id, image).await?;
+            EventFlyer::create_or_update(db, event_id, &event.slug, image).await?;
         }
 
         Ok(event_id)
@@ -226,7 +226,7 @@ impl Event {
         .await?;
 
         if let Some(image) = flyer {
-            EventFlyer::create_or_update(db, id, image).await?;
+            EventFlyer::create_or_update(db, id, &event.slug, image).await?;
         }
 
         Ok(())
@@ -321,7 +321,7 @@ impl Event {
     /// Delete an event and all related records (cascade delete).
     /// Deletes: rsvps, rsvp_sessions, manual_rsvps, event_spots, event_flyers, then the event itself.
     /// Note: emails are NOT deleted (kept for history).
-    pub async fn delete(db: &Db, id: i64) -> Result<()> {
+    pub async fn delete(db: &Db, id: i64, slug: &str) -> Result<()> {
         // Delete RSVPs for this event (via sessions)
         sqlx::query!(
             "DELETE FROM rsvps WHERE session_id IN (SELECT id FROM rsvp_sessions WHERE event_id = ?)",
@@ -342,9 +342,7 @@ impl Event {
             .execute(db)
             .await?;
         // Delete event flyer
-        sqlx::query!("DELETE FROM event_flyers WHERE event_id = ?", id)
-            .execute(db)
-            .await?;
+        EventFlyer::delete(&db, id, slug).await?;
         // Finally delete the event itself
         sqlx::query!("DELETE FROM events WHERE id = ?", id).execute(db).await?;
         Ok(())
@@ -473,7 +471,7 @@ impl Event {
         Spot::duplicate_for_event(db, event_id, new_event_id).await?;
 
         // Duplicate flyer if exists
-        EventFlyer::duplicate(db, event_id, new_event_id).await?;
+        EventFlyer::duplicate(db, event_id, &event.slug, new_event_id, &new_slug).await?;
 
         Ok(new_event_id)
     }
