@@ -1,4 +1,8 @@
 #events\/rsvp\/guestlist {
+  h1 {
+    @apply text-xl;
+  }
+
   .actions {
     @apply flex flex-row items-center justify-between;
   }

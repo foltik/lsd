@@ -1161,7 +1161,7 @@ mod rsvp {
         }
     }
 
-    // Display the "Are you on the list?" page
+    // Display the guestlist confirmation page
     pub async fn guestlist_page(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if !event.registration_open() {
@@ -1179,7 +1179,7 @@ mod rsvp {
         Ok(GuestlistHtml { user: None, slug }.into_response())
     }
 
-    // Handle submission of the "Are you on the list?" form
+    // Handle submission of the guestlist confirmation form
     #[derive(Debug, serde::Deserialize)]
     pub struct GuestlistForm {
         email: String,
