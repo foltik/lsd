@@ -14,8 +14,8 @@ sudo sqlite3 /home/lsd/db.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
 TS=$(date +'%Y-%m-%d_%H-%M-%S')
 sudo cp /home/lsd/db.sqlite /home/lsd/backups/db.rollback.$TS.sqlite
 
-sudo cp -aL /home/lsd/backups/lsd.latest /home/lsd/lsd
-sudo cp -aL /home/lsd/backups/db.latest.sqlite /home/lsd/db.sqlite
+sudo cp -aL /home/lsd/backups/lsd.bak /home/lsd/lsd
+sudo cp -aL /home/lsd/backups/db.bak.sqlite /home/lsd/db.sqlite
 
 sudo systemctl reset-failed lsd || true
 sudo systemctl start lsd
