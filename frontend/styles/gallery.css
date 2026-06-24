@@ -1,5 +1,10 @@
 #gallery {
   @apply px-2 py-2;
+  transition: filter 50ms linear;
+
+  &.zoomed {
+    filter: blur(4px) brightness(0.4);
+  }
 
   #grid {
     @apply flex items-start gap-2;
@@ -10,7 +15,7 @@
   }
 
   .flyer {
-    @apply block cursor-pointer rounded;
+    @apply block cursor-pointer touch-manipulation rounded;
     position: relative;
 
     &.unlisted .image {
@@ -38,10 +43,6 @@
 
 #flyer-zoom {
   @apply fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 p-4;
-
-  .backdrop {
-    @apply absolute inset-0 bg-black;
-  }
 
   .title {
     @apply relative m-0 text-center text-xl text-white md:text-3xl;
