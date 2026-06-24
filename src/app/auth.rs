@@ -179,7 +179,7 @@ fn session_cookie(config: &Config, token: String) -> String {
     Cookie::build(("session", token))
         .secure(config.acme.is_some())
         .http_only(true)
-        .same_site(cookie::SameSite::Strict)
+        .same_site(cookie::SameSite::Lax)
         .domain(&config.app.domain)
         .max_age(cookie::time::Duration::days(config.app.session_expiry_days as i64))
         .to_string()
