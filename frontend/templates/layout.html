@@ -24,7 +24,7 @@
       {% if user | has_staff_role %}
         <a
           {% if user | has_role("admin") %}
-            href="/events"
+            href="/dashboard"
           {% else if user | has_role("writer") %}
             href="/posts"
           {% else %}
