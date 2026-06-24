@@ -33,7 +33,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().with_target(false))
         .with(log_filter)
-        .with(utils::sentry::layer())
         .init();
 
     // Load the server config
@@ -55,11 +54,8 @@ async fn main() -> Result<()> {
     // Make it visible globally
     CONFIG.set(config.clone()).unwrap_or_else(|_| unreachable!());
 
-    // Setup error logging
-    if let Some(config) = &config.sentry {
-        tracing::info!("Sentry enabled");
-        utils::sentry::init(config);
-    }
+    // Setup alerting
+    utils::alerts::init();
 
     let (router, state) = app::build(config.clone()).await?;
     // HTTP/3 sidesteps make_service, so utils::h3 injects ConnectInfo itself

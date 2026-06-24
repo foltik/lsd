@@ -19,9 +19,11 @@ pub use cookie::Cookie;
 pub use futures::{Stream, StreamExt as _};
 pub use serde_json::json;
 
+pub use crate::alert;
 pub use crate::db::Db;
 pub use crate::db::email::Email;
 pub use crate::db::user::User;
+pub use crate::utils::alerts;
 pub use crate::utils::config::{Config, config};
 pub use crate::utils::error::*;
 pub use crate::utils::routing::{AppRouter, AxumRouter};

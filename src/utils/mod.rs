@@ -1,3 +1,4 @@
+pub mod alerts;
 pub mod cloudflare;
 pub mod config;
 pub mod editor;
@@ -7,7 +8,6 @@ pub mod h3;
 pub mod image;
 pub mod ratelimit;
 pub mod routing;
-pub mod sentry;
 pub mod stripe;
 pub mod templates;
 pub mod tracing;

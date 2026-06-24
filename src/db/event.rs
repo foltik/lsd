@@ -342,7 +342,7 @@ impl Event {
             .execute(db)
             .await?;
         // Delete event flyer
-        EventFlyer::delete(&db, id, slug).await?;
+        EventFlyer::delete(db, id, slug).await?;
         // Finally delete the event itself
         sqlx::query!("DELETE FROM events WHERE id = ?", id).execute(db).await?;
         Ok(())

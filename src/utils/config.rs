@@ -38,7 +38,7 @@ pub struct Config {
     pub email: EmailConfig,
     pub stripe: StripeConfig,
     pub cloudflare: CloudflareConfig,
-    pub sentry: Option<SentryConfig>,
+    pub alerts: Option<AlertsConfig>,
 }
 
 /// Webapp configuration.
@@ -121,6 +121,12 @@ pub struct CloudflareConfig {
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
-pub struct SentryConfig {
-    pub dsn: String,
+pub struct AlertsConfig {
+    pub telegram: Option<AlertsTelegramConfig>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct AlertsTelegramConfig {
+    pub api_key: String,
+    pub chat_id: String,
 }
