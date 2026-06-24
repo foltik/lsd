@@ -401,10 +401,12 @@ impl Email {
     }
 
     /// Mark an email as opened, looked up by its token.
+    /// Ignore opens within 10 seconds which are likely automated prefetching.
     pub async fn mark_opened_by_token(db: &Db, token: &str) -> Result<()> {
         sqlx::query!(
             r#"UPDATE emails SET opened_at = CURRENT_TIMESTAMP
-               WHERE token = ? AND opened_at IS NULL"#,
+               WHERE token = ? AND opened_at IS NULL
+                 AND sent_at <= datetime('now', '-10 seconds')"#,
             token
         )
         .execute(db)
