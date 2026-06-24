@@ -188,12 +188,11 @@ pub mod stripe {
                         Err(e) => {
                             let e = e.message();
                             Email::mark_error(&state.db, email.id, e).await?;
-                            let message = format!(
+                            alert!(
                                 "Error sending confirmation for event_id={} to email={:?} from webhook: {e}",
-                                event.id, user.email
+                                event.id,
+                                user.email
                             );
-                            tracing::error!(message);
-                            crate::utils::sentry::report(message);
                         }
                     };
                 }
@@ -265,10 +264,7 @@ pub mod stripe {
         let payment_intent = payload.payment_intent.as_deref().unwrap_or("unknown");
         let failure_reason = payload.failure_reason.as_deref().unwrap_or("unknown");
 
-        let message =
-            format!("Stripe[refund.failed]: payment_intent={payment_intent} failure_reason={failure_reason}");
-        tracing::error!("{message}");
-        crate::utils::sentry::report(message);
+        alert!("Stripe[refund.failed]: payment_intent={payment_intent} failure_reason={failure_reason}");
 
         Ok(())
     }

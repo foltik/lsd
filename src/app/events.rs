@@ -1117,7 +1117,7 @@ mod rsvp {
     use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, EventRsvp, Rsvp};
     use crate::db::rsvp_session::RsvpSession;
     use crate::db::user::CreateUser;
-    use crate::utils::{sentry, stripe};
+    use crate::utils::stripe;
 
     #[derive(Template, WebTemplate)]
     #[template(path = "error_simple.html")]
@@ -1307,7 +1307,7 @@ mod rsvp {
 
         // Parse and validate form
         let our_rsvps = parse::selection_form(&spots, &form.rsvps).map_err(|e| {
-            sentry::report(format!("selection_form(): session={} form={form:?}: {e}", session.token));
+            alert!("selection_form(): session={} form={form:?}: {e}", session.token);
             invalid()
         })?;
 
@@ -1416,10 +1416,7 @@ mod rsvp {
             parse::attendees_form(&user, &our_rsvps, &form.attendees, is_adding_guests, lock_primary)
                 .await
                 .map_err(|e| {
-                    sentry::report(format!(
-                        "attendees_form(): session={} form={form:?}: {e}",
-                        our_session.token
-                    ));
+                    alert!("attendees_form(): session={} form={form:?}: {e}", our_session.token);
                     invalid()
                 })?;
 
@@ -1627,12 +1624,11 @@ mod rsvp {
                 Err(e) => {
                     let e = e.message();
                     Email::mark_error(&state.db, email.id, e).await?;
-                    let message = format!(
+                    alert!(
                         "Error sending confirmation for event_id={} to email={:?}: {e}",
-                        event.id, user.email
+                        event.id,
+                        user.email
                     );
-                    tracing::error!(message);
-                    sentry::report(message);
                 }
             };
         }
@@ -1757,12 +1753,11 @@ mod rsvp {
                 Err(e) => {
                     let e = e.message();
                     Email::mark_error(&state.db, email.id, e).await?;
-                    let message = format!(
+                    alert!(
                         "Error sending confirmation for event_id={} to email={:?}: {e}",
-                        event.id, session_user.email
+                        event.id,
+                        session_user.email
                     );
-                    tracing::error!(message);
-                    sentry::report(message);
                 }
             };
 
@@ -1808,12 +1803,11 @@ mod rsvp {
                     Err(e) => {
                         let e = e.message();
                         Email::mark_error(&state.db, email.id, e).await?;
-                        let message = format!(
+                        alert!(
                             "Error sending day-of for event_id={} to email={:?}: {e}",
-                            event.id, session_user.email
+                            event.id,
+                            session_user.email
                         );
-                        tracing::error!(message);
-                        sentry::report(message);
                     }
                 };
             }
@@ -1959,11 +1953,7 @@ mod rsvp {
             parse::attendees_form(&user, &our_rsvps, &form.attendees, false, true)
                 .await
                 .map_err(|e| {
-                    sentry::report(format!("edit_form(): session={} form={form:?}: {e}", session.token));
-                    tracing::error!(
-                        "{}",
-                        format!("edit_form(): session={} form={form:?}: {e}", session.token)
-                    );
+                    alert!("edit_form(): session={} form={form:?}: {e}", session.token);
                     invalid()
                 })?;
 

@@ -9,7 +9,6 @@ use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use crate::EmailConfig;
 use crate::db::email_queue::EmailBatch;
 use crate::prelude::*;
-use crate::utils::sentry;
 
 // DB:
 //
@@ -110,7 +109,7 @@ impl Worker {
                 match self.send_queued().await {
                     Ok(_) => break,
                     Err(e) => {
-                        sentry::report(format!("Error while processing email queue: {}", e.message()));
+                        tracing::error!("Error while processing email queue: {}", e.message());
                         tokio::time::sleep(Duration::from_secs(1)).await;
                     }
                 }
@@ -146,7 +145,7 @@ impl Worker {
                     );
                     Email::mark_error(&self.db, email.id, &e).await?;
                     EmailBatch::inc_errored(&self.db, email.batch_id).await?;
-                    sentry::report(e);
+                    alert!("{e}");
                 }
             };
 

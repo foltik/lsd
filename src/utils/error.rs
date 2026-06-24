@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::panic::Location;
 
 use backtrace::Backtrace;
 
@@ -10,16 +11,25 @@ pub type Result<T, E = AnyError> = std::result::Result<T, E>;
 pub struct AnyError {
     message: String,
     backtrace: Backtrace,
+    location: &'static Location<'static>,
 }
 impl AnyError {
+    #[track_caller]
     pub fn new(message: impl Into<String>) -> Self {
-        Self { message: message.into(), backtrace: Backtrace::new() }
+        Self {
+            message: message.into(),
+            backtrace: Backtrace::new(),
+            location: Location::caller(),
+        }
     }
     pub fn message(&self) -> &str {
         &self.message
     }
     pub fn backtrace(&self) -> &Backtrace {
         &self.backtrace
+    }
+    pub fn location(&self) -> &'static Location<'static> {
+        self.location
     }
 }
 
@@ -42,6 +52,7 @@ impl<E: Error + Send + Sync + 'static> From<E> for AnyError {
     #[track_caller]
     fn from(e: E) -> Self {
         let backtrace = Backtrace::new();
+        let location = Location::caller();
 
         let mut message = format!("{e}");
         let mut curr: &dyn Error = &e;
@@ -50,7 +61,7 @@ impl<E: Error + Send + Sync + 'static> From<E> for AnyError {
             curr = prev;
         }
 
-        Self { message, backtrace }
+        Self { message, backtrace, location }
     }
 }
 
@@ -172,8 +183,7 @@ impl IntoResponse for HtmlError {
     #[rustfmt::skip]
     fn into_response(self) -> Response {
         if let HtmlError::Any(e) = &self {
-            tracing::error!("{}", e.message());
-            crate::utils::sentry::report_trace(e.message().into(), e.backtrace());
+            alerts::alert(e.message().into(), e.location().file(), e.location().line());
         }
 
         #[cfg(debug_assertions)]
@@ -221,8 +231,7 @@ impl IntoResponse for HtmlError {
 impl IntoResponse for JsonError {
     fn into_response(self) -> Response {
         if let JsonError::Any(e) = &self {
-            tracing::error!("{}", e.message());
-            crate::utils::sentry::report_trace(e.message().into(), e.backtrace());
+            alerts::alert(e.message().into(), e.location().file(), e.location().line());
         }
 
         let message = match self {

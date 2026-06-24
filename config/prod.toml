@@ -35,5 +35,6 @@ webhook_key = "$STRIPE_WEBHOOK_KEY"
 turnstile_site_key = "$CF_TURNSTILE_SITE_KEY"
 turnstile_secret_key = "$CF_TURNSTILE_SECRET_KEY"
 
-[sentry]
-dsn = "$SENTRY_DSN"
+[alerts.telegram]
+api_key = "$TELEGRAM_API_KEY"
+chat_id = "$TELEGRAM_CHAT_ID"

@@ -104,7 +104,7 @@ impl Stripe {
                 "Stripe::create_session(): {} (type={}), session_id={session_id}, email={email}, line_items={line_items_debug}",
                 err.message, err.error_type
             );
-            crate::utils::sentry::report(msg.clone());
+            alert!("{msg}");
             bail!(msg);
         }
 
@@ -112,14 +112,14 @@ impl Stripe {
             let msg = format!(
                 "Stripe::create_session(): response missing id, session_id={session_id}, email={email}, line_items={line_items_debug}"
             );
-            crate::utils::sentry::report(msg.clone());
+            alert!("{msg}");
             any!(msg)
         })?;
         let client_secret = res.client_secret.ok_or_else(|| {
             let msg = format!(
                 "Stripe::create_session(): response missing client_secret, session_id={session_id}, email={email}, line_items={line_items_debug}"
             );
-            crate::utils::sentry::report(msg.clone());
+            alert!("{msg}");
             any!(msg)
         })?;
         Ok(CheckoutSession { id, client_secret })
@@ -192,13 +192,13 @@ impl Stripe {
                 "Stripe::refund(): {} (type={}), payment_intent={payment_intent_id}",
                 err.message, err.error_type
             );
-            crate::utils::sentry::report(msg.clone());
+            alert!("{msg}");
             bail!(msg);
         }
 
         res.id.ok_or_else(|| {
             let msg = format!("Stripe::refund(): response missing id, payment_intent={payment_intent_id}");
-            crate::utils::sentry::report(msg.clone());
+            alert!("{msg}");
             any!(msg)
         })
     }

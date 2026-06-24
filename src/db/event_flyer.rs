@@ -210,10 +210,7 @@ impl EventFlyerCache {
     pub fn get(&self, slug: &str, size: &str) -> Option<Bytes> {
         let slug: &'static str = unsafe { &*(slug as *const str) };
         let size: &'static str = unsafe { &*(size as *const str) };
-        match self.map.get(&(slug, size)) {
-            Some(entry) => Some(entry.value().clone()),
-            None => None,
-        }
+        self.map.get(&(slug, size)).map(|entry| entry.value().clone())
     }
 
     fn insert(&self, slug: &str, size: &'static str, bytes: impl Into<Bytes>) {
