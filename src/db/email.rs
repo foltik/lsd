@@ -198,6 +198,18 @@ impl Email {
         Ok(row.is_some())
     }
 
+    pub async fn have_sent_dayof(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
+        let row = sqlx::query!(
+            "SELECT id FROM emails WHERE kind = ? AND event_id = ? AND user_id = ?",
+            Email::EVENT_DAYOF,
+            event_id,
+            user_id
+        )
+        .fetch_optional(db)
+        .await?;
+        Ok(row.is_some())
+    }
+
     pub async fn create_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<Email> {
         let row = sqlx::query_as!(
             Email,

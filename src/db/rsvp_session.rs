@@ -281,6 +281,49 @@ impl RsvpSession {
         Ok(())
     }
 
+    /// Confirm payment only if the session is still awaiting it, never overwriting a terminal
+    /// (confirmed/refunded) state. Returns the actual resulting status so a concurrent webhook
+    /// always wins and callers can detect a confirmation arriving for an already-refunded session.
+    pub async fn confirm_if_payable(&self, db: &Db) -> Result<String> {
+        sqlx::query!(
+            "UPDATE rsvp_sessions
+             SET status = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND status IN (?, ?)",
+            Self::PAYMENT_CONFIRMED,
+            self.id,
+            Self::CONTRIBUTION,
+            Self::PAYMENT_PENDING,
+        )
+        .execute(db)
+        .await?;
+        let row = sqlx::query!("SELECT status FROM rsvp_sessions WHERE id = ?", self.id)
+            .fetch_one(db)
+            .await?;
+        tracing::info!(
+            "confirm_if_payable session_id={} event_id={} status={:?} -> {:?}",
+            self.id,
+            self.event_id,
+            self.status,
+            row.status,
+        );
+        Ok(row.status)
+    }
+
+    /// Advance a still-unpaid session to pending without clobbering a concurrent confirm.
+    pub async fn mark_pending_if_contribution(&self, db: &Db) -> Result<()> {
+        sqlx::query!(
+            "UPDATE rsvp_sessions
+             SET status = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND status = ?",
+            Self::PAYMENT_PENDING,
+            self.id,
+            Self::CONTRIBUTION,
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
     pub async fn set_payment_intent_id(&self, db: &Db, payment_intent_id: &str) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions

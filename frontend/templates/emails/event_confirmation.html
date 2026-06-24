@@ -32,16 +32,20 @@
     </table>
     {% if let Some(confirmation_html) = event.confirmation_html %}
       {{ confirmation_html | safe }}
-    {% else %}
+    {% else if contributed %}
       <p>Thank you for your contribution. We look forward to seeing you!</p>
+    {% else %}
+      <p>Thank you for your RSVP. We look forward to seeing you!</p>
     {% endif %}
-    <div class="center">
-      <a
-        class="manage"
-        href="{{ "" | url }}/e/{{ event.slug }}/rsvp/manage?reservation={{ token }}"
-        >View your confirmation</a
-      >
-    </div>
+    {% if !token.is_empty() %}
+      <div class="center">
+        <a
+          class="manage"
+          href="{{ "" | url }}/e/{{ event.slug }}/rsvp/manage?reservation={{ token }}"
+          >View your confirmation</a
+        >
+      </div>
+    {% endif %}
   </article>
 {% endblock %}
 

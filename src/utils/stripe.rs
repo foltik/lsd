@@ -16,6 +16,14 @@ pub struct CheckoutSession {
 }
 
 #[derive(Debug)]
+pub struct CheckoutStatus {
+    /// Stripe's `payment_status`: `paid`, `unpaid`, or `no_payment_required`.
+    pub payment_status: String,
+    /// The PaymentIntent id, present once payment has succeeded.
+    pub payment_intent: Option<String>,
+}
+
+#[derive(Debug)]
 pub struct LineItem {
     /// Item name.
     pub name: String,
@@ -159,6 +167,51 @@ impl Stripe {
         }
 
         Ok(())
+    }
+
+    /// Retrieve a checkout session's payment state. `payment_intent` is null until payment
+    /// succeeds, so a `paid` status always carries it.
+    pub async fn retrieve_session(&self, checkout_session_id: &str) -> Result<CheckoutStatus> {
+        let url = format!("https://api.stripe.com/v1/checkout/sessions/{checkout_session_id}");
+
+        #[derive(serde::Deserialize)]
+        struct Response {
+            payment_status: Option<String>,
+            payment_intent: Option<String>,
+            error: Option<StripeError>,
+        }
+
+        #[derive(serde::Deserialize)]
+        struct StripeError {
+            message: String,
+            #[serde(rename = "type")]
+            error_type: String,
+        }
+
+        #[rustfmt::skip]
+        let res: Response = self.http
+            .get(&url)
+            .header("Stripe-Version", API_VERSION)
+            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
+            .send().await?.json().await?;
+
+        if let Some(err) = res.error {
+            let msg = format!(
+                "Stripe::retrieve_session(): {} (type={}), checkout_session_id={checkout_session_id}",
+                err.message, err.error_type
+            );
+            alert!("{msg}");
+            bail!(msg);
+        }
+
+        let payment_status = res.payment_status.ok_or_else(|| {
+            let msg = format!(
+                "Stripe::retrieve_session(): response missing payment_status, checkout_session_id={checkout_session_id}"
+            );
+            alert!("{msg}");
+            any!(msg)
+        })?;
+        Ok(CheckoutStatus { payment_status, payment_intent: res.payment_intent })
     }
 
     /// Issue a full refund for a payment intent. Returns the Stripe refund ID.

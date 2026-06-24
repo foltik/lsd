@@ -52,6 +52,151 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         })
 }
 
+// Sending confirmation and day-of emails to attendees.
+pub mod emails {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::db::rsvp::Rsvp;
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "emails/event_confirmation.html")]
+    struct ConfirmationEmailHtml {
+        email_token: String,
+        event: Event,
+        token: String,
+        flyer: Option<EventFlyer>,
+        /// Whether this recipient actually contributed; gates the "thank you for your
+        /// contribution" wording so $0 and admin-added attendees don't see it.
+        contributed: bool,
+    }
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "emails/event_dayof.html")]
+    struct DayofEmailHtml {
+        email_token: String,
+        event: Event,
+        flyer: Option<EventFlyer>,
+    }
+
+    /// Send the confirmation email to a user, unless they've already received one. `manage_token`
+    /// links the "manage your RSVP" button; pass "" to omit it (e.g. admin-added attendees).
+    pub async fn send_confirmation_email(
+        state: &SharedAppState, event: &Event, user_id: i64, manage_token: &str, contributed: bool,
+    ) -> Result<()> {
+        if Email::have_sent_confirmation(&state.db, event.id, user_id).await? {
+            return Ok(());
+        }
+        let email = Email::create_confirmation(&state.db, event.id, user_id).await?;
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+        let from = &state.config.email.from;
+        let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+        let subject = event
+            .confirmation_subject
+            .clone()
+            .unwrap_or_else(|| format!("Confirmation for {}", event.title));
+        let message = state
+            .mailer
+            .builder()
+            .to(email.address.parse().unwrap())
+            .reply_to(reply_to.clone())
+            .subject(subject)
+            .header(lettre::message::header::ContentType::TEXT_HTML)
+            .body(
+                ConfirmationEmailHtml {
+                    email_token: email.token,
+                    event: event.clone(),
+                    token: manage_token.to_string(),
+                    flyer,
+                    contributed,
+                }
+                .render()?,
+            )
+            .unwrap();
+
+        match state.mailer.send(&message).await {
+            Ok(_) => {
+                Email::mark_sent(&state.db, email.id).await?;
+                tracing::info!("Confirmation for event_id={} sent to email={:?}", event.id, email.address);
+            }
+            Err(e) => {
+                let e = e.message();
+                Email::mark_error(&state.db, email.id, e).await?;
+                alert!(
+                    "Error sending confirmation for event_id={} to email={:?}: {e}",
+                    event.id, email.address
+                );
+            }
+        };
+        Ok(())
+    }
+
+    /// Send the day-of email to a user, but only once the event's day-of has been broadcast and
+    /// only if they haven't already received it. Idempotent no-op otherwise.
+    pub async fn send_dayof_email(state: &SharedAppState, event: &Event, user_id: i64) -> Result<()> {
+        if event.dayof_sent_at.is_none() || Email::have_sent_dayof(&state.db, event.id, user_id).await? {
+            return Ok(());
+        }
+        let email = Email::create_send_dayof_single(&state.db, event.id, user_id).await?;
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+        let from = &state.config.email.from;
+        let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+        let message = state
+            .mailer
+            .builder()
+            .to(email.address.parse().unwrap())
+            .reply_to(reply_to.clone())
+            .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
+            .header(lettre::message::header::ContentType::TEXT_HTML)
+            .body(DayofEmailHtml { email_token: email.token, event: event.clone(), flyer }.render()?)
+            .unwrap();
+
+        match state.mailer.send(&message).await {
+            Ok(_) => {
+                Email::mark_sent(&state.db, email.id).await?;
+                tracing::info!("Day-of for event_id={} sent to email={:?}", event.id, email.address);
+            }
+            Err(e) => {
+                let e = e.message();
+                Email::mark_error(&state.db, email.id, e).await?;
+                alert!(
+                    "Error sending day-of for event_id={} to email={:?}: {e}",
+                    event.id, email.address
+                );
+            }
+        };
+        Ok(())
+    }
+
+    /// Send the confirmation and (if broadcast) day-of email to a single user.
+    pub async fn send_confirmation(
+        state: &SharedAppState, event: &Event, user_id: i64, manage_token: &str, contributed: bool,
+    ) -> Result<()> {
+        send_confirmation_email(state, event, user_id, manage_token, contributed).await?;
+        send_dayof_email(state, event, user_id).await?;
+        Ok(())
+    }
+
+    /// Send confirmation + day-of to every attendee under a paying owner's family (self + guests).
+    pub async fn send_family_confirmations(
+        state: &SharedAppState, event: &Event, owner_user_id: i64, manage_token: &str,
+    ) -> Result<()> {
+        // Sum each attendee's own contribution across their spots so the wording matches what
+        // they actually gave (a guest covered by the primary may be $0).
+        let attendees = Rsvp::list_family_attendees(&state.db, event, owner_user_id).await?;
+        let mut totals: HashMap<i64, i64> = HashMap::new();
+        for attendee in attendees {
+            if let Some(user_id) = attendee.user_id {
+                *totals.entry(user_id).or_insert(0) += attendee.contribution;
+            }
+        }
+        for (user_id, contribution) in totals {
+            send_confirmation(state, event, user_id, manage_token, contribution > 0).await?;
+        }
+        Ok(())
+    }
+}
+
 // View and list events.
 mod read {
     use super::*;
@@ -692,12 +837,14 @@ mod edit {
             event: Event,
             token: String,
             flyer: Option<EventFlyer>,
+            contributed: bool,
         }
         Ok(PreviewConfirmationHtml {
             email_token: String::new(),
             event: event.clone(),
             token: "xxxxxxxx".into(),
             flyer,
+            contributed: true,
         }
         .into_response())
     }
@@ -1194,6 +1341,10 @@ mod edit {
         // Create manual RSVP
         let note = form.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
         ManualRsvp::create(&state.db, event.id, user.id, admin.id, note.as_deref()).await?;
+
+        // Send confirmation now, plus the day-of email if it's already been broadcast. No manage
+        // link and no contribution: admin-added attendees have no RSVP session.
+        super::emails::send_confirmation(&state, &event, user.id, "", false).await?;
 
         Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response())
     }
@@ -1711,63 +1862,9 @@ mod rsvp {
             return Ok(([(header::SET_COOKIE, clear)], redirect).into_response());
         }
 
-        // Send confirmation email
+        // Payment confirmed (free RSVP): send confirmation + day-of to the whole family.
         let user_id = session.user_id.ok_or_else(invalid)?;
-        let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
-
-        if !Email::have_sent_confirmation(&state.db, event.id, user_id).await? {
-            let email = Email::create_confirmation(&state.db, event.id, user_id).await?;
-            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-            #[derive(Template, WebTemplate)]
-            #[template(path = "emails/event_confirmation.html")]
-            struct ConfirmationEmailHtml {
-                email_token: String,
-                event: Event,
-                token: String,
-                flyer: Option<EventFlyer>,
-            }
-
-            let from = &state.config.email.from;
-            let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
-            let subject = event
-                .confirmation_subject
-                .clone()
-                .unwrap_or_else(|| format!("Confirmation for {}", event.title));
-            let message = state
-                .mailer
-                .builder()
-                .to(user.email.parse().unwrap())
-                .reply_to(reply_to.clone())
-                .subject(subject)
-                .header(lettre::message::header::ContentType::TEXT_HTML)
-                .body(
-                    ConfirmationEmailHtml {
-                        email_token: email.token,
-                        event: event.clone(),
-                        token: session.token.clone(),
-                        flyer,
-                    }
-                    .render()?,
-                )
-                .unwrap();
-
-            match state.mailer.send(&message).await {
-                Ok(_) => {
-                    Email::mark_sent(&state.db, email.id).await?;
-                    tracing::info!("Confirmation for event_id={} sent to email={:?}", event.id, user.email);
-                }
-                Err(e) => {
-                    let e = e.message();
-                    Email::mark_error(&state.db, email.id, e).await?;
-                    alert!(
-                        "Error sending confirmation for event_id={} to email={:?}: {e}",
-                        event.id,
-                        user.email
-                    );
-                }
-            };
-        }
+        super::emails::send_family_confirmations(&state, &event, user_id, &session.token).await?;
 
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", &session.token)).into_response())
     }
@@ -1776,6 +1873,50 @@ mod rsvp {
     pub struct SessionQuery {
         reservation: String,
     }
+    /// Ask Stripe whether a session's checkout is paid and, if so, confirm it and email the family.
+    /// Confirming here rather than optimistically keeps confirmation/day-of strictly post-payment
+    /// and closes the manage-URL exploit. Unpaid sessions stay pending and alert.
+    async fn reconcile_payment(state: &SharedAppState, event: &Event, session: &RsvpSession) -> Result<()> {
+        let Some(checkout_session_id) = session.stripe_checkout_session_id.as_deref() else {
+            // No checkout to reconcile against; leave the session as-is.
+            return Ok(());
+        };
+
+        let status = state.stripe.retrieve_session(checkout_session_id).await?;
+        if status.payment_status != "paid" {
+            session.mark_pending_if_contribution(&state.db).await?;
+            alert!(
+                "Stripe reconcile: session_id={} event_id={} reached manage with payment_status={:?}",
+                session.id, event.id, status.payment_status,
+            );
+            return Ok(());
+        }
+
+        // Paid: persist the intent (refunds depend on it) before confirming.
+        if let Some(payment_intent) = &status.payment_intent {
+            session.set_payment_intent_id(&state.db, payment_intent).await?;
+        }
+        match session.confirm_if_payable(&state.db).await?.as_str() {
+            RsvpSession::PAYMENT_CONFIRMED => {
+                super::emails::send_family_confirmations(
+                    state,
+                    event,
+                    session.user_id.unwrap(),
+                    &session.token,
+                )
+                .await?;
+            }
+            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
+                alert!(
+                    "Stripe reconcile: payment_status=paid for already-refunded session_id={} event_id={}",
+                    session.id, event.id,
+                );
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     // Show the "Manage your RSVP" page.
     pub async fn manage_page(
         user: Option<User>, State(state): State<SharedAppState>, Query(query): Query<SessionQuery>,
@@ -1795,11 +1936,9 @@ mod rsvp {
                         return goto::selection_page(&state.db, &None, &Some(session), &event).await;
                     }
                     RsvpSession::ATTENDEES => return goto::attendees_page(&event),
-                    // If you get here, we hold your spot and assume payment is coming later via webhook.
-                    // This is technically exploitable, but we could check for still unpaid rsvps at event start.
-                    RsvpSession::CONTRIBUTION => {
-                        session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?
-                    }
+                    // Advance the child to pending; the parent session carries payment. CAS so a
+                    // concurrent confirm on the parent is never clobbered.
+                    RsvpSession::CONTRIBUTION => session.mark_pending_if_contribution(&state.db).await?,
                     RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
                     RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
                         return goto::error_rsvp_refunded();
@@ -1814,23 +1953,21 @@ mod rsvp {
             None => session,
         };
 
-        let Some(user_id) = session.user_id else {
+        if session.user_id.is_none() {
             bail_invalid!()
-        };
-        let Some(session_user) = User::lookup_by_id(&state.db, user_id).await? else {
-            bail_invalid!()
-        };
+        }
 
-        // Transition state
+        // Reconcile unpaid sessions against Stripe rather than assuming payment arrives. This is
+        // the authoritative confirm path on return from checkout; the webhook is the backup.
         match session.status.as_str() {
             RsvpSession::SELECTION => {
                 return goto::selection_page(&state.db, &None, &Some(session), &event).await;
             }
             RsvpSession::ATTENDEES => return goto::attendees_page(&event),
-            // If you get here, we hold your spot and assume payment is coming later via webhook.
-            // This is technically exploitable, but we could check for still unpaid rsvps at event start.
-            RsvpSession::CONTRIBUTION => session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?,
-            RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
+            RsvpSession::CONTRIBUTION | RsvpSession::PAYMENT_PENDING => {
+                reconcile_payment(&state, &event, &session).await?;
+            }
+            RsvpSession::PAYMENT_CONFIRMED => {}
             RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
                 return goto::error_rsvp_refunded();
             }
@@ -1838,116 +1975,6 @@ mod rsvp {
         }
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-        if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
-            let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
-            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-            #[derive(Template, WebTemplate)]
-            #[template(path = "emails/event_confirmation.html")]
-            struct ConfirmationEmailHtml {
-                email_token: String,
-                event: Event,
-                token: String,
-                flyer: Option<EventFlyer>,
-            }
-
-            let from = &state.config.email.from;
-            let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
-            let message = state
-                .mailer
-                .builder()
-                .to(session_user.email.parse().unwrap())
-                .reply_to(reply_to.clone())
-                .subject(
-                    event
-                        .confirmation_subject
-                        .clone()
-                        .unwrap_or_else(|| format!("Confirmation for {}", event.title)),
-                )
-                .header(lettre::message::header::ContentType::TEXT_HTML)
-                .body(
-                    ConfirmationEmailHtml {
-                        email_token: email.token,
-                        event: event.clone(),
-                        token: session.token.clone(),
-                        flyer,
-                    }
-                    .render()?,
-                )
-                .unwrap();
-
-            match state.mailer.send(&message).await {
-                Ok(_) => {
-                    Email::mark_sent(&state.db, email.id).await?;
-                    tracing::info!(
-                        "Confirmation for event_id={} sent to email={:?}",
-                        event.id,
-                        session_user.email
-                    );
-                }
-                Err(e) => {
-                    let e = e.message();
-                    Email::mark_error(&state.db, email.id, e).await?;
-                    alert!(
-                        "Error sending confirmation for event_id={} to email={:?}: {e}",
-                        event.id,
-                        session_user.email
-                    );
-                }
-            };
-
-            // If dayof email has been sent out, also send it to this new RSVP
-            if event.dayof_sent_at.is_some() {
-                let dayof_email = Email::create_send_dayof_single(&state.db, event.id, user_id).await?;
-                let dayof_flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-                #[derive(Template, WebTemplate)]
-                #[template(path = "emails/event_dayof.html")]
-                struct DayofEmailHtml {
-                    email_token: String,
-                    event: Event,
-                    flyer: Option<EventFlyer>,
-                }
-
-                let dayof_message = state
-                    .mailer
-                    .builder()
-                    .to(session_user.email.parse().unwrap())
-                    .reply_to(reply_to.clone())
-                    .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
-                    .header(lettre::message::header::ContentType::TEXT_HTML)
-                    .body(
-                        DayofEmailHtml {
-                            email_token: dayof_email.token,
-                            event: event.clone(),
-                            flyer: dayof_flyer,
-                        }
-                        .render()?,
-                    )
-                    .unwrap();
-
-                match state.mailer.send(&dayof_message).await {
-                    Ok(_) => {
-                        Email::mark_sent(&state.db, dayof_email.id).await?;
-                        tracing::info!(
-                            "Day-of for event_id={} sent to email={:?}",
-                            event.id,
-                            session_user.email
-                        );
-                    }
-                    Err(e) => {
-                        let e = e.message();
-                        Email::mark_error(&state.db, email.id, e).await?;
-                        alert!(
-                            "Error sending day-of for event_id={} to email={:?}: {e}",
-                            event.id,
-                            session_user.email
-                        );
-                    }
-                };
-            }
-        }
 
         // Aggregate RSVPs from parent + all confirmed children
         let user_id = session.user_id.unwrap();

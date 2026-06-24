@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvp_sessions\n             SET status = ?, updated_at = CURRENT_TIMESTAMP\n             WHERE id = ? AND status = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "806da2effb67d5565a93d55818964ff05d7a2da9b67ccc4ae2d43a6b958887c6"
+}
