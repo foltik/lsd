@@ -10,7 +10,7 @@
   }
 
   .flyer {
-    @apply block rounded;
+    @apply block cursor-pointer rounded;
     position: relative;
 
     &.unlisted .image {
@@ -33,5 +33,22 @@
         }
       }
     }
+  }
+}
+
+#flyer-zoom {
+  @apply fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 p-4;
+
+  .backdrop {
+    @apply absolute inset-0 bg-black;
+  }
+
+  .title {
+    @apply relative m-0 text-center text-lg text-white md:text-3xl;
+  }
+
+  img {
+    @apply relative cursor-pointer rounded object-contain shadow-2xl;
+    transform-origin: top left;
   }
 }
