@@ -71,7 +71,7 @@
     @apply mb-6 flex items-center justify-between text-xs font-extrabold tracking-wider sm:text-xl md:justify-start md:text-2xl;
 
     .divider {
-      @apply border-lsd-white ml-6 h-4 w-6 border-l md:h-6;
+      @apply border-lsd-white ml-3 h-4 w-3 border-l sm:ml-6 sm:w-6 md:h-6;
     }
 
     .newsletter {

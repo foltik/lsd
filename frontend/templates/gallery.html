@@ -8,6 +8,7 @@
       {% for flyer in flyers.iter() %}
         <a class="flyer {% if flyer.unlisted %}unlisted{% endif %}"
           href="/e/{{ flyer.slug }}"
+          data-title="{{ flyer.title }}"
           data-w="{{ flyer.width }}"
           data-h="{{ flyer.height }}"
           style="--ratio: {{ flyer.width as f32 / flyer.height as f32 }};"
@@ -16,15 +17,15 @@
             <img
               class="image-thumb"
               loading="lazy"
+              fetchpriority="high"
               src="/e/{{ flyer.slug }}/flyer?size=thumb"
-              alt=""
               aria-hidden="true"
             />
             <img
               class="image-sm"
               loading="lazy"
+              fetchpriority="low"
               src="/e/{{ flyer.slug }}/flyer?size=sm"
-              alt="{{ flyer.title }}"
             />
           </span>
         </a>
@@ -37,6 +38,12 @@
   <script>
     const grid = document.getElementById("grid");
     const flyers = [...grid.children];
+
+    // Shuffle flyers on each visit
+    for (let i = flyers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [flyers[i], flyers[j]] = [flyers[j], flyers[i]];
+    }
 
     /* ---------- Masonry layout ---------------------------- */
     let activeNumCols = 0;
@@ -65,7 +72,7 @@
       activeNumCols = numCols;
     }
 
-    // Fade from thumb to sm on load
+    // Fade from thumb to sm once the larger image loads.
     for (const image of grid.querySelectorAll(".image-sm")) {
       if (image.complete)
         image.classList.add("loaded");
@@ -82,5 +89,71 @@
 
     // Initial layout
     layout();
+
+    /* ---------- Click to enlarge -------------------------- */
+    let animating = false;
+    function zoom(flyer) {
+      if (animating) return;
+      animating = true;
+
+      const image = flyer.querySelector(".image");
+      const image_sm = flyer.querySelector(".image-sm");
+      const image_lg = new Image();
+      image_lg.src = image_sm.src.replace("size=sm", "size=lg");
+
+      // Fit into the viewport at the flyer's aspect, leaving room above for the title
+      const aspect = image.clientWidth / image.clientHeight;
+      const width = Math.min(window.innerWidth * 0.85, window.innerHeight * 0.72 * aspect);
+
+      // Create overlay
+      const overlay = document.createElement("div");
+      overlay.id = "flyer-zoom";
+      overlay.innerHTML = `<div class="backdrop"></div><p class="title"></p><img alt="">`;
+      const [backdrop, title, image_overlay] = overlay.children;
+      title.textContent = flyer.dataset.title;
+      image_overlay.style.width = `${width}px`;
+      image_overlay.style.height = `${width / aspect}px`;
+      image_overlay.src = image_sm.currentSrc || image_sm.src;
+      image_lg.addEventListener("load", () => { image_overlay.src = image_lg.src; });
+      // Append overlay
+      document.body.append(overlay);
+      document.body.style.overflow = "hidden";
+      image.style.visibility = "hidden";
+
+      // Animate to center
+      const from = image.getBoundingClientRect();
+      const to = image_overlay.getBoundingClientRect();
+      const translate = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`;
+      const timing = { duration: 150, easing: "ease-in-out", fill: "both" };
+      const animate = (open) => {
+        backdrop.animate({ opacity: open ? [0, 0.85] : [0.85, 0] }, timing);
+        title.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);
+        return image_overlay.animate({ transform: open ? [translate, "none"] : ["none", translate] }, timing);
+      };
+      animate(true).finished.then(() => { animating = false; });
+
+      // Animate back and remove overlay
+      function close() {
+        if (animating) return;
+        animating = true;
+
+        overlay.removeEventListener("click", close);
+
+        animate(false).finished.then(() => {
+          image.style.visibility = "";
+          document.body.style.overflow = "";
+          overlay.remove();
+          animating = false;
+        });
+      }
+      overlay.addEventListener("click", close);
+    }
+
+    for (const flyer of flyers) {
+      flyer.addEventListener("click", (event) => {
+        event.preventDefault();
+        zoom(flyer);
+      });
+    }
   </script>
 {% endblock scripts %}
