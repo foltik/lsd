@@ -25,7 +25,7 @@ impl MakeRequestId for MakeRequestUuidV7 {
 #[rustfmt::skip]
 async fn log_middleware(request: Request, next: Next) -> Response {
     let method = request.method().as_str().to_owned();
-    let path = request.uri().path().to_owned();
+    let path = request.uri().path_and_query().map_or_else(|| request.uri().path(), |pq| pq.as_str()).to_owned();
     let version = request.version();
     let ip = request.extensions().get::<ConnectInfo<SocketAddr>>().unwrap().ip().to_canonical().to_string();
 
