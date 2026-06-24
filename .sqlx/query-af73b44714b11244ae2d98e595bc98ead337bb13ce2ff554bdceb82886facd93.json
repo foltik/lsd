@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE emails SET opened_at = CURRENT_TIMESTAMP\n               WHERE token = ? AND opened_at IS NULL\n                 AND sent_at <= datetime('now', '-10 seconds')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "af73b44714b11244ae2d98e595bc98ead337bb13ce2ff554bdceb82886facd93"
+}
