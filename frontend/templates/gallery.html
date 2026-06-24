@@ -113,8 +113,12 @@
       title.textContent = flyer.dataset.title;
       image_overlay.style.width = `${width}px`;
       image_overlay.style.height = `${width / aspect}px`;
+      image_overlay.decoding = "async"; // decode off the main thread so zoom doesn't stutter
       image_overlay.src = image_sm.currentSrc || image_sm.src;
-      image_lg.addEventListener("load", () => { image_overlay.src = image_lg.src; });
+      image_lg.addEventListener("load", () => {
+        image_overlay.src = image_lg.src;
+        image_sm.src = image_lg.src;
+      });
       // Append overlay
       document.body.append(overlay);
       document.body.style.overflow = "hidden";
@@ -124,7 +128,7 @@
       const from = image.getBoundingClientRect();
       const to = image_overlay.getBoundingClientRect();
       const translate = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`;
-      const timing = { duration: 150, easing: "ease-in-out", fill: "both" };
+      const timing = { duration: 150, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "both" };
       const animate = (open) => {
         backdrop.animate({ opacity: open ? [0, 0.85] : [0.85, 0] }, timing);
         title.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);

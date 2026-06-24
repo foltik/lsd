@@ -44,7 +44,7 @@
   }
 
   .title {
-    @apply relative m-0 text-center text-lg text-white md:text-3xl;
+    @apply relative m-0 text-center text-xl text-white md:text-3xl;
   }
 
   img {
