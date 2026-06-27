@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT m.first_name, m.last_name, m.email, m.rsvped AS \"rsvped!: bool\"\n            FROM (\n                SELECT\n                    u.first_name, u.last_name, u.email,\n                    (EXISTS(SELECT 1 FROM manual_rsvps mr WHERE mr.event_id = ? AND mr.user_id = u.id)\n                     OR EXISTS(SELECT 1 FROM rsvps r JOIN rsvp_sessions rs ON rs.id = r.session_id\n                               WHERE rs.event_id = ? AND r.user_id = u.id\n                                 AND rs.status IN ('payment_pending','payment_confirmed','refund_pending','refund_confirmed'))\n                    ) AS rsvped,\n                    (CASE ?\n                       WHEN 'first_name' THEN u.first_name\n                       WHEN 'last_name'  THEN u.last_name\n                       WHEN 'full_name'  THEN TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))\n                       ELSE u.email\n                     END) AS match_col\n                FROM users u\n            ) m\n            WHERE m.match_col LIKE ? ESCAPE '\\' COLLATE NOCASE\n            ORDER BY\n                CASE\n                    WHEN m.match_col = ? COLLATE NOCASE THEN 0\n                    WHEN m.match_col LIKE ? ESCAPE '\\' COLLATE NOCASE THEN 1\n                    ELSE 2\n                END,\n                m.match_col COLLATE NOCASE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "first_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "rsvped!: bool",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0ceeddf34712a144c007a90f993304ec5f4e1fc1cb63117763ec735d1c5ad000"
+}

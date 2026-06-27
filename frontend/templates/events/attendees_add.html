@@ -15,25 +15,45 @@
     >
       <div class="field">
         <label for="first_name">First name</label>
-        <input
-          type="text"
-          name="first_name"
-          autocomplete="given-name"
-          required
-        />
+        <div class="combobox">
+          <input
+            type="text"
+            id="first_name"
+            name="first_name"
+            data-field="first_name"
+            autocomplete="off"
+            required
+          />
+          <ul class="autocomplete"></ul>
+        </div>
       </div>
       <div class="field">
         <label for="last_name">Last name</label>
-        <input
-          type="text"
-          name="last_name"
-          autocomplete="family-name"
-          required
-        />
+        <div class="combobox">
+          <input
+            type="text"
+            id="last_name"
+            name="last_name"
+            data-field="last_name"
+            autocomplete="off"
+            required
+          />
+          <ul class="autocomplete"></ul>
+        </div>
       </div>
       <div class="field">
         <label for="email">Email</label>
-        <input type="email" name="email" autocomplete="email" required />
+        <div class="combobox">
+          <input
+            type="email"
+            id="email"
+            name="email"
+            data-field="email"
+            autocomplete="off"
+            required
+          />
+          <ul class="autocomplete"></ul>
+        </div>
       </div>
       <div class="field">
         <label for="note">Note (optional)</label>
@@ -49,4 +69,107 @@
       </div>
     </form>
   </section>
+  <script>
+    /* ---------- DOM ----------------------------------------------------------- */
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      form: $("form"),
+      combos: () => [...ui.form.querySelectorAll(".combobox")],
+      inputs: () => [...ui.form.querySelectorAll(".combobox input")],
+      resultsList: (combo) => combo.querySelector(".autocomplete"),
+
+      setSelection: (user) => {
+        ui.inputs().forEach((input) => {
+          input.value = user[input.dataset.field] ?? "";
+          input.readOnly = true;
+        });
+        ui.clearResults();
+      },
+      clearSelection: () =>
+        ui.inputs().forEach((input) => {
+          input.value = "";
+          input.readOnly = false;
+        }),
+
+      clearResults: () =>
+        ui.combos().forEach((c) => ui.resultsList(c).replaceChildren()),
+
+      makeResult: (user, field, i) => {
+        const name = [user.first_name, user.last_name]
+          .filter((n) => n)
+          .join(" ");
+        const label =
+          field == "email"
+            ? name
+              ? `${user.email} (${name})`
+              : user.email
+            : name
+              ? `${name} (${user.email})`
+              : user.email;
+        return `
+          <li class="${user.rsvped ? "rsvped" : ""}" data-index="${i}">
+            <span class="info">${label}</span>
+            ${user.rsvped ? '<span class="tag">(RSVPed)</span>' : ""}
+          </li>`;
+      },
+    };
+
+    /* ---------- Autocomplete per field ---------------------------------------- */
+    for (const combo of ui.combos()) {
+      const input = combo.querySelector("input");
+      const list = ui.resultsList(combo);
+      const field = input.dataset.field;
+
+      let results = [];
+      let seqnum = 0;
+      let debounce;
+
+      input.addEventListener("input", () => {
+        clearTimeout(debounce);
+
+        const query = input.value.trim();
+        if (query.length < 2) return list.replaceChildren();
+
+        debounce = setTimeout(async () => {
+          const seq = ++seqnum;
+          try {
+            const res = await fetch(
+              `/events/{{ event.id }}/attendees/search?q=${encodeURIComponent(query)}&field=${field}`,
+            );
+
+            // Ignore a failed or stale response that a newer keystroke has superseded
+            if (!res.ok || seq != seqnum) return;
+
+            results = await res.json();
+            list.innerHTML = results
+              .map((user, i) => ui.makeResult(user, field, i))
+              .join("");
+          } catch (e) {}
+        }, 150); // 150ms debounce
+      });
+
+      // Selecting a result autofills and disables inputs
+      list.addEventListener("mousedown", (e) => {
+        const li = e.target.closest("li");
+        if (!li || li.classList.contains("rsvped")) return;
+
+        e.preventDefault();
+        ui.setSelection(results[li.dataset.index]);
+      });
+      // Clicking a disabled input clears the autofills
+      input.addEventListener("mousedown", () => {
+        if (input.readOnly) ui.clearSelection();
+      });
+
+      // Clear results when clicking away, leaving time to allow selecting one
+      input.addEventListener("blur", () => {
+        setTimeout(() => list.replaceChildren(), 150);
+      });
+    }
+
+    // Escape to dismiss results
+    document.addEventListener("keydown", (e) => {
+      if (e.key == "Escape") ui.clearResults();
+    });
+  </script>
 {% endblock content %}
