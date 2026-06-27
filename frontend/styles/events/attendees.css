@@ -25,6 +25,10 @@
     @apply underline;
   }
 
+  th.sortable {
+    @apply cursor-pointer select-none;
+  }
+
   th:first-child,
   td:first-child {
     @apply pl-0;
