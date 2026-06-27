@@ -249,7 +249,7 @@ mod edit {
                 closed: false,
                 guest_list_id: None,
                 spots_per_person: None,
-                artist_share: 60,
+                artist_share: 40,
 
                 description_html: None,
                 description_updated_at: None,
