@@ -8,15 +8,19 @@ pub struct ManualRsvp {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub checkin_at: Option<NaiveDateTime>,
+    pub note: Option<String>,
 }
 
 impl ManualRsvp {
-    pub async fn create(db: &Db, event_id: i64, user_id: i64, creator_user_id: i64) -> Result<()> {
+    pub async fn create(
+        db: &Db, event_id: i64, user_id: i64, creator_user_id: i64, note: Option<&str>,
+    ) -> Result<()> {
         sqlx::query!(
-            "INSERT INTO manual_rsvps (event_id, user_id, creator_user_id) VALUES (?, ?, ?)",
+            "INSERT INTO manual_rsvps (event_id, user_id, creator_user_id, note) VALUES (?, ?, ?, ?)",
             event_id,
             user_id,
             creator_user_id,
+            note,
         )
         .execute(db)
         .await?;

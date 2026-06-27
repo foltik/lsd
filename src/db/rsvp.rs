@@ -93,6 +93,7 @@ pub struct AdminAttendeesRsvp {
     pub session_id: i64,
     pub session_token: Option<String>,
     pub status: String,
+    pub note: Option<String>,
 }
 
 impl AdminAttendeesRsvp {
@@ -140,7 +141,8 @@ impl Rsvp {
 
                 rs.id AS "session_id!: i64",
                 rs.token AS session_token,
-                rs.status AS "status!"
+                rs.status AS "status!",
+                NULL AS "note?: String"
             FROM rsvps r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
             JOIN spots sp ON sp.id = r.spot_id
@@ -167,7 +169,8 @@ impl Rsvp {
 
                 0 AS "session_id!: i64",
                 NULL AS session_token,
-                'manual' AS "status!"
+                'manual' AS "status!",
+                mr.note
             FROM manual_rsvps mr
             JOIN users u ON u.id = mr.user_id
             JOIN users cu ON cu.id = mr.creator_user_id
