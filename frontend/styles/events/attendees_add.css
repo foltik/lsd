@@ -5,4 +5,36 @@
       @apply flex items-center gap-2 p-2 py-1;
     }
   }
+
+  input:read-only {
+    @apply cursor-pointer opacity-50;
+  }
+
+  .combobox {
+    @apply relative;
+    &:has(.autocomplete:not(:empty)) input {
+      @apply rounded-b-none;
+    }
+  }
+
+  .autocomplete {
+    @apply absolute top-full right-0 left-0 z-10 max-h-80 overflow-y-auto empty:hidden;
+    @apply border-lsd-white/30 bg-lsd-charcoal rounded-b-md border border-t-0;
+
+    li {
+      @apply flex cursor-pointer items-center justify-between gap-2 px-3 py-2;
+      @apply hover:bg-lsd-white/10;
+
+      .info {
+        @apply min-w-0 flex-1 truncate;
+      }
+
+      &.rsvped {
+        @apply cursor-not-allowed opacity-50 hover:bg-transparent;
+        .tag {
+          @apply text-lsd-gray text-sm whitespace-nowrap;
+        }
+      }
+    }
+  }
 }

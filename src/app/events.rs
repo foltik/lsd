@@ -35,6 +35,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{id}/flyer", get(read::flyer_by_id))
                 .route("/events/{id}/attendees", get(edit::attendees_page))
                 .route("/events/{id}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
+                .route("/events/{id}/attendees/search", get(edit::search_attendees))
                 .route("/events/{id}/attendees/{user_id}", delete(edit::delete_attendee))
                 .route("/events/{id}/attendees/{user_id}/refund", post(edit::refund_attendee))
                 .route("/events/{id}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
@@ -215,7 +216,7 @@ mod edit {
     use crate::db::list::{List, ListWithCount};
     use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AdminAttendeesRsvp, Rsvp};
-    use crate::db::user::CreateUser;
+    use crate::db::user::{AttendeeSearchField, AttendeeSearchResult, CreateUser};
     use crate::utils::editor::{Editor, EditorContent};
 
     #[derive(Template, WebTemplate)]
@@ -1078,6 +1079,23 @@ mod edit {
         Ok(Html { user: Some(user), event }.into_response())
     }
 
+    /// Autocomplete users for the add attendee form.
+    #[derive(serde::Deserialize)]
+    pub struct AttendeeSearchQuery {
+        q: String,
+        field: AttendeeSearchField,
+    }
+    pub async fn search_attendees(
+        _user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+        Query(query): Query<AttendeeSearchQuery>,
+    ) -> JsonResult<Vec<AttendeeSearchResult>> {
+        let q = query.q.trim();
+        if q.is_empty() {
+            return Ok(Json(vec![]));
+        }
+        Ok(Json(User::search_for_event(&state.db, id, query.field, q).await?))
+    }
+
     #[derive(serde::Deserialize)]
     pub struct AddAttendeeForm {
         first_name: String,
@@ -1093,6 +1111,14 @@ mod edit {
     ) -> HtmlResult {
         let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
 
+        // Check if already has an RSVP (manual or regular) for this event
+        if let Some(existing) = User::lookup_by_email(&state.db, &form.email).await?
+            && (ManualRsvp::exists(&state.db, event.id, existing.id).await?
+                || Rsvp::exists_for_event(&state.db, event.id, existing.id).await?)
+        {
+            return Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response());
+        }
+
         let user = User::update_or_create(
             &state.db,
             &CreateUser {
@@ -1103,13 +1129,6 @@ mod edit {
             },
         )
         .await?;
-
-        // Check if already has an RSVP (manual or regular) for this event
-        if ManualRsvp::exists(&state.db, event.id, user.id).await?
-            || Rsvp::exists_for_event(&state.db, event.id, user.id).await?
-        {
-            return Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response());
-        }
 
         // Create manual RSVP
         let note = form.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());

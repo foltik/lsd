@@ -30,6 +30,23 @@ pub struct UpdateUser {
     pub phone: Option<String>,
 }
 
+/// A user matched by the add attendee form autocomplete.
+#[derive(serde::Serialize)]
+pub struct AttendeeSearchResult {
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub email: String,
+    pub rsvped: bool,
+}
+// Which field the user is searching in.
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttendeeSearchField {
+    FirstName,
+    LastName,
+    Email,
+}
+
 #[macro_export]
 macro_rules! map_row {
     ($row:expr) => {
@@ -249,6 +266,62 @@ impl User {
         .await?;
         Ok(row.map(|r| map_row_fuck!(r)))
     }
+
+    /// Search users by a substring of one field, flagging those already RSVPed to `event_id`.
+    ///
+    /// Results are ranked: exact matches first, then prefix matches, then other substring
+    /// hits, alphabetically within each tier.
+    pub async fn search_for_event(
+        db: &Db, event_id: i64, field: AttendeeSearchField, query: &str,
+    ) -> Result<Vec<AttendeeSearchResult>> {
+        // Note we're only escaping for the LIKE clause, sqlx handles escaping for sql injection.
+        let escaped = query.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let contains = format!("%{escaped}%");
+        let prefix = format!("{escaped}%");
+
+        let key = match field {
+            AttendeeSearchField::FirstName if query.contains(' ') => "full_name",
+            AttendeeSearchField::FirstName => "first_name",
+            AttendeeSearchField::LastName => "last_name",
+            AttendeeSearchField::Email => "email",
+        };
+
+        let rows = sqlx::query_as!(
+            AttendeeSearchResult,
+            r#"
+            SELECT m.first_name, m.last_name, m.email, m.rsvped AS "rsvped!: bool"
+            FROM (
+                SELECT
+                    u.first_name, u.last_name, u.email,
+                    (EXISTS(SELECT 1 FROM manual_rsvps mr WHERE mr.event_id = ? AND mr.user_id = u.id)
+                     OR EXISTS(SELECT 1 FROM rsvps r JOIN rsvp_sessions rs ON rs.id = r.session_id
+                               WHERE rs.event_id = ? AND r.user_id = u.id
+                                 AND rs.status IN ('payment_pending','payment_confirmed','refund_pending','refund_confirmed'))
+                    ) AS rsvped,
+                    (CASE ?
+                       WHEN 'first_name' THEN u.first_name
+                       WHEN 'last_name'  THEN u.last_name
+                       WHEN 'full_name'  THEN TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))
+                       ELSE u.email
+                     END) AS match_col
+                FROM users u
+            ) m
+            WHERE m.match_col LIKE ? ESCAPE '\' COLLATE NOCASE
+            ORDER BY
+                CASE
+                    WHEN m.match_col = ? COLLATE NOCASE THEN 0
+                    WHEN m.match_col LIKE ? ESCAPE '\' COLLATE NOCASE THEN 1
+                    ELSE 2
+                END,
+                m.match_col COLLATE NOCASE
+            "#,
+            event_id, event_id, key, contains, query, prefix
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(rows)
+    }
+
     /// Lookup a user by a login token, if it's valid.
     pub async fn lookup_by_login_token(db: &Db, token: &str) -> Result<Option<User>> {
         // Weird workaround for sqlx incorrectly inferring nullability for joins
