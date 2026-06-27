@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO manual_rsvps (event_id, user_id, creator_user_id, note) VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "0792ee9926a05612b52ba142adfcf02172dc76a849de741190c9e94aab3ab1ee"
+}

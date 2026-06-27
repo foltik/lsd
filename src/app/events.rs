@@ -963,12 +963,17 @@ mod edit {
             event: Event,
             rsvp_count: usize,
             total_contributions: i64,
+            show_notes: bool,
             rsvps: Vec<AdminAttendeesRsvp>,
         }
 
         let rsvp_count = rsvps.iter().filter(|r| !r.is_refunded()).count();
         let total_contributions = rsvps.iter().filter(|r| !r.is_refunded()).map(|r| r.contribution).sum();
-        Ok(Html { user: Some(user), event, rsvp_count, total_contributions, rsvps }.into_response())
+        let show_notes = rsvps.iter().any(|r| r.note.is_some());
+        Ok(
+            Html { user: Some(user), event, rsvp_count, total_contributions, show_notes, rsvps }
+                .into_response(),
+        )
     }
 
     /// Handle delete submission.
@@ -1078,6 +1083,7 @@ mod edit {
         first_name: String,
         last_name: String,
         email: String,
+        note: Option<String>,
     }
 
     /// Handle add attendee form submission.
@@ -1106,7 +1112,8 @@ mod edit {
         }
 
         // Create manual RSVP
-        ManualRsvp::create(&state.db, event.id, user.id, admin.id).await?;
+        let note = form.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        ManualRsvp::create(&state.db, event.id, user.id, admin.id, note.as_deref()).await?;
 
         Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response())
     }
