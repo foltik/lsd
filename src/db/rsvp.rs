@@ -88,7 +88,6 @@ pub struct AdminAttendeesRsvp {
 
     pub is_manual: bool,
     pub created_at: NaiveDateTime,
-    pub checkin_at: Option<NaiveDateTime>,
 
     pub session_id: i64,
     pub session_token: Option<String>,
@@ -137,7 +136,6 @@ impl Rsvp {
 
                 FALSE AS "is_manual!: bool",
                 r.created_at,
-                r.checkin_at,
 
                 rs.id AS "session_id!: i64",
                 rs.token AS session_token,
@@ -165,7 +163,6 @@ impl Rsvp {
 
                 TRUE AS "is_manual!: bool",
                 mr.created_at,
-                mr.checkin_at,
 
                 0 AS "session_id!: i64",
                 NULL AS session_token,
@@ -176,7 +173,7 @@ impl Rsvp {
             JOIN users cu ON cu.id = mr.creator_user_id
             WHERE mr.event_id = ?
 
-            ORDER BY 11;
+            ORDER BY 10;
             "#,
             event_id,
             event_id
