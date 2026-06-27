@@ -1149,6 +1149,12 @@ mod rsvp {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
+        let reserved = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        if reserved.len() as i64 + manual_count >= event.capacity {
+            return goto::error_at_capacity(&state.db, &state.stripe, &session).await;
+        }
+
         match event.guest_list_id {
             None => goto::selection_page(&state.db, &user, &session, &event).await,
             Some(guest_list_id) => match session {
