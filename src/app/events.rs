@@ -54,6 +54,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
 mod read {
     use super::*;
     use crate::db::manual_rsvp::ManualRsvp;
+    use crate::db::rsvp::Rsvp;
     use crate::db::rsvp_session;
 
     /// View an event.
@@ -68,10 +69,14 @@ mod read {
             pub user: Option<User>,
             event: Event,
             flyer: Option<EventFlyer>,
+            full: bool,
         }
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-        Ok(Html { session, user, event, flyer }.into_response())
+        let reserved = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        let full = reserved.len() as i64 + manual_count >= event.capacity;
+        Ok(Html { session, user, event, flyer, full }.into_response())
     }
 
     // List all events.
