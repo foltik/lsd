@@ -72,7 +72,14 @@ mod read {
             flyer: Option<EventFlyer>,
             full: bool,
         }
+
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+
+        // Private events redirect straight to the RSVP process
+        if event.guest_list_id.is_some() {
+            return Ok(Redirect::to(&format!("/e/{slug}/rsvp")).into_response());
+        }
+
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
         let reserved = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
