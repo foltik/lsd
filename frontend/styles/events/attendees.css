@@ -40,7 +40,7 @@
   }
 
   td.note {
-    @apply whitespace-normal max-w-[150px];
+    @apply whitespace-normal min-w-[150px] max-w-max;
   }
 
   td.checkin time,
