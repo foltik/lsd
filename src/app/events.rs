@@ -980,10 +980,16 @@ mod edit {
         let refund_count = rsvps.iter().filter(|r| r.is_refunded()).count();
         let total_contributions = rsvps.iter().filter(|r| !r.is_refunded()).map(|r| r.contribution).sum();
         let show_notes = rsvps.iter().any(|r| r.note.is_some());
-        Ok(
-            Html { user: Some(user), event, rsvp_count, refund_count, total_contributions, show_notes, rsvps }
-                .into_response(),
-        )
+        Ok(Html {
+            user: Some(user),
+            event,
+            rsvp_count,
+            refund_count,
+            total_contributions,
+            show_notes,
+            rsvps,
+        }
+        .into_response())
     }
 
     /// Handle delete submission.

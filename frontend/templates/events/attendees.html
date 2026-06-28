@@ -42,7 +42,6 @@
             data-user-id="{{ rsvp.user_id }}"
             data-is-manual="{{ rsvp.is_manual }}"
             data-session-id="{{ rsvp.session_id }}"
-            data-status="{{ rsvp.status }}"
             data-contribution="{{ rsvp.contribution }}"
           >
             <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
@@ -51,7 +50,7 @@
             {% if show_notes %}<td class="note">{{ rsvp.note | unwrap_or_empty }}</td>{% endif %}
             <td class="spot">
               {% if rsvp.is_manual %}
-                <em>Added manually</em>
+                <em>Manual</em>
               {% else %}
                 {{ rsvp.spot_name | unwrap_or_empty }}
                 (${{ rsvp.contribution }})
@@ -178,7 +177,7 @@
       note: (row) => isEmpty(row, "note"),
       reservation: (row) => isEmpty(row, "reservation"),
       spot: (row) => row.dataset.isManual === "true",
-      status: (row) => row.dataset.isManual === "true",
+      status: (row) => isEmpty(row, "status"),
     };
 
     // Add .sortable for headers with comparators
