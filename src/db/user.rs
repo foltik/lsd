@@ -82,6 +82,23 @@ macro_rules! map_row_fuck {
     };
 }
 
+/// Trim surrounding whitespace; if the name is entirely lowercase, capitalize each space-split word.
+fn normalize_name(name: &Option<String>) -> Option<String> {
+    name.as_ref().map(|name| {
+        let name = name.trim();
+        if name.chars().any(char::is_uppercase) {
+            return name.to_string();
+        }
+        name.split(' ')
+            .map(|word| match word.chars().next() {
+                Some(c) => c.to_uppercase().collect::<String>() + &word[c.len_utf8()..],
+                None => String::new(),
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    })
+}
+
 impl User {
     /// Full access to everything.
     pub const ADMIN: &'static str = "admin";
@@ -144,6 +161,9 @@ impl User {
 
     /// Create a new user.
     pub async fn create(db: &Db, user: &CreateUser) -> Result<User> {
+        let first_name = normalize_name(&user.first_name);
+        let last_name = normalize_name(&user.last_name);
+
         let row = sqlx::query!(
             r#"INSERT INTO users
                (email, first_name, last_name, phone)
@@ -151,8 +171,8 @@ impl User {
                RETURNING *, 0 as version, '' as roles
             "#,
             user.email,
-            user.first_name,
-            user.last_name,
+            first_name,
+            last_name,
             user.phone
         )
         .fetch_one(db)
@@ -163,8 +183,8 @@ impl User {
                VALUES (?, 0, ?, ?, ?, ?, ?)"#,
             row.id,
             user.email,
-            user.first_name,
-            user.last_name,
+            first_name,
+            last_name,
             user.phone,
             row.created_at
         )
@@ -175,8 +195,11 @@ impl User {
     }
 
     pub async fn update(&self, db: &Db, info: &UpdateUser) -> Result<Self> {
-        let unchanged = info.first_name == self.first_name
-            && info.last_name == self.last_name
+        let first_name = normalize_name(&info.first_name);
+        let last_name = normalize_name(&info.last_name);
+
+        let unchanged = first_name == self.first_name
+            && last_name == self.last_name
             && info.phone == self.phone;
         if unchanged {
             return Ok(self.clone());
@@ -190,8 +213,8 @@ impl User {
             self.id,
             new_version,
             info.email,
-            info.first_name,
-            info.last_name,
+            first_name,
+            last_name,
             info.phone,
         )
         .execute(db)
@@ -206,8 +229,8 @@ impl User {
                    updated_at = CURRENT_TIMESTAMP
                WHERE id = ?"#,
             info.email,
-            info.first_name,
-            info.last_name,
+            first_name,
+            last_name,
             info.phone,
             self.id
         )
@@ -423,7 +446,7 @@ impl User {
     }
 
     pub fn has_role(&self, role: &str) -> bool {
-        self.roles.iter().any(|r| r == role)
+        self.roles.iter().any(|r| r == role || r == Self::ADMIN)
     }
 
     pub fn has_staff_role(&self) -> bool {
