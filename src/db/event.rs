@@ -77,6 +77,7 @@ pub struct EventWithStats {
     pub guest_list_id: Option<i64>,
     pub capacity: i64,
     pub rsvp_count: i64,
+    pub refund_count: i64,
     pub total_contributions: i64,
 }
 
@@ -105,6 +106,10 @@ impl Event {
                    AS INT
                  ) AS "rsvp_count!: i64",
                  CAST(
+                   COALESCE(rf.refund_count, 0)
+                   AS INT
+                 ) AS "refund_count!: i64",
+                 CAST(
                    COALESCE(sr.session_contributions, 0)
                    AS INT
                  ) AS "total_contributions!: i64"
@@ -126,6 +131,13 @@ impl Event {
                  FROM manual_rsvps m
                  GROUP BY m.event_id
                ) mr ON mr.event_id = e.id
+               LEFT JOIN (
+                 SELECT rs.event_id, COUNT(r.id) AS refund_count
+                 FROM rsvp_sessions rs
+                 JOIN rsvps r ON r.session_id = rs.id
+                 WHERE rs.status IN ('refund_pending', 'refund_confirmed')
+                 GROUP BY rs.event_id
+               ) rf ON rf.event_id = e.id
                WHERE NOT ?1 OR e.start >= DATETIME(CURRENT_TIMESTAMP, '-3 months')
                ORDER BY e.start DESC"#,
             recent

@@ -9,7 +9,7 @@
         <time datetime="{{ event.start.date() }}">
           {{ event.start | format_datetime("%a %b %d, %Y") }}
         </time>
-      <span class="stats">{{ rsvp_count }}/{{event.capacity}} RSVPed • ${{ total_contributions }} in contributions</span>
+      <span class="stats">{{ rsvp_count }}/{{event.capacity}} RSVPed{% if refund_count > 0 %} • {{ refund_count }} refunded{% endif %} • ${{ total_contributions }} in contributions</span>
       </div>
       <div class="actions">
         <a
