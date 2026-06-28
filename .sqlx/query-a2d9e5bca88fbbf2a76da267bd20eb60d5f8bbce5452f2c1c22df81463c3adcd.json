@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT u.first_name, u.last_name, u.email, r.note\n               FROM rsvps r\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               JOIN users u ON u.id = r.user_id\n               WHERE rs.event_id = ? AND r.user_id = ?\n                 AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "first_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "note",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "a2d9e5bca88fbbf2a76da267bd20eb60d5f8bbce5452f2c1c22df81463c3adcd"
+}

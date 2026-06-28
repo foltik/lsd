@@ -59,7 +59,7 @@
   .actions {
     @apply flex gap-4 text-xs;
     a {
-      @apply flex items-center gap-2 p-2 py-1;
+      @apply flex items-center gap-2;
     }
   }
 }

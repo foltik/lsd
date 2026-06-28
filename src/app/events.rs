@@ -39,6 +39,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{id}/attendees/{user_id}", delete(edit::delete_attendee))
                 .route("/events/{id}/attendees/{user_id}/refund", post(edit::refund_attendee))
                 .route("/events/{id}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
+                .route("/events/{id}/attendees/{user_id}/edit", get(edit::edit_attendee_page).post(edit::edit_attendee_form))
                 .route("/events/{id}/invite/edit", get(edit::edit_invite_page).post(edit::edit_invite_form))
                 .route("/events/{id}/invite/preview", get(edit::preview_invite_page))
                 .route("/events/{id}/invite/send", get(edit::send_invite_page).post(edit::send_invite_form))
@@ -223,7 +224,7 @@ mod edit {
     use crate::db::list::{List, ListWithCount};
     use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AdminAttendeesRsvp, Rsvp};
-    use crate::db::user::{AttendeeSearchField, AttendeeSearchResult, CreateUser};
+    use crate::db::user::{AttendeeSearchField, AttendeeSearchResult, CreateUser, UpdateUser};
     use crate::utils::editor::{Editor, EditorContent};
 
     #[derive(Template, WebTemplate)]
@@ -1079,6 +1080,15 @@ mod edit {
         Ok(Json(()))
     }
 
+    struct AttendeeForm {
+        user_id: i64,
+        first_name: String,
+        last_name: String,
+        email: String,
+        note: String,
+        is_manual: bool,
+    }
+
     /// Display the form to add a manual attendee.
     pub async fn add_attendee_page(
         user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
@@ -1090,8 +1100,44 @@ mod edit {
         struct Html {
             user: Option<User>,
             event: Event,
+            attendee: Option<AttendeeForm>,
         }
-        Ok(Html { user: Some(user), event }.into_response())
+        Ok(Html { user: Some(user), event, attendee: None }.into_response())
+    }
+
+    /// Display the form to edit an existing attendee.
+    pub async fn edit_attendee_page(
+        user: User, State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
+        Query(query): Query<CheckinQuery>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
+        let data = if query.manual {
+            ManualRsvp::lookup_for_edit(&state.db, event.id, path.user_id).await?
+        } else {
+            Rsvp::lookup_for_edit(&state.db, event.id, path.user_id).await?
+        }
+        .ok_or_else(not_found)?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/attendees_add.html")]
+        struct Html {
+            user: Option<User>,
+            event: Event,
+            attendee: Option<AttendeeForm>,
+        }
+        Ok(Html {
+            user: Some(user),
+            event,
+            attendee: Some(AttendeeForm {
+                user_id: path.user_id,
+                first_name: data.first_name.unwrap_or_default(),
+                last_name: data.last_name.unwrap_or_default(),
+                email: data.email,
+                note: data.note.unwrap_or_default(),
+                is_manual: query.manual,
+            }),
+        }
+        .into_response())
     }
 
     /// Autocomplete users for the add attendee form.
@@ -1150,6 +1196,44 @@ mod edit {
         ManualRsvp::create(&state.db, event.id, user.id, admin.id, note.as_deref()).await?;
 
         Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response())
+    }
+
+    #[derive(serde::Deserialize)]
+    pub struct EditAttendeeForm {
+        first_name: String,
+        last_name: String,
+        note: Option<String>,
+    }
+
+    /// Handle edit attendee form submission.
+    pub async fn edit_attendee_form(
+        _admin: User, State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
+        Query(query): Query<CheckinQuery>, Form(form): Form<EditAttendeeForm>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
+        let attendee = User::lookup_by_id(&state.db, path.user_id).await?.ok_or_else(not_found)?;
+
+        // Email is read-only, so reuse the existing email and phone.
+        attendee
+            .update(
+                &state.db,
+                &UpdateUser {
+                    email: attendee.email.clone(),
+                    first_name: Some(form.first_name),
+                    last_name: Some(form.last_name),
+                    phone: attendee.phone.clone(),
+                },
+            )
+            .await?;
+
+        let note = form.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+        if query.manual {
+            ManualRsvp::update_note(&state.db, event.id, path.user_id, note.as_deref()).await?;
+        } else {
+            Rsvp::update_note(&state.db, event.id, path.user_id, note.as_deref()).await?;
+        }
+
+        Ok(Redirect::to(&format!("/events/{}/attendees", path.id)).into_response())
     }
 }
 

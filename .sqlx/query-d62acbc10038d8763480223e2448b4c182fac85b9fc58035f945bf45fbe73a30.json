@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT u.first_name, u.last_name, u.email, mr.note\n             FROM manual_rsvps mr\n             JOIN users u ON u.id = mr.user_id\n             WHERE mr.event_id = ? AND mr.user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "first_name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "note",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "d62acbc10038d8763480223e2448b4c182fac85b9fc58035f945bf45fbe73a30"
+}
