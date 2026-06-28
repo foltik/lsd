@@ -109,7 +109,6 @@ impl AdminAttendeesRsvp {
             RsvpSession::PAYMENT_CONFIRMED => "Confirmed",
             RsvpSession::PAYMENT_PENDING => "Unpaid",
             RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => "Refunded",
-            "manual" => "Manual",
             _ => "",
         }
     }
@@ -166,7 +165,7 @@ impl Rsvp {
 
                 0 AS "session_id!: i64",
                 NULL AS session_token,
-                'manual' AS "status!",
+                '' AS "status!",
                 mr.note
             FROM manual_rsvps mr
             JOIN users u ON u.id = mr.user_id
