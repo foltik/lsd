@@ -1,3 +1,4 @@
+use crate::db::rsvp::AttendeeEdit;
 use crate::prelude::*;
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
@@ -72,5 +73,31 @@ impl ManualRsvp {
         .execute(db)
         .await?;
         Ok(())
+    }
+
+    pub async fn update_note(db: &Db, event_id: i64, user_id: i64, note: Option<&str>) -> Result<()> {
+        sqlx::query!(
+            "UPDATE manual_rsvps SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND user_id = ?",
+            note,
+            event_id,
+            user_id,
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn lookup_for_edit(db: &Db, event_id: i64, user_id: i64) -> Result<Option<AttendeeEdit>> {
+        Ok(sqlx::query_as!(
+            AttendeeEdit,
+            "SELECT u.first_name, u.last_name, u.email, mr.note
+             FROM manual_rsvps mr
+             JOIN users u ON u.id = mr.user_id
+             WHERE mr.event_id = ? AND mr.user_id = ?",
+            event_id,
+            user_id,
+        )
+        .fetch_optional(db)
+        .await?)
     }
 }

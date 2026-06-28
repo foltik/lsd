@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvps SET note = ?, updated_at = CURRENT_TIMESTAMP\n               WHERE id IN (\n                   SELECT r.id FROM rsvps r\n                   JOIN rsvp_sessions rs ON rs.id = r.session_id\n                   WHERE rs.event_id = ? AND r.user_id = ?\n                     AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')\n               )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "5c961f8cc9a514cf0457c43e3202eaf61b7b1571a76225849505d0a07fa724fa"
+}

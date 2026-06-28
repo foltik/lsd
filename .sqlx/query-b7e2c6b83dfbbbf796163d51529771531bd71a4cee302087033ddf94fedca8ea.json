@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE manual_rsvps SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "b7e2c6b83dfbbbf796163d51529771531bd71a4cee302087033ddf94fedca8ea"
+}

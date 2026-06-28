@@ -1,17 +1,17 @@
 {% extends "layout.html" %}
 
-{% block title %}Add Attendee - {{ event.title }}{% endblock title %}
+{% block title %}{% if attendee.is_some() %}Edit{% else %}Add{% endif %} Attendee - {{ event.title }}{% endblock title %}
 
 {% block content %}
   <section id="events/attendees/add" class="ext/layout thin">
     <header>
-      <h1>Add Attendee</h1>
+      <h1>{% if attendee.is_some() %}Edit{% else %}Add{% endif %} Attendee</h1>
     </header>
     <form
       id="form"
       class="ext/form"
       method="POST"
-      action="/events/{{ event.id }}/attendees/add"
+      action="{% if let Some(a) = attendee %}/events/{{ event.id }}/attendees/{{ a.user_id }}/edit?manual={{ a.is_manual }}{% else %}/events/{{ event.id }}/attendees/add{% endif %}"
     >
       <div class="field">
         <label for="first_name">First name</label>
@@ -21,6 +21,7 @@
             id="first_name"
             name="first_name"
             data-field="first_name"
+            value="{% if let Some(a) = attendee %}{{ a.first_name }}{% endif %}"
             autocomplete="off"
             required
           />
@@ -35,6 +36,7 @@
             id="last_name"
             name="last_name"
             data-field="last_name"
+            value="{% if let Some(a) = attendee %}{{ a.last_name }}{% endif %}"
             autocomplete="off"
             required
           />
@@ -49,7 +51,9 @@
             id="email"
             name="email"
             data-field="email"
+            value="{% if let Some(a) = attendee %}{{ a.email }}{% endif %}"
             autocomplete="off"
+            {% if attendee.is_some() %}disabled{% endif %}
             required
           />
           <ul class="autocomplete"></ul>
@@ -57,18 +61,19 @@
       </div>
       <div class="field">
         <label for="note">Note (optional)</label>
-        <input type="text" name="note" />
+        <input type="text" name="note" value="{% if let Some(a) = attendee %}{{ a.note }}{% endif %}" />
       </div>
       <div class="actions">
         <a href="/events/{{ event.id }}/attendees" class="ext/button"
           >&larr; Back</a
         >
         <button id="continue" class="ext/button :green" type="submit">
-          Add attendee
+          {% if attendee.is_some() %}Save changes{% else %}Add attendee{% endif %}
         </button>
       </div>
     </form>
   </section>
+  {% if attendee.is_none() %}
   <script>
     /* ---------- DOM ----------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
@@ -172,4 +177,19 @@
       if (e.key == "Escape") ui.clearResults();
     });
   </script>
+  {% endif %}
+  {% if attendee.is_some() %}
+  <script>
+    // Confirm before changing attendee name
+    const form = document.getElementById("form");
+    const first = document.getElementById("first_name");
+    const last = document.getElementById("last_name");
+    form.addEventListener("submit", (e) => {
+      const oldName = `${first.defaultValue.trim()} ${last.defaultValue.trim()}`.trim();
+      const newName = `${first.value.trim()} ${last.value.trim()}`.trim();
+      if (newName !== oldName && !confirm(`Change name to ${newName} for this and all future events?`))
+        e.preventDefault();
+    });
+  </script>
+  {% endif %}
 {% endblock content %}

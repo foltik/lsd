@@ -95,6 +95,13 @@ pub struct AdminAttendeesRsvp {
     pub note: Option<String>,
 }
 
+pub struct AttendeeEdit {
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub email: String,
+    pub note: Option<String>,
+}
+
 impl AdminAttendeesRsvp {
     pub fn is_refunded(&self) -> bool {
         matches!(
@@ -139,7 +146,7 @@ impl Rsvp {
                 rs.id AS "session_id!: i64",
                 rs.token AS session_token,
                 rs.status AS "status!",
-                NULL AS "note?: String"
+                r.note AS "note?: String"
             FROM rsvps r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
             JOIN spots sp ON sp.id = r.spot_id
@@ -503,5 +510,42 @@ impl Rsvp {
         .execute(db)
         .await?;
         Ok(())
+    }
+
+    /// Set or clear the note on a user's regular RSVP for an event.
+    pub async fn update_note(db: &Db, event_id: i64, user_id: i64, note: Option<&str>) -> Result<()> {
+        sqlx::query!(
+            r#"UPDATE rsvps SET note = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id IN (
+                   SELECT r.id FROM rsvps r
+                   JOIN rsvp_sessions rs ON rs.id = r.session_id
+                   WHERE rs.event_id = ? AND r.user_id = ?
+                     AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
+               )"#,
+            note,
+            event_id,
+            user_id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    /// Look up name, email, and note for a user's regular RSVP to prefill the edit form.
+    pub async fn lookup_for_edit(db: &Db, event_id: i64, user_id: i64) -> Result<Option<AttendeeEdit>> {
+        Ok(sqlx::query_as!(
+            AttendeeEdit,
+            r#"SELECT u.first_name, u.last_name, u.email, r.note
+               FROM rsvps r
+               JOIN rsvp_sessions rs ON rs.id = r.session_id
+               JOIN users u ON u.id = r.user_id
+               WHERE rs.event_id = ? AND r.user_id = ?
+                 AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
+               LIMIT 1"#,
+            event_id,
+            user_id
+        )
+        .fetch_optional(db)
+        .await?)
     }
 }
