@@ -64,7 +64,7 @@
           {{ event.start | format_datetime("%a %b %d, %Y") }}
         </time>
         {% if !event.is_external() %}
-        <span class="stats">{{ event.rsvp_count }}/{{ event.capacity }} RSVPed • ${{ event.total_contributions }} in contributions</span>
+        <span class="stats">{{ event.rsvp_count }}/{{ event.capacity }} RSVPed{% if event.refund_count > 0 %} • {{ event.refund_count }} refunded{% endif %} • ${{ event.total_contributions }} in contributions</span>
         {% endif %}
         <div class="actions">
           <a class="ext/button :icon" href="/events/{{ event.id }}/edit">
