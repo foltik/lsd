@@ -8,6 +8,7 @@
       {% for flyer in flyers.iter() %}
         <a class="flyer {% if flyer.unlisted %}unlisted{% endif %}"
           href="/e/{{ flyer.slug }}"
+          draggable="false"
           data-title="{{ flyer.title }}"
           data-w="{{ flyer.width }}"
           data-h="{{ flyer.height }}"
@@ -20,12 +21,14 @@
               fetchpriority="high"
               src="/e/{{ flyer.slug }}/flyer?size=thumb"
               aria-hidden="true"
+              draggable="false"
             />
             <img
               class="image-sm"
               loading="lazy"
               fetchpriority="low"
               src="/e/{{ flyer.slug }}/flyer?size=sm"
+              draggable="false"
             />
           </span>
         </a>
@@ -110,7 +113,7 @@
       // Create overlay
       const overlay = document.createElement("div");
       overlay.id = "flyer-zoom";
-      overlay.innerHTML = `<p class="title"></p><img alt="">`;
+      overlay.innerHTML = `<p class="title"></p><img alt="" draggable="false">`;
       const [title, image_overlay] = overlay.children;
       title.textContent = flyer.dataset.title;
       image_overlay.style.width = `${width}px`;
@@ -119,7 +122,6 @@
 
 
       document.body.append(overlay);
-      document.body.style.overflow = "hidden";
       image.style.visibility = "hidden";
       gallery.classList.add("zoomed");
 
@@ -128,9 +130,9 @@
       const to = image_overlay.getBoundingClientRect();
       const center = "translate3d(0, 0, 0) scale(1)";
       const translate = `translate3d(${from.left - to.left}px, ${from.top - to.top}px, 0) scale(${from.width / to.width})`;
-      const timing = { duration: 130, easing: "ease-out", fill: "forwards" };
-      const animate = (open) => {
-        const [start, end] = open ? [translate, center] : [center, translate];
+      const timing = { duration: 200, easing: "ease-out", fill: "forwards" };
+      const animate = (open, at = center) => {
+        const [start, end] = open ? [translate, center] : [at, translate];
         image_overlay.style.transform = start; // paint at the start before WAAPI's first tick, so there's no flash/jump
         title.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);
         const anim = image_overlay.animate({ transform: [start, end] }, timing);
@@ -148,27 +150,119 @@
         else image_lg.addEventListener("load", swap, { once: true });
       });
 
-      // Animate back and remove overlay
-      function close() {
-        if (animating) return;
-        animating = true;
-        overlay.removeEventListener("click", close);
-        gallery.classList.remove("zoomed");
-        animate(false).then(() => {
-          image.style.visibility = "";
-          document.body.style.overflow = "";
-          overlay.remove();
-          animating = false;
-        });
+      // Restore the page and drop the overlay
+      function cleanup() {
+        image.style.visibility = "";
+        document.removeEventListener("keydown", onKey);
+        window.removeEventListener("scroll", onScroll);
+        overlay.remove();
       }
-      overlay.addEventListener("click", close);
+
+      // Unzoom and animate image back to its original position
+      // Starts from `at` (center for a tap, the drag position for a swipe)
+      let closing = false;
+      function close(at = center) {
+        if (animating || closing) return;
+        closing = true;
+
+        gallery.classList.remove("zoomed");
+       // Let taps reach the gallery while it animates out
+        overlay.style.pointerEvents = "none";
+
+        // Animate opacity back in
+        const opacity = overlay.style.opacity || 1;
+        overlay.style.opacity = "";
+        overlay.animate({ opacity: [opacity, 1] }, timing);
+
+        animate(false, at).then(cleanup);
+      }
+
+      // Dismiss with escape
+      const onKey = (e) => { if (e.key === "Escape") close(); };
+      document.addEventListener("keydown", onKey);
+
+      // Dismiss by scrolling
+      const scrollY0 = window.scrollY;
+      const onScroll = () => {
+        overlay.style.transform = `translateY(${scrollY0 - window.scrollY}px)`;
+        close();
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+
+
+      /* ---------- Swipe to dismiss -------------------------- */
+      let x0, y0, dx, dy, t, speed;
+      let dragging = false;
+      overlay.addEventListener("pointerdown", (e) => {
+        if (animating) return;
+        dragging = true;
+
+        // Record initial scroll time/position
+        dx = dy = speed = 0;
+        x0 = e.clientX;
+        y0 = e.clientY;
+        t = e.timeStamp;
+
+        overlay.setPointerCapture(e.pointerId);
+      });
+      overlay.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+
+        // Calculate velocity
+        const dx1 = e.clientX - x0;
+        const dy1 = e.clientY - y0;
+        const dt = e.timeStamp - t;
+        if (dt) speed = Math.hypot(dx1 - dx, dy1 - dy) / dt;
+
+        dx = dx1;
+        dy = dy1;
+        t = e.timeStamp;
+
+        // Animate to dragged position and gradually fade out
+        image_overlay.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        overlay.style.opacity = 1 - Math.min(Math.hypot(dx, dy) / 250, 0.85);
+      });
+      const release = () => {
+        if (!dragging) return;
+        dragging = false;
+
+        const dist = Math.hypot(dx, dy);
+
+        // Close on quick tap
+        if (dist < 6)
+          close();
+        // Close on swipe away
+        else if (dist > 90 || speed > 0.5)
+          close(image_overlay.style.transform);
+
+        else settle();
+      };
+      overlay.addEventListener("pointerup", release);
+      overlay.addEventListener("pointercancel", release);
+
+      // Spring back to center
+      function settle() {
+        const opacity = overlay.style.opacity || 1;
+        const dragged = `translate3d(${dx}px, ${dy}px, 0)`;
+        image_overlay.style.transform = center;
+        overlay.style.opacity = "";
+        image_overlay.animate({ transform: [dragged, center] }, { duration: 200, easing: "ease-out" });
+        overlay.animate({ opacity: [opacity, 1] }, { duration: 200 });
+      }
     }
 
+    // Open on pointerup, not click, since iOS delays the click after a tap
     for (const flyer of flyers) {
-      flyer.addEventListener("click", (event) => {
-        event.preventDefault();
-        zoom(flyer);
+      let x0, y0;
+      flyer.addEventListener("pointerdown", (e) => {
+        x0 = e.clientX;
+        y0 = e.clientY;
       });
+      flyer.addEventListener("pointerup", (e) => {
+        if (Math.hypot(e.clientX - x0, e.clientY - y0) < 10)
+          zoom(flyer);
+      });
+      flyer.addEventListener("click", (e) => e.preventDefault());
     }
   </script>
 {% endblock scripts %}
