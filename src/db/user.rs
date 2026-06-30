@@ -82,17 +82,18 @@ macro_rules! map_row_fuck {
     };
 }
 
-/// Trim surrounding whitespace; if the name is entirely lowercase, capitalize each space-split word.
+/// Keep the name as written if it has any uppercase; otherwise capitalize each whitespace-split word.
 fn normalize_name(name: &Option<String>) -> Option<String> {
     name.as_ref().map(|name| {
-        let name = name.trim();
         if name.chars().any(char::is_uppercase) {
-            return name.to_string();
+            return name.trim().to_string();
         }
-        name.split(' ')
-            .map(|word| match word.chars().next() {
-                Some(c) => c.to_uppercase().collect::<String>() + &word[c.len_utf8()..],
-                None => String::new(),
+        name.split_whitespace()
+            .map(|word| {
+                let mut chars = word.chars();
+                let first: String = chars.next().unwrap().to_uppercase().collect();
+                let rest = chars.as_str();
+                first + rest
             })
             .collect::<Vec<_>>()
             .join(" ")
@@ -198,9 +199,8 @@ impl User {
         let first_name = normalize_name(&info.first_name);
         let last_name = normalize_name(&info.last_name);
 
-        let unchanged = first_name == self.first_name
-            && last_name == self.last_name
-            && info.phone == self.phone;
+        let unchanged =
+            first_name == self.first_name && last_name == self.last_name && info.phone == self.phone;
         if unchanged {
             return Ok(self.clone());
         }

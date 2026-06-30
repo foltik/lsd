@@ -175,6 +175,17 @@
       isMeInputs: () => [...ui.form.querySelectorAll('input[name="is_me"]')],
     };
 
+    // Keep the name as written if it has any uppercase; otherwise capitalize each whitespace-split word.
+    const normalizeName = (name) => {
+      if (!name) return "";
+      if (name.toLowerCase() !== name) return name.trim();
+      return name
+        .trim()
+        .split(/\s+/)
+        .map(word => word[0].toUpperCase() + word.slice(1))
+        .join(" ");
+    };
+
     // Provide current user data for autofill; null if not logged in.
     const user = {{ user | json | safe }};
     const lockPrimary = {% if event.guest_list_id.is_some() || mode == AttendeesMode::Edit %}true{% else %}false{% endif %};
@@ -212,6 +223,11 @@
 
     /* ---------- Validate on blur -------------------------------------------- */
     for (const a of ui.attendees()) {
+      for (const name of ["first_name", "last_name"]) {
+        ui.field(a, name).addEventListener("blur", (e) => {
+          e.target.value = normalizeName(e.target.value);
+        });
+      }
       ui.field(a, "phone").addEventListener("blur", (e) => {
         try {
           e.target.value = validate.phone(e.target.value);
