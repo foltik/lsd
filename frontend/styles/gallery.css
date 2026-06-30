@@ -15,7 +15,7 @@
   }
 
   .flyer {
-    @apply block cursor-pointer touch-manipulation rounded;
+    @apply block cursor-pointer touch-manipulation rounded select-none;
     position: relative;
 
     &.unlisted .image {
@@ -42,7 +42,7 @@
 }
 
 #flyer-zoom {
-  @apply fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 p-4;
+  @apply fixed inset-0 z-50 flex touch-none flex-col items-center justify-center gap-4 overflow-hidden p-4 select-none;
 
   .title {
     @apply relative m-0 text-center text-xl text-white md:text-3xl;
