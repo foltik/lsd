@@ -165,6 +165,93 @@
       URL.revokeObjectURL(url);
     });
 
+    /* ---------- Actions ----------------------------------------------------- */
+    ui.table.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+
+      const row = btn.closest("tr");
+      const userId = row.dataset.userId;
+      const isManual = row.dataset.isManual === "true";
+      const manualParam = isManual ? "?manual=true" : "";
+
+      // Refund
+      if (btn.classList.contains("refund")) {
+        const name = row.querySelector(".name").textContent.trim();
+        if (!confirm(`Are you sure you want to refund all RSVPs by ${name}?\n\nThis will issue full Stripe refunds for all associated reservations.`)) return;
+        try {
+          const resp = await fetch(
+            `/events/${eventId}/attendees/${userId}/refund`,
+            { method: "POST" },
+          );
+          if (!resp.ok) {
+            const data = await resp.json();
+            throw new Error(data.error || resp.statusText);
+          }
+          location.reload();
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        }
+        return;
+      }
+
+      // Delete
+      if (btn.classList.contains("delete")) {
+        if (!confirm("Are you sure you want to permanently delete this RSVP?\n\nThis action cannot be undone, and will not notify the attendee.")) return;
+        try {
+          const resp = await fetch(
+            `/events/${eventId}/attendees/${userId}${manualParam}`,
+            { method: "DELETE" },
+          );
+          if (!resp.ok) throw new Error(await resp.text());
+          row.remove();
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        }
+        return;
+      }
+
+      // Handle check-in buttons
+      /*
+      const cell = row.querySelector(".checkin");
+      const isSet = btn.classList.contains("set");
+
+      try {
+        const resp = await fetch(
+          `/events/${eventId}/attendees/${userId}/checkin${manualParam}`,
+          {
+            method: isSet ? "POST" : "DELETE",
+          },
+        );
+        if (!resp.ok) throw new Error(await resp.text());
+
+        if (isSet) {
+          const now = new Date();
+          const h = now.getHours();
+          const m = now.getMinutes().toString().padStart(2, "0");
+          const ampm = h >= 12 ? "PM" : "AM";
+          const time = `${h % 12 || 12}:${m}${ampm}`;
+          cell.innerHTML = `
+            <time>${time}</time>
+            <button class="clear" title="Clear check-in">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                <path fill="currentColor" d="M24 4c11.046 0 20 8.954 20 20s-8.954 20-20 20S4 35.046 4 24S12.954 4 24 4Zm-6.116 12.116l-.102-.091a1.25 1.25 0 0 0-1.564 0l-.102.091l-.091.102a1.25 1.25 0 0 0 0 1.564l.091.102L22.233 24l-6.117 6.116l-.091.102a1.25 1.25 0 0 0 0 1.564l.091.102l.102.091a1.25 1.25 0 0 0 1.564 0l.102-.091L24 25.767l6.116 6.117l.102.091a1.25 1.25 0 0 0 1.564 0l.102-.091l.091-.102a1.25 1.25 0 0 0 0-1.564l-.091-.102L25.767 24l6.117-6.116l.091-.102a1.25 1.25 0 0 0 0-1.564l-.091-.102l-.102-.091a1.25 1.25 0 0 0-1.564 0l-.102.091L24 22.233l-6.116-6.117l-.102-.091l.102.091Z"/>
+              </svg>
+            </button>`;
+        } else {
+          cell.innerHTML = `
+            <button class="set" title="Check in">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                <path fill="currentColor" d="M24 4c11.046 0 20 8.954 20 20s-8.954 20-20 20S4 35.046 4 24S12.954 4 24 4Zm8.634 13.616a1.25 1.25 0 0 0-1.666-.091l-.102.091L20.75 27.732l-3.616-3.616a1.25 1.25 0 0 0-1.859 1.666l.091.102l4.5 4.5a1.25 1.25 0 0 0 1.666.091l.102-.091l11-11a1.25 1.25 0 0 0 0-1.768Z"/>
+              </svg>
+            </button>`;
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+      */
+    });
+
     /* ---------- Sorting ----------------------------------------------------- */
 
     // Sort alphabetically
