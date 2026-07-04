@@ -140,6 +140,7 @@ impl From<AppError> for JsonError {
 macro_rules! impl_json_from {
     ( $from:ty ) => {
         impl From<$from> for JsonError {
+            #[track_caller]
             fn from(e: $from) -> Self {
                 Self::Any(AnyError::from(e))
             }
@@ -161,6 +162,7 @@ impl From<AppError> for HtmlError {
 macro_rules! impl_html_from {
     ( $from:ty ) => {
         impl From<$from> for HtmlError {
+            #[track_caller]
             fn from(e: $from) -> Self {
                 Self::Any(AnyError::from(e))
             }
@@ -253,7 +255,6 @@ macro_rules! impl_from {
     }
 }
 impl_from! {
-    axum::extract::multipart::MultipartError,
     lettre::error::Error,
     lettre::transport::smtp::Error,
     askama::Error,
@@ -268,6 +269,14 @@ impl From<AnyError> for JsonError {
 impl From<AnyError> for HtmlError {
     fn from(e: AnyError) -> Self {
         Self::Any(e)
+    }
+}
+
+// Overrides
+impl From<axum::extract::multipart::MultipartError> for JsonError {
+    #[track_caller]
+    fn from(_: axum::extract::multipart::MultipartError) -> Self {
+        Self::App(bad_request("Failed to read upload."))
     }
 }
 
