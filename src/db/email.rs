@@ -186,19 +186,8 @@ impl Email {
         Ok(all)
     }
 
-    pub async fn have_sent_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
-        let row = sqlx::query!(
-            "SELECT id FROM emails WHERE kind = ? AND event_id = ? AND user_id = ?",
-            Email::EVENT_CONFIRMATION,
-            event_id,
-            user_id
-        )
-        .fetch_optional(db)
-        .await?;
-        Ok(row.is_some())
-    }
-
-    pub async fn create_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<Email> {
+    // Atomically create a confirmation email entry for a user. Returns None if it's already been created.
+    pub async fn try_create_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<Option<Email>> {
         let row = sqlx::query_as!(
             Email,
             r#"
@@ -208,6 +197,7 @@ impl Email {
                  JOIN user_history uh ON uh.user_id = u.id
                    AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE u.id = ?
+             ON CONFLICT (event_id, user_id) WHERE kind = 'event/confirmation' DO NOTHING
              RETURNING *, (
                 SELECT u.email FROM users u
                 WHERE u.id = emails.user_id
@@ -217,12 +207,13 @@ impl Email {
             event_id,
             user_id,
         )
-        .fetch_one(db)
+        .fetch_optional(db)
         .await?;
         Ok(row)
     }
 
-    pub async fn create_send_dayof_single(db: &Db, event_id: i64, user_id: i64) -> Result<Email> {
+    // Atomically create a day-of email entry for a user. Returns None if it's already been created.
+    pub async fn try_create_dayof(db: &Db, event_id: i64, user_id: i64) -> Result<Option<Email>> {
         let row = sqlx::query_as!(
             Email,
             r#"
@@ -232,6 +223,7 @@ impl Email {
                  JOIN user_history uh ON uh.user_id = u.id
                    AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)
                  WHERE u.id = ?
+             ON CONFLICT (event_id, user_id) WHERE kind = 'event/dayof' DO NOTHING
              RETURNING *, (
                 SELECT u.email FROM users u
                 WHERE u.id = emails.user_id
@@ -241,7 +233,7 @@ impl Email {
             event_id,
             user_id,
         )
-        .fetch_one(db)
+        .fetch_optional(db)
         .await?;
         Ok(row)
     }

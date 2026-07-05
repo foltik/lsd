@@ -36,7 +36,9 @@ impl Emailer {
     }
 
     pub async fn send(&self, message: &Message) -> Result<()> {
-        self.transport.send(message)?;
+        let transport = self.transport.clone();
+        let message = message.clone();
+        tokio::task::spawn_blocking(move || transport.send(&message)).await??;
         Ok(())
     }
 
