@@ -25,16 +25,11 @@ impl Cloudflare {
         struct Request {
             secret: String,
             response: String,
-            remoteip: String,
         }
         let req = self
             .http
             .post("https://challenges.cloudflare.com/turnstile/v0/siteverify")
-            .json(&Request {
-                secret: self.turnstile_secret_key.clone(),
-                response: token.into(),
-                remoteip: client_ip.to_string(),
-            })
+            .json(&Request { secret: self.turnstile_secret_key.clone(), response: token.into() })
             .send()
             .await?;
 
