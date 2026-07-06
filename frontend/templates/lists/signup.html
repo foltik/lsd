@@ -30,7 +30,7 @@
         data-expired-callback="onTurnstileError"
       ></div>
 
-      <button id="submit" type="submit" disabled>Verifying...</button>
+      <button id="submit" type="submit" class="ext/button" disabled>Verifying...</button>
     </form>
   </section>
 {% endblock content %}
@@ -38,14 +38,27 @@
 {% block scripts %}
   <script>
     const btn = document.getElementById("submit");
+    let timer;
+    function reverify() {
+      btn.innerText = "Verifying...";
+      btn.disabled = true;
+      turnstile.reset();
+    }
     function onTurnstileSuccess(token) {
+      btn.classList.remove(":red");
       btn.innerText = "Sign Up";
       btn.disabled = false;
+      clearTimeout(timer);
+      if (!document.hidden) timer = setTimeout(reverify, 3 * 60 * 1000);
     }
     function onTurnstileError() {
       btn.classList.add(":red");
       btn.innerText = "Captcha Failed";
       btn.disabled = true;
     }
+    document.addEventListener("visibilitychange", () => {
+      clearTimeout(timer);
+      if (!document.hidden) reverify();
+    });
   </script>
 {% endblock scripts %}
