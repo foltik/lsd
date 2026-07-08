@@ -61,7 +61,8 @@ pub mod filters {
 
     /// Returns the site URL
     pub fn mailto(_dummy: &str) -> Result<String, askama::Error> {
-        let email = config().email.from.email.to_string();
+        let cfg = config();
+        let email = cfg.email.contact_to.as_ref().unwrap_or(&cfg.email.from).email.to_string();
         Ok(format!("mailto:{email}"))
     }
 
