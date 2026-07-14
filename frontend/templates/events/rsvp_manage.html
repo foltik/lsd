@@ -89,7 +89,7 @@
       {% endif %}
       <a
         class="contact"
-        href="{{ "" | mailto }}?subject=Help%20with%20reservation%20{{ session.token }}"
+        href="{{ "" | mailto }}?subject=Help%20with%20reservation%20{{ session.token }}%20for%20{{ event.title | urlencode }}"
         >Contact us</a
       >
       <!--<form
