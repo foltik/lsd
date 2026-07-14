@@ -7,7 +7,7 @@
     <link
       rel="preload"
       as="image"
-      href="/e/{{ event.slug }}/flyer?size=sm"
+      href="/e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm"
       imagesrcset="/e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm 400w,
                     /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md 768w,
                     /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=lg 1200w"
@@ -26,7 +26,7 @@
         style="background-image:url('{{ flyer.thumb_base64 }}')"
       >
         <img
-          src="/e/{{ event.slug }}/flyer?size=sm"
+          src="/e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm"
           srcset="
             /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=sm  400w,
             /e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md  768w,

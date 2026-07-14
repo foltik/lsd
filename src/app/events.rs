@@ -234,7 +234,7 @@ mod edit {
         event: Event,
         spots: Vec<Spot>,
         rsvp_counts: std::collections::HashMap<i64, SpotCounts>,
-        has_flyer: bool,
+        flyer_version: Option<i64>,
         lists: Vec<ListWithCount>,
     }
 
@@ -281,7 +281,7 @@ mod edit {
             },
             spots: vec![],
             rsvp_counts: Default::default(),
-            has_flyer: false,
+            flyer_version: None,
             lists,
         }
         .into_response())
@@ -294,9 +294,9 @@ mod edit {
         let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let rsvp_counts = Spot::rsvp_counts_for_event(&state.db, event.id).await?;
-        let has_flyer = EventFlyer::exists_for_event(&state.db, event.id).await?;
+        let flyer_version = EventFlyer::version_for_event(&state.db, event.id).await?;
         let lists = List::list_with_counts(&state.db).await?;
-        Ok(EditHtml { user: Some(user), event, spots, rsvp_counts, has_flyer, lists }.into_response())
+        Ok(EditHtml { user: Some(user), event, spots, rsvp_counts, flyer_version, lists }.into_response())
     }
 
     // Handle edit submission.

@@ -9,7 +9,7 @@
 {% block content %}
   <article>
     {% if let Some(flyer) = flyer %}
-      <img src="{{ "" | url }}/e/{{ event.slug }}/flyer" alt="flyer" />
+      <img src="{{ "" | url }}/e/{{ event.slug }}/flyer?v={{ flyer.version }}" alt="flyer" />
     {% endif %}
     <h1 class="title">
       {% if let Some(subject) = event.confirmation_subject.as_deref() %}

@@ -26,6 +26,7 @@ pub struct GalleryEventFlyer {
     pub unlisted: bool,
     pub width: i64,
     pub height: i64,
+    pub version: i64,
 }
 
 impl EventFlyer {
@@ -86,7 +87,7 @@ impl EventFlyer {
     pub async fn list_gallery(db: &Db, unlisted: bool) -> Result<Vec<GalleryEventFlyer>> {
         Ok(sqlx::query_as!(
             GalleryEventFlyer,
-            r#"SELECT e.slug, e.title, e.unlisted, f.width, f.height
+            r#"SELECT e.slug, e.title, e.unlisted, f.width, f.height, strftime('%s', f.updated_at) as "version!: i64"
                FROM event_flyers f JOIN events e ON e.id = f.event_id
                WHERE ?1 OR NOT e.unlisted
                ORDER BY e.start DESC"#,
@@ -162,11 +163,14 @@ impl EventFlyer {
         });
     }
 
-    pub async fn exists_for_event(db: &Db, event_id: i64) -> Result<bool> {
-        let result = sqlx::query!("SELECT COUNT(*) as count FROM event_flyers WHERE event_id = ?", event_id)
-            .fetch_one(db)
-            .await?;
-        Ok(result.count > 0)
+    pub async fn version_for_event(db: &Db, event_id: i64) -> Result<Option<i64>> {
+        let row = sqlx::query!(
+            r#"SELECT strftime('%s', updated_at) as "version!: i64" FROM event_flyers WHERE event_id = ?"#,
+            event_id
+        )
+        .fetch_optional(db)
+        .await?;
+        Ok(row.map(|r| r.version))
     }
 
     /// Duplicate a flyer from one event to another.

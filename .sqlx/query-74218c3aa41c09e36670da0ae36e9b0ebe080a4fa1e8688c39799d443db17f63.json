@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT e.slug, e.title, e.unlisted, f.width, f.height\n               FROM event_flyers f JOIN events e ON e.id = f.event_id\n               WHERE ?1 OR NOT e.unlisted\n               ORDER BY e.start DESC",
+  "query": "SELECT e.slug, e.title, e.unlisted, f.width, f.height, strftime('%s', f.updated_at) as \"version!: i64\"\n               FROM event_flyers f JOIN events e ON e.id = f.event_id\n               WHERE ?1 OR NOT e.unlisted\n               ORDER BY e.start DESC",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "name": "height",
         "ordinal": 4,
         "type_info": "Integer"
+      },
+      {
+        "name": "version!: i64",
+        "ordinal": 5,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -37,8 +42,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "b25f4ff7988a2974805bbf3488dc6048bbbbc40cdba8866d29dd7e5f053849a1"
+  "hash": "74218c3aa41c09e36670da0ae36e9b0ebe080a4fa1e8688c39799d443db17f63"
 }
