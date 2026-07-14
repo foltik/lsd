@@ -346,7 +346,7 @@
     });
 
     /* ---------- Flyer preview handler ------------------------------------------ */
-    const hasExistingFlyer = {{ has_flyer | json | safe }};
+    const existingFlyerVersion = {{ flyer_version | json | safe }};
     const updateFlyerPreview = () => {
       const flyer = ui.flyer.input.files[0];
 
@@ -360,10 +360,10 @@
           ui.flyer.preview.classList.remove("hidden");
         };
         reader.readAsDataURL(flyer);
-      } else if (hasExistingFlyer) {
+      } else if (existingFlyerVersion !== null) {
         ui.flyer.text.textContent = "Flyer unchanged";
         ui.flyer.filename.textContent = "";
-        ui.flyer.preview.src = `/events/{{ event.id }}/flyer?size=md`;
+        ui.flyer.preview.src = `/events/{{ event.id }}/flyer?v=${existingFlyerVersion}&size=md`;
         ui.flyer.preview.classList.remove("hidden");
       } else {
         ui.flyer.text.textContent = "No flyer chosen";

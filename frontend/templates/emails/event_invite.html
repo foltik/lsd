@@ -9,7 +9,7 @@
 {% block content %}
   <article>
     {% if let Some(flyer) = flyer %}
-      <img src="{{ "" | url }}/e/{{ event.slug }}/flyer?size=md" alt="flyer" />
+      <img src="{{ "" | url }}/e/{{ event.slug }}/flyer?v={{ flyer.version }}&size=md" alt="flyer" />
     {% endif %}
     <h1 class="title">
       <a href="{{ "" | url }}/e/{{ event.slug }}/rsvp"
