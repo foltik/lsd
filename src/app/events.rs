@@ -1270,6 +1270,14 @@ mod rsvp {
         Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+
+        if let Some(session) = &session {
+            match session.status.as_str() {
+                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {}
+                _ => return goto::manage_page(session, &event),
+            }
+        }
+
         if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
