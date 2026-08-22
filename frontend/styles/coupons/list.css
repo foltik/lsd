@@ -1,0 +1,27 @@
+#coupons\/list {
+  table {
+    @apply text-sm;
+    border-spacing: 2rem 0;
+  }
+
+  th {
+    @apply pb-1;
+  }
+
+  tr.expired {
+    @apply opacity-50;
+  }
+
+  td {
+    @apply py-1 align-top;
+  }
+  td.code {
+    @apply font-bold uppercase;
+  }
+  td.description {
+    @apply max-w-md whitespace-normal;
+  }
+  td.actions {
+    @apply flex items-center gap-4;
+  }
+}

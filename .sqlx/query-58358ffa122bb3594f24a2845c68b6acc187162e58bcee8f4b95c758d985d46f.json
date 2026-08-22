@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvps\n             SET contribution = contribution + discount,\n                 discount = 0,\n                 updated_at = CURRENT_TIMESTAMP\n             WHERE session_id = ? AND discount != 0",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "58358ffa122bb3594f24a2845c68b6acc187162e58bcee8f4b95c758d985d46f"
+}

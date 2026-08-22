@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT EXISTS(\n                 SELECT 1 FROM coupons c\n                 WHERE (c.event_id IS NULL OR c.event_id = ?)\n                   AND (c.expires_at IS NULL OR c.expires_at > CURRENT_TIMESTAMP)\n                   AND (NOT EXISTS(SELECT 1 FROM coupon_users u WHERE u.coupon_id = c.id)\n                         OR EXISTS(SELECT 1 FROM coupon_users u WHERE u.coupon_id = c.id AND u.user_id = ?))\n                   AND (c.max_uses IS NULL OR c.max_uses >\n                        (CASE\n                            WHEN c.kind = 'spot'\n                            THEN (\n                                SELECT COUNT(*) FROM rsvps r\n                                JOIN rsvp_sessions s ON s.id = r.session_id\n                                WHERE s.coupon_id = c.id AND r.discount > 0\n                             )\n                             ELSE (\n                                SELECT COUNT(*) FROM rsvp_sessions s\n                                WHERE s.coupon_id = c.id\n                             )\n                        END)\n                    )\n               ) AS \"any_usable!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "any_usable!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "721762b49d6acb99bb0cdda8dd2da97796a8ebf1848ca91912c8ffaf96e330df"
+}

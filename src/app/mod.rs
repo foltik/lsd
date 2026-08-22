@@ -11,12 +11,14 @@ use crate::utils::stripe::Stripe;
 
 mod auth;
 mod contact;
+mod coupons;
 mod emails;
 mod events;
 mod gallery;
 mod home;
 mod lists;
 mod posts;
+mod users;
 mod webhooks;
 
 pub struct AppState {
@@ -44,9 +46,11 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = home::add_routes(r);
     let r = gallery::add_routes(r);
     let r = auth::add_routes(r);
+    let r = users::add_routes(r);
     let r = posts::add_routes(r);
     let r = events::add_routes(r);
     let r = lists::add_routes(r);
+    let r = coupons::add_routes(r);
     let r = emails::add_routes(r);
     let r = webhooks::add_routes(r);
     let r = contact::add_routes(r);

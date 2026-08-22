@@ -29,11 +29,19 @@ struct DashboardHtml {
 
 /// Display the front page.
 async fn home_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-    Ok(HomeHtml { user, events: Event::list_upcoming(&state.db).await?, past: false }.into_response())
+    Ok(HomeHtml {
+        user,
+        events: Event::list_upcoming_for_homepage(&state.db).await?,
+        past: false,
+    }
+    .into_response())
 }
 
 async fn past_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-    Ok(HomeHtml { user, events: Event::list_past(&state.db).await?, past: true }.into_response())
+    Ok(
+        HomeHtml { user, events: Event::list_past_for_homepage(&state.db).await?, past: true }
+            .into_response(),
+    )
 }
 
 async fn dashboard_page(user: User) -> HtmlResult {

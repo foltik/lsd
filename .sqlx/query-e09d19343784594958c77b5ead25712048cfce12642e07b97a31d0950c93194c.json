@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE rsvps\n                SET contribution = ?,\n                    discount = ?,\n                    updated_at = CURRENT_TIMESTAMP\n                WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "e09d19343784594958c77b5ead25712048cfce12642e07b97a31d0950c93194c"
+}

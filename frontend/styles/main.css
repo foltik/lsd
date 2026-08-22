@@ -3,6 +3,8 @@
 /** Extensions **/
 @import "./extensions/layout.css";
 @import "./extensions/form.css";
+@import "./extensions/table.css";
+@import "./extensions/combobox.css";
 @import "./extensions/sidebar.css";
 @import "./extensions/editor.css";
 
@@ -31,6 +33,9 @@
 /* Lists */
 @import "./lists/list.css";
 @import "./lists/edit.css";
+/* Coupons */
+@import "./coupons/list.css";
+@import "./coupons/edit.css";
 /* Posts */
 @import "./posts/list.css";
 @import "./posts/send.css";

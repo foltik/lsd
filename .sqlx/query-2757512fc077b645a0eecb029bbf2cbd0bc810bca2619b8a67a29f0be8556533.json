@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT s.name AS spot_name,\n                    u.first_name AS \"first_name!: String\",\n                    u.last_name AS \"last_name!: String\",\n                    u.email, u.phone, r.contribution\n             FROM rsvps r\n             JOIN spots s ON s.id = r.spot_id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             JOIN users u ON u.id = r.user_id\n             WHERE rs.id = ?\n             ORDER BY r.created_at",
+  "query": "SELECT s.name AS spot_name,\n                    u.first_name AS \"first_name!: String\",\n                    u.last_name AS \"last_name!: String\",\n                    u.email, u.phone, r.contribution, r.discount\n             FROM rsvps r\n             JOIN spots s ON s.id = r.spot_id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             JOIN users u ON u.id = r.user_id\n             WHERE rs.event_id = ? AND rs.user_id = ?\n               AND rs.status IN (?, ?)\n             ORDER BY r.created_at",
   "describe": {
     "columns": [
       {
@@ -32,10 +32,15 @@
         "name": "contribution",
         "ordinal": 5,
         "type_info": "Integer"
+      },
+      {
+        "name": "discount",
+        "ordinal": 6,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 4
     },
     "nullable": [
       false,
@@ -43,8 +48,9 @@
       true,
       false,
       true,
+      false,
       false
     ]
   },
-  "hash": "d858f3afb9b9ad35ecb072bc29cba5f94c5ab223eb8c19b6d321f0bb4f99e4fd"
+  "hash": "2757512fc077b645a0eecb029bbf2cbd0bc810bca2619b8a67a29f0be8556533"
 }

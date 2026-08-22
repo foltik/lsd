@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coupons\n               SET event_id = ?,\n                   code = ?,\n                   description = ?,\n                   expires_at = ?,\n                   max_uses = ?,\n                   max_uses_per_user = ?,\n                   max_uses_per_event = ?,\n                   kind = ?,\n                   percent_off = ?,\n                   dollars_off = ?,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "17e8daf6a0c24fb66b94d357ef7946069bb8e20d4968a97245df9d037addd3e7"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                   NOT EXISTS(SELECT 1 FROM coupon_users WHERE coupon_id = ?1)\n                   OR EXISTS(SELECT 1 FROM coupon_users WHERE coupon_id = ?1 AND user_id = ?2)\n               AS \"allowed!: bool\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "allowed!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a151d9c43b4b3f7e75565cfb5dda927a78af0e181e02563ca6cee7fd95a8001b"
+}

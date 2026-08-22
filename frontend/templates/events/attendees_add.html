@@ -15,7 +15,7 @@
     >
       <div class="field">
         <label for="first_name">First name</label>
-        <div class="combobox">
+        <div class="ext/combobox">
           <input
             type="text"
             id="first_name"
@@ -30,7 +30,7 @@
       </div>
       <div class="field">
         <label for="last_name">Last name</label>
-        <div class="combobox">
+        <div class="ext/combobox">
           <input
             type="text"
             id="last_name"
@@ -45,7 +45,7 @@
       </div>
       <div class="field">
         <label for="email">Email</label>
-        <div class="combobox">
+        <div class="ext/combobox">
           <input
             type="email"
             id="email"
@@ -91,8 +91,8 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form: $("form"),
-      combos: () => [...ui.form.querySelectorAll(".combobox")],
-      inputs: () => [...ui.form.querySelectorAll(".combobox input")],
+      combos: () => [...ui.form.querySelectorAll(".ext\\/combobox")],
+      inputs: () => [...ui.form.querySelectorAll(".ext\\/combobox input")],
       resultsList: (combo) => combo.querySelector(".autocomplete"),
 
       setSelection: (user) => {
@@ -145,14 +145,12 @@
         clearTimeout(debounce);
 
         const query = input.value.trim();
-        if (query.length < 2) return list.replaceChildren();
+        if (query.length < 3) return list.replaceChildren();
 
         debounce = setTimeout(async () => {
           const seq = ++seqnum;
           try {
-            const res = await fetch(
-              `/events/{{ event.id }}/attendees/search?q=${encodeURIComponent(query)}&field=${field}`,
-            );
+            const res = await fetch(`/users/search?q=${encodeURIComponent(query)}&by=${field}&event_id={{ event.id }}`);
 
             // Ignore a failed or stale response that a newer keystroke has superseded
             if (!res.ok || seq != seqnum) return;

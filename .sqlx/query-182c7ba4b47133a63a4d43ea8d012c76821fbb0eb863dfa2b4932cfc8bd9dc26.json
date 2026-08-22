@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, title FROM events\n               WHERE kind = 'internal'\n                 AND COALESCE(\"end\", datetime(start, '+24 hours')) > datetime('now')\n               ORDER BY start DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "182c7ba4b47133a63a4d43ea8d012c76821fbb0eb863dfa2b4932cfc8bd9dc26"
+}

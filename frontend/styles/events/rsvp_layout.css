@@ -125,6 +125,9 @@
         .email {
           @apply text-lsd-gray text-xs;
         }
+        .price s {
+          @apply text-lsd-gray mr-1;
+        }
       }
     }
     .total {
