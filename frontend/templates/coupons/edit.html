@@ -1,0 +1,284 @@
+{% extends "layout.html" %}
+{% block title %}{% if coupon.id == 0 %}New code{% else %}Edit code - {{ coupon.code }}{% endif %}{% endblock %}
+
+{% block content %}
+  <section id="coupons/edit" class="ext/layout standard">
+    <header>
+      <h1>{% if coupon.id == 0 %}New Code{% else %}Edit Code{% endif %}</h1>
+    </header>
+    <form id="form" class="ext/form">
+      <div class="field">
+        <label for="code">Code</label>
+        <input
+          type="text"
+          id="code"
+          name="code"
+          value="{{ coupon.code }}"
+          oninput="this.value = this.value.toUpperCase()"
+        />
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <input type="text" id="description" name="description" value="{{ coupon.description }}" />
+      </div>
+      <div class="field">
+        <label for="event_id">Limit to single event (optional)</label>
+        <select id="event_id" name="event_id" class="ext/select" data-type="number">
+          <option value="">(Any event)</option>
+          {% for event in events %}
+            <option
+              value="{{ event.id }}"
+              {% if coupon.event_id.unwrap_or(0) == event.id %}selected{% endif %}
+            >
+              {{ event.title }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="search">Limit to users (optional)</label>
+        <div class="ext/combobox">
+          <input
+            type="text"
+            id="search"
+            placeholder="Search by name or email..."
+            autocomplete="off"
+          />
+          <ul class="autocomplete" id="results"></ul>
+        </div>
+        <ul class="users">
+          {% for user in users %}
+            <li class="user" data-user-id="{{ user.id }}">
+              <span>
+                {% if user.first_name.is_some() && user.last_name.is_some() %}
+                  {{ user.first_name | unwrap_or_empty }} {{ user.last_name | unwrap_or_empty }} ({{ user.email }})
+                {% else %}
+                  {{ user.email }}
+                {% endif %}
+              </span>
+              <button type="button" onclick="this.closest('.user').remove()">Remove</button>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="field">
+        <label for="expires_at">Expires (optional)</label>
+        <input
+          type="date"
+          id="expires_at"
+          name="expires_at"
+          value="{{ coupon.expires_at | format_optional_datetime("%Y-%m-%d") }}"
+        />
+      </div>
+      <div class="field">
+        <label for="kind">Kind</label>
+        <select id="kind" name="kind" class="ext/select">
+          <option value="spot"  {% if coupon.kind == "spot" %}selected{% endif %}>Free RSVP</option>
+          <option value="fixed" {% if coupon.kind == "fixed" %}selected{% endif %}>Discount ($)</option>
+          <option value="percent" {% if coupon.kind == "percent" %}selected{% endif %}>Discount (%)</option>
+        </select>
+      </div>
+      <div class="field dollars_off">
+        <label for="dollars_off">Discount ($)</label>
+        <input
+          type="number"
+          id="dollars_off"
+          name="dollars_off"
+          min="1"
+          required
+          value="{{ coupon.dollars_off | unwrap_or_empty }}"
+        />
+      </div>
+      <div class="field percent_off">
+        <label for="percent_off">Discount (%)</label>
+        <input
+          type="number"
+          id="percent_off"
+          name="percent_off"
+          min="5"
+          max="100"
+          step="5"
+          required
+          value="{{ coupon.percent_off | unwrap_or_empty }}"
+        />
+      </div>
+      <div class="field">
+        <label for="max_uses">Max uses (optional)</label>
+        <input
+          type="number"
+          id="max_uses"
+          name="max_uses"
+          min="1"
+          value="{{ coupon.max_uses | unwrap_or_empty }}"
+        />
+      </div>
+      <div class="field">
+        <label for="max_uses_per_user">Max uses per user (optional)</label>
+        <input
+          type="number"
+          id="max_uses_per_user"
+          name="max_uses_per_user"
+          min="1"
+          value="{{ coupon.max_uses_per_user | unwrap_or_empty }}"
+        />
+      </div>
+      <div class="field max_uses_per_event">
+        <label for="max_uses_per_event">Max uses per RSVP (optional)</label>
+        <input
+          type="number"
+          id="max_uses_per_event"
+          name="max_uses_per_event"
+          min="1"
+          value="{{ coupon.max_uses_per_event | unwrap_or_empty }}"
+        />
+      </div>
+      <button id="save" class="ext/button :green" type="submit">Save</button>
+    </form>
+    <form id="post" method="POST" action="/coupons/{{ coupon.id }}">
+      <input type="hidden" name="coupon" />
+    </form>
+  </section>
+  <script>
+    /* ---------- DOM ----------------------------------------------------------- */
+    const $ = (q) => document.querySelector(q);
+    const ui = {
+      form: $("#form"),
+      post: $("#post"),
+      results: $("#results"),
+      users: $(".users"),
+    };
+    const fields = {
+      dollarsOff: $(".field.dollars_off"),
+      percentOff: $(".field.percent_off"),
+      maxUsesPerEvent: $(".field.max_uses_per_event"),
+    };
+    const inputs = {
+      search: $("#search"),
+      kind: $("#kind"),
+      eventId: $("#event_id"),
+    };
+
+    // Retrieve the value of an input, with adjustments for HTML input type weirdness
+    const value = (q) => {
+      const el = $(q);
+      const type = el.dataset.type || el.type;
+      if (el.disabled) {
+        return null;
+      }
+      if (type == "number") {
+        return el.value == "" ? null : +el.value;
+      }
+      else if (type == "date") {
+        return el.value == "" ? null : new Date(el.value + "T00:00").toISOString().replace("Z", "");
+      }
+      return el.value == "" ? null : el.value;
+    };
+
+    /* ---------- Kind toggle ---------------------------------------------------- */
+    const updateKind = () => {
+      const kind = inputs.kind.value;
+      const eventId = inputs.eventId.value;
+
+      const setHidden = (field, hidden) => {
+        field.hidden = hidden;
+        field.querySelector("input").disabled = hidden;
+      };
+      setHidden(fields.dollarsOff, kind != "fixed");
+      setHidden(fields.percentOff, kind != "percent");
+      setHidden(fields.maxUsesPerEvent, kind != "spot" || eventId != "");
+    };
+    inputs.kind.addEventListener("change", updateKind);
+    inputs.eventId.addEventListener("change", updateKind);
+    updateKind();
+
+    /* ---------- User autocomplete ---------------------------------------------- */
+    const formatUser = ({first_name, last_name, email}) => {
+      return first_name && last_name
+        ? `${first_name} ${last_name} (${email})`
+        : email;
+    };
+
+    let results = [];
+    let seqnum = 0;
+    let debounce;
+
+    inputs.search.addEventListener("input", () => {
+      clearTimeout(debounce);
+
+      const query = value("#search");
+      if (!query || query.length < 3) return ui.results.replaceChildren();
+
+      debounce = setTimeout(async () => {
+        const seq = ++seqnum;
+        try {
+          const res = await fetch(`/users/search?q=${encodeURIComponent(query)}`);
+
+          // Ignore a failed or stale response that a newer keystroke has superseded
+          if (!res.ok || seq != seqnum) return;
+
+          results = await res.json();
+          ui.results.innerHTML = results
+            .filter(user => !ui.users.querySelector(`.user[data-user-id="${user.id}"]`))
+            .map(user => `<li data-user-id="${user.id}"><span>${formatUser(user)}</span></li>`)
+            .join("");
+        } catch (e) {
+          console.error(e);
+        }
+      }, 150); // 150ms debounce
+    });
+
+    // Selecting a result stages the user; the whole list is saved with the form
+    ui.results.addEventListener("mousedown", (e) => {
+      const li = e.target.closest("li");
+      if (!li) return;
+      e.preventDefault();
+
+      const user = results.find(user => user.id == li.dataset.userId);
+      ui.users.insertAdjacentHTML(
+        "beforeend",
+        `<li class="user" data-user-id="${user.id}">
+           <span>${formatUser(user)}</span>
+           <button type="button" onclick="this.closest('.user').remove()">Remove</button>
+         </li>`,
+      );
+
+      inputs.search.value = "";
+      ui.results.replaceChildren();
+    });
+
+    // Clear results when clicking away, leaving time to allow selecting one
+    inputs.search.addEventListener("blur", () => {
+      setTimeout(() => ui.results.replaceChildren(), 150);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key == "Escape") ui.results.replaceChildren();
+    });
+
+    /* ---------- Form submit handler --------------------------------------------- */
+    ui.form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const body = {
+        code: value("#code")?.trim(),
+        description: value("#description"),
+        kind: value("#kind"),
+        dollars_off: value("#dollars_off"),
+        percent_off: value("#percent_off"),
+        max_uses: value("#max_uses"),
+        max_uses_per_user: value("#max_uses_per_user"),
+        max_uses_per_event: value("#max_uses_per_event"),
+        user_ids: [...ui.users.querySelectorAll('.user')].map(u => +u.dataset.userId),
+        event_id: value("#event_id"),
+        expires_at: value("#expires_at"),
+      };
+
+      if (!body.code) {
+        alert("Enter a code!");
+        return;
+      }
+
+      ui.post.coupon.value = JSON.stringify(body);
+      ui.post.submit();
+    });
+  </script>
+{% endblock content %}

@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT m.id, m.first_name, m.last_name, m.email, m.rsvped AS \"rsvped: bool\"\n            FROM (\n                SELECT\n                    u.id, u.first_name, u.last_name, u.email,\n                    (CASE\n                        WHEN ?5 IS NULL THEN NULL\n                        ELSE (\n                            EXISTS(\n                                SELECT 1 FROM manual_rsvps mr\n                                WHERE mr.event_id = ?5 AND mr.user_id = u.id\n                            )\n                            OR EXISTS(\n                                SELECT 1 FROM rsvps r\n                                JOIN rsvp_sessions rs ON rs.id = r.session_id\n                                WHERE rs.event_id = ?5 AND r.user_id = u.id\n                                AND rs.status IN ('payment_pending','payment_confirmed','refund_pending','refund_confirmed')\n                            )\n                        )\n                    END) AS rsvped,\n                    (CASE ?4\n                         WHEN 'full'  THEN TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))\n                         WHEN 'first' THEN u.first_name\n                         WHEN 'last'  THEN u.last_name\n                         WHEN 'email' THEN u.email\n                         ELSE TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) || ' ' || u.email\n                     END) AS target\n                FROM users u\n            ) m\n            WHERE m.target LIKE ?3 ESCAPE '\\' COLLATE NOCASE\n            ORDER BY\n                (CASE\n                    WHEN m.target = ?1               COLLATE NOCASE THEN 0  -- Exact match\n                    WHEN m.target LIKE ?2 ESCAPE '\\' COLLATE NOCASE THEN 1  -- Prefix match\n                    ELSE 2                                                  -- Substring match\n                END),\n                m.target COLLATE NOCASE\n            LIMIT 25\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "rsvped: bool",
+        "ordinal": 4,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "3b686dc050be5063a654d4ddcc0f91951d4bc371ba869991a443e7302941f338"
+}

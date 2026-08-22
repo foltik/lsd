@@ -10,33 +10,12 @@
     }
   }
 
-  .table-wrapper {
-    @apply overflow-x-scroll;
-    scrollbar-color: theme(colors.lsd-charcoal) transparent;
-  }
-
   table.attendees {
-    @apply text-xs whitespace-nowrap ml-auto mr-auto;
-    border-spacing: 1rem 0;
-    border-collapse: separate;
-  }
-
-  th {
-    @apply underline;
+    @apply text-xs;
   }
 
   th.sortable {
     @apply cursor-pointer select-none;
-  }
-
-  th:first-child,
-  td:first-child {
-    @apply pl-0;
-  }
-
-  th:last-child,
-  td:last-child {
-    @apply pr-0;
   }
 
   td.note {
@@ -50,10 +29,6 @@
 
   td.checkin time {
     @apply mr-2;
-  }
-
-  td.actions button {
-    @apply cursor-pointer;
   }
 
   .actions {

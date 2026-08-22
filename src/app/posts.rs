@@ -67,7 +67,7 @@ mod read {
             post_url: String,
         }
         Ok(EmailHtml {
-            post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
+            post_url: format!("{}/p/{}", state.config.app.url, post.slug),
             email_token: String::new(),
             post,
         }
@@ -270,7 +270,7 @@ mod send {
         let mut email_template = EmailHtml {
             email_token: String::new(),
             post: post.clone(),
-            post_url: format!("{}/p/{}", &state.config.app.url, &post.slug),
+            post_url: format!("{}/p/{}", state.config.app.url, post.slug),
         };
         let mut messages = vec![];
         let mut email_ids = vec![];

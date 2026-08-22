@@ -16,6 +16,7 @@ pub struct RsvpSession {
     pub user_id: Option<i64>,
     pub user_version: Option<i64>,
     pub parent_session_id: Option<i64>,
+    pub coupon_id: Option<i64>,
 
     pub stripe_checkout_session_id: Option<String>,
     pub stripe_client_secret: Option<String>,
@@ -309,6 +310,26 @@ impl RsvpSession {
         Ok(())
     }
 
+    pub async fn set_coupon(&mut self, db: &Db, coupon_id: Option<i64>) -> Result<()> {
+        tracing::info!(
+            "Setting coupon on RSVP session with session_id={} event_id={} coupon_id={coupon_id:?}",
+            self.id,
+            self.event_id,
+        );
+        sqlx::query!(
+            "UPDATE rsvp_sessions
+             SET coupon_id = ?,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?",
+            coupon_id,
+            self.id
+        )
+        .execute(db)
+        .await?;
+        self.coupon_id = coupon_id;
+        Ok(())
+    }
+
     pub async fn set_stripe_checkout_session(
         &mut self, db: &Db, checkout_session_id: &str, client_secret: &str,
     ) -> Result<()> {
@@ -367,15 +388,14 @@ impl RsvpSession {
     }
 
     pub fn line_items(&self, rsvps: &[ContributionRsvp]) -> Result<Vec<stripe::LineItem>> {
-        let mut spot_rsvps: HashMap<String, (i64, i64)> = Default::default();
+        let mut spot_rsvps: HashMap<(String, i64), i64> = Default::default();
         for rsvp in rsvps {
-            let entry = spot_rsvps.entry(rsvp.spot_name.clone()).or_insert((0, rsvp.contribution));
-            entry.0 += 1; // quantity++
+            *spot_rsvps.entry((rsvp.spot_name.clone(), rsvp.contribution)).or_insert(0) += 1;
         }
 
         let line_items = spot_rsvps
             .into_iter()
-            .map(|(name, (quantity, price))| stripe::LineItem { name, quantity, price })
+            .map(|((name, price), quantity)| stripe::LineItem { name, quantity, price })
             .collect::<Vec<_>>();
 
         Ok(line_items)

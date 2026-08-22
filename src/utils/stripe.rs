@@ -41,7 +41,7 @@ impl Stripe {
         let return_url = format!("{}{}", self.app_url, return_path);
 
         // Log line_items for debugging before we consume them
-        let line_items_debug = format!("{:?}", &line_items);
+        let line_items_debug = format!("{:?}", line_items);
 
         // Gross but there doesn't seem to be any other supported way to build form data in the way
         // that stripe expects in particular for lists of objects.
@@ -94,7 +94,7 @@ impl Stripe {
         let res: Response = self.http
             .post("https://api.stripe.com/v1/checkout/sessions")
             .header("Stripe-Version", API_VERSION)
-            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
+            .header(header::AUTHORIZATION, format!("Bearer {}", self.secret_key))
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(form_data)
             .send().await?.json().await?;
@@ -145,7 +145,7 @@ impl Stripe {
         let res: Response = self.http
             .post(&url)
             .header("Stripe-Version", API_VERSION)
-            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
+            .header(header::AUTHORIZATION, format!("Bearer {}", self.secret_key))
             .header(header::CONTENT_LENGTH, "0")
             .send().await?.json().await?;
 
@@ -182,7 +182,7 @@ impl Stripe {
         let res: Response = self.http
             .post("https://api.stripe.com/v1/refunds")
             .header("Stripe-Version", API_VERSION)
-            .header(header::AUTHORIZATION, format!("Bearer {}", &self.secret_key))
+            .header(header::AUTHORIZATION, format!("Bearer {}", self.secret_key))
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(form_data)
             .send().await?.json().await?;

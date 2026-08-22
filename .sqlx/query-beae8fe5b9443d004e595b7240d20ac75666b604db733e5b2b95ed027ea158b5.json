@@ -34,44 +34,49 @@
         "type_info": "Integer"
       },
       {
-        "name": "stripe_client_secret",
+        "name": "parent_session_id",
         "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
-        "name": "stripe_payment_intent_id",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
-        "name": "stripe_charge_id",
-        "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "stripe_refund_id",
-        "ordinal": 9,
-        "type_info": "Text"
-      },
-      {
-        "name": "created_at",
-        "ordinal": 10,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "updated_at",
-        "ordinal": 11,
-        "type_info": "Datetime"
-      },
-      {
-        "name": "parent_session_id",
-        "ordinal": 12,
+        "name": "coupon_id",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "stripe_checkout_session_id",
-        "ordinal": 13,
+        "ordinal": 8,
         "type_info": "Text"
+      },
+      {
+        "name": "stripe_client_secret",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "stripe_payment_intent_id",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "stripe_charge_id",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "stripe_refund_id",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 13,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 14,
+        "type_info": "Datetime"
       }
     ],
     "parameters": {
@@ -88,10 +93,11 @@
       true,
       true,
       true,
-      false,
-      false,
       true,
-      true
+      true,
+      true,
+      false,
+      false
     ]
   },
   "hash": "beae8fe5b9443d004e595b7240d20ac75666b604db733e5b2b95ed027ea158b5"

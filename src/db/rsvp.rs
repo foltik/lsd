@@ -9,6 +9,7 @@ pub struct Rsvp {
 
     pub spot_id: i64,
     pub contribution: i64,
+    pub discount: i64,
     pub user_id: Option<i64>,
     pub user_version: Option<i64>,
 
@@ -46,6 +47,7 @@ pub struct ContributionRsvp {
     pub email: String,
     pub phone: Option<String>,
     pub contribution: i64,
+    pub discount: i64,
 }
 
 #[derive(Clone)]
@@ -53,6 +55,7 @@ pub struct EventRsvp {
     pub rsvp_id: i64,
     pub spot_id: i64,
     pub contribution: i64,
+    pub discount: i64,
 }
 
 pub struct UserRsvp {
@@ -118,6 +121,12 @@ impl AdminAttendeesRsvp {
             RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => "Refunded",
             _ => "",
         }
+    }
+}
+
+impl EventRsvp {
+    pub fn price(&self) -> i64 {
+        self.contribution + self.discount
     }
 }
 
@@ -187,13 +196,13 @@ impl Rsvp {
         .fetch_all(db)
         .await?)
     }
+
     pub async fn list_for_session(db: &Db, session_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            r#"SELECT r.id as rsvp_id, r.spot_id, r.contribution
+            r#"SELECT id as rsvp_id, spot_id, contribution, discount
                FROM rsvps r
-               JOIN rsvp_sessions rs ON rs.id = r.session_id
-               WHERE rs.id = ?
+               WHERE r.session_id = ?
             "#,
             session_id
         )
@@ -224,7 +233,7 @@ impl Rsvp {
             r#"SELECT s.name AS spot_name,
                     u.first_name AS "first_name!: String",
                     u.last_name AS "last_name!: String",
-                    u.email, u.phone, r.contribution
+                    u.email, u.phone, r.contribution, r.discount
              FROM rsvps r
              JOIN spots s ON s.id = r.spot_id
              JOIN rsvp_sessions rs ON rs.id = r.session_id
@@ -268,7 +277,7 @@ impl Rsvp {
             r#"SELECT s.name AS spot_name,
                     u.first_name AS "first_name!: String",
                     u.last_name AS "last_name!: String",
-                    u.email, u.phone, r.contribution
+                    u.email, u.phone, r.contribution, r.discount
              FROM rsvps r
              JOIN spots s ON s.id = r.spot_id
              JOIN rsvp_sessions rs ON rs.id = r.session_id
@@ -289,7 +298,7 @@ impl Rsvp {
     pub async fn list_family_rsvps(db: &Db, event: &Event, user_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
@@ -310,7 +319,7 @@ impl Rsvp {
     ) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ?
@@ -334,7 +343,7 @@ impl Rsvp {
         let Some(user_id) = user_id else { return Ok(vec![]) };
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
@@ -353,7 +362,7 @@ impl Rsvp {
     pub async fn list_all_reserved_for_event(db: &Db, event: &Event) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ?
@@ -403,8 +412,8 @@ impl Rsvp {
     pub async fn create(db: &Db, rsvp: CreateRsvp) -> Result<i64> {
         let row = sqlx::query!(
             r#"INSERT INTO rsvps
-               (session_id, spot_id, contribution, user_id, user_version)
-               VALUES (?, ?, ?, ?, ?)"#,
+               (session_id, spot_id, contribution, discount, user_id, user_version)
+               VALUES (?, ?, ?, 0, ?, ?)"#,
             rsvp.session_id,
             rsvp.spot_id,
             rsvp.contribution,
@@ -426,6 +435,36 @@ impl Rsvp {
             user.id,
             user.version,
             rsvp_id,
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn set_discount(db: &Db, rsvp_id: i64, contribution: i64, discount: i64) -> Result<()> {
+        sqlx::query!(
+            "UPDATE rsvps
+                SET contribution = ?,
+                    discount = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?",
+            contribution,
+            discount,
+            rsvp_id,
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn clear_discounts(db: &Db, session_id: i64) -> Result<()> {
+        sqlx::query!(
+            "UPDATE rsvps
+             SET contribution = contribution + discount,
+                 discount = 0,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE session_id = ? AND discount != 0",
+            session_id,
         )
         .execute(db)
         .await?;

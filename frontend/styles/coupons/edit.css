@@ -1,0 +1,16 @@
+#coupons\/edit {
+  #code {
+    @apply uppercase;
+  }
+
+  .ext\/combobox {
+    @apply mb-2;
+  }
+
+  .user {
+    @apply mb-1 flex justify-between;
+    button {
+      @apply py-0.5 text-sm;
+    }
+  }
+}

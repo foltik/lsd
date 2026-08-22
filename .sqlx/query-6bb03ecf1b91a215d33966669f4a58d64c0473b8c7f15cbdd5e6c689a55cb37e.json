@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coupons\n             SET expires_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "6bb03ecf1b91a215d33966669f4a58d64c0473b8c7f15cbdd5e6c689a55cb37e"
+}

@@ -9,3 +9,53 @@
     }
   }
 }
+
+#events\/rsvp\/coupon {
+  @apply border-lsd-white mb-6 rounded-lg border p-6;
+
+  .name {
+    @apply mb-2 text-xl;
+  }
+  .entry {
+    @apply flex items-center gap-2;
+    input {
+      @apply min-w-0 grow uppercase;
+    }
+    button {
+      @apply shrink-0;
+    }
+  }
+  #coupon-error {
+    @apply text-lsd-red mt-2 text-sm;
+  }
+  #coupon-note {
+    @apply text-lsd-gray h-0 overflow-hidden opacity-0;
+  }
+  #coupon-qty {
+    @apply field-sizing-content max-w-0 shrink-0 grow-0 overflow-hidden opacity-0;
+    @apply -ml-2 border-0 p-0;
+  }
+
+  /* Check success, in order: slide the note open, fade it in,
+     grow the qty box (shrinking the code input), fade it in, pulse its border */
+  &.checked {
+    #coupon-apply {
+      @apply border-lsd-green/30 bg-lsd-green/20 hover:bg-lsd-green/30;
+    }
+    #coupon-note {
+      @apply mb-4 h-6 opacity-100;
+      transition: height 0.2s, margin 0.2s, opacity 0.15s 0.2s;
+    }
+    #coupon-qty {
+      @apply max-w-18 ml-0 border px-3 py-2 opacity-100;
+      transition: all 0.2s 0.35s, opacity 0.15s 0.55s;
+      animation: coupon-pulse 0.4s 0.7s 2;
+    }
+  }
+}
+
+@keyframes coupon-pulse {
+  50% {
+    border-color: var(--color-lsd-blue);
+  }
+}

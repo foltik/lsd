@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                 c.id,\n                 COALESCE(u.first_name, u.email) AS \"creator!: String\",\n                 e.title AS \"event_title?: String\",\n                 c.code,\n                 c.description,\n                 c.expires_at, \n\n                 c.kind,\n                 c.percent_off,\n                 c.dollars_off,\n\n                 c.max_uses,\n                 (CASE\n                      WHEN c.kind = 'spot' THEN (\n                        SELECT COUNT(*) FROM rsvps r\n                        JOIN rsvp_sessions s ON s.id = r.session_id\n                        WHERE s.coupon_id = c.id AND r.discount > 0\n                      )\n                      ELSE (\n                          SELECT COUNT(*) FROM rsvp_sessions s\n                          WHERE s.coupon_id = c.id\n                      )\n                 END) AS \"uses!: i64\",\n\n                 (\n                    SELECT COUNT(*) FROM coupon_users cu\n                    WHERE cu.coupon_id = c.id\n                 ) AS \"user_count!: i64\",\n\n                 (\n                    SELECT TRIM(COALESCE(cu_u.first_name, '') || ' ' || COALESCE(cu_u.last_name, ''))\n                    FROM coupon_users cu\n                    JOIN users cu_u ON cu_u.id = cu.user_id\n                    WHERE cu.coupon_id = c.id LIMIT 1\n                 ) AS \"first_user?: String\"\n\n               FROM coupons c\n               JOIN users u ON u.id = c.creator_user_id\n               LEFT JOIN events e ON e.id = c.event_id\n               ORDER BY c.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "creator!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_title?: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "code",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "expires_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "kind",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "percent_off",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "dollars_off",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "max_uses",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "uses!: i64",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "user_count!: i64",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "first_user?: String",
+        "ordinal": 12,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0a7e5e5e2df8c1e117fc6c619ee9d7b5ede70c802a91a1d9a8cf8a34d13b0a1d"
+}

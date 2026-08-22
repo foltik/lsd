@@ -30,21 +30,24 @@ pub struct UpdateUser {
     pub phone: Option<String>,
 }
 
-/// A user matched by the add attendee form autocomplete.
-#[derive(serde::Serialize)]
-pub struct AttendeeSearchResult {
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub email: String,
-    pub rsvped: bool,
-}
-// Which field the user is searching in.
+// Field to prioritize when searching for a user.
 #[derive(Clone, Copy, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum AttendeeSearchField {
+pub enum UserSearchBy {
     FirstName,
     LastName,
     Email,
+}
+
+#[derive(serde::Serialize)]
+pub struct UserSearchResult {
+    pub id: i64,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub email: String,
+
+    // Whether the user rsvped to event_id, if specified.
+    pub rsvped: Option<bool>,
 }
 
 #[macro_export]
@@ -290,55 +293,74 @@ impl User {
         Ok(row.map(|r| map_row_fuck!(r)))
     }
 
-    /// Search users by a substring of one field, flagging those already RSVPed to `event_id`.
-    ///
-    /// Results are ranked: exact matches first, then prefix matches, then other substring
-    /// hits, alphabetically within each tier.
-    pub async fn search_for_event(
-        db: &Db, event_id: i64, field: AttendeeSearchField, query: &str,
-    ) -> Result<Vec<AttendeeSearchResult>> {
+    /// Fuzzy search for users, optionally by a specific field.
+    /// * Optionally flag those already RSVPed to `event_id`.
+    /// * Ranked in order of: exact match, prefix match, substring match.
+    pub async fn search(
+        db: &Db, query: &str, by: Option<UserSearchBy>, event_id: Option<i64>,
+    ) -> Result<Vec<UserSearchResult>> {
         // Note we're only escaping for the LIKE clause, sqlx handles escaping for sql injection.
-        let escaped = query.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
-        let contains = format!("%{escaped}%");
-        let prefix = format!("{escaped}%");
+        let query = query.trim().replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let query_contains = format!("%{query}%");
+        let query_prefix = format!("{query}%");
 
-        let key = match field {
-            AttendeeSearchField::FirstName if query.contains(' ') => "full_name",
-            AttendeeSearchField::FirstName => "first_name",
-            AttendeeSearchField::LastName => "last_name",
-            AttendeeSearchField::Email => "email",
+        // Min 3 char query; don't dump the entire DB when searching for "e"
+        if query.len() < 3 {
+            return Ok(vec![]);
+        }
+
+        let by = match by {
+            None => "any",
+            Some(by) => match by {
+                UserSearchBy::FirstName if query.contains(' ') => "full",
+                UserSearchBy::FirstName => "first",
+                UserSearchBy::LastName => "last",
+                UserSearchBy::Email => "email",
+            },
         };
 
         let rows = sqlx::query_as!(
-            AttendeeSearchResult,
+            UserSearchResult,
             r#"
-            SELECT m.first_name, m.last_name, m.email, m.rsvped AS "rsvped!: bool"
+            SELECT m.id, m.first_name, m.last_name, m.email, m.rsvped AS "rsvped: bool"
             FROM (
                 SELECT
-                    u.first_name, u.last_name, u.email,
-                    (EXISTS(SELECT 1 FROM manual_rsvps mr WHERE mr.event_id = ? AND mr.user_id = u.id)
-                     OR EXISTS(SELECT 1 FROM rsvps r JOIN rsvp_sessions rs ON rs.id = r.session_id
-                               WHERE rs.event_id = ? AND r.user_id = u.id
-                                 AND rs.status IN ('payment_pending','payment_confirmed','refund_pending','refund_confirmed'))
-                    ) AS rsvped,
-                    (CASE ?
-                       WHEN 'first_name' THEN u.first_name
-                       WHEN 'last_name'  THEN u.last_name
-                       WHEN 'full_name'  THEN TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))
-                       ELSE u.email
-                     END) AS match_col
+                    u.id, u.first_name, u.last_name, u.email,
+                    (CASE
+                        WHEN ?5 IS NULL THEN NULL
+                        ELSE (
+                            EXISTS(
+                                SELECT 1 FROM manual_rsvps mr
+                                WHERE mr.event_id = ?5 AND mr.user_id = u.id
+                            )
+                            OR EXISTS(
+                                SELECT 1 FROM rsvps r
+                                JOIN rsvp_sessions rs ON rs.id = r.session_id
+                                WHERE rs.event_id = ?5 AND r.user_id = u.id
+                                AND rs.status IN ('payment_pending','payment_confirmed','refund_pending','refund_confirmed')
+                            )
+                        )
+                    END) AS rsvped,
+                    (CASE ?4
+                         WHEN 'full'  THEN TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))
+                         WHEN 'first' THEN u.first_name
+                         WHEN 'last'  THEN u.last_name
+                         WHEN 'email' THEN u.email
+                         ELSE TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) || ' ' || u.email
+                     END) AS target
                 FROM users u
             ) m
-            WHERE m.match_col LIKE ? ESCAPE '\' COLLATE NOCASE
+            WHERE m.target LIKE ?3 ESCAPE '\' COLLATE NOCASE
             ORDER BY
-                CASE
-                    WHEN m.match_col = ? COLLATE NOCASE THEN 0
-                    WHEN m.match_col LIKE ? ESCAPE '\' COLLATE NOCASE THEN 1
-                    ELSE 2
-                END,
-                m.match_col COLLATE NOCASE
+                (CASE
+                    WHEN m.target = ?1               COLLATE NOCASE THEN 0  -- Exact match
+                    WHEN m.target LIKE ?2 ESCAPE '\' COLLATE NOCASE THEN 1  -- Prefix match
+                    ELSE 2                                                  -- Substring match
+                END),
+                m.target COLLATE NOCASE
+            LIMIT 25
             "#,
-            event_id, event_id, key, contains, query, prefix
+            query, query_prefix, query_contains, by, event_id,
         )
         .fetch_all(db)
         .await?;
@@ -392,6 +414,27 @@ impl User {
         Ok(row.map(|r| map_row!(r)))
     }
 
+    pub async fn lookup_by_coupon_id(db: &Db, coupon_id: i64) -> Result<Vec<User>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                u.*,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
+                COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
+            FROM coupon_users cu
+            JOIN users u ON u.id = cu.user_id
+            JOIN user_history h ON h.user_id = u.id
+            LEFT JOIN user_roles r ON r.user_id = u.id
+            WHERE cu.coupon_id = ?
+            GROUP BY u.id
+            "#,
+            coupon_id,
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(rows.into_iter().map(|r| map_row!(r)).collect())
+    }
+
     pub async fn lookup_by_list_id(db: &Db, list_id: i64) -> Result<Vec<User>> {
         let rows = sqlx::query!(
             r#"
@@ -424,6 +467,7 @@ impl User {
               AND NOT EXISTS (SELECT 1 FROM rsvp_sessions rs WHERE rs.user_id = users.id)
               AND NOT EXISTS (SELECT 1 FROM manual_rsvps m WHERE m.user_id = users.id)
               AND NOT EXISTS (SELECT 1 FROM list_members lm WHERE lm.user_id = users.id)
+              AND NOT EXISTS (SELECT 1 FROM coupon_users cu WHERE cu.user_id = users.id)
               AND NOT EXISTS (SELECT 1 FROM emails e WHERE e.user_id = users.id)
             RETURNING email
             "#

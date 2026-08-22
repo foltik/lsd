@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM coupon_users WHERE coupon_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ef26a3dfab31bf63a64d4f7492c1a4a82d1e8ceabb0ea3a562ce7d4bdef53c0f"
+}

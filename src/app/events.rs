@@ -19,6 +19,9 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/e/{slug}/rsvp/selection", get(rsvp::selection_page).post(rsvp::selection_form))
                 .route("/e/{slug}/rsvp/attendees", get(rsvp::attendees_page).post(rsvp::attendees_form))
                 .route("/e/{slug}/rsvp/contribution", get(rsvp::contribution_page).post(rsvp::contribution_form))
+                .route("/e/{slug}/rsvp/code", post(rsvp::coupon_apply_form))
+                .route("/e/{slug}/rsvp/code/check", post(rsvp::coupon_check_api))
+                .route("/e/{slug}/rsvp/code/remove", post(rsvp::coupon_remove_form))
                 .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page)) // REMOVEME .post(rsvp::temp_delete))
                 .route("/e/{slug}/rsvp/add-guests", post(rsvp::add_guests_form))
                 .route("/e/{slug}/rsvp/edit", get(rsvp::edit_guests_page).post(rsvp::edit_guests_form))
@@ -35,7 +38,6 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{id}/flyer", get(read::flyer_by_id))
                 .route("/events/{id}/attendees", get(edit::attendees_page))
                 .route("/events/{id}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
-                .route("/events/{id}/attendees/search", get(edit::search_attendees))
                 .route("/events/{id}/attendees/{user_id}", delete(edit::delete_attendee))
                 .route("/events/{id}/attendees/{user_id}/refund", post(edit::refund_attendee))
                 .route("/events/{id}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
@@ -98,12 +100,12 @@ mod read {
     }
 
     pub async fn list_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-        let events = Event::list(&state.db, true).await?;
+        let events = Event::list_with_stats(&state.db, true).await?;
         Ok(ListHtml { user, events, all: false }.into_response())
     }
 
     pub async fn list_all_page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlResult {
-        let events = Event::list(&state.db, false).await?;
+        let events = Event::list_with_stats(&state.db, false).await?;
         Ok(ListHtml { user, events, all: true }.into_response())
     }
 
@@ -224,7 +226,7 @@ mod edit {
     use crate::db::list::{List, ListWithCount};
     use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AdminAttendeesRsvp, Rsvp};
-    use crate::db::user::{AttendeeSearchField, AttendeeSearchResult, CreateUser, UpdateUser};
+    use crate::db::user::{CreateUser, UpdateUser};
     use crate::utils::editor::{Editor, EditorContent};
 
     #[derive(Template, WebTemplate)]
@@ -1140,23 +1142,6 @@ mod edit {
         .into_response())
     }
 
-    /// Autocomplete users for the add attendee form.
-    #[derive(serde::Deserialize)]
-    pub struct AttendeeSearchQuery {
-        q: String,
-        field: AttendeeSearchField,
-    }
-    pub async fn search_attendees(
-        _user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
-        Query(query): Query<AttendeeSearchQuery>,
-    ) -> JsonResult<Vec<AttendeeSearchResult>> {
-        let q = query.q.trim();
-        if q.is_empty() {
-            return Ok(Json(vec![]));
-        }
-        Ok(Json(User::search_for_event(&state.db, id, query.field, q).await?))
-    }
-
     #[derive(serde::Deserialize)]
     pub struct AddAttendeeForm {
         first_name: String,
@@ -1238,10 +1223,12 @@ mod edit {
 }
 
 mod rsvp {
+    use std::cmp::Reverse;
     use std::collections::HashSet;
 
     use super::*;
     use crate::app::events::rsvp::parse::ParsedAttendee;
+    use crate::db::coupon::{Coupon, CouponCheck};
     use crate::db::list::List;
     use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, EventRsvp, Rsvp};
@@ -1467,7 +1454,7 @@ mod rsvp {
             return goto::error_spot_taken(&state.db, &state.stripe, &session).await;
         }
 
-        // Delete any old and create new RSVPs
+        // Delete any old and create new RSVPs.
         Rsvp::delete_for_session(&state.db, session.id).await?;
         for rsvp in our_rsvps {
             Rsvp::create(
@@ -1482,6 +1469,11 @@ mod rsvp {
             )
             .await?;
         }
+        // Also clear any coupon, which no longer applies since RSVPs have changed.
+        if session.coupon_id.is_some() {
+            session.set_coupon(&state.db, None).await?;
+        }
+
         session.clear_stripe_client_secret(&state.db).await?;
         session.set_status(&state.db, RsvpSession::ATTENDEES).await?;
 
@@ -1668,6 +1660,16 @@ mod rsvp {
             }
         }
 
+        let applied_code = match session.coupon_id {
+            Some(coupon_id) => {
+                let coupon = Coupon::lookup_by_id(&state.db, coupon_id).await?.expect("invalid coupon_id");
+                Some(coupon.code)
+            }
+            None => None,
+        };
+        let show_coupon =
+            price > 0 && applied_code.is_none() && Coupon::any_usable(&state.db, event.id, user.id).await?;
+
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_contribution.html")]
         struct ContributionHtml {
@@ -1675,6 +1677,8 @@ mod rsvp {
             session: RsvpSession,
             rsvps: Vec<ContributionRsvp>,
             price: i64,
+            applied_code: Option<String>,
+            show_coupon: bool,
             stripe_publishable_key: String,
         }
         Ok(ContributionHtml {
@@ -1682,6 +1686,8 @@ mod rsvp {
             session,
             rsvps,
             price,
+            applied_code,
+            show_coupon,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
         }
         .into_response())
@@ -1777,7 +1783,157 @@ mod rsvp {
             };
         }
 
-        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", &session.token)).into_response())
+        Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token)).into_response())
+    }
+
+    // Check if a coupon is valid for the current session.
+    #[derive(Debug, serde::Deserialize)]
+    pub struct CheckCouponForm {
+        code: String,
+    }
+    #[derive(serde::Serialize)]
+    pub struct CheckCouponResponse {
+        ok: bool,
+        kind: Option<String>,
+        available: i64,
+        message: Option<&'static str>,
+    }
+    pub async fn coupon_check_api(
+        session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Form(form): Form<CheckCouponForm>,
+    ) -> JsonResult<CheckCouponResponse> {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
+        let rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
+        let check = Coupon::check(&state.db, &form.code, event.id, &session, &rsvps).await?;
+
+        Ok(Json(match check {
+            CouponCheck::Usable { coupon, available } => {
+                CheckCouponResponse { ok: true, kind: Some(coupon.kind), available, message: None }
+            }
+            unusable => {
+                CheckCouponResponse { ok: false, kind: None, available: 0, message: unusable.error_message() }
+            }
+        }))
+    }
+
+    // Apply a discount code: reprice the rsvps and restart the Stripe checkout.
+    #[derive(Debug, serde::Deserialize)]
+    pub struct ApplyCouponForm {
+        code: String,
+        qty: Option<i64>,
+    }
+    pub async fn coupon_apply_form(
+        mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Form(form): Form<ApplyCouponForm>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !event.registration_open() {
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
+        }
+        if session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
+        let mut rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
+        let check = Coupon::check(&state.db, &form.code, event.id, &session, &rsvps).await?;
+
+        let (coupon, available) = match check {
+            CouponCheck::Usable { coupon, available } => (coupon, available),
+            check => {
+                let message = check.error_message().unwrap().into();
+                return Ok(ErrorHtml { user: None, message }.into_response());
+            }
+        };
+
+        tracing::info!(
+            "Applying coupon_id={} code={:?} kind={:?} to session_id={} event_id={} qty={:?}",
+            coupon.id,
+            coupon.code,
+            coupon.kind,
+            session.id,
+            event.id,
+            form.qty,
+        );
+
+        // Clear any previously applied code
+        Rsvp::clear_discounts(&state.db, session.id).await?;
+
+        // Apply discounts to spots in order from most to least expensive
+        rsvps.sort_by_key(|r| Reverse(r.contribution));
+        match coupon.kind.as_str() {
+            Coupon::SPOT => {
+                let qty = form.qty.unwrap_or(available).clamp(1, available);
+
+                rsvps.sort_by_key(|r| Reverse(r.contribution));
+                for rsvp in rsvps.iter().filter(|r| r.price() > 0).take(qty as usize) {
+                    Rsvp::set_discount(&state.db, rsvp.rsvp_id, 0, rsvp.contribution).await?;
+                }
+            }
+            Coupon::FIXED => {
+                let mut remaining = coupon.dollars_off.unwrap();
+                for rsvp in &rsvps {
+                    let discount = remaining.min(rsvp.contribution);
+                    if discount == 0 {
+                        break;
+                    }
+
+                    Rsvp::set_discount(&state.db, rsvp.rsvp_id, rsvp.contribution - discount, discount)
+                        .await?;
+                    remaining -= discount;
+                }
+            }
+            Coupon::PERCENT => {
+                let percent = coupon.percent_off.unwrap();
+                for rsvp in &rsvps {
+                    let discount = (rsvp.contribution * percent) / 100;
+                    if discount > 0 {
+                        Rsvp::set_discount(&state.db, rsvp.rsvp_id, rsvp.contribution - discount, discount)
+                            .await?;
+                    }
+                }
+            }
+            kind => panic!("unknown coupon kind: {kind}"),
+        }
+        session.set_coupon(&state.db, Some(coupon.id)).await?;
+
+        // Expire the old Stripe checkout session; contribution_page will create another one at the new price.
+        if let Some(checkout_session_id) = session.stripe_checkout_session_id.clone() {
+            tracing::info!("Expiring stripe_checkout_session_id={checkout_session_id} after applying coupon");
+            state.stripe.expire_session(&checkout_session_id).await?;
+        }
+        session.clear_stripe_client_secret(&state.db).await?;
+
+        goto::contribution_page(&event)
+    }
+
+    // Remove the applied code and restore full prices.
+    pub async fn coupon_remove_form(
+        mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        if !event.registration_open() {
+            return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
+        }
+        if session.status != RsvpSession::CONTRIBUTION {
+            bail_invalid!();
+        }
+
+        tracing::info!("Removing coupon_id={:?} from session_id={}", session.coupon_id, session.id);
+        Rsvp::clear_discounts(&state.db, session.id).await?;
+        session.set_coupon(&state.db, None).await?;
+
+        // Expire the old Stripe checkout session; contribution_page will create another one at the new price.
+        if let Some(checkout_session_id) = session.stripe_checkout_session_id.clone() {
+            tracing::info!("Expiring stripe_checkout_session_id={checkout_session_id} for coupon");
+            state.stripe.expire_session(&checkout_session_id).await?;
+        }
+        session.clear_stripe_client_secret(&state.db).await?;
+
+        goto::contribution_page(&event)
     }
 
     #[derive(serde::Deserialize)]
@@ -2159,10 +2315,10 @@ mod rsvp {
         use crate::utils::stripe::Stripe;
 
         pub fn guestlist_page(event: &Event) -> HtmlResult {
-            Ok(Redirect::to(&format!("/e/{}/rsvp/guestlist", &event.slug)).into_response())
+            Ok(Redirect::to(&format!("/e/{}/rsvp/guestlist", event.slug)).into_response())
         }
         pub async fn selection_page(db: &Db, user: &Option<User>, session: &Option<RsvpSession>, event: &Event) -> HtmlResult {
-            let redirect = Redirect::to(&format!("/e/{}/rsvp/selection", &event.slug));
+            let redirect = Redirect::to(&format!("/e/{}/rsvp/selection", event.slug));
             match session {
                 Some(_) => Ok(redirect.into_response()),
                 None => {
@@ -2176,13 +2332,13 @@ mod rsvp {
             }
         }
         pub fn attendees_page(event: &Event) -> HtmlResult {
-            Ok(Redirect::to(&format!("/e/{}/rsvp/attendees", &event.slug)).into_response())
+            Ok(Redirect::to(&format!("/e/{}/rsvp/attendees", event.slug)).into_response())
         }
         pub fn contribution_page(event: &Event) -> HtmlResult {
-            Ok(Redirect::to(&format!("/e/{}/rsvp/contribution", &event.slug)).into_response())
+            Ok(Redirect::to(&format!("/e/{}/rsvp/contribution", event.slug)).into_response())
         }
         pub fn manage_page(session: &RsvpSession, event: &Event) -> HtmlResult {
-            Ok(Redirect::to(&format!("/e/{}/rsvp/manage?reservation={}", &event.slug, &session.token)).into_response())
+            Ok(Redirect::to(&format!("/e/{}/rsvp/manage?reservation={}", event.slug, session.token)).into_response())
         }
         pub fn error_not_on_guestlist() -> HtmlResult {
             let error = ErrorHtml { user: None, message: "Sorry, you're not on the list.".into() };
@@ -2420,7 +2576,7 @@ mod rsvp {
                 }
 
                 for _ in 0..rsvp.qty {
-                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution })
+                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution, discount: 0 })
                 }
             }
 

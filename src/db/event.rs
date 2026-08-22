@@ -87,6 +87,12 @@ impl EventWithStats {
     }
 }
 
+#[derive(Debug, serde::Serialize)]
+pub struct EventSelect {
+    pub id: i64,
+    pub title: String,
+}
+
 impl Event {
     pub const INTERNAL: &'static str = "internal";
     pub const EXTERNAL: &'static str = "external";
@@ -95,8 +101,8 @@ impl Event {
         self.kind == Self::EXTERNAL
     }
 
-    /// List events with RSVP stats, newest first. When `recent`, only the last 3 months.
-    pub async fn list(db: &Db, recent: bool) -> Result<Vec<EventWithStats>> {
+    /// List events with RSVP stats for the admin page. When `recent`, only the last 3 months.
+    pub async fn list_with_stats(db: &Db, recent: bool) -> Result<Vec<EventWithStats>> {
         let events = sqlx::query_as!(
             EventWithStats,
             r#"SELECT
@@ -147,7 +153,8 @@ impl Event {
         Ok(events)
     }
 
-    pub async fn list_upcoming(db: &Db) -> Result<Vec<Event>> {
+    /// List upcoming events for the homepage
+    pub async fn list_upcoming_for_homepage(db: &Db) -> Result<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,
             r#"SELECT * FROM events
@@ -160,7 +167,8 @@ impl Event {
         Ok(events)
     }
 
-    pub async fn list_past(db: &Db) -> Result<Vec<Event>> {
+    /// List past events for the homepage
+    pub async fn list_past_for_homepage(db: &Db) -> Result<Vec<Event>> {
         let events = sqlx::query_as!(
             Self,
             r#"SELECT * FROM events
@@ -171,6 +179,19 @@ impl Event {
         .fetch_all(db)
         .await?;
         Ok(events)
+    }
+
+    /// List upcoming internal events for an admin event selection dropdown.
+    pub async fn list_upcoming_for_select(db: &Db) -> Result<Vec<EventSelect>> {
+        Ok(sqlx::query_as!(
+            EventSelect,
+            r#"SELECT id, title FROM events
+               WHERE kind = 'internal'
+                 AND COALESCE("end", datetime(start, '+24 hours')) > datetime('now')
+               ORDER BY start DESC"#
+        )
+        .fetch_all(db)
+        .await?)
     }
 
     // Create a new event.
