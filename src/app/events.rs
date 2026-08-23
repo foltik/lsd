@@ -1258,11 +1258,9 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
-        if let Some(session) = &session {
-            match session.status.as_str() {
-                RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION => {}
-                _ => return goto::manage_page(session, &event),
-            }
+        // If a session already exists, send them to the correct page.
+        if let Some(session) = session {
+            return goto::by_status(&state.db, &event, session).await;
         }
 
         if !event.registration_open() {
@@ -1272,34 +1270,30 @@ mod rsvp {
         let reserved = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         if reserved.len() as i64 + manual_count >= event.capacity {
-            return goto::error_at_capacity(&state.db, &state.stripe, &session).await;
+            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
 
         match event.guest_list_id {
-            None => goto::selection_page(&state.db, &user, &session, &event).await,
-            Some(guest_list_id) => match session {
-                Some(session) => {
-                    if let Some(user_id) = session.user_id
-                        && List::has_user_id(&state.db, guest_list_id, user_id).await?
-                    {
-                        goto::selection_page(&state.db, &user, &Some(session), &event).await
-                    } else {
-                        goto::guestlist_page(&event)
-                    }
-                }
-                _ => goto::guestlist_page(&event),
-            },
+            None => goto::selection_page(&state.db, &user, &None, &event).await,
+            Some(_) => goto::guestlist_page(&event),
         }
     }
 
     // Display the guestlist confirmation page
-    pub async fn guestlist_page(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
+    pub async fn guestlist_page(
+        session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+    ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
-            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
+
+        // If a session exists, the user must have navigated here directly, send them back.
+        if let Some(session) = session {
+            return goto::by_status(&state.db, &event, session).await;
         }
 
         let _guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
+        if !event.registration_open() {
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
+        }
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_guestlist.html")]
@@ -1316,10 +1310,16 @@ mod rsvp {
         email: String,
     }
     pub async fn guestlist_form(
-        mut session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        session: Option<RsvpSession>, State(state): State<SharedAppState>, Path(slug): Path<String>,
         Form(form): Form<GuestlistForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+
+        // If a session exists, the user must have navigated here directly, send them back.
+        if let Some(session) = session {
+            return goto::by_status(&state.db, &event, session).await;
+        }
+
         let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
         if !event.registration_open() {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
@@ -1346,22 +1346,14 @@ mod rsvp {
                 );
 
                 // Check for conflicts (no guests, so only a primary conflict is possible).
-                let exclude_ids: Vec<i64> = session.as_ref().map(|s| vec![s.id]).unwrap_or_default();
-                let other_users =
-                    Rsvp::list_reserved_users_for_event(&state.db, &event, &exclude_ids).await?;
+                let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &[]).await?;
                 if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[]) {
-                    let exclude = session.as_ref().map(|s| s.id);
-                    if let Some(resp) = resolve_conflict(&state, &event, exclude, conflict).await? {
+                    if let Some(resp) = resolve_conflict(&state, &event, None, conflict).await? {
                         return Ok(resp);
                     }
                 }
 
-                // Set user on session if already exists
-                if let Some(session) = session.as_mut() {
-                    session.set_user(&state.db, &user).await?;
-                }
-
-                goto::selection_page(&state.db, &Some(user), &session, &event).await
+                goto::selection_page(&state.db, &Some(user), &None, &event).await
             }
             false => goto::error_not_on_guestlist(),
         }
@@ -2313,6 +2305,21 @@ mod rsvp {
     pub mod goto {
         use super::*;
         use crate::utils::stripe::Stripe;
+
+        /// Redirect to the correct page for the session's status.
+        pub async fn by_status(db: &Db, event: &Event, session: RsvpSession) -> HtmlResult {
+            match session.status.as_str() {
+                RsvpSession::SELECTION => goto::selection_page(db, &None, &Some(session), event).await,
+                RsvpSession::ATTENDEES => goto::attendees_page(event),
+                RsvpSession::CONTRIBUTION => goto::contribution_page(event),
+                RsvpSession::PAYMENT_PENDING
+                    | RsvpSession::PAYMENT_CONFIRMED
+                    | RsvpSession::REFUND_PENDING
+                    | RsvpSession::REFUND_CONFIRMED
+                    => goto::manage_page(&session, event),
+                _ => unreachable!(),
+            }
+        }
 
         pub fn guestlist_page(event: &Event) -> HtmlResult {
             Ok(Redirect::to(&format!("/e/{}/rsvp/guestlist", event.slug)).into_response())
