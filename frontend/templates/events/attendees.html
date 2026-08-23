@@ -138,19 +138,21 @@
         {% if show_notes %}"Note",{% endif %}
         "Spot", "Status", "Created", "Reservation #",
       ];
-      const rows = ui.rows().map((row) => {
-        const cells = [
-          row.querySelector(".name").textContent.trim(),
-          row.querySelector(".email").textContent.trim(),
-          row.querySelector(".guestof").textContent.trim(),
-          {% if show_notes %}row.querySelector(".note").textContent.trim(),{% endif %}
-          row.querySelector(".spot").textContent.trim(),
-          row.querySelector(".status").textContent.trim(),
-          row.querySelector(".created time").textContent.trim(),
-          row.querySelector(".reservation").textContent.trim(),
-        ];
-        return cells;
-      });
+      const rows = ui.rows()
+        .filter((row) => row.dataset.refunded !== "true")
+        .map((row) => {
+          const cells = [
+            row.querySelector(".name").textContent.trim(),
+            row.querySelector(".email").textContent.trim(),
+            row.querySelector(".guestof").textContent.trim(),
+            {% if show_notes %}row.querySelector(".note").textContent.trim(),{% endif %}
+            row.querySelector(".spot").textContent.trim(),
+            row.querySelector(".status").textContent.trim(),
+            row.querySelector(".created time").textContent.trim(),
+            row.querySelector(".reservation").textContent.trim(),
+          ];
+          return cells;
+        });
 
       // Collapse embedded newlines (e.g. multi-line spot descriptions) so rows don't break.
       const escape = (s) => `"${s.replace(/\s*[\r\n]+\s*/g, " ").replace(/"/g, '""')}"`;
