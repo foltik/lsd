@@ -23,7 +23,7 @@
   }
 
   tr[data-refunded="true"] {
-    td.name, td.email, td.guestof {
+    td.name, td.email, td.guestof, td.spot {
       @apply line-through;
     }
   }
