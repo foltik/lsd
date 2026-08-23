@@ -43,6 +43,7 @@
             data-is-manual="{{ rsvp.is_manual }}"
             data-session-id="{{ rsvp.session_id }}"
             data-contribution="{{ rsvp.contribution }}"
+            data-refunded="{{ rsvp.is_refunded() }}"
           >
             <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
             <td class="email">{{ rsvp.email }}</td>
@@ -81,6 +82,7 @@
                   />
                 </svg>
               </a>
+              {% if !rsvp.is_refunded() %}
               <button class="delete" title="Delete attendee">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -94,6 +96,7 @@
                   />
                 </svg>
               </button>
+              {% endif %}
               {% if !rsvp.is_manual && !rsvp.is_refunded() %}
                 <button class="refund" title="Refund purchase">
                   <svg
@@ -204,7 +207,7 @@
             { method: "DELETE" },
           );
           if (!resp.ok) throw new Error(await resp.text());
-          row.remove();
+          location.reload();
         } catch (err) {
           alert(`Error: ${err.message}`);
         }
@@ -283,6 +286,7 @@
       spot: (row) => row.dataset.isManual === "true",
       status: (row) => isEmpty(row, "status"),
     };
+    const pinLast = (row) => row.dataset.refunded === "true";
 
     // Add .sortable for headers with comparators
     const headers = [...ui.table.querySelectorAll("thead th")]
@@ -301,10 +305,14 @@
 
       ui.rows()
         .sort((a, b) => {
+          const pin = pinLast(a) - pinLast(b);
+          if (pin !== 0) return pin;
+
           if (last) {
             const diff = last(a) - last(b);
             if (diff !== 0) return diff;
           }
+
           return sortAsc ? cmp(a, b) : cmp(b, a);
         })
         .forEach((row) => ui.tbody.appendChild(row));

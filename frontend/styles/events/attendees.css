@@ -22,6 +22,12 @@
     @apply whitespace-normal min-w-[150px] max-w-max;
   }
 
+  tr[data-refunded="true"] {
+    td.name, td.email, td.guestof {
+      @apply line-through;
+    }
+  }
+
   td.checkin time,
   td.checkin button {
     @apply align-middle;
