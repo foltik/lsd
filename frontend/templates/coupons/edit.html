@@ -227,7 +227,6 @@
       }, 150); // 150ms debounce
     });
 
-    // Selecting a result stages the user; the whole list is saved with the form
     ui.results.addEventListener("mousedown", (e) => {
       const li = e.target.closest("li");
       if (!li) return;

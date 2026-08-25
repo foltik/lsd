@@ -173,22 +173,20 @@
   {% endif %}
   {% if show_coupon %}
     <script>
-      /* ---------- Discount code ---------------------------------------------- */
-      const coupon = {
-        card: $("events/rsvp/coupon"),
-        form: $("coupon-form"),
-        error: $("coupon-error"),
-        available: $("coupon-available"),
-      };
-      const inputs = {
+      /* ---------- Coupon codes ------------------------------------------------ */
+      const ui = {
         code: $("coupon-code"),
         qty: $("coupon-qty"),
-      };
-      const buttons = {
+
+        card: $("events/rsvp/coupon"),
+        available: $("coupon-available"),
+
+        form: $("coupon-form"),
         apply: $("coupon-apply"),
+        error: $("coupon-error"),
       };
 
-      const check = async (code) => {
+      const checkCode = async (code) => {
         const resp = await fetch(`/e/{{ event.slug }}/rsvp/code/check`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -202,53 +200,54 @@
           return { error: data.error || resp.statusText };
         }
       };
-
-      const submit = (qty) => {
-        coupon.form.code.value = inputs.code.value.trim();
-        coupon.form.qty.value = qty;
-        coupon.form.qty.disabled = qty == null;
-        coupon.form.submit();
+      const applyCode = (qty) => {
+        ui.form.code.value = ui.code.value.trim();
+        ui.form.qty.value = qty;
+        ui.form.qty.disabled = qty == null;
+        ui.form.submit();
       };
 
-      buttons.apply.addEventListener("click", async () => {
-        if (coupon.card.classList.contains("checked")) {
-          return submit(+inputs.qty.value || 1);
+      // On clicking Apply
+      ui.apply.addEventListener("click", async () => {
+        // Applying after picking quantity, submit immediately
+        if (ui.card.classList.contains("checked")) {
+          return applyCode(+ui.qty.value || 1);
         }
 
-        const code = inputs.code.value.trim();
+        const code = ui.code.value.trim();
         if (!code) return;
+        ui.error.hidden = true;
 
-        coupon.error.hidden = true;
-
-        const res = await check(code);
+        // Check code
+        const res = await checkCode(code);
         if (res.error) {
-          coupon.error.innerText = res.error;
-          coupon.error.hidden = false;
+          ui.error.innerText = res.error;
+          ui.error.hidden = false;
           return;
         }
         if (!res.ok) {
-          coupon.error.innerText = res.message;
-          coupon.error.hidden = false;
-          inputs.code.classList.add("error");
+          ui.error.innerText = res.message;
+          ui.error.hidden = false;
+          ui.code.classList.add("error");
           return;
         }
 
-        // If >1 available, reveal the qty picker and switch Check to Apply.
         if (res.kind == "spot" && res.available > 1) {
-          coupon.available.innerText = res.available;
-          inputs.qty.max = res.available;
-          inputs.qty.value = res.available;
-          coupon.card.classList.add("checked");
+          // Show quantity picker for free RSVPs where >1 use is available
+          ui.available.innerText = res.available;
+          ui.qty.max = res.available;
+          ui.qty.value = res.available;
+          ui.card.classList.add("checked");
         } else {
-          submit(null);
+          // Otherwise apply immediately
+          applyCode(null);
         }
       });
-
-      // Editing the code reverts to the unchecked state
-      inputs.code.addEventListener("input", () => {
-        inputs.code.classList.remove("error");
-        coupon.error.hidden = true;
-        coupon.card.classList.remove("checked");
+      // Revert to unchecked state on any edit to the code
+      ui.code.addEventListener("input", () => {
+        ui.code.classList.remove("error");
+        ui.error.hidden = true;
+        ui.card.classList.remove("checked");
       });
     </script>
   {% endif %}
