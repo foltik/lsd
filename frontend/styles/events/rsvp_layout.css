@@ -125,10 +125,10 @@
         .email {
           @apply text-lsd-gray text-xs;
         }
-        .price s {
-          @apply text-lsd-gray mr-1;
-        }
       }
+    }
+    .discount {
+      @apply text-lsd-green mb-2 flex justify-between;
     }
     .total {
       @apply flex justify-between text-xl;

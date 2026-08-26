@@ -1615,6 +1615,29 @@ mod rsvp {
         goto::contribution_page(&event)
     }
 
+    // Discount line item for the checkout summary.
+    struct DiscountLine {
+        label: String,
+        amount: i64,
+    }
+    impl DiscountLine {
+        fn build(coupon: &Coupon, rsvps: &[ContributionRsvp]) -> Option<DiscountLine> {
+            let amount: i64 = rsvps.iter().map(|r| r.discount).sum();
+            if amount == 0 {
+                return None;
+            }
+            let label = match coupon.kind.as_str() {
+                Coupon::SPOT => {
+                    format!("Free RSVP x{}", rsvps.iter().filter(|r| r.discount > 0).count())
+                }
+                Coupon::FIXED => format!("${} off", coupon.dollars_off.unwrap()),
+                Coupon::PERCENT => format!("{}% off", coupon.percent_off.unwrap()),
+                kind => panic!("unknown coupon kind: {kind}"),
+            };
+            Some(DiscountLine { label, amount })
+        }
+    }
+
     // Display the "Make your contribution" page after submitting attendees
     pub async fn contribution_page(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
@@ -1652,15 +1675,17 @@ mod rsvp {
             }
         }
 
-        let applied_code = match session.coupon_id {
+        let (coupon, discount) = match session.coupon_id {
             Some(coupon_id) => {
                 let coupon = Coupon::lookup_by_id(&state.db, coupon_id).await?.expect("invalid coupon_id");
-                Some(coupon.code)
+                let discount = DiscountLine::build(&coupon, &rsvps);
+                (Some(coupon), discount)
             }
-            None => None,
+            None => (None, None),
         };
+        let coupon_qty = rsvps.iter().filter(|r| r.discount > 0).count();
         let show_coupon =
-            price > 0 && applied_code.is_none() && Coupon::any_usable(&state.db, event.id, user.id).await?;
+            price > 0 && coupon.is_none() && Coupon::any_usable(&state.db, event.id, user.id).await?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/rsvp_contribution.html")]
@@ -1669,7 +1694,9 @@ mod rsvp {
             session: RsvpSession,
             rsvps: Vec<ContributionRsvp>,
             price: i64,
-            applied_code: Option<String>,
+            discount: Option<DiscountLine>,
+            coupon: Option<Coupon>,
+            coupon_qty: usize,
             show_coupon: bool,
             stripe_publishable_key: String,
         }
@@ -1678,7 +1705,9 @@ mod rsvp {
             session,
             rsvps,
             price,
-            applied_code,
+            discount,
+            coupon,
+            coupon_qty,
             show_coupon,
             stripe_publishable_key: state.config.stripe.publishable_key.clone(),
         }
@@ -1788,6 +1817,8 @@ mod rsvp {
         ok: bool,
         kind: Option<String>,
         available: i64,
+        percent_off: Option<i64>,
+        dollars_off: Option<i64>,
         message: Option<&'static str>,
     }
     pub async fn coupon_check_api(
@@ -1803,12 +1834,22 @@ mod rsvp {
         let check = Coupon::check(&state.db, &form.code, event.id, &session, &rsvps).await?;
 
         Ok(Json(match check {
-            CouponCheck::Usable { coupon, available } => {
-                CheckCouponResponse { ok: true, kind: Some(coupon.kind), available, message: None }
-            }
-            unusable => {
-                CheckCouponResponse { ok: false, kind: None, available: 0, message: unusable.error_message() }
-            }
+            CouponCheck::Usable { coupon, available } => CheckCouponResponse {
+                ok: true,
+                kind: Some(coupon.kind),
+                available,
+                percent_off: coupon.percent_off,
+                dollars_off: coupon.dollars_off,
+                message: None,
+            },
+            unusable => CheckCouponResponse {
+                ok: false,
+                kind: None,
+                available: 0,
+                percent_off: None,
+                dollars_off: None,
+                message: unusable.error_message(),
+            },
         }))
     }
 
@@ -2109,6 +2150,13 @@ mod rsvp {
         let user_id = session.user_id.unwrap();
         let rsvps = Rsvp::list_family_contributions(&state.db, &event, user_id).await?;
         let price = rsvps.iter().map(|r| r.contribution).sum::<i64>();
+        let discount = match session.coupon_id {
+            Some(coupon_id) => {
+                let coupon = Coupon::lookup_by_id(&state.db, coupon_id).await?.expect("invalid coupon_id");
+                DiscountLine::build(&coupon, &rsvps)
+            }
+            None => None,
+        };
 
         // Check if user can add more guests
         let can_add_guests = if event.registration_open() {
@@ -2131,10 +2179,12 @@ mod rsvp {
             flyer: Option<EventFlyer>,
             rsvps: Vec<ContributionRsvp>,
             price: i64,
+            discount: Option<DiscountLine>,
             can_add_guests: bool,
         }
         let mut response =
-            ManageHtml { user, session, event, flyer, rsvps, price, can_add_guests }.into_response();
+            ManageHtml { user, session, event, flyer, rsvps, price, discount, can_add_guests }
+                .into_response();
 
         // Always clear stale child cookie on manage page
         let clear = Cookie::build(("rsvp_child_session", ""))

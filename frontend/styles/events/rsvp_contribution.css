@@ -22,7 +22,7 @@
       @apply min-w-0 grow uppercase;
     }
     button {
-      @apply shrink-0;
+      @apply w-22.5 shrink-0;
     }
   }
   #coupon-error {
@@ -39,13 +39,15 @@
   /* Check success, in order: slide the note open, fade it in,
      grow the qty box (shrinking the code input), fade it in, pulse its border */
   &.checked {
-    #coupon-apply {
+    #coupon-button {
       @apply border-lsd-green/30 bg-lsd-green/20 hover:bg-lsd-green/30;
     }
     #coupon-note {
       @apply mb-4 h-6 opacity-100;
       transition: height 0.2s, margin 0.2s, opacity 0.15s 0.2s;
     }
+  }
+  &.qty {
     #coupon-qty {
       @apply max-w-18 ml-0 border px-3 py-2 opacity-100;
       transition: all 0.2s 0.35s, opacity 0.15s 0.55s;

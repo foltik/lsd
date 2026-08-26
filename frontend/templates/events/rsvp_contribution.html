@@ -29,17 +29,18 @@
             <div class="item">
               <div class="spot">
                 <div class="name">{{ rsvp.spot_name }}</div>
-                <span class="price">
-                  {% if rsvp.discount > 0 %}
-                    <s>${{ rsvp.contribution + rsvp.discount }}</s>
-                  {% endif %}
-                  ${{ rsvp.contribution }}
-                </span>
+                <span class="price">${{ rsvp.contribution + rsvp.discount }}</span>
               </div>
               <span class="email">{{ rsvp.email }}</span>
             </div>
           {% endfor %}
         </div>
+        {% if let Some(discount) = discount %}
+          <div class="discount">
+            <p>{{ discount.label }}</p>
+            <p>-${{ discount.amount }}</p>
+          </div>
+        {% endif %}
         <div class="total">
           <p>Total</p>
           <p id="price">${{ price }}</p>
@@ -51,21 +52,30 @@
         <div class="fill"></div>
       </div>
     </div>
-    {% if let Some(code) = applied_code %}
-      <div id="events/rsvp/coupon">
-        <p class="name">Code applied</p>
+    {% if let Some(coupon) = coupon %}
+      <div id="events/rsvp/coupon" class="checked">
+        <p class="name">Code applied!</p>
+        <p id="coupon-note">
+          {% if coupon.kind == "spot" && coupon_qty == 1 %}
+            Claimed 1 free RSVP.
+          {% elif coupon.kind == "spot" %}
+            Claimed {{ coupon_qty }} free RSVPs.
+          {% elif coupon.kind == "fixed" %}
+            Activated ${{ coupon.dollars_off.unwrap() }} off.
+          {% elif coupon.kind == "percent" %}
+            Activated {{ coupon.percent_off.unwrap() }}% off.
+          {% endif %}
+        </p>
         <form class="entry" method="POST" action="/e/{{ event.slug }}/rsvp/code/remove">
-          <input class="ext/input" type="text" value="{{ code }}" disabled />
-          <button class="ext/button" type="submit">Remove</button>
+          <input class="ext/input" type="text" value="{{ coupon.code }}" disabled />
+          <button class="ext/button :red" type="submit">Undo</button>
         </form>
       </div>
     {% endif %}
     {% if show_coupon %}
       <div id="events/rsvp/coupon">
         <p class="name">Got a code?</p>
-        <p id="coupon-note">
-          Good for up to <span id="coupon-available"></span> free RSVPs.
-        </p>
+        <p id="coupon-note"></p>
         <div class="entry">
           <input
             id="coupon-code"
@@ -75,7 +85,7 @@
             oninput="this.value = this.value.toUpperCase()"
           />
           <input id="coupon-qty" class="ext/input" type="number" min="1" value="1" />
-          <button id="coupon-apply" class="ext/button">Apply</button>
+          <button id="coupon-button" class="ext/button">Check</button>
         </div>
         <p id="coupon-error" hidden></p>
         <form id="coupon-form" method="POST" action="/e/{{ event.slug }}/rsvp/code">
@@ -180,10 +190,10 @@
         qty: $("coupon-qty"),
 
         card: $("events/rsvp/coupon"),
-        available: $("coupon-available"),
+        note: $("coupon-note"),
 
         form: $("coupon-form"),
-        apply: $("coupon-apply"),
+        button: $("coupon-button"),
         error: $("coupon-error"),
       };
 
@@ -209,10 +219,10 @@
       };
 
       // On clicking Apply
-      ui.apply.addEventListener("click", async () => {
-        // Applying after picking quantity, submit immediately
+      ui.button.addEventListener("click", async () => {
         if (ui.card.classList.contains("checked")) {
-          return applyCode(+ui.qty.value || 1);
+          const qty = ui.card.classList.contains("qty") ? +ui.qty.value || 1 : null;
+          return applyCode(qty);
         }
 
         const code = ui.code.value.trim();
@@ -234,21 +244,26 @@
         }
 
         if (res.kind == "spot" && res.available > 1) {
-          // Show quantity picker for free RSVPs where >1 use is available
-          ui.available.innerText = res.available;
+          ui.note.innerText = `Good for up to ${res.available} free RSVPs.`;
           ui.qty.max = res.available;
           ui.qty.value = res.available;
-          ui.card.classList.add("checked");
-        } else {
-          // Otherwise apply immediately
-          applyCode(null);
+          ui.card.classList.add("qty");
+        } else if (res.kind == "spot") {
+          ui.note.innerText = "Good for 1 free RSVP.";
+        } else if (res.kind == "fixed") {
+          ui.note.innerText = `Good for $${res.dollars_off} off.`;
+        } else if (res.kind == "percent") {
+          ui.note.innerText = `Good for ${res.percent_off}% off.`;
         }
+        ui.card.classList.add("checked");
+        ui.button.innerText = "Apply";
       });
       // Revert to unchecked state on any edit to the code
       ui.code.addEventListener("input", () => {
         ui.code.classList.remove("error");
         ui.error.hidden = true;
-        ui.card.classList.remove("checked");
+        ui.card.classList.remove("checked", "qty");
+        ui.button.innerText = "Check";
       });
     </script>
   {% endif %}
