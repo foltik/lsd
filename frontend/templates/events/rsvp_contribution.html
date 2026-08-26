@@ -118,7 +118,7 @@
 
 {% block scripts %}
   {% if price > 0 %}
-    <script>
+    <script type="module">
       /* ---------- UI ---------------------------------------------------------- */
       const $ = (id) => document.getElementById(id);
       const ui = {
@@ -162,7 +162,7 @@
       ui.next.addEventListener("click", async (e) => {
         ui.next.classList.add("disabled");
         ui.next.querySelector("span").innerText = "Processing...";
-        res = await checkout.confirm();
+        const res = await checkout.confirm();
         ui.next.classList.remove("disabled");
         ui.next.querySelector("span").innerText = "Pay now";
         if (res?.type === "error") {
@@ -172,8 +172,9 @@
     </script>
   {% endif %}
   {% if show_coupon %}
-    <script>
+    <script type="module">
       /* ---------- Coupon codes ------------------------------------------------ */
+      const $ = (id) => document.getElementById(id);
       const ui = {
         code: $("coupon-code"),
         qty: $("coupon-qty"),
