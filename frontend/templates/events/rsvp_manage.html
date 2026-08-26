@@ -54,7 +54,7 @@
             <div class="item">
               <div class="spot">
                 <div class="name">{{ rsvp.spot_name }}</div>
-                <span class="price">${{ rsvp.contribution }}</span>
+                <span class="price">${{ rsvp.contribution + rsvp.discount }}</span>
               </div>
               <span class="email"
                 >{{ rsvp.first_name }} {{ rsvp.last_name }} •
@@ -63,6 +63,12 @@
             </div>
           {% endfor %}
         </div>
+        {% if let Some(discount) = discount %}
+          <div class="discount">
+            <p>{{ discount.label }}</p>
+            <p>-${{ discount.amount }}</p>
+          </div>
+        {% endif %}
         <div class="total">
           <p>Total</p>
           <p id="price">${{ price }}</p>
