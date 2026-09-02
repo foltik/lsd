@@ -37,6 +37,10 @@
     p {
       @apply text-lsd-gray text-sm leading-tight;
     }
+    .when {
+      @apply text-lsd-white mt-3 text-sm uppercase;
+      letter-spacing: 0.2px;
+    }
   }
 
   .buttons {
@@ -56,6 +60,36 @@
       }
       &.delete {
         @apply border-lsd-red/30 bg-lsd-red/20;
+      }
+    }
+
+    .calendar {
+      summary {
+        @apply bg-lsd-charcoal cursor-pointer rounded-lg py-4 text-center;
+        list-style: none;
+        &::-webkit-details-marker {
+          display: none;
+        }
+        &::after {
+          @apply text-lsd-gray ml-2 inline-block;
+          content: "\25be";
+        }
+      }
+      &[open] summary {
+        @apply rounded-b-none;
+        &::after {
+          transform: rotate(180deg);
+        }
+      }
+
+      .options {
+        @apply border-lsd-charcoal flex flex-col rounded-b-lg border border-t-0;
+        a {
+          @apply text-lsd-gray hover:text-lsd-white rounded-none py-3 text-sm;
+        }
+        a + a {
+          @apply border-lsd-charcoal border-t;
+        }
       }
     }
   }

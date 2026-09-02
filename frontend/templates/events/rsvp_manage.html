@@ -45,6 +45,15 @@
         Your contribution has been received. A confirmation email will be sent
         to you{% if rsvps.len() > 1 %}and your guests{% endif %} shortly.
       </p>
+      <p class="when">
+        <time datetime="{{ event.start }}">{{ event.start | format_datetime("%a %m.%d.%Y") }}</time>
+        &middot;
+        <time datetime="{{ event.start }}">{{ event.start | format_datetime("%-I:%M%p") }}</time>
+        {% if let Some(end) = event.end %}
+          &ndash;
+          <time datetime="{{ end }}">{{ end | format_datetime("%-I:%M%p") }}</time>
+        {% endif %}
+      </p>
     </header>
     <div id="events/rsvp/summary">
       <div class="info">
@@ -93,6 +102,17 @@
           <button class="add-guests">Add guests</button>
         </form>
       {% endif %}
+      <details class="calendar">
+        <summary>Add to calendar</summary>
+        <div class="options">
+          <a href="/e/{{ event.slug }}/event.ics">Apple</a>
+          <a href="{{ event | calendar_url("google") }}" target="_blank" rel="noopener">Google</a>
+          <a href="{{ event | calendar_url("outlook") }}" target="_blank" rel="noopener">Outlook</a>
+          <a href="{{ event | calendar_url("office") }}" target="_blank" rel="noopener">Microsoft 365</a>
+          <a href="{{ event | calendar_url("yahoo") }}" target="_blank" rel="noopener">Yahoo</a>
+          <a href="/e/{{ event.slug }}/event.ics">Other (.ics)</a>
+        </div>
+      </details>
       <a
         class="contact"
         href="{{ "" | mailto }}?subject=Help%20with%20reservation%20{{ session.token }}%20for%20{{ event.title | urlencode }}"
