@@ -111,21 +111,6 @@
               />
             </label>
           </div>
-          <div>
-            <label class="field">
-              <span class="label">Phone</span>
-              <input
-                name="phone"
-                class="ext/input"
-                type="tel"
-                value="{{ attendee.phone | unwrap_or_empty }}"
-                autocomplete="tel"
-                {% if mode == AttendeesMode::Edit && attendee.user_id == session.user_id %}
-                  disabled
-                {% endif %}
-              />
-            </label>
-          </div>
         </div>
       {% endfor %}
     </form>
