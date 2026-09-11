@@ -246,6 +246,34 @@ impl Rsvp {
         .await?)
     }
 
+    /// List the primary user plus any guests that they RSVPed for the given event.
+    pub async fn list_family_users(db: &Db, event: &Event, user_id: i64) -> Result<Vec<User>> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                u.*,
+                COALESCE(MAX(h.version), 0) as "version!: i64",
+                COALESCE(GROUP_CONCAT(r.role), '') AS "roles!: String"
+            FROM rsvps rv
+            JOIN rsvp_sessions rs ON rs.id = rv.session_id
+            JOIN users u ON u.id = rv.user_id
+            JOIN user_history h ON h.user_id = u.id
+            LEFT JOIN user_roles r ON r.user_id = u.id
+            WHERE rs.event_id = ? AND rs.user_id = ?
+              AND rs.status IN (?, ?)
+            GROUP BY u.id
+            ORDER BY MIN(rv.created_at)
+            "#,
+            event.id,
+            user_id,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
+        )
+        .fetch_all(db)
+        .await?;
+        Ok(rows.into_iter().map(|r| crate::map_row_fuck!(r)).collect())
+    }
+
     /// List attendee info for all RSVPs across a user's active sessions for an event.
     pub async fn list_family_attendees(db: &Db, event: &Event, user_id: i64) -> Result<Vec<AttendeeRsvp>> {
         Ok(sqlx::query_as!(
