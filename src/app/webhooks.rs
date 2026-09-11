@@ -139,8 +139,7 @@ pub mod stripe {
                 session.set_status(&state.db, RsvpSession::PAYMENT_CONFIRMED).await?;
                 session.set_payment_intent_id(&state.db, &payload.payment_intent).await?;
 
-                if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
-                    let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
+                if let Some(email) = Email::create_confirmation(&state.db, session.event_id, user_id).await? {
                     let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
                     #[derive(Template, WebTemplate)]

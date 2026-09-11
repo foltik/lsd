@@ -1750,8 +1750,7 @@ mod rsvp {
         let user_id = session.user_id.ok_or_else(invalid)?;
         let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
 
-        if !Email::have_sent_confirmation(&state.db, event.id, user_id).await? {
-            let email = Email::create_confirmation(&state.db, event.id, user_id).await?;
+        if let Some(email) = Email::create_confirmation(&state.db, event.id, user_id).await? {
             let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
             #[derive(Template, WebTemplate)]
@@ -2036,8 +2035,7 @@ mod rsvp {
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        if !Email::have_sent_confirmation(&state.db, session.event_id, user_id).await? {
-            let email = Email::create_confirmation(&state.db, session.event_id, user_id).await?;
+        if let Some(email) = Email::create_confirmation(&state.db, session.event_id, user_id).await? {
             let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
             #[derive(Template, WebTemplate)]
@@ -2095,8 +2093,9 @@ mod rsvp {
             };
 
             // If dayof email has been sent out, also send it to this new RSVP
-            if event.dayof_sent_at.is_some() {
-                let dayof_email = Email::create_send_dayof_single(&state.db, event.id, user_id).await?;
+            if event.dayof_sent_at.is_some()
+                && let Some(dayof_email) = Email::create_send_dayof_single(&state.db, event.id, user_id).await?
+            {
                 let dayof_flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
                 #[derive(Template, WebTemplate)]

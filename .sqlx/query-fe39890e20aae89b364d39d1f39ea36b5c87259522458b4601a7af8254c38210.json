@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n             INSERT INTO emails (token, kind, user_id, user_version, event_id)\n                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?\n                 FROM users u\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE u.id = ?\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
+  "query": "\n             INSERT INTO emails (token, kind, user_id, user_version, event_id)\n                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?\n                 FROM users u\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE u.id = ?\n             ON CONFLICT(event_id, user_id) WHERE kind = 'event/dayof' DO NOTHING\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
   "describe": {
     "columns": [
       {
@@ -94,5 +94,5 @@
       true
     ]
   },
-  "hash": "745b3f97504f039cc8096193f9ab184e92d7b2cf9869e41e6943c9abfd637cff"
+  "hash": "fe39890e20aae89b364d39d1f39ea36b5c87259522458b4601a7af8254c38210"
 }
