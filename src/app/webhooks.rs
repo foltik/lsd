@@ -12,7 +12,6 @@ pub mod stripe {
 
     use super::*;
     use crate::db::event::Event;
-    use crate::db::event_flyer::EventFlyer;
     use crate::db::rsvp_session::RsvpSession;
 
     type HmacSha256 = Hmac<Sha256>;
@@ -139,62 +138,14 @@ pub mod stripe {
                 session.set_status(&state.db, RsvpSession::PAYMENT_CONFIRMED).await?;
                 session.set_payment_intent_id(&state.db, &payload.payment_intent).await?;
 
-                if let Some(email) = Email::create_confirmation(&state.db, session.event_id, user_id).await? {
-                    let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-                    #[derive(Template, WebTemplate)]
-                    #[template(path = "emails/event_confirmation.html")]
-                    struct ConfirmationEmailHtml {
-                        email_token: String,
-                        event: Event,
-                        token: String,
-                        flyer: Option<EventFlyer>,
-                    }
-
-                    let from = &state.config.email.from;
-                    let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
-                    let subject = event
-                        .confirmation_subject
-                        .clone()
-                        .unwrap_or_else(|| format!("Confirmation for {}", event.title));
-                    let message = state
-                        .mailer
-                        .builder()
-                        .to(user.email.parse().unwrap())
-                        .reply_to(reply_to.clone())
-                        .subject(subject)
-                        .header(lettre::message::header::ContentType::TEXT_HTML)
-                        .body(
-                            ConfirmationEmailHtml {
-                                email_token: email.token,
-                                event: event.clone(),
-                                token: session.token,
-                                flyer,
-                            }
-                            .render()?,
-                        )
-                        .unwrap();
-
-                    match state.mailer.send(&message).await {
-                        Ok(_) => {
-                            Email::mark_sent(&state.db, email.id).await?;
-                            tracing::info!(
-                                "Confirmation for event_id={} sent to email={:?} from webhook",
-                                event.id,
-                                user.email
-                            );
-                        }
-                        Err(e) => {
-                            let e = e.message();
-                            Email::mark_error(&state.db, email.id, e).await?;
-                            alert!(
-                                "Error sending confirmation for event_id={} to email={:?} from webhook: {e}",
-                                event.id,
-                                user.email
-                            );
-                        }
-                    };
-                }
+                crate::app::events::email::ensure_sent_confirmation_email(
+                    &state,
+                    &event,
+                    &user,
+                    &session.token,
+                    "webhook",
+                )
+                .await?;
             }
             status => {
                 tracing::error!(
