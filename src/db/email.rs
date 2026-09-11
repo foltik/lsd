@@ -187,7 +187,7 @@ impl Email {
     }
 
     /// Create a confirmation email record. Returns None if one already exists.
-    pub async fn create_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<Option<Email>> {
+    pub async fn try_create_confirmation(db: &Db, event_id: i64, user_id: i64) -> Result<Option<Email>> {
         let row = sqlx::query_as!(
             Email,
             r#"
@@ -213,7 +213,7 @@ impl Email {
     }
 
     /// Create a dayof email record. Returns None if one already exists.
-    pub async fn create_send_dayof_single(db: &Db, event_id: i64, user_id: i64) -> Result<Option<Email>> {
+    pub async fn try_create_send_dayof_single(db: &Db, event_id: i64, user_id: i64) -> Result<Option<Email>> {
         let row = sqlx::query_as!(
             Email,
             r#"

@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                u.*,\n                COALESCE(MAX(h.version), 0) as \"version!: i64\",\n                COALESCE(GROUP_CONCAT(r.role), '') AS \"roles!: String\"\n            FROM rsvps rv\n            JOIN rsvp_sessions rs ON rs.id = rv.session_id\n            JOIN users u ON u.id = rv.user_id\n            JOIN user_history h ON h.user_id = u.id\n            LEFT JOIN user_roles r ON r.user_id = u.id\n            WHERE rs.event_id = ? AND rs.user_id = ?\n              AND rs.status IN (?, ?)\n            GROUP BY u.id\n            ORDER BY MIN(rv.created_at)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "phone",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "version!: i64",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "roles!: String",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "838ee8849f50ae7f47634cc9201d0a278ae217d658ac4f96e25add4839aab18b"
+}

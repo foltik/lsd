@@ -849,29 +849,13 @@ mod edit {
         let emails = Email::create_send_dayof_batch(&state.db, event.id).await?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        let mut email_template = DayofEmailHtml { email_token: String::new(), event: event.clone(), flyer };
         let mut messages = vec![];
         let mut email_ids = vec![];
         for Email { id, address, sent_at, token, .. } in emails {
             if sent_at.is_some() {
                 continue;
             }
-
-            email_template.email_token = token;
-
-            let from = &state.config.email.from;
-            let reply_to = config().email.contact_to.as_ref().unwrap_or(from);
-            let message = state
-                .mailer
-                .builder()
-                .to(address.parse().unwrap())
-                .reply_to(reply_to.clone())
-                .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
-                .header(lettre::message::header::ContentType::TEXT_HTML)
-                .body(email_template.render()?)
-                .unwrap();
-
-            messages.push(message);
+            messages.push(email::format_dayof_email(&state, &event, &flyer, &address, &token)?);
             email_ids.push(id);
         }
 
@@ -1749,59 +1733,7 @@ mod rsvp {
         // Send confirmation email
         let user_id = session.user_id.ok_or_else(invalid)?;
         let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
-
-        if let Some(email) = Email::create_confirmation(&state.db, event.id, user_id).await? {
-            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-            #[derive(Template, WebTemplate)]
-            #[template(path = "emails/event_confirmation.html")]
-            struct ConfirmationEmailHtml {
-                email_token: String,
-                event: Event,
-                token: String,
-                flyer: Option<EventFlyer>,
-            }
-
-            let from = &state.config.email.from;
-            let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
-            let subject = event
-                .confirmation_subject
-                .clone()
-                .unwrap_or_else(|| format!("Confirmation for {}", event.title));
-            let message = state
-                .mailer
-                .builder()
-                .to(user.email.parse().unwrap())
-                .reply_to(reply_to.clone())
-                .subject(subject)
-                .header(lettre::message::header::ContentType::TEXT_HTML)
-                .body(
-                    ConfirmationEmailHtml {
-                        email_token: email.token,
-                        event: event.clone(),
-                        token: session.token.clone(),
-                        flyer,
-                    }
-                    .render()?,
-                )
-                .unwrap();
-
-            match state.mailer.send(&message).await {
-                Ok(_) => {
-                    Email::mark_sent(&state.db, email.id).await?;
-                    tracing::info!("Confirmation for event_id={} sent to email={:?}", event.id, user.email);
-                }
-                Err(e) => {
-                    let e = e.message();
-                    Email::mark_error(&state.db, email.id, e).await?;
-                    alert!(
-                        "Error sending confirmation for event_id={} to email={:?}: {e}",
-                        event.id,
-                        user.email
-                    );
-                }
-            };
-        }
+        email::ensure_sent_confirmation_email(&state, &event, &user, &session.token, "contribution").await?;
 
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token)).into_response())
     }
@@ -2035,113 +1967,11 @@ mod rsvp {
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        if let Some(email) = Email::create_confirmation(&state.db, session.event_id, user_id).await? {
-            let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-            #[derive(Template, WebTemplate)]
-            #[template(path = "emails/event_confirmation.html")]
-            struct ConfirmationEmailHtml {
-                email_token: String,
-                event: Event,
-                token: String,
-                flyer: Option<EventFlyer>,
-            }
-
-            let from = &state.config.email.from;
-            let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
-            let message = state
-                .mailer
-                .builder()
-                .to(session_user.email.parse().unwrap())
-                .reply_to(reply_to.clone())
-                .subject(
-                    event
-                        .confirmation_subject
-                        .clone()
-                        .unwrap_or_else(|| format!("Confirmation for {}", event.title)),
-                )
-                .header(lettre::message::header::ContentType::TEXT_HTML)
-                .body(
-                    ConfirmationEmailHtml {
-                        email_token: email.token,
-                        event: event.clone(),
-                        token: session.token.clone(),
-                        flyer,
-                    }
-                    .render()?,
-                )
-                .unwrap();
-
-            match state.mailer.send(&message).await {
-                Ok(_) => {
-                    Email::mark_sent(&state.db, email.id).await?;
-                    tracing::info!(
-                        "Confirmation for event_id={} sent to email={:?}",
-                        event.id,
-                        session_user.email
-                    );
-                }
-                Err(e) => {
-                    let e = e.message();
-                    Email::mark_error(&state.db, email.id, e).await?;
-                    alert!(
-                        "Error sending confirmation for event_id={} to email={:?}: {e}",
-                        event.id,
-                        session_user.email
-                    );
-                }
-            };
-
-            // If dayof email has been sent out, also send it to this new RSVP
-            if event.dayof_sent_at.is_some()
-                && let Some(dayof_email) = Email::create_send_dayof_single(&state.db, event.id, user_id).await?
-            {
-                let dayof_flyer = EventFlyer::lookup(&state.db, event.id).await?;
-
-                #[derive(Template, WebTemplate)]
-                #[template(path = "emails/event_dayof.html")]
-                struct DayofEmailHtml {
-                    email_token: String,
-                    event: Event,
-                    flyer: Option<EventFlyer>,
-                }
-
-                let dayof_message = state
-                    .mailer
-                    .builder()
-                    .to(session_user.email.parse().unwrap())
-                    .reply_to(reply_to.clone())
-                    .subject(event.dayof_subject.as_deref().expect("missing dayof_subject"))
-                    .header(lettre::message::header::ContentType::TEXT_HTML)
-                    .body(
-                        DayofEmailHtml {
-                            email_token: dayof_email.token,
-                            event: event.clone(),
-                            flyer: dayof_flyer,
-                        }
-                        .render()?,
-                    )
-                    .unwrap();
-
-                match state.mailer.send(&dayof_message).await {
-                    Ok(_) => {
-                        Email::mark_sent(&state.db, dayof_email.id).await?;
-                        tracing::info!(
-                            "Day-of for event_id={} sent to email={:?}",
-                            event.id,
-                            session_user.email
-                        );
-                    }
-                    Err(e) => {
-                        let e = e.message();
-                        Email::mark_error(&state.db, email.id, e).await?;
-                        alert!(
-                            "Error sending day-of for event_id={} to email={:?}: {e}",
-                            event.id,
-                            session_user.email
-                        );
-                    }
-                };
+        email::ensure_sent_confirmation_email(&state, &event, &session_user, &session.token, "manage")
+            .await?;
+        if event.dayof_sent_at.is_some() {
+            for user in Rsvp::list_family_users(&state.db, &event, user_id).await? {
+                email::ensure_sent_dayof_email(&state, &event, &user, "manage").await?;
             }
         }
 
@@ -2181,9 +2011,8 @@ mod rsvp {
             discount: Option<DiscountLine>,
             can_add_guests: bool,
         }
-        let mut response =
-            ManageHtml { user, session, event, flyer, rsvps, price, discount, can_add_guests }
-                .into_response();
+        let mut response = ManageHtml { user, session, event, flyer, rsvps, price, discount, can_add_guests }
+            .into_response();
 
         // Always clear stale child cookie on manage page
         let clear = Cookie::build(("rsvp_child_session", ""))
@@ -2763,6 +2592,144 @@ mod rsvp {
                 _ => Err(ParseAttendeesError::InvalidPhone { phone }),
             }
         }
+    }
+}
+
+// Build and send event emails.
+pub mod email {
+    use lettre::Message;
+    use lettre::message::header::ContentType;
+
+    use super::*;
+
+    pub fn format_confirmation_email(
+        state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str,
+        session_token: &str, email_token: &str,
+    ) -> Result<Message> {
+        #[derive(Template, WebTemplate)]
+        #[template(path = "emails/event_confirmation.html")]
+        struct ConfirmationEmailHtml<'a> {
+            email_token: &'a str,
+            event: &'a Event,
+            token: &'a str,
+            flyer: &'a Option<EventFlyer>,
+        }
+        let html = ConfirmationEmailHtml { email_token, event, token: session_token, flyer }.render()?;
+
+        let subject = event
+            .confirmation_subject
+            .clone()
+            .unwrap_or_else(|| format!("Confirmation for {}", event.title));
+        let from = &state.config.email.from;
+        let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+        let message = state
+            .mailer
+            .builder()
+            .to(address.parse().unwrap())
+            .reply_to(reply_to.clone())
+            .subject(subject)
+            .header(ContentType::TEXT_HTML)
+            .body(html)
+            .unwrap();
+
+        Ok(message)
+    }
+
+    /// Ensure a confirmation email is sent to a user, if not already.
+    pub async fn ensure_sent_confirmation_email(
+        state: &SharedAppState, event: &Event, user: &User, session_token: &str, trigger: &str,
+    ) -> Result<()> {
+        let Some(email) = Email::try_create_confirmation(&state.db, event.id, user.id).await? else {
+            return Ok(()); // Already sent a confirmation email
+        };
+
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+        let message =
+            format_confirmation_email(state, event, &flyer, &user.email, session_token, &email.token)?;
+
+        match state.mailer.send(&message).await {
+            Ok(_) => {
+                Email::mark_sent(&state.db, email.id).await?;
+                tracing::info!(
+                    "Confirmation for event_id={} sent to email={:?} trigger={trigger}",
+                    event.id,
+                    user.email
+                );
+            }
+            Err(e) => {
+                let e = e.message();
+                Email::mark_error(&state.db, email.id, e).await?;
+                alert!(
+                    "Error sending confirmation for event_id={} to email={:?} trigger={trigger}: {e}",
+                    event.id,
+                    user.email
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn format_dayof_email(
+        state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str, email_token: &str,
+    ) -> Result<Message> {
+        #[derive(Template, WebTemplate)]
+        #[template(path = "emails/event_dayof.html")]
+        struct DayofEmailHtml<'a> {
+            email_token: &'a str,
+            event: &'a Event,
+            flyer: &'a Option<EventFlyer>,
+        }
+        let html = DayofEmailHtml { email_token, event, flyer }.render()?;
+
+        let subject = event.dayof_subject.as_deref().expect("missing dayof_subject");
+        let from = &state.config.email.from;
+        let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+        let message = state
+            .mailer
+            .builder()
+            .to(address.parse().unwrap())
+            .reply_to(reply_to.clone())
+            .subject(subject)
+            .header(ContentType::TEXT_HTML)
+            .body(html)
+            .unwrap();
+
+        Ok(message)
+    }
+
+    /// Ensure a dayof email is sent to a user, if not already.
+    pub async fn ensure_sent_dayof_email(
+        state: &SharedAppState, event: &Event, user: &User, trigger: &str,
+    ) -> Result<()> {
+        let Some(email) = Email::try_create_send_dayof_single(&state.db, event.id, user.id).await? else {
+            return Ok(()); // Already sent a dayof email
+        };
+
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+        let message = format_dayof_email(state, event, &flyer, &user.email, &email.token)?;
+
+        match state.mailer.send(&message).await {
+            Ok(_) => {
+                Email::mark_sent(&state.db, email.id).await?;
+                tracing::info!(
+                    "Day-of for event_id={} sent to email={:?} trigger={trigger}",
+                    event.id,
+                    user.email
+                );
+            }
+            Err(e) => {
+                let e = e.message();
+                Email::mark_error(&state.db, email.id, e).await?;
+                alert!(
+                    "Error sending day-of for event_id={} to email={:?} trigger={trigger}: {e}",
+                    event.id,
+                    user.email
+                );
+            }
+        }
+
+        Ok(())
     }
 }
 

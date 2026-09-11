@@ -68,6 +68,7 @@ macro_rules! map_row {
     };
 }
 
+#[macro_export]
 macro_rules! map_row_fuck {
     ($row:expr) => {
         User {
