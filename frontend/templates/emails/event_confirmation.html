@@ -42,6 +42,26 @@
         >View your confirmation</a
       >
     </div>
+    <table class="calendar" role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+          <p class="label">Add to calendar</p>
+          <p class="links">
+            <a href="{{ "" | url }}/e/{{ event.slug }}/event.ics">Apple</a>
+            <span>&middot;</span>
+            <a href="{{ event | calendar_url("google") }}">Google</a>
+            <span>&middot;</span>
+            <a href="{{ event | calendar_url("outlook") }}">Outlook</a>
+            <span>&middot;</span>
+            <a href="{{ event | calendar_url("office") }}">Microsoft 365</a>
+            <span>&middot;</span>
+            <a href="{{ event | calendar_url("yahoo") }}">Yahoo</a>
+            <span>&middot;</span>
+            <a href="{{ "" | url }}/e/{{ event.slug }}/event.ics">.ics</a>
+          </p>
+        </td>
+      </tr>
+    </table>
   </article>
 {% endblock %}
 
@@ -70,6 +90,29 @@
       padding: 16px 64px;
       margin-top: 32px;
       background-color: #1e1b19;
+    }
+    .calendar {
+      width: 100%;
+      margin-top: 24px;
+    }
+    .calendar .label {
+      color: #878787;
+      font-size: 12px;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      margin: 0 0 8px;
+    }
+    .calendar .links {
+      margin: 0;
+      font-size: 14px;
+      line-height: 24px;
+    }
+    .calendar .links span {
+      color: #878787;
+      padding: 0 4px;
+    }
+    .calendar .links a {
+      white-space: nowrap;
     }
   </style>
 {% endblock %}
