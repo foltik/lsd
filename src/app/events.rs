@@ -494,16 +494,19 @@ mod edit {
         Ok(InviteEmailHtml { email_token: String::new(), email: user.email, event, flyer }.into_response())
     }
 
-    /// Display the form to send a post.
+    /// Display the form to send invites.
+    #[derive(serde::Deserialize)]
+    pub struct SendInviteQuery {
+        list_id: Option<i64>,
+    }
     pub async fn send_invite_page(
         user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+        Query(query): Query<SendInviteQuery>,
     ) -> HtmlResult {
         let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
             bail_not_found!()
         };
-        let Some(guest_list_id) = event.guest_list_id else {
-            bail_invalid!()
-        };
+        let list_id = event.guest_list_id.or(query.list_id);
 
         #[derive(sqlx::FromRow)]
         struct ListCounts {
@@ -511,57 +514,70 @@ mod edit {
             count: i64,
             sent: i64,
         }
-        let list = sqlx::query_as!(
-            ListCounts,
-            r#"
-            SELECT
-                l.name AS name,
-                COUNT(lm.user_id) AS count,
-                SUM(
-                    CASE WHEN EXISTS (
-                        SELECT 1
-                        FROM emails e
-                        WHERE kind = ?
-                          AND e.user_id = u.id
-                          AND e.event_id = ?
-                          AND e.sent_at IS NOT NULL
-                    )
-                    THEN 1 ELSE 0 END
-                ) AS sent
-            FROM lists l
-            LEFT JOIN list_members lm ON lm.list_id = l.id
-            LEFT JOIN users u ON u.id = lm.user_id
-            WHERE l.id = ?
-            GROUP BY l.id;
-            "#,
-            Email::EVENT_INVITE,
-            event.id,
-            guest_list_id,
-        )
-        .fetch_one(&state.db)
-        .await?;
+        let list = match list_id {
+            None => None,
+            Some(list_id) => Some(
+                sqlx::query_as!(
+                    ListCounts,
+                    r#"
+                    SELECT
+                        l.name AS name,
+                        COUNT(lm.user_id) AS count,
+                        SUM(
+                            CASE WHEN EXISTS (
+                                SELECT 1
+                                FROM emails e
+                                WHERE kind = ?
+                                  AND e.user_id = u.id
+                                  AND e.event_id = ?
+                                  AND e.sent_at IS NOT NULL
+                            )
+                            THEN 1 ELSE 0 END
+                        ) AS sent
+                    FROM lists l
+                    LEFT JOIN list_members lm ON lm.list_id = l.id
+                    LEFT JOIN users u ON u.id = lm.user_id
+                    WHERE l.id = ?
+                    GROUP BY l.id;
+                    "#,
+                    Email::EVENT_INVITE,
+                    event.id,
+                    list_id,
+                )
+                .fetch_one(&state.db)
+                .await?,
+            ),
+        };
+        let lists = match event.guest_list_id {
+            None => List::list_with_counts(&state.db).await?,
+            Some(_) => vec![],
+        };
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/send_invites.html")]
         struct SendHtml {
             user: Option<User>,
-            list: ListCounts,
+            list_id: Option<i64>,
+            list: Option<ListCounts>,
+            lists: Vec<ListWithCount>,
             event: Event,
             ratelimit: usize,
         }
         let ratelimit = state.config.email.ratelimit;
-        Ok(SendHtml { user: Some(user), event, list, ratelimit }.into_response())
+        Ok(SendHtml { user: Some(user), event, list_id, list, lists, ratelimit }.into_response())
     }
 
-    pub async fn send_invite_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+    pub async fn send_invite_form(
+        State(state): State<SharedAppState>, Path(id): Path<i64>, Query(query): Query<SendInviteQuery>,
+    ) -> HtmlResult {
         let Some(event) = Event::lookup_by_id(&state.db, id).await? else {
             bail_not_found!();
         };
-        let Some(guest_list_id) = event.guest_list_id else {
+        let Some(list_id) = event.guest_list_id.or(query.list_id) else {
             bail_invalid!()
         };
 
-        let emails = Email::create_send_invites(&state.db, event.id, guest_list_id).await?;
+        let emails = Email::create_send_invites(&state.db, event.id, list_id).await?;
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
         let mut email_template =

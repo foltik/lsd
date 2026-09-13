@@ -5,14 +5,29 @@
   <section id="posts/send" class="ext/layout standard">
     <header>
       <h1>Send invites to {{ event.title }}</h1>
-      <p>Guestlist: {{ list.name }}</p>
+      {% if let Some(list) = list %}
+        {% if event.guest_list_id.is_some() %}<p>Guestlist: {{ list.name }}</p>{% endif %}
+      {% endif %}
     </header>
     <form
       id="form"
       class="ext/form"
       method="POST"
-      action="/events/{{ event.id }}/invite/send"
+      action="/events/{{ event.id }}/invite/send{% if let Some(list_id) = list_id %}?list_id={{ list_id }}{% endif %}"
     >
+      {% if event.guest_list_id.is_none() %}
+        <div class="field">
+          <label for="list">Recipients</label>
+          <select id="list">
+            <option value="">Select a list</option>
+            {% for list in lists %}
+              <option value="{{ list.id }}" {% if list_id == Some(*list.id) %}selected{% endif %}>
+                {{ list.name }} ({{ list.count }} members)
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
       <div id="progress" class="field">
         <ul class="counts">
           <li>Sent<span id="sent">0</span></li>
@@ -38,6 +53,7 @@
     const $ = (id) => document.getElementById(id);
     const ui = {
       form:   $('form'),
+      list:   $('list'),
       send:   $('send'),
 
       sent:   $('sent'),
@@ -65,8 +81,8 @@
       errors: [],
       progress: {
         start: Date.now(),
-        sent: parseInt(`{{ list.sent }}`),
-        remaining: parseInt(`{{ list.count }}`) - parseInt(`{{ list.sent }}`),
+        sent: parseInt(`{% if let Some(list) = list %}{{ list.sent }}{% else %}0{% endif %}`),
+        remaining: parseInt(`{% if let Some(list) = list %}{{ list.count - list.sent }}{% else %}0{% endif %}`),
         percent() {
           const total = this.sent + this.remaining;
           return total > 0 ? (this.sent / total) * 100 : 0;
@@ -135,6 +151,7 @@
       render();
     };
     ui.send.addEventListener("click", async (e) => (e.preventDefault(), await submit()));
+    ui.list?.addEventListener("change", () => (window.location.search = `?list_id=${ui.list.value}`));
 
     /* ---------- Stream JSON from request body --------------------------------- */
     async function* streamJson(body) {
