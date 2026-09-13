@@ -14,6 +14,7 @@ mod contact;
 mod coupons;
 mod emails;
 mod events;
+mod frontend;
 mod gallery;
 mod home;
 mod lists;
@@ -54,6 +55,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = emails::add_routes(r);
     let r = webhooks::add_routes(r);
     let r = contact::add_routes(r);
+    let r = frontend::add_routes(r);
     let (r, state) = r.finish();
 
     // Register app-wide routes

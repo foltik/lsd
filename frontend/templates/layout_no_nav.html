@@ -3,6 +3,31 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>{% block title %}light and sound design{% endblock title %}</title>
+    <script>
+      (() => {
+        // Post an alert to the backend
+        const seen = new Set();
+        const sendAlert = (message, url, line) => {
+          if (seen.has(message)) return;
+          seen.add(message);
+          fetch("/frontend/alert", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message, url, line}),
+          });
+        };
+
+        // Send alerts on any javascript errors or unhandled promise rejections
+        window.addEventListener("error", e => {
+          if (!e.filename.startsWith(location.origin)) return;
+          sendAlert(e.message, e.filename, e.lineno);
+        });
+        window.addEventListener("unhandledrejection", e => {
+          if (!e.reason?.stack?.includes(location.origin)) return;
+          sendAlert(String(e.reason), location.href, 0);
+        });
+      })();
+    </script>
     {% block preload %}
     {% endblock preload %}
     <link rel="stylesheet" href="/static/main.css?version=CONTENT_HASH" />
