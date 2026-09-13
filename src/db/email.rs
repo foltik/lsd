@@ -122,20 +122,21 @@ impl Email {
         Ok(all)
     }
 
-    /// Create email entries for sending the given post to all users on the given list.
-    /// Returns rows with `sent_at` set if the post was already emailed to a user.
+    /// Create email entries for inviting all users on the given list to the given event.
+    /// Dedup is per user across lists: anyone already invited to the event via any list is
+    /// returned with `sent_at` set instead of getting a new row.
     pub async fn create_send_invites(db: &Db, event_id: i64, list_id: i64) -> Result<Vec<Email>> {
         let existing = sqlx::query_as!(
             Email,
             r#"
             SELECT e.*, u.email as address FROM emails e
             JOIN users u ON u.id = e.user_id
-            WHERE e.kind = ? AND e.event_id = ? AND e.list_id = ?
+            WHERE e.kind = ? AND e.event_id = ?
+                AND e.user_id IN (SELECT lm.user_id FROM list_members lm WHERE lm.list_id = ?)
                 AND ifnull(e.sent_at, '') = (
                     SELECT ifnull(MAX(ee.sent_at), '')
                     FROM emails ee
                     WHERE ee.kind = e.kind
-                    AND ee.list_id = e.list_id
                     AND ee.user_id = e.user_id
                     AND ee.event_id = e.event_id
                 );
@@ -163,7 +164,6 @@ impl Email {
                        WHERE ee.kind = ?
                          AND ee.user_id = u.id
                          AND ee.event_id = ?
-                         AND ee.list_id = ?
                    )
              RETURNING *, (
                 SELECT u.email FROM users u
@@ -176,7 +176,6 @@ impl Email {
             list_id,
             Email::EVENT_INVITE,
             event_id,
-            list_id,
         )
         .fetch_all(db)
         .await?;
