@@ -79,15 +79,13 @@
             {% if !all %}<svg width="16" height="16"><use href="#icon-description" /></svg>{% endif %}
             <span>Description</span>
           </a>
-          {% if event.guest_list_id.is_some() %}
-            <a
-              class="ext/button :icon"
-              href="/events/{{ event.id }}/invite/edit"
-            >
-              {% if !all %}<svg width="16" height="16"><use href="#icon-envelope" /></svg>{% endif %}
-              <span>Invite</span>
-            </a>
-          {% endif %}
+          <a
+            class="ext/button :icon"
+            href="/events/{{ event.id }}/invite/edit"
+          >
+            {% if !all %}<svg width="16" height="16"><use href="#icon-envelope" /></svg>{% endif %}
+            <span>Invite</span>
+          </a>
           <a
             class="ext/button :icon"
             href="/events/{{ event.id }}/confirmation/edit"
