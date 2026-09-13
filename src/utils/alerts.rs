@@ -12,8 +12,7 @@ pub fn init() {
     }));
 }
 
-/// Log an alert and send it to any configured backends. Prefer the `alert!` macro, which fills in
-/// the call site.
+/// Log an alert and send to any configured backends.
 #[macro_export]
 macro_rules! alert {
     ( $($arg:tt)* ) => {
@@ -21,30 +20,45 @@ macro_rules! alert {
     };
 }
 pub fn alert(message: String, file: &str, line: u32) {
-    tracing::error!("Alert: {message} at {file}:{line}");
-    if let Some(telegram) = config().alerts.as_ref().and_then(|a| a.telegram.as_ref()) {
-        send_telegram(telegram, &message, file, line);
-    }
+    let href = format!("https://github.com/foltik/lsd/blob/main/{file}#L{line}");
+    send("Alert", &message, &format!("{file}:{line}"), &href);
+}
+pub fn alert_frontend(message: String, url: &str, line: u32) {
+    send("Alert from frontend", &message, &format!("{url}:{line}"), url);
 }
 
-fn send_telegram(config: &AlertsTelegramConfig, message: &str, file: &str, line: u32) {
+fn send(title: &str, message: &str, location: &str, href: &str) {
+    tracing::error!("{title}: {message} at {location}");
+    if let Some(telegram) = config().alerts.as_ref().and_then(|a| a.telegram.as_ref()) {
+        send_telegram(telegram, title, message, location, href);
+    }
+}
+fn send_telegram(config: &AlertsTelegramConfig, title: &str, message: &str, location: &str, href: &str) {
     // The panic hook can run on a thread with no runtime.
     let Ok(handle) = tokio::runtime::Handle::try_current() else {
         return;
     };
 
-    let escape = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
-    let message = format!(
-        "<b>Alert: {}</b>\nat <a href=\"https://github.com/foltik/lsd/blob/main/{file}#L{line}\">{file}:{line}</a>",
-        escape(message)
-    );
+    let escape = |s: &str| {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+    };
+
+    // Telegram rejects messages over 4096 chars
+    let message: String = escape(&message.chars().take(4000).collect::<String>());
+    let location = escape(location);
+    let href = escape(href);
+
+    let text = format!("<b>{title}:</b> {message}\nat <a href=\"{href}\">{location}</a>",);
 
     let url = format!("https://api.telegram.org/bot{}/sendMessage", config.api_key);
     let chat_id = config.chat_id.clone();
     handle.spawn(async move {
         let res = reqwest::Client::new()
             .post(&url)
-            .json(&serde_json::json!({ "chat_id": chat_id, "text": message, "parse_mode": "HTML" }))
+            .json(&serde_json::json!({ "chat_id": chat_id, "text": text, "parse_mode": "HTML" }))
             .send()
             .await;
 
