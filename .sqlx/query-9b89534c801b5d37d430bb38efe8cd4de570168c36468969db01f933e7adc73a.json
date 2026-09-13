@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT e.*, u.email as address FROM emails e\n            JOIN users u ON u.id = e.user_id\n            WHERE e.kind = ? AND e.event_id = ? AND e.list_id = ?\n                AND ifnull(e.sent_at, '') = (\n                    SELECT ifnull(MAX(ee.sent_at), '')\n                    FROM emails ee\n                    WHERE ee.kind = e.kind\n                    AND ee.list_id = e.list_id\n                    AND ee.user_id = e.user_id\n                    AND ee.event_id = e.event_id\n                );\n            ",
+  "query": "\n            SELECT e.*, u.email as address FROM emails e\n            JOIN users u ON u.id = e.user_id\n            WHERE e.kind = ? AND e.event_id = ?\n                AND e.user_id IN (SELECT lm.user_id FROM list_members lm WHERE lm.list_id = ?)\n                AND ifnull(e.sent_at, '') = (\n                    SELECT ifnull(MAX(ee.sent_at), '')\n                    FROM emails ee\n                    WHERE ee.kind = e.kind\n                    AND ee.user_id = e.user_id\n                    AND ee.event_id = e.event_id\n                );\n            ",
   "describe": {
     "columns": [
       {
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "d6ace25a7ffcc03ee6a1b199371369ac0ecba36a7abd4470666ed6a77d3bac42"
+  "hash": "9b89534c801b5d37d430bb38efe8cd4de570168c36468969db01f933e7adc73a"
 }
