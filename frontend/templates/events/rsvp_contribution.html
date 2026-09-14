@@ -97,11 +97,15 @@
     {% if price > 0 %}
       <div class="payment">
         <div id="stripe"></div>
+        <p id="stripe-error" hidden>
+          The Stripe payment script failed to load. Please refresh the page, try
+          disabling any content blockers, or use a different browser.
+        </p>
       </div>
     {% endif %}
     <div id="events/rsvp/actions" class="nofloat">
       {% if price > 0 %}
-        <button id="next" class="next">
+        <button id="next" class="next" disabled>
           <span>Pay now</span>
           <div class="right">
             <em id="total">${{ price }}</em>
@@ -135,10 +139,19 @@
         email: $("email"),
         price: $("price"),
         next: $("next"),
+        stripe: $("stripe"),
+        stripeError: $("stripe-error"),
       };
 
       let checkout;
       (async () => {
+        // Stripe script failed to load, show an error message
+        if (typeof Stripe === "undefined") {
+          ui.stripe.hidden = true;
+          ui.stripeError.hidden = false;
+          return;
+        }
+
         const stripe = Stripe(`{{ stripe_publishable_key }}`);
         checkout = await stripe.initCheckout({
           fetchClientSecret: async () =>
@@ -166,6 +179,7 @@
 
         const paymentEl = checkout.createPaymentElement();
         paymentEl.mount("#stripe");
+        ui.next.disabled = false;
       })();
 
       /* ---------- Submit ----------------------------------------------------- */
