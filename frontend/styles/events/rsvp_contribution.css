@@ -7,6 +7,9 @@
       /* stripe elements is weird and doesn't work when using border-lsd-white/30 */
       border: 1px solid var(--color-lsd-white);
     }
+    #stripe-error {
+      @apply text-lsd-red text-sm;
+    }
   }
 }
 
