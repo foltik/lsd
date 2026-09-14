@@ -109,21 +109,23 @@
 {% endblock content %}
 
 {% block scripts %}
-  <script>
-    const flyer = document.getElementById("events/rsvp/manage/flyer");
-    const img = flyer.querySelector("img");
+  {% if flyer.is_some() %}
+    <script>
+      const flyer = document.getElementById("events/rsvp/manage/flyer");
+      const img = flyer.querySelector("img");
 
-    const openedH = +flyer.clientHeight;
-    const w = +img.getAttribute("width");
-    const h = +img.getAttribute("height");
-    const aspect = h / w;
+      const openedH = +flyer.clientHeight;
+      const w = +img.getAttribute("width");
+      const h = +img.getAttribute("height");
+      const aspect = h / w;
 
-    let open = false;
-    flyer.addEventListener("click", () => {
-      open = !open;
-      flyer.style.height = open
-        ? `${flyer.offsetWidth * aspect}px`
-        : `${openedH}px`;
-    });
-  </script>
+      let open = false;
+      flyer.addEventListener("click", () => {
+        open = !open;
+        flyer.style.height = open
+          ? `${flyer.offsetWidth * aspect}px`
+          : `${openedH}px`;
+      });
+    </script>
+  {% endif %}
 {% endblock scripts %}
