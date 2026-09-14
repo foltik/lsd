@@ -19,7 +19,9 @@
 
         // Send alerts on any javascript errors or unhandled promise rejections
         window.addEventListener("error", e => {
-          if (!e.filename.startsWith(location.origin)) return;
+          const isOurScript = e.filename.startsWith(location.origin);
+          const isFirefoxExtension = e.lineno <= 1;
+          if (!isOurScript || isFirefoxExtension) return;
           sendAlert(e.message, e.filename, e.lineno);
         });
         window.addEventListener("unhandledrejection", e => {
