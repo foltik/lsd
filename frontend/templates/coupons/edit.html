@@ -1,5 +1,9 @@
 {% extends "layout.html" %}
-{% block title %}{% if coupon.id == 0 %}New code{% else %}Edit code - {{ coupon.code }}{% endif %}{% endblock %}
+{% block title %}{% if coupon.id == 0 %}
+  New code
+{% else %}
+  Edit code - {{ coupon.code }}
+{% endif %}{% endblock %}
 
 {% block content %}
   <section id="coupons/edit" class="ext/layout standard">
@@ -19,11 +23,21 @@
       </div>
       <div class="field">
         <label for="description">Description</label>
-        <input type="text" id="description" name="description" value="{{ coupon.description }}" />
+        <input
+          type="text"
+          id="description"
+          name="description"
+          value="{{ coupon.description }}"
+        />
       </div>
       <div class="field">
         <label for="event_id">Limit to single event (optional)</label>
-        <select id="event_id" name="event_id" class="ext/select" data-type="number">
+        <select
+          id="event_id"
+          name="event_id"
+          class="ext/select"
+          data-type="number"
+        >
           <option value="">(Any event)</option>
           {% for event in events %}
             <option
@@ -51,12 +65,16 @@
             <li class="user" data-user-id="{{ user.id }}">
               <span>
                 {% if user.first_name.is_some() && user.last_name.is_some() %}
-                  {{ user.first_name | unwrap_or_empty }} {{ user.last_name | unwrap_or_empty }} ({{ user.email }})
+                  {{ user.first_name | unwrap_or_empty }}
+                  {{ user.last_name | unwrap_or_empty }}
+                  ({{ user.email }})
                 {% else %}
                   {{ user.email }}
                 {% endif %}
               </span>
-              <button type="button" onclick="this.closest('.user').remove()">Remove</button>
+              <button type="button" onclick="this.closest('.user').remove()">
+                Remove
+              </button>
             </li>
           {% endfor %}
         </ul>
@@ -73,9 +91,24 @@
       <div class="field">
         <label for="kind">Kind</label>
         <select id="kind" name="kind" class="ext/select">
-          <option value="spot"  {% if coupon.kind == "spot" %}selected{% endif %}>Free RSVP</option>
-          <option value="fixed" {% if coupon.kind == "fixed" %}selected{% endif %}>Discount ($)</option>
-          <option value="percent" {% if coupon.kind == "percent" %}selected{% endif %}>Discount (%)</option>
+          <option
+            value="spot"
+            {% if coupon.kind == "spot" %}selected{% endif %}
+          >
+            Free RSVP
+          </option>
+          <option
+            value="fixed"
+            {% if coupon.kind == "fixed" %}selected{% endif %}
+          >
+            Discount ($)
+          </option>
+          <option
+            value="percent"
+            {% if coupon.kind == "percent" %}selected{% endif %}
+          >
+            Discount (%)
+          </option>
         </select>
       </div>
       <div class="field dollars_off">
@@ -167,9 +200,10 @@
       }
       if (type == "number") {
         return el.value == "" ? null : +el.value;
-      }
-      else if (type == "date") {
-        return el.value == "" ? null : new Date(el.value + "T00:00").toISOString().replace("Z", "");
+      } else if (type == "date") {
+        return el.value == ""
+          ? null
+          : new Date(el.value + "T00:00").toISOString().replace("Z", "");
       }
       return el.value == "" ? null : el.value;
     };
@@ -192,7 +226,7 @@
     updateKind();
 
     /* ---------- User autocomplete ---------------------------------------------- */
-    const formatUser = ({first_name, last_name, email}) => {
+    const formatUser = ({ first_name, last_name, email }) => {
       return first_name && last_name
         ? `${first_name} ${last_name} (${email})`
         : email;
@@ -211,15 +245,23 @@
       debounce = setTimeout(async () => {
         const seq = ++seqnum;
         try {
-          const res = await fetch(`/users/search?q=${encodeURIComponent(query)}`);
+          const res = await fetch(
+            `/users/search?q=${encodeURIComponent(query)}`,
+          );
 
           // Ignore a failed or stale response that a newer keystroke has superseded
           if (!res.ok || seq != seqnum) return;
 
           results = await res.json();
           ui.results.innerHTML = results
-            .filter(user => !ui.users.querySelector(`.user[data-user-id="${user.id}"]`))
-            .map(user => `<li data-user-id="${user.id}"><span>${formatUser(user)}</span></li>`)
+            .filter(
+              (user) =>
+                !ui.users.querySelector(`.user[data-user-id="${user.id}"]`),
+            )
+            .map(
+              (user) =>
+                `<li data-user-id="${user.id}"><span>${formatUser(user)}</span></li>`,
+            )
             .join("");
         } catch (e) {
           console.error(e);
@@ -232,7 +274,7 @@
       if (!li) return;
       e.preventDefault();
 
-      const user = results.find(user => user.id == li.dataset.userId);
+      const user = results.find((user) => user.id == li.dataset.userId);
       ui.users.insertAdjacentHTML(
         "beforeend",
         `<li class="user" data-user-id="${user.id}">
@@ -266,7 +308,9 @@
         max_uses: value("#max_uses"),
         max_uses_per_user: value("#max_uses_per_user"),
         max_uses_per_event: value("#max_uses_per_event"),
-        user_ids: [...ui.users.querySelectorAll('.user')].map(u => +u.dataset.userId),
+        user_ids: [...ui.users.querySelectorAll(".user")].map(
+          (u) => +u.dataset.userId,
+        ),
         event_id: value("#event_id"),
         expires_at: value("#expires_at"),
       };

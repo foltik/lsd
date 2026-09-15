@@ -27,7 +27,9 @@
           {% endif %}
         </h2>
         <div class="split">
-          <span class="count">{{ spot.rsvp_count }} of {{ spot.qty_total }}</span>
+          <span class="count"
+            >{{ spot.rsvp_count }} of {{ spot.qty_total }}</span
+          >
           <span class="remaining">{{ spot.remaining() }} left</span>
         </div>
         <div class="bar">

@@ -30,7 +30,10 @@
     <ul class="events">
       {% for event in events %}
         <li>
-          <a class="event" href="{% if event.is_external() %}{{ event.url.as_ref().unwrap() }}{% else %}/e/{{ event.slug }}{% endif %}">
+          <a
+            class="event"
+            href="{% if event.is_external() %}{{ event.url.as_ref().unwrap() }}{% else %}/e/{{ event.slug }}{% endif %}"
+          >
             <span class="date" aria-label="date" datetime="{{ event.start }}">
               {{ event.start | format_datetime("%a %m.%d.%Y") }}
             </span>

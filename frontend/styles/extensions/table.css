@@ -3,7 +3,7 @@
   scrollbar-color: theme(colors.lsd-charcoal) transparent;
 
   table {
-    @apply ml-auto mr-auto whitespace-nowrap;
+    @apply mr-auto ml-auto whitespace-nowrap;
     border-spacing: 1rem 0;
     border-collapse: separate;
   }

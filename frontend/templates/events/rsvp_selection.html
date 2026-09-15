@@ -11,13 +11,13 @@
 {% block back %}
   {% match parent_token %}
     {% when Some with (token) %}
-      <a id="back" href="/e/{{ event.slug }}/rsvp/manage?reservation={{ token }}">
-        <span>&larr;</span>
-      </a>
+    <a id="back" href="/e/{{ event.slug }}/rsvp/manage?reservation={{ token }}">
+      <span>&larr;</span>
+    </a>
     {% when None %}
-      <a id="back" href="/e/{{ event.slug }}">
-        <span>&larr;</span>
-      </a>
+    <a id="back" href="/e/{{ event.slug }}">
+      <span>&larr;</span>
+    </a>
   {% endmatch %}
 {% endblock back %}
 

@@ -29,7 +29,9 @@
             <div class="item">
               <div class="spot">
                 <div class="name">{{ rsvp.spot_name }}</div>
-                <span class="price">${{ rsvp.contribution + rsvp.discount }}</span>
+                <span class="price"
+                  >${{ rsvp.contribution + rsvp.discount }}</span
+                >
               </div>
               <span class="email">{{ rsvp.email }}</span>
             </div>
@@ -66,8 +68,17 @@
             Activated {{ coupon.percent_off.unwrap() }}% off.
           {% endif %}
         </p>
-        <form class="entry" method="POST" action="/e/{{ event.slug }}/rsvp/code/remove">
-          <input class="ext/input" type="text" value="{{ coupon.code }}" disabled />
+        <form
+          class="entry"
+          method="POST"
+          action="/e/{{ event.slug }}/rsvp/code/remove"
+        >
+          <input
+            class="ext/input"
+            type="text"
+            value="{{ coupon.code }}"
+            disabled
+          />
           <button class="ext/button :red" type="submit">Undo</button>
         </form>
       </div>
@@ -84,11 +95,21 @@
             autocomplete="off"
             oninput="this.value = this.value.toUpperCase()"
           />
-          <input id="coupon-qty" class="ext/input" type="number" min="1" value="1" />
+          <input
+            id="coupon-qty"
+            class="ext/input"
+            type="number"
+            min="1"
+            value="1"
+          />
           <button id="coupon-button" class="ext/button">Check</button>
         </div>
         <p id="coupon-error" hidden></p>
-        <form id="coupon-form" method="POST" action="/e/{{ event.slug }}/rsvp/code">
+        <form
+          id="coupon-form"
+          method="POST"
+          action="/e/{{ event.slug }}/rsvp/code"
+        >
           <input type="hidden" name="code" />
           <input type="hidden" name="qty" />
         </form>
@@ -235,7 +256,9 @@
       // On clicking Apply
       ui.button.addEventListener("click", async () => {
         if (ui.card.classList.contains("checked")) {
-          const qty = ui.card.classList.contains("qty") ? +ui.qty.value || 1 : null;
+          const qty = ui.card.classList.contains("qty")
+            ? +ui.qty.value || 1
+            : null;
           return applyCode(qty);
         }
 

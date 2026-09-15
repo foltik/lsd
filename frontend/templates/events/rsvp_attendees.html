@@ -148,6 +148,12 @@
 {% endblock content %}
 
 {% block scripts %}
+  <div
+    id="data"
+    hidden
+    data-user="{{ user | json }}"
+    data-lock-primary="{% if event.guest_list_id.is_some() || mode == AttendeesMode::Edit %}true{% else %}false{% endif %}"
+  ></div>
   <script>
     /* ---------- UI ---------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
@@ -167,13 +173,13 @@
       return name
         .trim()
         .split(/\s+/)
-        .map(word => word[0].toUpperCase() + word.slice(1))
+        .map((word) => word[0].toUpperCase() + word.slice(1))
         .join(" ");
     };
 
     // Provide current user data for autofill; null if not logged in.
-    const user = {{ user | json | safe }};
-    const lockPrimary = {% if event.guest_list_id.is_some() || mode == AttendeesMode::Edit %}true{% else %}false{% endif %};
+    const user = JSON.parse($("data").dataset.user);
+    const lockPrimary = $("data").dataset.lockPrimary === "true";
 
     /* ---------- Validation: throws on error, returns formatted value -------- */
     const validate = {
@@ -217,7 +223,9 @@
     }
 
     /* ---------- Handle "Me" selection and autofill ----------------- */
-    const isAddingGuests = parseInt(`{% if is_adding_guests %}1{% else %}0{% endif %}`);
+    const isAddingGuests = parseInt(
+      `{% if is_adding_guests %}1{% else %}0{% endif %}`,
+    );
     const updateIsMe = () => {
       // If no user, nothing to do but the radio itself
       if (!user) return;
