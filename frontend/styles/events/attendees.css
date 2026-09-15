@@ -5,7 +5,8 @@
 
   .info {
     @apply flex flex-col;
-    time, .stats {
+    time,
+    .stats {
       @apply text-lsd-gray text-xs;
     }
   }
@@ -19,11 +20,14 @@
   }
 
   td.note {
-    @apply whitespace-normal min-w-[150px] max-w-max;
+    @apply max-w-max min-w-[150px] whitespace-normal;
   }
 
   tr[data-refunded="true"] {
-    td.name, td.email, td.guestof, td.spot {
+    td.name,
+    td.email,
+    td.guestof,
+    td.spot {
       @apply line-through;
     }
   }

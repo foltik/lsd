@@ -20,7 +20,13 @@
 
     &.unlisted .image {
       --glow: hsl(47, 100%, 78%);
-      box-shadow: 0 0 3px -1px white, 0 0 3px 1px var(--glow), 0 0 12px 2px var(--glow), 0px 10px 20px -5px black, 0 0 40px -30px var(--glow), 0 0 50px -20px var(--glow);
+      box-shadow:
+        0 0 3px -1px white,
+        0 0 3px 1px var(--glow),
+        0 0 12px 2px var(--glow),
+        0px 10px 20px -5px black,
+        0 0 40px -30px var(--glow),
+        0 0 50px -20px var(--glow);
     }
 
     & .image {

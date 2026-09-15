@@ -7,15 +7,22 @@
     <header>
       <h1>{% if event.id == 0 %}Create{% else %}Edit{% endif %} Event</h1>
     </header>
-    <form
-      id="form"
-      class="ext/form"
-    >
+    <form id="form" class="ext/form">
       <div class="field">
         <label for="kind">Type</label>
         <select name="kind" id="kind" {% if event.id != 0 %}disabled{% endif %}>
-          <option value="internal" {% if !event.is_external() %}selected{% endif %}>Internal</option>
-          <option value="external" {% if event.is_external() %}selected{% endif %}>External</option>
+          <option
+            value="internal"
+            {% if !event.is_external() %}selected{% endif %}
+          >
+            Internal
+          </option>
+          <option
+            value="external"
+            {% if event.is_external() %}selected{% endif %}
+          >
+            External
+          </option>
         </select>
       </div>
 
@@ -184,6 +191,13 @@
       </button>
     </form>
   </section>
+  <div
+    id="data"
+    hidden
+    data-rsvp-counts="{{ rsvp_counts | json }}"
+    data-flyer-version="{{ flyer_version | json }}"
+    data-spots="{{ spots | json }}"
+  ></div>
   <script>
     /* ---------- DOM ----------------------------------------------------------- */
     const $ = (id) => document.getElementById(id);
@@ -215,7 +229,7 @@
     };
 
     /* ---------- Rendering ----------------------------------------------------- */
-    const rsvpCounts = {{ rsvp_counts | json | safe }};
+    const rsvpCounts = JSON.parse($("data").dataset.rsvpCounts);
 
     const template = (t) => {
       const counts = rsvpCounts[t.id] || { rsvp_count: 0, cart_count: 0 };
@@ -346,7 +360,7 @@
     });
 
     /* ---------- Flyer preview handler ------------------------------------------ */
-    const existingFlyerVersion = {{ flyer_version | json | safe }};
+    const existingFlyerVersion = JSON.parse($("data").dataset.flyerVersion);
     const updateFlyerPreview = () => {
       const flyer = ui.flyer.input.files[0];
 
@@ -431,7 +445,7 @@
       }
 
       const url = value("url");
-      if (isExternal() && (!url || !url.startsWith('https://'))) {
+      if (isExternal() && (!url || !url.startsWith("https://"))) {
         alert("Url must be of the form https://...");
         return;
       }
@@ -450,30 +464,35 @@
         guest_list_id: value("guest_list_id"),
         spots_per_person: value("spots_per_person") || null,
         artist_share: value("artist_share"),
-        spots: isExternal() ? [] : ui.spots().map((t, i) => {
-          const kind = value("kind", t);
-          const spot = {
-            id: value("id", t),
-            name: value("name", t),
-            description: value("description", t),
-            qty_total: value("qty_total", t),
-            qty_per_person: value("qty_per_person", t),
-            kind,
-            sort: i,
-          };
+        spots: isExternal()
+          ? []
+          : ui.spots().map((t, i) => {
+              const kind = value("kind", t);
+              const spot = {
+                id: value("id", t),
+                name: value("name", t),
+                description: value("description", t),
+                qty_total: value("qty_total", t),
+                qty_per_person: value("qty_per_person", t),
+                kind,
+                sort: i,
+              };
 
-          if (kind == "fixed") {
-            spot.required_contribution = value("required_contribution", t);
-          } else if (kind == "variable") {
-            spot.min_contribution = value("min_contribution", t);
-            spot.max_contribution = value("max_contribution", t);
-            spot.suggested_contribution = value("suggested_contribution", t);
-          } else if (kind == "work") {
-            spot.required_notice_hours = value("required_notice_hours", t);
-          }
+              if (kind == "fixed") {
+                spot.required_contribution = value("required_contribution", t);
+              } else if (kind == "variable") {
+                spot.min_contribution = value("min_contribution", t);
+                spot.max_contribution = value("max_contribution", t);
+                spot.suggested_contribution = value(
+                  "suggested_contribution",
+                  t,
+                );
+              } else if (kind == "work") {
+                spot.required_notice_hours = value("required_notice_hours", t);
+              }
 
-          return spot;
-        }),
+              return spot;
+            }),
       };
 
       try {
@@ -506,7 +525,7 @@
     });
 
     // Populate existing spots from the backend
-    let spots = {{ spots | json | safe }};
+    let spots = JSON.parse($("data").dataset.spots);
     // Add an empty spot if there are none
     spots = spots.length > 0 ? spots : [{}];
 
@@ -520,7 +539,9 @@
     const setHidden = (el, hidden) => {
       el.hidden = hidden;
       // Disabled controls are skipped by native validation, so hidden required fields don't block submit
-      for (const input of el.querySelectorAll("input, select, textarea, button")) {
+      for (const input of el.querySelectorAll(
+        "input, select, textarea, button",
+      )) {
         input.disabled = hidden;
       }
     };

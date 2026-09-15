@@ -43,7 +43,7 @@
     {% else %}
       <div style="margin-top: 2rem"></div>
     {% endif %}
-    <div class="info{% if closed %} nofloat{% endif %}">
+    <div class="info{% if closed %}nofloat{% endif %}">
       <h1 class="title">{{ event.title }}</h1>
       <div class="details">
         <time aria-label="date" datetime="{{ event.start }}"
@@ -63,7 +63,7 @@
         <div class="description">{{ desc | safe }}</div>
       {% endif %}
     </div>
-    <div id="events/rsvp/actions"{% if closed %} class="nofloat"{% endif %}>
+    <div id="events/rsvp/actions" {% if closed %}class="nofloat"{% endif %}>
       <!--<button class="share">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -97,6 +97,6 @@
         </button>
       {% endif %}
     </div>
-    <div id="events/rsvp/fade"{% if closed %} class="nofloat"{% endif %}></div>
+    <div id="events/rsvp/fade" {% if closed %}class="nofloat"{% endif %}></div>
   </section>
 {% endblock content %}

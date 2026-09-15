@@ -47,13 +47,18 @@
     }
     #coupon-note {
       @apply mb-4 h-6 opacity-100;
-      transition: height 0.2s, margin 0.2s, opacity 0.15s 0.2s;
+      transition:
+        height 0.2s,
+        margin 0.2s,
+        opacity 0.15s 0.2s;
     }
   }
   &.qty {
     #coupon-qty {
-      @apply max-w-18 ml-0 border px-3 py-2 opacity-100;
-      transition: all 0.2s 0.35s, opacity 0.15s 0.55s;
+      @apply ml-0 max-w-18 border px-3 py-2 opacity-100;
+      transition:
+        all 0.2s 0.35s,
+        opacity 0.15s 0.55s;
       animation: coupon-pulse 0.4s 0.7s 2;
     }
   }

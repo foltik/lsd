@@ -54,7 +54,9 @@
             <div class="item">
               <div class="spot">
                 <div class="name">{{ rsvp.spot_name }}</div>
-                <span class="price">${{ rsvp.contribution + rsvp.discount }}</span>
+                <span class="price"
+                  >${{ rsvp.contribution + rsvp.discount }}</span
+                >
               </div>
               <span class="email"
                 >{{ rsvp.first_name }} {{ rsvp.last_name }} •
@@ -89,7 +91,10 @@
         >
       {% endif %}
       {% if can_add_guests %}
-        <form action="/e/{{ event.slug }}/rsvp/add-guests?reservation={{ session.token }}" method="POST">
+        <form
+          action="/e/{{ event.slug }}/rsvp/add-guests?reservation={{ session.token }}"
+          method="POST"
+        >
           <button class="add-guests">Add guests</button>
         </form>
       {% endif %}

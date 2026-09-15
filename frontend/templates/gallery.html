@@ -6,7 +6,8 @@
   <section id="gallery" class="ext/layout">
     <div id="grid">
       {% for flyer in flyers.iter() %}
-        <a class="flyer {% if flyer.unlisted %}unlisted{% endif %}"
+        <a
+          class="flyer {% if flyer.unlisted %}unlisted{% endif %}"
           href="/e/{{ flyer.slug }}"
           draggable="false"
           data-title="{{ flyer.title }}"
@@ -55,19 +56,19 @@
       // Re-layout if number of columns changes
       let numCols = Math.round(grid.clientWidth / 260);
       numCols = Math.max(3, Math.min(6, numCols));
-      if (numCols == activeNumCols)
-        return;
+      if (numCols == activeNumCols) return;
 
       // Create columns with running height totals
-      const cols = [...Array(numCols)]
-        .map(() => Object.assign(
-          document.createElement("div"),
-          {className: "col", height: 0},
-        ));
+      const cols = [...Array(numCols)].map(() =>
+        Object.assign(document.createElement("div"), {
+          className: "col",
+          height: 0,
+        }),
+      );
 
       // Insert each image into the shortest column so far
       for (const flyer of flyers) {
-        const shortest = cols.reduce((a, b) => b.height < a.height ? b : a);
+        const shortest = cols.reduce((a, b) => (b.height < a.height ? b : a));
         shortest.append(flyer);
         shortest.height += flyer.dataset.h / flyer.dataset.w;
       }
@@ -78,10 +79,11 @@
 
     // Fade from thumb to sm once the larger image loads.
     for (const image of grid.querySelectorAll(".image-sm")) {
-      if (image.complete)
-        image.classList.add("loaded");
+      if (image.complete) image.classList.add("loaded");
       else
-        image.addEventListener("load", () => image.classList.add("loaded"), { once: true });
+        image.addEventListener("load", () => image.classList.add("loaded"), {
+          once: true,
+        });
     }
 
     // Debounced re-layout on resize
@@ -108,7 +110,10 @@
 
       // Fit into the viewport at the flyer's aspect, leaving room above for the title
       const aspect = image.clientWidth / image.clientHeight;
-      const width = Math.min(window.innerWidth * 0.85, window.innerHeight * 0.72 * aspect);
+      const width = Math.min(
+        window.innerWidth * 0.85,
+        window.innerHeight * 0.72 * aspect,
+      );
 
       // Create overlay
       const overlay = document.createElement("div");
@@ -119,7 +124,6 @@
       image_overlay.style.width = `${width}px`;
       image_overlay.style.height = `${width / aspect}px`;
       image_overlay.src = image_sm.currentSrc || image_sm.src;
-
 
       document.body.append(overlay);
       image.style.visibility = "hidden";
@@ -137,7 +141,10 @@
         title.animate({ opacity: open ? [0, 1] : [1, 0] }, timing);
         const anim = image_overlay.animate({ transform: [start, end] }, timing);
         // Bake the final frame into inline styles and drop, to avoid recalc and shift.
-        return anim.finished.then(() => { anim.commitStyles(); anim.cancel(); });
+        return anim.finished.then(() => {
+          anim.commitStyles();
+          anim.cancel();
+        });
       };
 
       animate(true).then(() => {
@@ -166,7 +173,7 @@
         closing = true;
 
         gallery.classList.remove("zoomed");
-       // Let taps reach the gallery while it animates out
+        // Let taps reach the gallery while it animates out
         overlay.style.pointerEvents = "none";
 
         // Animate opacity back in
@@ -178,7 +185,9 @@
       }
 
       // Dismiss with escape
-      const onKey = (e) => { if (e.key === "Escape") close(); };
+      const onKey = (e) => {
+        if (e.key === "Escape") close();
+      };
       document.addEventListener("keydown", onKey);
 
       // Dismiss by scrolling
@@ -188,7 +197,6 @@
         close();
       };
       window.addEventListener("scroll", onScroll, { passive: true });
-
 
       /* ---------- Swipe to dismiss -------------------------- */
       let x0, y0, dx, dy, t, speed;
@@ -229,12 +237,9 @@
         const dist = Math.hypot(dx, dy);
 
         // Close on quick tap
-        if (dist < 6)
-          close();
+        if (dist < 6) close();
         // Close on swipe away
-        else if (dist > 90 || speed > 0.5)
-          close(image_overlay.style.transform);
-
+        else if (dist > 90 || speed > 0.5) close(image_overlay.style.transform);
         else settle();
       };
       overlay.addEventListener("pointerup", release);
@@ -246,7 +251,10 @@
         const dragged = `translate3d(${dx}px, ${dy}px, 0)`;
         image_overlay.style.transform = center;
         overlay.style.opacity = "";
-        image_overlay.animate({ transform: [dragged, center] }, { duration: 200, easing: "ease-out" });
+        image_overlay.animate(
+          { transform: [dragged, center] },
+          { duration: 200, easing: "ease-out" },
+        );
         overlay.animate({ opacity: [opacity, 1] }, { duration: 200 });
       }
     }
@@ -259,8 +267,7 @@
         y0 = e.clientY;
       });
       flyer.addEventListener("pointerup", (e) => {
-        if (Math.hypot(e.clientX - x0, e.clientY - y0) < 10)
-          zoom(flyer);
+        if (Math.hypot(e.clientX - x0, e.clientY - y0) < 10) zoom(flyer);
       });
       flyer.addEventListener("click", (e) => e.preventDefault());
     }

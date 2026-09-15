@@ -1,6 +1,9 @@
 {% extends "layout.html" %}
 
-{% block title %}{% if attendee.is_some() %}Edit{% else %}Add{% endif %} Attendee - {{ event.title }}{% endblock title %}
+{% block title %}
+  {% if attendee.is_some() %}Edit{% else %}Add{% endif %}
+  Attendee - {{ event.title }}
+{% endblock title %}
 
 {% block content %}
   <section id="events/attendees/add" class="ext/layout thin">
@@ -61,7 +64,11 @@
       </div>
       <div class="field">
         <label for="note">Note (optional)</label>
-        <input type="text" name="note" value="{% if let Some(a) = attendee %}{{ a.note }}{% endif %}" />
+        <input
+          type="text"
+          name="note"
+          value="{% if let Some(a) = attendee %}{{ a.note }}{% endif %}"
+        />
       </div>
       <div class="actions">
         <a href="/events/{{ event.id }}/attendees" class="ext/button"
@@ -81,129 +88,141 @@
       return name
         .trim()
         .split(/\s+/)
-        .map(word => word[0].toUpperCase() + word.slice(1))
+        .map((word) => word[0].toUpperCase() + word.slice(1))
         .join(" ");
     };
   </script>
   {% if attendee.is_none() %}
-  <script>
-    /* ---------- DOM ----------------------------------------------------------- */
-    const $ = (id) => document.getElementById(id);
-    const ui = {
-      form: $("form"),
-      combos: () => [...ui.form.querySelectorAll(".ext\\/combobox")],
-      inputs: () => [...ui.form.querySelectorAll(".ext\\/combobox input")],
-      resultsList: (combo) => combo.querySelector(".autocomplete"),
+    <script>
+      /* ---------- DOM ----------------------------------------------------------- */
+      const $ = (id) => document.getElementById(id);
+      const ui = {
+        form: $("form"),
+        combos: () => [...ui.form.querySelectorAll(".ext\\/combobox")],
+        inputs: () => [...ui.form.querySelectorAll(".ext\\/combobox input")],
+        resultsList: (combo) => combo.querySelector(".autocomplete"),
 
-      setSelection: (user) => {
-        ui.inputs().forEach((input) => {
-          input.value = user[input.dataset.field] ?? "";
-          input.readOnly = true;
-        });
-        ui.clearResults();
-      },
-      clearSelection: () =>
-        ui.inputs().forEach((input) => {
-          input.value = "";
-          input.readOnly = false;
-        }),
+        setSelection: (user) => {
+          ui.inputs().forEach((input) => {
+            input.value = user[input.dataset.field] ?? "";
+            input.readOnly = true;
+          });
+          ui.clearResults();
+        },
+        clearSelection: () =>
+          ui.inputs().forEach((input) => {
+            input.value = "";
+            input.readOnly = false;
+          }),
 
-      clearResults: () =>
-        ui.combos().forEach((c) => ui.resultsList(c).replaceChildren()),
+        clearResults: () =>
+          ui.combos().forEach((c) => ui.resultsList(c).replaceChildren()),
 
-      makeResult: (user, field, i) => {
-        const name = [user.first_name, user.last_name]
-          .filter((n) => n)
-          .join(" ");
-        const label =
-          field == "email"
-            ? name
-              ? `${user.email} (${name})`
-              : user.email
-            : name
-              ? `${name} (${user.email})`
-              : user.email;
-        return `
+        makeResult: (user, field, i) => {
+          const name = [user.first_name, user.last_name]
+            .filter((n) => n)
+            .join(" ");
+          const label =
+            field == "email"
+              ? name
+                ? `${user.email} (${name})`
+                : user.email
+              : name
+                ? `${name} (${user.email})`
+                : user.email;
+          return `
           <li class="${user.rsvped ? "rsvped" : ""}" data-index="${i}">
             <span class="info">${label}</span>
             ${user.rsvped ? '<span class="tag">(RSVPed)</span>' : ""}
           </li>`;
-      },
-    };
+        },
+      };
 
-    /* ---------- Autocomplete per field ---------------------------------------- */
-    for (const combo of ui.combos()) {
-      const input = combo.querySelector("input");
-      const list = ui.resultsList(combo);
-      const field = input.dataset.field;
+      /* ---------- Autocomplete per field ---------------------------------------- */
+      for (const combo of ui.combos()) {
+        const input = combo.querySelector("input");
+        const list = ui.resultsList(combo);
+        const field = input.dataset.field;
 
-      let results = [];
-      let seqnum = 0;
-      let debounce;
+        let results = [];
+        let seqnum = 0;
+        let debounce;
 
-      input.addEventListener("input", () => {
-        clearTimeout(debounce);
+        input.addEventListener("input", () => {
+          clearTimeout(debounce);
 
-        const query = input.value.trim();
-        if (query.length < 3) return list.replaceChildren();
+          const query = input.value.trim();
+          if (query.length < 3) return list.replaceChildren();
 
-        debounce = setTimeout(async () => {
-          const seq = ++seqnum;
-          try {
-            const res = await fetch(`/users/search?q=${encodeURIComponent(query)}&by=${field}&event_id={{ event.id }}`);
+          debounce = setTimeout(async () => {
+            const seq = ++seqnum;
+            try {
+              const res = await fetch(
+                `/users/search?q=${encodeURIComponent(query)}&by=${field}&event_id={{ event.id }}`,
+              );
 
-            // Ignore a failed or stale response that a newer keystroke has superseded
-            if (!res.ok || seq != seqnum) return;
+              // Ignore a failed or stale response that a newer keystroke has superseded
+              if (!res.ok || seq != seqnum) return;
 
-            results = await res.json();
-            list.innerHTML = results
-              .map((user, i) => ui.makeResult(user, field, i))
-              .join("");
-          } catch (e) {}
-        }, 150); // 150ms debounce
+              results = await res.json();
+              list.innerHTML = results
+                .map((user, i) => ui.makeResult(user, field, i))
+                .join("");
+            } catch (e) {}
+          }, 150); // 150ms debounce
+        });
+
+        // Selecting a result autofills and disables inputs
+        list.addEventListener("mousedown", (e) => {
+          const li = e.target.closest("li");
+          if (!li || li.classList.contains("rsvped")) return;
+
+          e.preventDefault();
+          ui.setSelection(results[li.dataset.index]);
+        });
+        // Clicking a disabled input clears the autofills
+        input.addEventListener("mousedown", () => {
+          if (input.readOnly) ui.clearSelection();
+        });
+
+        // Clear results when clicking away, leaving time to allow selecting one
+        input.addEventListener("blur", () => {
+          if (
+            !input.readOnly &&
+            (field == "first_name" || field == "last_name")
+          )
+            input.value = normalizeName(input.value);
+          setTimeout(() => list.replaceChildren(), 150);
+        });
+      }
+
+      // Escape to dismiss results
+      document.addEventListener("keydown", (e) => {
+        if (e.key == "Escape") ui.clearResults();
       });
-
-      // Selecting a result autofills and disables inputs
-      list.addEventListener("mousedown", (e) => {
-        const li = e.target.closest("li");
-        if (!li || li.classList.contains("rsvped")) return;
-
-        e.preventDefault();
-        ui.setSelection(results[li.dataset.index]);
-      });
-      // Clicking a disabled input clears the autofills
-      input.addEventListener("mousedown", () => {
-        if (input.readOnly) ui.clearSelection();
-      });
-
-      // Clear results when clicking away, leaving time to allow selecting one
-      input.addEventListener("blur", () => {
-        if (!input.readOnly && (field == "first_name" || field == "last_name"))
-          input.value = normalizeName(input.value);
-        setTimeout(() => list.replaceChildren(), 150);
-      });
-    }
-
-    // Escape to dismiss results
-    document.addEventListener("keydown", (e) => {
-      if (e.key == "Escape") ui.clearResults();
-    });
-  </script>
+    </script>
   {% endif %}
   {% if attendee.is_some() %}
-  <script>
-    // Confirm before changing attendee name
-    const form = document.getElementById("form");
-    const first = document.getElementById("first_name");
-    const last = document.getElementById("last_name");
-    for (const input of [first, last])
-      input.addEventListener("blur", () => (input.value = normalizeName(input.value)));
-    form.addEventListener("submit", (e) => {
-      const oldName = `${first.defaultValue.trim()} ${last.defaultValue.trim()}`.trim();
-      const newName = `${first.value.trim()} ${last.value.trim()}`.trim();
-      if (newName !== oldName && !confirm(`Change name to ${newName} for this and all future events?`))
-        e.preventDefault();
-    });
-  </script>
+    <script>
+      // Confirm before changing attendee name
+      const form = document.getElementById("form");
+      const first = document.getElementById("first_name");
+      const last = document.getElementById("last_name");
+      for (const input of [first, last])
+        input.addEventListener(
+          "blur",
+          () => (input.value = normalizeName(input.value)),
+        );
+      form.addEventListener("submit", (e) => {
+        const oldName =
+          `${first.defaultValue.trim()} ${last.defaultValue.trim()}`.trim();
+        const newName = `${first.value.trim()} ${last.value.trim()}`.trim();
+        if (
+          newName !== oldName &&
+          !confirm(`Change name to ${newName} for this and all future events?`)
+        )
+          e.preventDefault();
+      });
+    </script>
   {% endif %}
 {% endblock content %}

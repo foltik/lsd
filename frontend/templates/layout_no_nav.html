@@ -1,7 +1,10 @@
 <!doctype html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>{% block title %}light and sound design{% endblock title %}</title>
     <script>
       (() => {
@@ -12,19 +15,19 @@
           seen.add(message);
           fetch("/frontend/alert", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({message, url, line}),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, url, line }),
           });
         };
 
         // Send alerts on any javascript errors or unhandled promise rejections
-        window.addEventListener("error", e => {
+        window.addEventListener("error", (e) => {
           const isOurScript = e.filename.startsWith(location.origin);
           const isFirefoxExtension = e.lineno <= 1;
           if (!isOurScript || isFirefoxExtension) return;
           sendAlert(e.message, e.filename, e.lineno);
         });
-        window.addEventListener("unhandledrejection", e => {
+        window.addEventListener("unhandledrejection", (e) => {
           if (!e.reason?.stack?.includes(location.origin)) return;
           sendAlert(String(e.reason), location.href, 0);
         });

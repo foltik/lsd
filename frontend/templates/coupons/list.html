@@ -31,7 +31,8 @@
                 {% if coupon.user_count == 1 %}
                   {{ coupon.first_user | unwrap_or_empty }}
                 {% elif coupon.user_count > 1 %}
-                  {{ coupon.user_count }} users
+                  {{ coupon.user_count }}
+                  users
                 {% endif %}
               </td>
               <td>{{ coupon.event_title | unwrap_or_empty }}</td>
@@ -49,7 +50,8 @@
                 {% if coupon.kind == "fixed" %}
                   ${{ coupon.dollars_off.unwrap() }} off
                 {% elif coupon.kind == "percent" %}
-                  {{ coupon.percent_off.unwrap() }}% off
+                  {{ coupon.percent_off.unwrap() }}%
+                  off
                 {% else %}
                   Free RSVP
                 {% endif %}

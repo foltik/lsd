@@ -428,9 +428,14 @@ mod edit {
             user: Option<User>,
             event: Event,
             editor: Editor,
+            subject: String,
         }
         Ok(EditInviteHtml {
             user: Some(user),
+            subject: event
+                .invite_subject
+                .clone()
+                .unwrap_or_else(|| format!("Invitation to {}", event.title)),
             event: event.clone(),
             editor: Editor {
                 url: "/events/{id}/invite/edit",
@@ -648,9 +653,14 @@ mod edit {
             user: Option<User>,
             event: Event,
             editor: Editor,
+            subject: String,
         }
         Ok(EditConfirmationHtml {
             user: Some(user),
+            subject: event
+                .confirmation_subject
+                .clone()
+                .unwrap_or_else(|| format!("You're confirmed for {}", event.title)),
             event: event.clone(),
             editor: Editor {
                 url: "/events/{id}/confirmation/edit",
@@ -734,9 +744,14 @@ mod edit {
             user: Option<User>,
             event: Event,
             editor: Editor,
+            subject: String,
         }
         Ok(EditDayofHtml {
             user: Some(user),
+            subject: event
+                .dayof_subject
+                .clone()
+                .unwrap_or_else(|| format!("What to know for {}", event.title)),
             event: event.clone(),
             editor: Editor {
                 url: "/events/{id}/dayof/edit",
@@ -1347,10 +1362,10 @@ mod rsvp {
 
                 // Check for conflicts (no guests, so only a primary conflict is possible).
                 let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &[]).await?;
-                if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[]) {
-                    if let Some(resp) = resolve_conflict(&state, &event, None, conflict).await? {
-                        return Ok(resp);
-                    }
+                if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[])
+                    && let Some(resp) = resolve_conflict(&state, &event, None, conflict).await?
+                {
+                    return Ok(resp);
                 }
 
                 goto::selection_page(&state.db, &Some(user), &None, &event).await

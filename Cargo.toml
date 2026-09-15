@@ -19,7 +19,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "ma
 tokio_schedule = "0.3"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["fs", "set-header", "compression-br", "request-id", "trace", "util"] }
-tower-serve-static = "0.1"
 h3 = "0.0.8"
 h3-quinn = "0.0.10"
 h3-util = "0.0.5"

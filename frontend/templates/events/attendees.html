@@ -9,13 +9,16 @@
         <time datetime="{{ event.start.date() }}">
           {{ event.start | format_datetime("%a %b %d, %Y") }}
         </time>
-      <span class="stats">{{ rsvp_count }}/{{event.capacity}} RSVPed{% if refund_count > 0 %} • {{ refund_count }} refunded{% endif %} • ${{ total_contributions }} in contributions</span>
+        <span class="stats">
+          {{ rsvp_count }}/{{ event.capacity }} RSVPed
+          {% if refund_count > 0 %}
+            • {{ refund_count }} refunded
+          {% endif %}
+          • ${{ total_contributions }} in contributions
+        </span>
       </div>
       <div class="actions">
-        <a
-          href="/events/{{ event.id }}/attendees/add"
-          class="ext/button :icon"
-        >
+        <a href="/events/{{ event.id }}/attendees/add" class="ext/button :icon">
           Add attendee
         </a>
         <button id="download" class="ext/button">Download CSV</button>
@@ -23,82 +26,57 @@
     </header>
     <div class="ext/table">
       <table class="attendees">
-      <thead>
-        <tr>
-          <th class="name">Name</th>
-          <th class="email">Email</th>
-          <th class="guestof">Guest of</th>
-          {% if show_notes %}<th class="note">Note</th>{% endif %}
-          <th class="spot">Spot</th>
-          <th class="status">Status</th>
-          <th class="created">Created</th>
-          <th class="reservation">Reservation #</th>
-          <th class="actions"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for rsvp in rsvps %}
-          <tr
-            data-user-id="{{ rsvp.user_id }}"
-            data-is-manual="{{ rsvp.is_manual }}"
-            data-session-id="{{ rsvp.session_id }}"
-            data-contribution="{{ rsvp.contribution }}"
-            data-refunded="{{ rsvp.is_refunded() }}"
-          >
-            <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
-            <td class="email">{{ rsvp.email }}</td>
-            <td class="guestof">{{ rsvp.guest_of | unwrap_or_empty }}</td>
-            {% if show_notes %}<td class="note">{{ rsvp.note | unwrap_or_empty }}</td>{% endif %}
-            <td class="spot">
-              {% if rsvp.is_manual %}
-                <em>Manual</em>
-              {% else %}
-                {{ rsvp.spot_name | unwrap_or_empty }}
-                (${{ rsvp.contribution }})
+        <thead>
+          <tr>
+            <th class="name">Name</th>
+            <th class="email">Email</th>
+            <th class="guestof">Guest of</th>
+            {% if show_notes %}<th class="note">Note</th>{% endif %}
+            <th class="spot">Spot</th>
+            <th class="status">Status</th>
+            <th class="created">Created</th>
+            <th class="reservation">Reservation #</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rsvp in rsvps %}
+            <tr
+              data-user-id="{{ rsvp.user_id }}"
+              data-is-manual="{{ rsvp.is_manual }}"
+              data-session-id="{{ rsvp.session_id }}"
+              data-contribution="{{ rsvp.contribution }}"
+              data-refunded="{{ rsvp.is_refunded() }}"
+            >
+              <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
+              <td class="email">{{ rsvp.email }}</td>
+              <td class="guestof">{{ rsvp.guest_of | unwrap_or_empty }}</td>
+              {% if show_notes %}
+                <td class="note">{{ rsvp.note | unwrap_or_empty }}</td>
               {% endif %}
-            </td>
-            <td class="status">{{ rsvp.status_label() }}</td>
-            <td class="created">
-              <time datetime="{{ rsvp.created_at }}">
-                {{ rsvp.created_at | format_datetime("%m/%d %-I:%M%p") }}
-              </time>
-            </td>
-            <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
-            <td class="actions">
-              <a
-                class="edit"
-                title="Edit attendee"
-                href="/events/{{ event.id }}/attendees/{{ rsvp.user_id }}/edit?manual={{ rsvp.is_manual }}"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
+              <td class="spot">
+                {% if rsvp.is_manual %}
+                  <em>Manual</em>
+                {% else %}
+                  {{ rsvp.spot_name | unwrap_or_empty }}
+                  (${{ rsvp.contribution }})
+                {% endif %}
+              </td>
+              <td class="status">{{ rsvp.status_label() }}</td>
+              <td class="created">
+                <time datetime="{{ rsvp.created_at }}">
+                  {{ rsvp.created_at | format_datetime("%m/%d %-I:%M%p") }}
+                </time>
+              </td>
+              <td class="reservation">
+                {{ rsvp.session_token|unwrap_or_empty }}
+              </td>
+              <td class="actions">
+                <a
+                  class="edit"
+                  title="Edit attendee"
+                  href="/events/{{ event.id }}/attendees/{{ rsvp.user_id }}/edit?manual={{ rsvp.is_manual }}"
                 >
-                  <path
-                    fill="currentColor"
-                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                  />
-                </svg>
-              </a>
-              {% if !rsvp.is_refunded() %}
-              <button class="delete" title="Delete attendee">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 48 48"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M20 10.5v.5h8v-.5a4 4 0 1 0-8 0Zm-2.5.5v-.5a6.5 6.5 0 1 1 13 0v.5h8.75a1.25 1.25 0 1 1 0 2.5h-2.077l-2.027 23.315A6.25 6.25 0 0 1 28.914 42H19.086a6.25 6.25 0 0 1-6.232-5.685L10.827 13H8.75a1.25 1.25 0 1 1 0-2.5h8.75Zm3.75 8.25a1.25 1.25 0 1 0-2.5 0v16a1.25 1.25 0 1 0 2.5 0v-16Zm7.5-1.25a1.25 1.25 0 0 0-1.25 1.25v16a1.25 1.25 0 1 0 2.5 0v-16a1.25 1.25 0 0 0-1.25-1.25Z"
-                  />
-                </svg>
-              </button>
-              {% endif %}
-              {% if !rsvp.is_manual && !rsvp.is_refunded() %}
-                <button class="refund" title="Refund purchase">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="20"
@@ -107,15 +85,44 @@
                   >
                     <path
                       fill="currentColor"
-                      d="M13.91 2.91L11.83 5H14a8 8 0 0 1 8 8h-2a6 6 0 0 0-6-6h-2.17l2.09 2.09l-1.42 1.41L8 6l1.41-1.41L12.5 1.5l1.41 1.41zM2 12v10h16V12H2zm2 6.56v-3.11A4 4 0 0 0 5.45 14h9.1A4 4 0 0 0 16 15.45v3.11A3.996 3.996 0 0 0 14.57 20H5.45A3.996 3.996 0 0 0 4 18.56zm6 .44c.828 0 1.5-.895 1.5-2s-.672-2-1.5-2s-1.5.895-1.5 2s.672 2 1.5 2z"
+                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
                     />
                   </svg>
-                </button>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
+                </a>
+                {% if !rsvp.is_refunded() %}
+                  <button class="delete" title="Delete attendee">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 48 48"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M20 10.5v.5h8v-.5a4 4 0 1 0-8 0Zm-2.5.5v-.5a6.5 6.5 0 1 1 13 0v.5h8.75a1.25 1.25 0 1 1 0 2.5h-2.077l-2.027 23.315A6.25 6.25 0 0 1 28.914 42H19.086a6.25 6.25 0 0 1-6.232-5.685L10.827 13H8.75a1.25 1.25 0 1 1 0-2.5h8.75Zm3.75 8.25a1.25 1.25 0 1 0-2.5 0v16a1.25 1.25 0 1 0 2.5 0v-16Zm7.5-1.25a1.25 1.25 0 0 0-1.25 1.25v16a1.25 1.25 0 1 0 2.5 0v-16a1.25 1.25 0 0 0-1.25-1.25Z"
+                      />
+                    </svg>
+                  </button>
+                {% endif %}
+                {% if !rsvp.is_manual && !rsvp.is_refunded() %}
+                  <button class="refund" title="Refund purchase">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M13.91 2.91L11.83 5H14a8 8 0 0 1 8 8h-2a6 6 0 0 0-6-6h-2.17l2.09 2.09l-1.42 1.41L8 6l1.41-1.41L12.5 1.5l1.41 1.41zM2 12v10h16V12H2zm2 6.56v-3.11A4 4 0 0 0 5.45 14h9.1A4 4 0 0 0 16 15.45v3.11A3.996 3.996 0 0 0 14.57 20H5.45A3.996 3.996 0 0 0 4 18.56zm6 .44c.828 0 1.5-.895 1.5-2s-.672-2-1.5-2s-1.5.895-1.5 2s.672 2 1.5 2z"
+                      />
+                    </svg>
+                  </button>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
       </table>
     </div>
   </section>
@@ -129,23 +136,32 @@
       rows: () => [...ui.table.querySelectorAll("tbody tr")],
     };
     const slug = "{{ event.slug }}";
-    const eventId = {{ event.id }};
+    const eventId = "{{ event.id }}";
+    const showNotes = "{{ show_notes }}" === "true";
 
     /* ---------- CSV Download ------------------------------------------------ */
     ui.download.addEventListener("click", () => {
       const headers = [
-        "Name", "Email", "Guest of",
-        {% if show_notes %}"Note",{% endif %}
-        "Spot", "Status", "Created", "Reservation #",
+        "Name",
+        "Email",
+        "Guest of",
+        ...(showNotes ? ["Note"] : []),
+        "Spot",
+        "Status",
+        "Created",
+        "Reservation #",
       ];
-      const rows = ui.rows()
+      const rows = ui
+        .rows()
         .filter((row) => row.dataset.refunded !== "true")
         .map((row) => {
           const cells = [
             row.querySelector(".name").textContent.trim(),
             row.querySelector(".email").textContent.trim(),
             row.querySelector(".guestof").textContent.trim(),
-            {% if show_notes %}row.querySelector(".note").textContent.trim(),{% endif %}
+            ...(showNotes
+              ? [row.querySelector(".note").textContent.trim()]
+              : []),
             row.querySelector(".spot").textContent.trim(),
             row.querySelector(".status").textContent.trim(),
             row.querySelector(".created time").textContent.trim(),
@@ -155,7 +171,8 @@
         });
 
       // Collapse embedded newlines (e.g. multi-line spot descriptions) so rows don't break.
-      const escape = (s) => `"${s.replace(/\s*[\r\n]+\s*/g, " ").replace(/"/g, '""')}"`;
+      const escape = (s) =>
+        `"${s.replace(/\s*[\r\n]+\s*/g, " ").replace(/"/g, '""')}"`;
       const csv = [headers, ...rows]
         .map((r) => r.map(escape).join(","))
         .join("\n");
@@ -183,7 +200,12 @@
       // Refund
       if (btn.classList.contains("refund")) {
         const name = row.querySelector(".name").textContent.trim();
-        if (!confirm(`Are you sure you want to refund all RSVPs by ${name}?\n\nThis will issue full Stripe refunds for all associated reservations.`)) return;
+        if (
+          !confirm(
+            `Are you sure you want to refund all RSVPs by ${name}?\n\nThis will issue full Stripe refunds for all associated reservations.`,
+          )
+        )
+          return;
         try {
           const resp = await fetch(
             `/events/${eventId}/attendees/${userId}/refund`,
@@ -202,7 +224,12 @@
 
       // Delete
       if (btn.classList.contains("delete")) {
-        if (!confirm("Are you sure you want to permanently delete this RSVP?\n\nThis action cannot be undone, and will not notify the attendee.")) return;
+        if (
+          !confirm(
+            "Are you sure you want to permanently delete this RSVP?\n\nThis action cannot be undone, and will not notify the attendee.",
+          )
+        )
+          return;
         try {
           const resp = await fetch(
             `/events/${eventId}/attendees/${userId}${manualParam}`,
@@ -261,8 +288,12 @@
 
     // Sort alphabetically
     const byValue = (sel) => (a, b) =>
-      a.querySelector(sel).textContent.trim()
-        .localeCompare(b.querySelector(sel).textContent.trim(), undefined, { sensitivity: "base" });
+      a
+        .querySelector(sel)
+        .textContent.trim()
+        .localeCompare(b.querySelector(sel).textContent.trim(), undefined, {
+          sensitivity: "base",
+        });
 
     // Sort function for each column
     const comparators = {
@@ -274,13 +305,18 @@
       reservation: byValue(".reservation"),
       spot: (a, b) => a.dataset.contribution - b.dataset.contribution,
       created: (a, b) =>
-        a.querySelector(".created time").getAttribute("datetime")
-          .localeCompare(b.querySelector(".created time").getAttribute("datetime")),
+        a
+          .querySelector(".created time")
+          .getAttribute("datetime")
+          .localeCompare(
+            b.querySelector(".created time").getAttribute("datetime"),
+          ),
     };
 
     const isAlphabetical = ["name", "email", "guestof"];
     const descFirst = ["spot", "created"];
-    const isEmpty = (row, col) => row.querySelector(`.${col}`).textContent.trim() === "";
+    const isEmpty = (row, col) =>
+      row.querySelector(`.${col}`).textContent.trim() === "";
     const sortLast = {
       guestof: (row) => isEmpty(row, "guestof"),
       note: (row) => isEmpty(row, "note"),
@@ -291,8 +327,9 @@
     const pinLast = (row) => row.dataset.refunded === "true";
 
     // Add .sortable for headers with comparators
-    const headers = [...ui.table.querySelectorAll("thead th")]
-      .filter(th => th.classList[0] in comparators);
+    const headers = [...ui.table.querySelectorAll("thead th")].filter(
+      (th) => th.classList[0] in comparators,
+    );
     headers.forEach((th) => {
       th.classList.add("sortable");
       th.dataset.label = th.textContent.trim();

@@ -6,7 +6,9 @@
     <header>
       <h1>Send invites to {{ event.title }}</h1>
       {% if let Some(list) = list %}
-        {% if event.guest_list_id.is_some() %}<p>Guestlist: {{ list.name }}</p>{% endif %}
+        {% if event.guest_list_id.is_some() %}
+          <p>Guestlist: {{ list.name }}</p>
+        {% endif %}
       {% endif %}
     </header>
     <form
@@ -21,7 +23,10 @@
           <select id="list">
             <option value="">Select a list</option>
             {% for list in lists %}
-              <option value="{{ list.id }}" {% if list_id == Some(*list.id) %}selected{% endif %}>
+              <option
+                value="{{ list.id }}"
+                {% if list_id == Some(*list.id) %}selected{% endif %}
+              >
                 {{ list.name }} ({{ list.count }} members)
               </option>
             {% endfor %}
