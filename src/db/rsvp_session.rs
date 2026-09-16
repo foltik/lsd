@@ -282,6 +282,29 @@ impl RsvpSession {
         Ok(())
     }
 
+    /// Atomically swap status from A to B; no-op if status is not A.
+    pub async fn swap_status(&self, db: &Db, from: &str, to: &str) -> Result<()> {
+        let result = sqlx::query!(
+            "UPDATE rsvp_sessions
+             SET status = ?,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND status = ?",
+            to,
+            self.id,
+            from
+        )
+        .execute(db)
+        .await?;
+        tracing::info!(
+            "RSVP status swap with session_id={} event_id={} user_id={:?} status={from:?} -> {to:?} applied={}",
+            self.id,
+            self.event_id,
+            self.user_id,
+            result.rows_affected() == 1,
+        );
+        Ok(())
+    }
+
     pub async fn set_payment_intent_id(&self, db: &Db, payment_intent_id: &str) -> Result<()> {
         sqlx::query!(
             "UPDATE rsvp_sessions
