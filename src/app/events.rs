@@ -1942,7 +1942,9 @@ mod rsvp {
                     // If you get here, we hold your spot and assume payment is coming later via webhook.
                     // This is technically exploitable, but we could check for still unpaid rsvps at event start.
                     RsvpSession::CONTRIBUTION => {
-                        session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?
+                        session
+                            .swap_status(&state.db, RsvpSession::CONTRIBUTION, RsvpSession::PAYMENT_PENDING)
+                            .await?
                     }
                     RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
                     RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
@@ -1973,7 +1975,11 @@ mod rsvp {
             RsvpSession::ATTENDEES => return goto::attendees_page(&event),
             // If you get here, we hold your spot and assume payment is coming later via webhook.
             // This is technically exploitable, but we could check for still unpaid rsvps at event start.
-            RsvpSession::CONTRIBUTION => session.set_status(&state.db, RsvpSession::PAYMENT_PENDING).await?,
+            RsvpSession::CONTRIBUTION => {
+                session
+                    .swap_status(&state.db, RsvpSession::CONTRIBUTION, RsvpSession::PAYMENT_PENDING)
+                    .await?
+            }
             RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
             RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
                 return goto::error_rsvp_refunded();
