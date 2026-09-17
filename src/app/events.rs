@@ -5,6 +5,7 @@ use crate::db::event_flyer::*;
 use crate::db::rsvp_session::*;
 use crate::db::spot::*;
 use crate::prelude::*;
+use crate::utils::calendar;
 
 /// Add all `events` routes to the router.
 #[rustfmt::skip]
@@ -13,6 +14,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
                 .route("/e/{slug}/flyer", get(read::flyer_by_slug))
+                .route("/e/{slug}/event.ics", get(read::calendar_ics))
                 .route("/e/{slug}/stats", get(read::stats_page))
                 .route("/e/{slug}/rsvp", get(rsvp::rsvp_form))
                 .route("/e/{slug}/rsvp/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
@@ -124,6 +126,25 @@ mod read {
         Query(params): Query<std::collections::HashMap<String, String>>,
     ) -> HtmlResult {
         EventFlyer::serve(&state.db, &slug, params.get("size")).await
+    }
+
+    /// Serve an event as an iCalendar file, for Apple Calendar, Outlook desktop, and anything else
+    /// without a deep link scheme.
+    pub async fn calendar_ics(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
+        let Some(event) = Event::lookup_by_slug(&state.db, &slug).await? else {
+            bail_not_found!();
+        };
+
+        let ics = calendar::CalendarEvent::from_event(&event).ics();
+        Ok((
+            [
+                (header::CONTENT_TYPE, "text/calendar; charset=utf-8".to_string()),
+                (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{slug}.ics\"")),
+                (header::CACHE_CONTROL, "no-store".to_string()),
+            ],
+            ics,
+        )
+            .into_response())
     }
 
     #[derive(serde::Deserialize)]
