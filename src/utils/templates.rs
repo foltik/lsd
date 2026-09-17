@@ -1,6 +1,8 @@
 use chrono::NaiveDateTime;
 
+use crate::db::event::Event;
 use crate::prelude::*;
+use crate::utils::calendar;
 
 /// Askama implicitly looks for a `filters` module to be in the same scope as
 /// the `#[derive(Template)]` to provide extra functions to templates.
@@ -47,6 +49,13 @@ pub mod filters {
             Some(v) => v.to_string(),
             None => "".into(),
         })
+    }
+
+    pub fn calendar_url(event: &Event, provider: &str) -> Result<String, askama::Error> {
+        let Some(provider) = calendar::Provider::parse(provider) else {
+            return Err(askama::Error::Custom(format!("unknown calendar provider {provider:?}").into()));
+        };
+        Ok(calendar::CalendarEvent::from_event(event).provider_url(provider))
     }
 
     /// Returns the site domain
