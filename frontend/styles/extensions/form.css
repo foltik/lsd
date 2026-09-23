@@ -46,6 +46,11 @@
 .ext\/form .field,
 .ext\/field {
   @apply mb-4 flex flex-col pb-4;
+
+  /* Hidden honeypot field to catch bots */
+  &.\:important {
+    @apply absolute -left-[200vw];
+  }
 }
 
 .ext\/form button,

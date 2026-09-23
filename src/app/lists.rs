@@ -160,6 +160,10 @@ async fn signup_form(
     user: Option<User>, State(state): State<SharedAppState>, ConnectInfo(client): ConnectInfo<SocketAddr>,
     Form(form): Form<NewsletterForm>,
 ) -> HtmlResult {
+    if !form.honeypot.is_empty() {
+        tracing::info!("Honeypot caught client_ip={}: {:?}", client.ip(), form);
+        bail_invalid!();
+    }
     if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {
         bail_invalid!();
     }
@@ -189,10 +193,14 @@ async fn signup_form(
     }
     Ok(SuccessHtml { user, list, email: state.config.email.from.email.to_string() }.into_response())
 }
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 struct NewsletterForm {
     list_id: i64,
     email: Mailbox,
     #[serde(rename = "cf-turnstile-response")]
     turnstile_token: String,
+
+    /// Hidden honeypot field to catch bots.
+    #[serde(default, rename = "website")]
+    honeypot: String,
 }

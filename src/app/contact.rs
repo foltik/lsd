@@ -31,11 +31,19 @@ struct ContactForm {
     message: String,
     #[serde(rename = "cf-turnstile-response")]
     turnstile_token: String,
+
+    /// Hidden honeypot field to catch bots.
+    #[serde(default, rename = "website")]
+    honeypot: String,
 }
 async fn contact_form(
     user: Option<User>, State(state): State<SharedAppState>, ConnectInfo(client): ConnectInfo<SocketAddr>,
     Form(form): Form<ContactForm>,
 ) -> HtmlResult {
+    if !form.honeypot.is_empty() {
+        tracing::info!("Honeypot caught client_ip={}: {:?}", client.ip(), form);
+        bail_invalid!();
+    }
     if !state.cloudflare.validate_turnstile(client.ip(), &form.turnstile_token).await? {
         bail_invalid!();
     }
