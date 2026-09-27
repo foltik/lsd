@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM manual_rsvps WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "96981ed914af868f4bcd247fdc5a3bedfaa464e1a7a3257635f6bb49be73a49e"
+}
