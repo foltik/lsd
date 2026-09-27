@@ -187,6 +187,30 @@
     document.addEventListener("keydown", (e) => {
       if (e.key == "Escape") ui.clearResults();
     });
+
+    /* ---------- Form submit handler ------------------------------------------- */
+    ui.form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Block adding an email that already RSVPed
+      const email = $("email").value.trim().toLowerCase();
+      if (email) {
+        try {
+          const res = await fetch(`/users/search?q=${encodeURIComponent(email)}&by=email&event_id={{ event.id }}`);
+          if (!res.ok) throw new Error(await res.text());
+          const users = await res.json();
+          if (users.some((user) => user.rsvped && user.email.toLowerCase() == email)) {
+            alert(`${email} is already on the list!`);
+            return;
+          }
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+          return;
+        }
+      }
+
+      ui.form.submit();
+    });
   </script>
   {% endif %}
   {% if let Some(a) = attendee %}
