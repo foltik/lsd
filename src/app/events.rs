@@ -1347,10 +1347,10 @@ mod rsvp {
 
                 // Check for conflicts (no guests, so only a primary conflict is possible).
                 let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &[]).await?;
-                if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[]) {
-                    if let Some(resp) = resolve_conflict(&state, &event, None, conflict).await? {
-                        return Ok(resp);
-                    }
+                if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[])
+                    && let Some(resp) = resolve_conflict(&state, &event, None, conflict).await?
+                {
+                    return Ok(resp);
                 }
 
                 goto::selection_page(&state.db, &Some(user), &None, &event).await
