@@ -96,15 +96,16 @@ async fn edit_form(
         bail_bad_request!("Code '{code}' already exists.");
     }
 
-    match id {
+    let id = match id {
         0 => {
             tracing::info!("create coupon={coupon:?} users={user_ids:?}");
-            Coupon::create(&state.db, admin.id, &coupon).await?;
+            Coupon::create(&state.db, admin.id, &coupon).await?
         }
         id => {
             tracing::info!("edit coupon={coupon:?} users={user_ids:?}");
             Coupon::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
             Coupon::update(&state.db, id, &coupon).await?;
+            id
         }
     };
     Coupon::set_users(&state.db, id, &user_ids).await?;
