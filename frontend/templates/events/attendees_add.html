@@ -11,7 +11,7 @@
       id="form"
       class="ext/form"
       method="POST"
-      action="{% if let Some(a) = attendee %}/events/{{ event.id }}/attendees/{{ a.user_id }}/edit?manual={{ a.is_manual }}{% else %}/events/{{ event.id }}/attendees/add{% endif %}"
+      action="{% if let Some(a) = attendee %}/events/{{ event.id }}/attendees/{% if a.is_manual %}manual/{% endif %}{{ a.id }}/edit{% else %}/events/{{ event.id }}/attendees/add{% endif %}"
     >
       <div class="field">
         <label for="first_name">First name</label>
@@ -44,17 +44,16 @@
         </div>
       </div>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email">Email (optional)</label>
         <div class="ext/combobox">
           <input
             type="email"
             id="email"
             name="email"
             data-field="email"
-            value="{% if let Some(a) = attendee %}{{ a.email }}{% endif %}"
+            value="{% if let Some(a) = attendee %}{{ a.email | unwrap_or_empty }}{% endif %}"
             autocomplete="off"
             {% if attendee.is_some() %}disabled{% endif %}
-            required
           />
           <ul class="autocomplete"></ul>
         </div>
@@ -190,20 +189,22 @@
     });
   </script>
   {% endif %}
-  {% if attendee.is_some() %}
+  {% if let Some(a) = attendee %}
   <script>
-    // Confirm before changing attendee name
     const form = document.getElementById("form");
     const first = document.getElementById("first_name");
     const last = document.getElementById("last_name");
     for (const input of [first, last])
       input.addEventListener("blur", () => (input.value = normalizeName(input.value)));
+    {% if a.email.is_some() %}
+    // Confirm before changing attendee name
     form.addEventListener("submit", (e) => {
       const oldName = `${first.defaultValue.trim()} ${last.defaultValue.trim()}`.trim();
       const newName = `${first.value.trim()} ${last.value.trim()}`.trim();
       if (newName !== oldName && !confirm(`Change name to ${newName} for this and all future events?`))
         e.preventDefault();
     });
+    {% endif %}
   </script>
   {% endif %}
 {% endblock content %}

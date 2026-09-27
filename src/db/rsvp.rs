@@ -83,7 +83,7 @@ pub struct AdminAttendeesRsvp {
     pub user_id: i64,
     pub first_name: String,
     pub last_name: String,
-    pub email: String,
+    pub email: Option<String>,
     pub guest_of: Option<String>,
 
     pub spot_name: Option<String>,
@@ -96,12 +96,13 @@ pub struct AdminAttendeesRsvp {
     pub session_token: Option<String>,
     pub status: String,
     pub note: Option<String>,
+    pub manual_id: i64,
 }
 
 pub struct AttendeeEdit {
     pub first_name: Option<String>,
     pub last_name: Option<String>,
-    pub email: String,
+    pub email: Option<String>,
     pub note: Option<String>,
 }
 
@@ -139,7 +140,7 @@ impl Rsvp {
                 u.id AS user_id,
                 u.first_name as "first_name!",
                 u.last_name as "last_name!",
-                u.email,
+                u.email AS "email?: String",
                 CASE
                     WHEN rs.user_id IS NOT NULL AND rs.user_id != r.user_id
                     THEN hu.first_name || ' ' || hu.last_name
@@ -155,7 +156,8 @@ impl Rsvp {
                 rs.id AS "session_id!: i64",
                 rs.token AS session_token,
                 rs.status AS "status!",
-                r.note AS "note?: String"
+                r.note AS "note?: String",
+                0 AS "manual_id!: i64"
             FROM rsvps r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
             JOIN spots sp ON sp.id = r.spot_id
@@ -167,9 +169,9 @@ impl Rsvp {
             UNION ALL
 
             SELECT
-                u.id AS user_id,
-                u.first_name as "first_name!",
-                u.last_name as "last_name!",
+                0 AS user_id,
+                COALESCE(u.first_name, mr.first_name),
+                COALESCE(u.last_name, mr.last_name),
                 u.email,
                 cu.first_name || ' ' || cu.last_name AS guest_of,
 
@@ -182,9 +184,10 @@ impl Rsvp {
                 0 AS "session_id!: i64",
                 NULL AS session_token,
                 '' AS "status!",
-                mr.note
+                mr.note,
+                mr.id AS manual_id
             FROM manual_rsvps mr
-            JOIN users u ON u.id = mr.user_id
+            LEFT JOIN users u ON u.id = mr.user_id
             JOIN users cu ON cu.id = mr.creator_user_id
             WHERE mr.event_id = ?
 
@@ -602,7 +605,7 @@ impl Rsvp {
     pub async fn lookup_for_edit(db: &Db, event_id: i64, user_id: i64) -> Result<Option<AttendeeEdit>> {
         Ok(sqlx::query_as!(
             AttendeeEdit,
-            r#"SELECT u.first_name, u.last_name, u.email, r.note
+            r#"SELECT u.first_name, u.last_name, u.email AS "email?", r.note
                FROM rsvps r
                JOIN rsvp_sessions rs ON rs.id = r.session_id
                JOIN users u ON u.id = r.user_id

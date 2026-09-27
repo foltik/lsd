@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                   COALESCE(u.first_name, mr.first_name) AS \"first_name?: String\",\n                   COALESCE(u.last_name, mr.last_name) AS \"last_name?: String\",\n                   u.email AS \"email?\",\n                   mr.note\n               FROM manual_rsvps mr\n               LEFT JOIN users u ON u.id = mr.user_id\n               WHERE mr.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "first_name?: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_name?: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "email?",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "note",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "eb71e2f4df987efde6cbaf36e04c99311da4fdd635099a2c86bf30a1dfd440f5"
+}

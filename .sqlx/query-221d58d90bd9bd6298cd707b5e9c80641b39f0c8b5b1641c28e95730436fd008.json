@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE manual_rsvps SET checkin_at = NULL WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "221d58d90bd9bd6298cd707b5e9c80641b39f0c8b5b1641c28e95730436fd008"
+}
