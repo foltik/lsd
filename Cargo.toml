@@ -50,13 +50,15 @@ base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 jpeg-encoder = "0.6"
 
-# Add a little optimization to debug builds
+
+[profile.release]
+debug = "line-tables-only"
+
 [profile.dev]
 opt-level = 1
-# And since they don't get recompiled often, fully optimize dependencies
+debug = "line-tables-only"
+lto = "off"
+
 [profile.dev.package."*"]
 opt-level = 3
-
-# Include line tables so alert stack traces show function names and line numbers
-[profile.release]
-debug = 1
+debug = "line-tables-only"
