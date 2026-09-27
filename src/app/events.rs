@@ -834,6 +834,7 @@ mod edit {
                 FROM rsvps r
                 JOIN rsvp_sessions rs ON rs.id = r.session_id
                 WHERE rs.event_id = ?
+                  AND rs.status IN ('payment_pending', 'payment_confirmed')
                 UNION
                 SELECT m.user_id
                 FROM manual_rsvps m

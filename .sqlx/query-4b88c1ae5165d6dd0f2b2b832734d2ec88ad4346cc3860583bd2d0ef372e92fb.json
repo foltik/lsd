@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n             INSERT INTO emails (token, kind, user_id, user_version, event_id)\n                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?\n                 FROM (\n                     SELECT r.user_id\n                     FROM rsvps r\n                     JOIN rsvp_sessions rs ON rs.id = r.session_id\n                     WHERE rs.event_id = ?\n                     UNION\n                     SELECT m.user_id\n                     FROM manual_rsvps m\n                     WHERE m.event_id = ?\n                 ) attendees\n                 JOIN users u ON u.id = attendees.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
+  "query": "\n             INSERT INTO emails (token, kind, user_id, user_version, event_id)\n                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?\n                 FROM (\n                     SELECT r.user_id\n                     FROM rsvps r\n                     JOIN rsvp_sessions rs ON rs.id = r.session_id\n                     WHERE rs.event_id = ?\n                       AND rs.status IN ('payment_pending', 'payment_confirmed')\n                     UNION\n                     SELECT m.user_id\n                     FROM manual_rsvps m\n                     WHERE m.event_id = ?\n                 ) attendees\n                 JOIN users u ON u.id = attendees.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS \"address!\"\n             ",
   "describe": {
     "columns": [
       {
@@ -94,5 +94,5 @@
       true
     ]
   },
-  "hash": "a5e3400b4757e787e450a6b7fdfb3133e7b3e3e67f0ce554ecf7e6618985e0ee"
+  "hash": "4b88c1ae5165d6dd0f2b2b832734d2ec88ad4346cc3860583bd2d0ef372e92fb"
 }
