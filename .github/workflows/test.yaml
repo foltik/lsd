@@ -45,6 +45,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy -- -D warnings
 
+  coauthors:
+    name: Check for AI commits
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          if git log --format=%B "$BASE_SHA..$HEAD_SHA" | grep -iE '^co-authored-by:.*(anthropic|claude|openai|codex|gpt|cursor)'; then
+            echo "::error::PR contains commits authored by an AI model. To ensure legible history, please manually chunk your changes into logical commits, and write all titles and descriptions by hand."
+            exit 1
+          fi
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
   cross:
     name: Cross-compile
     runs-on: ubuntu-22.04
