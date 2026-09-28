@@ -4,7 +4,7 @@
   }
   article {
     @apply mb-16 text-lg leading-relaxed;
-    p a {
+    a {
       @apply decoration-lsd-blue hover:text-lsd-blue underline;
     }
     p img {
