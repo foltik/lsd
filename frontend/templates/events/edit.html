@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}{{ event.title }}{% endblock title %}
+{% block title %}{% if event.id == 0 %}New event{% else %}Edit - {{ event.slug }}{% endif %} - L&SD{% endblock title %}
 
 {% block content %}
   <section id="events/edit" class="ext/layout standard">

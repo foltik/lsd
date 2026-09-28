@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
-{% block title %}Send invites to {{ event.title }}{% endblock %}
+{% block title %}Send invites - {{ event.slug }} - L&SD{% endblock %}
 
 {% block content %}
   <section id="posts/send" class="ext/layout standard">
     <header>
-      <h1>Send invites to {{ event.title }}</h1>
+      <h1>Send invites - {{ event.slug }}</h1>
       {% if let Some(list) = list %}
         {% if event.guest_list_id.is_some() %}<p>Guestlist: {{ list.name }}</p>{% endif %}
       {% endif %}

@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
-{% block title %}Send day-of info for {{ event.title }}{% endblock %}
+{% block title %}Send day-of - {{ event.slug }} - L&SD{% endblock %}
 
 {% block content %}
   <section id="posts/send" class="ext/layout standard">
     <header>
-      <h1>Send day-of info for {{ event.title }}</h1>
+      <h1>Send day-of - {{ event.slug }}</h1>
       {% if let Some(sent_at) = event.dayof_sent_at %}
         <p class="already-sent">
           Sent on {{ sent_at | format_datetime("%b %d at %l:%M %p") }}. New
