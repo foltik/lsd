@@ -102,30 +102,29 @@ pub mod stripe {
         // unwrap(): we assume Stripe won't send us bogus data. RsvpSessions are never deleted.
         let session_id: i64 = payload.client_reference_id.parse().unwrap();
         let Some(session) = RsvpSession::lookup_by_id(&state.db, session_id).await? else {
-            bail!(
-                "Stripe: Unknown rsvp_session={session_id} while handling webhook for payment_intent={}",
-                payload.payment_intent,
+            alert!(
+                "Stripe: Unknown rsvp_session={session_id} while handling checkout_session_completed webhook: {payload:?}"
             );
+            return Ok(());
         };
         let Some(user_id) = session.user_id else {
-            bail!(
-                "Stripe: Got rsvp_session={session_id} with empty user_id while handling webhook for payment_intent={}",
-                payload.payment_intent,
+            alert!(
+                "Stripe: Got rsvp_session={session_id} with empty user_id while handling checkout_session_completed webhook: {payload:?}"
             );
+            return Ok(());
         };
         let Some(user) = User::lookup_by_id(&state.db, user_id).await? else {
-            bail!(
-                "Stripe: Got rsvp_session={session_id} with unknown user_id={} while handling webhook for payment_intent={}",
-                user_id,
-                payload.payment_intent,
+            alert!(
+                "Stripe: Got rsvp_session={session_id} with unknown user_id={user_id} while handling checkout_session_completed webhook: {payload:?}"
             );
+            return Ok(());
         };
         let Some(event) = Event::lookup_by_id(&state.db, session.event_id).await? else {
-            bail!(
-                "Stripe: Got rsvp_session={session_id} with nonexistant event_id={} while handling webhook for payment_intent={}",
+            alert!(
+                "Stripe: Got rsvp_session={session_id} with nonexistant event_id={} while handling checkout_session_completed webhook: {payload:?}",
                 session.event_id,
-                payload.payment_intent,
             );
+            return Ok(());
         };
 
         match payload.payment_status.as_str() {
