@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}{% if attendee.is_some() %}Edit{% else %}Add{% endif %} Attendee - {{ event.title }}{% endblock title %}
+{% block title %}{% if attendee.is_some() %}Edit{% else %}Add{% endif %} attendee - {{ event.slug }} - L&SD{% endblock title %}
 
 {% block content %}
   <section id="events/attendees/add" class="ext/layout thin">

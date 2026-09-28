@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}light and sound - RSVP{% endblock title %}
+{% block title %}RSVP to {{ event.title }} - L&SD{% endblock title %}
 
 {% block content %}
   <section id="events/rsvp/guestlist" class="ext/layout thin">
@@ -11,14 +11,14 @@
       id="form"
       class="ext/form"
       method="POST"
-      action="/e/{{ slug }}/rsvp/guestlist"
+      action="/e/{{ event.slug }}/rsvp/guestlist"
     >
       <div class="field">
         <label for="email">Email</label>
         <input type="email" name="email" />
       </div>
       <div class="actions">
-        <a href="/e/{{ slug }}" class="ext/button">&larr; Back</a>
+        <a href="/e/{{ event.slug }}" class="ext/button">&larr; Back</a>
         <button id="continue" class="ext/button :green" type="submit">
           Continue
         </button>

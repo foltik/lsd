@@ -1380,9 +1380,9 @@ mod rsvp {
         #[template(path = "events/rsvp_guestlist.html")]
         struct GuestlistHtml {
             user: Option<User>,
-            slug: String,
+            event: Event,
         }
-        Ok(GuestlistHtml { user: None, slug }.into_response())
+        Ok(GuestlistHtml { user: None, event }.into_response())
     }
 
     // Handle submission of the guestlist confirmation form
