@@ -2,6 +2,8 @@ use axum::Router;
 use axum::extract::DefaultBodyLimit;
 use tower::ServiceBuilder;
 use tower_http::compression::{self, CompressionLayer, Predicate};
+// Referenced here so debug builds don't warn that the dependency is unused.
+use tower_serve_static as _;
 
 use crate::db::event_flyer::EventFlyer;
 use crate::prelude::*;

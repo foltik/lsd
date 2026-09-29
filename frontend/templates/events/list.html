@@ -122,8 +122,8 @@
           <form
             action="/events/{{ event.id }}/delete"
             method="post"
-            class="inline"
-            onsubmit="return confirm('Permanently delete this event? This action cannot be undone.{% if event.rsvp_count > 0 %}\n\nWARNING: This event has {{ event.rsvp_count }} confirmed RSVP{% if event.rsvp_count != 1 %}s{% endif %} which will be permanently lost.{% endif %}')"
+            class="delete inline"
+            data-rsvp-count="{{ event.rsvp_count }}"
           >
             <button type="submit" class="ext/button :icon :red">
               <span>Delete</span>
@@ -134,3 +134,19 @@
     {% endfor %}
   </section>
 {% endblock content %}
+
+{% block scripts %}
+  <script>
+    document.querySelectorAll("form.delete").forEach((form) => {
+      form.addEventListener("submit", (e) => {
+        const count = Number(form.dataset.rsvpCount);
+        const warning =
+          count > 0
+            ? `\n\nWARNING: This event has ${count} confirmed RSVP${count != 1 ? "s" : ""} which will be permanently lost.`
+            : "";
+        const message = `Permanently delete this event? This action cannot be undone.${warning}`;
+        if (!confirm(message)) e.preventDefault();
+      });
+    });
+  </script>
+{% endblock scripts %}

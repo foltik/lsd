@@ -55,6 +55,28 @@ mailtutan
 - Make commits in a separate branch, and open a PR against `main`
 - When new commits land in `main`, a github action will automatically deploy the app to https://lightandsound.design
 
+### Checks
+
+CI (`.github/workflows/test.yaml`) runs on every PR:
+
+```sh
+cargo sqlx prepare --check
+cargo fmt --all --check
+cargo clippy --all-features -- -D warnings
+cargo test
+```
+
+`scripts/hooks/pre-commit` can be used to run the same checks (minus `cargo test`)
+before each commit:
+
+```sh
+git config core.hooksPath scripts/hooks
+```
+
+Use `git commit --no-verify` to skip it for a single commit.
+
+Templates and styles are not auto-formatted because Prettier does not interact well with Askama templates.
+
 
 # Special thanks
 

@@ -63,7 +63,12 @@ macro_rules! map_row {
             updated_at: $row.updated_at,
 
             version: $row.version,
-            roles: $row.roles.split(',').filter(|s| !s.is_empty()).map(|s| s.to_string()).collect(),
+            roles: $row
+                .roles
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .collect(),
         }
     };
 }
@@ -81,7 +86,12 @@ macro_rules! map_row_fuck {
             updated_at: $row.updated_at.unwrap(),
 
             version: $row.version,
-            roles: $row.roles.split(',').filter(|s| !s.is_empty()).map(|s| s.to_string()).collect(),
+            roles: $row
+                .roles
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .collect(),
         }
     };
 }
