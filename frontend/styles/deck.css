@@ -1,0 +1,94 @@
+/* Unlisted sales deck: one Dance film, copy fades in place. */
+
+@font-face {
+  font-family: "Serial B";
+  src: url("/static/deck/SerialB-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+html:has(#deck),
+body:has(#deck) {
+  height: 100%;
+  overflow: hidden;
+}
+
+body:has(#deck) main {
+  @apply w-full max-w-none items-stretch p-0;
+}
+
+#deck {
+  @apply relative w-full;
+}
+
+#deck .films {
+  @apply pointer-events-none fixed inset-0 z-0;
+  filter: blur(14px);
+}
+
+#deck .film {
+  @apply absolute inset-0 h-full w-full border-0;
+}
+
+#deck .scrim {
+  @apply pointer-events-none fixed inset-0 z-10;
+  background: rgb(8 5 4 / 0.52);
+}
+
+#deck .copy {
+  @apply pointer-events-none fixed inset-0 z-20;
+  font-family: "Serial B", system-ui, sans-serif;
+  font-weight: 300;
+}
+
+#deck .copy section {
+  @apply absolute top-1/2 left-1/2 flex w-[min(42rem,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 flex-col justify-center gap-5;
+  opacity: 0;
+  transition: opacity 0.65s ease;
+}
+
+#deck .copy section.is-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #deck .copy section {
+    transition: none;
+  }
+}
+
+#deck .copy h2 {
+  @apply text-lsd-bright text-sm tracking-[0.2em] uppercase;
+}
+
+#deck .copy p {
+  @apply text-lsd-white text-xl leading-snug md:text-2xl;
+  text-shadow: 0 1px 12px rgb(8 5 4 / 0.8);
+  /* pretty + no hyphenation: last line does not drop a single word as type scales */
+  text-wrap: pretty;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+#deck .copy .line {
+  @apply text-lsd-bright text-2xl leading-tight md:text-4xl;
+  text-wrap: pretty;
+}
+
+#deck .copy a {
+  @apply text-lsd-white underline decoration-lsd-blue underline-offset-4;
+}
+
+#deck .nav {
+  @apply fixed right-5 bottom-5 z-30 flex gap-2;
+}
+
+#deck .nav button {
+  @apply text-lsd-white/80 border border-white/30 px-3 py-2 text-sm leading-none;
+}
+
+#deck .nav button:disabled {
+  @apply opacity-30;
+}

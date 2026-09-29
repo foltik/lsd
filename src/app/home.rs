@@ -8,6 +8,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
             r.route("/", get(home_page))
                 .route("/past", get(past_page))
                 .route("/sublet", get(sublet_page))
+                .route("/deck", get(deck_page))
         })
         // TODO: Rethink roles, not WRITER. Template out buttons based on role.
         .restricted_routes(User::WRITER, |r| r.route("/dashboard", get(dashboard_page)))
@@ -56,4 +57,24 @@ struct SubletHtml {
 
 async fn sublet_page(user: Option<User>) -> HtmlResult {
     Ok(SubletHtml { user }.into_response())
+}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "deck.html")]
+struct DeckHtml {
+    film_origin: &'static str,
+}
+
+/// Unlisted sales deck. Not linked from EVENTS / PAST / GALLERY.
+async fn deck_page() -> HtmlResult {
+    Ok(DeckHtml {
+        // Local Next on :3000 while workshopping. Prod iframes the live Dance
+        // embed on Max's site (password skipped via ?embed=1).
+        film_origin: if cfg!(debug_assertions) {
+            "http://localhost:3000"
+        } else {
+            "https://www.maxweinman.net"
+        },
+    }
+    .into_response())
 }

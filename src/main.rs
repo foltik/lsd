@@ -60,19 +60,33 @@ async fn main() -> Result<()> {
     let (router, state) = app::build(config.clone()).await?;
     // HTTP/3 sidesteps make_service, so utils::h3 injects ConnectInfo itself
     let router_h3 = router.clone();
+    let router_http = router.clone();
     let app = router.into_make_service_with_connect_info::<SocketAddr>();
     tracing::info!("Live at {}", &config.app.url);
 
     // Spawn periodic jobs
     jobs::init(state, config.clone()).await;
 
-    // Spawn an auxillary HTTP server which just redirects to HTTPS
-    tokio::spawn(async move {
-        let redirect = move || async move { Redirect::permanent(&config.app.url) };
-        axum_server::bind(config.net.http_addr)
-            .serve(redirect.into_make_service())
-            .await
-    });
+    // Dev (no ACME): serve the real app on HTTP so a local Next iframe
+    // does not hit mixed-content or self-signed cert walls.
+    // Prod: HTTP only redirects to HTTPS.
+    if config.acme.is_none() {
+        let http_addr = config.net.http_addr;
+        tokio::spawn(async move {
+            let http_app = router_http.into_make_service_with_connect_info::<SocketAddr>();
+            tracing::info!("HTTP (dev) at http://localhost:{}", http_addr.port());
+            if let Err(err) = axum_server::bind(http_addr).serve(http_app).await {
+                tracing::error!("HTTP server: {err}");
+            }
+        });
+    } else {
+        tokio::spawn(async move {
+            let redirect = move || async move { Redirect::permanent(&config.app.url) };
+            axum_server::bind(config.net.http_addr)
+                .serve(redirect.into_make_service())
+                .await
+        });
+    }
 
     // Spawn the main HTTPS server
     match config.acme {
