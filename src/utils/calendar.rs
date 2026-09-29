@@ -35,6 +35,16 @@ impl Provider {
     }
 }
 
+/// An invitation, which mail clients add to the recipient's calendar natively.
+pub struct Invite<'a> {
+    pub organizer_name: Option<&'a str>,
+    pub organizer_email: &'a str,
+    pub attendee_name: Option<&'a str>,
+    pub attendee_email: &'a str,
+    /// Bumped when event details change, so clients update rather than duplicate.
+    pub sequence: i64,
+}
+
 pub struct CalendarEvent {
     pub uid: String,
     pub title: String,
@@ -61,18 +71,30 @@ impl CalendarEvent {
         }
     }
 
+    /// A standalone `METHOD:PUBLISH` file, for the download link.
     pub fn ics(&self) -> String {
+        self.build(None)
+    }
+
+    /// A `METHOD:REQUEST` invitation addressed to a specific attendee.
+    pub fn invite_ics(&self, invite: &Invite) -> String {
+        self.build(Some(invite))
+    }
+
+    fn build(&self, invite: Option<&Invite>) -> String {
         let dtstamp = Utc::now().naive_utc().format(COMPACT_TIME);
         let start = self.start.format(COMPACT_TIME);
         let end = self.end.format(COMPACT_TIME);
 
-        let mut out = String::new();
-        for line in [
-            "BEGIN:VCALENDAR".into(),
+        let mut lines = vec![
+            "BEGIN:VCALENDAR".to_string(),
             "VERSION:2.0".into(),
             "PRODID:-//Light and Sound Design//lsd//EN".into(),
             "CALSCALE:GREGORIAN".into(),
-            "METHOD:PUBLISH".into(),
+            match invite {
+                Some(_) => "METHOD:REQUEST".into(),
+                None => "METHOD:PUBLISH".into(),
+            },
             "BEGIN:VEVENT".into(),
             format!("UID:{}", escape(&self.uid)),
             format!("DTSTAMP:{dtstamp}"),
@@ -82,10 +104,33 @@ impl CalendarEvent {
             format!("DESCRIPTION:{}", escape(&self.description)),
             format!("LOCATION:{}", escape(&self.location)),
             format!("URL:{}", self.url),
-            "STATUS:CONFIRMED".into(),
-            "END:VEVENT".into(),
-            "END:VCALENDAR".into(),
-        ] {
+        ];
+
+        if let Some(invite) = invite {
+            let organizer_cn = match invite.organizer_name {
+                Some(name) => format!(";CN={}", param(name)),
+                None => String::new(),
+            };
+            let attendee_cn = match invite.attendee_name {
+                Some(name) => format!(";CN={}", param(name)),
+                None => String::new(),
+            };
+            // `RSVP=FALSE` stops clients mailing a `METHOD:REPLY` back to the organizer.
+            lines.push(format!("ORGANIZER{organizer_cn}:mailto:{}", invite.organizer_email));
+            lines.push(format!(
+                "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE{attendee_cn}:mailto:{}",
+                invite.attendee_email
+            ));
+            lines.push(format!("SEQUENCE:{}", invite.sequence));
+        }
+
+        lines.push("STATUS:CONFIRMED".into());
+        lines.push("TRANSP:OPAQUE".into());
+        lines.push("END:VEVENT".into());
+        lines.push("END:VCALENDAR".into());
+
+        let mut out = String::new();
+        for line in lines {
             fold(&line, &mut out);
             out.push_str("\r\n");
         }
@@ -148,6 +193,12 @@ impl CalendarEvent {
 
         Url::parse_with_params(base, params).expect("invalid calendar url").into()
     }
+}
+
+/// Quote an RFC 5545 parameter value if it contains a character that would end it.
+fn param(s: &str) -> String {
+    let clean: String = s.chars().filter(|c| !matches!(c, '"' | '\r' | '\n')).collect();
+    if clean.contains([';', ',', ':']) { format!("\"{clean}\"") } else { clean }
 }
 
 /// Escape RFC 5545

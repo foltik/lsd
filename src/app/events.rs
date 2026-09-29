@@ -2641,9 +2641,11 @@ mod rsvp {
 // Build and send event emails.
 pub mod email {
     use lettre::Message;
-    use lettre::message::header::ContentType;
+    use lettre::message::header::{ContentDisposition, ContentTransferEncoding, ContentType};
+    use lettre::message::{MultiPart, SinglePart};
 
     use super::*;
+    use crate::utils::calendar;
 
     pub fn format_confirmation_email(
         state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str,
@@ -2665,14 +2667,54 @@ pub mod email {
             .unwrap_or_else(|| format!("Confirmation for {}", event.title));
         let from = &state.config.email.from;
         let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+
+        // Organizer must match the From address, or clients distrust the invitation.
+        let cal = calendar::CalendarEvent::from_event(event);
+        let organizer_email = from.email.to_string();
+        let invite = calendar::Invite {
+            organizer_name: from.name.as_deref(),
+            organizer_email: &organizer_email,
+            attendee_name: None,
+            attendee_email: address,
+            sequence: 0,
+        };
+        let ics = cal.invite_ics(&invite);
+
+        let tz = state.config.app.tz;
+        let when = event.start.and_utc().with_timezone(&tz).format("%A, %B %-d at %-I:%M %p");
+        let text = format!(
+            "{}\n\n{when}\n{}\n\nView your confirmation: {}/e/{}/rsvp/manage?reservation={}\n",
+            event.title, cal.location, state.config.app.url, event.slug, session_token,
+        );
+
+        // The calendar part must sit inside multipart/alternative to render natively.
+        let body = MultiPart::mixed()
+            .multipart(
+                MultiPart::alternative()
+                    .singlepart(SinglePart::plain(text))
+                    .singlepart(SinglePart::html(html))
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::parse("text/calendar; charset=utf-8; method=REQUEST")?)
+                            .header(ContentTransferEncoding::Base64)
+                            .body(ics.clone()),
+                    ),
+            )
+            .singlepart(
+                SinglePart::builder()
+                    .header(ContentType::parse("application/ics")?)
+                    .header(ContentDisposition::attachment("invite.ics"))
+                    .header(ContentTransferEncoding::Base64)
+                    .body(ics),
+            );
+
         let message = state
             .mailer
             .builder()
             .to(address.parse().unwrap())
             .reply_to(reply_to.clone())
             .subject(subject)
-            .header(ContentType::TEXT_HTML)
-            .body(html)
+            .multipart(body)
             .unwrap();
 
         Ok(message)
