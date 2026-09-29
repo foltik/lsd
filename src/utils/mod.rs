@@ -1,4 +1,5 @@
 pub mod alerts;
+pub mod calendar;
 pub mod cloudflare;
 pub mod config;
 pub mod editor;

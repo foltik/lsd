@@ -5,6 +5,7 @@ use crate::db::event_flyer::*;
 use crate::db::rsvp_session::*;
 use crate::db::spot::*;
 use crate::prelude::*;
+use crate::utils::calendar;
 
 /// Add all `events` routes to the router.
 #[rustfmt::skip]
@@ -13,6 +14,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         .public_routes(|r| {
             r.route("/e/{slug}", get(read::view_page))
                 .route("/e/{slug}/flyer", get(read::flyer_by_slug))
+                .route("/e/{slug}/event.ics", get(read::calendar_ics))
                 .route("/e/{slug}/stats", get(read::stats_page))
                 .route("/e/{slug}/rsvp", get(rsvp::rsvp_form))
                 .route("/e/{slug}/rsvp/guestlist", get(rsvp::guestlist_page).post(rsvp::guestlist_form))
@@ -127,6 +129,25 @@ mod read {
         Query(params): Query<std::collections::HashMap<String, String>>,
     ) -> HtmlResult {
         EventFlyer::serve(&state.db, &slug, params.get("size")).await
+    }
+
+    /// Serve an event as an iCalendar file, for Apple Calendar, Outlook desktop, and anything else
+    /// without a deep link scheme.
+    pub async fn calendar_ics(State(state): State<SharedAppState>, Path(slug): Path<String>) -> HtmlResult {
+        let Some(event) = Event::lookup_by_slug(&state.db, &slug).await? else {
+            bail_not_found!();
+        };
+
+        let ics = calendar::CalendarEvent::from_event(&event).ics();
+        Ok((
+            [
+                (header::CONTENT_TYPE, "text/calendar; charset=utf-8".to_string()),
+                (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{slug}.ics\"")),
+                (header::CACHE_CONTROL, "no-store".to_string()),
+            ],
+            ics,
+        )
+            .into_response())
     }
 
     #[derive(serde::Deserialize)]
@@ -2701,9 +2722,11 @@ mod rsvp {
 // Build and send event emails.
 pub mod email {
     use lettre::Message;
-    use lettre::message::header::ContentType;
+    use lettre::message::header::{ContentDisposition, ContentTransferEncoding, ContentType};
+    use lettre::message::{MultiPart, SinglePart};
 
     use super::*;
+    use crate::utils::calendar;
 
     pub fn format_confirmation_email(
         state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str,
@@ -2725,14 +2748,54 @@ pub mod email {
             .unwrap_or_else(|| format!("Confirmation for {}", event.title));
         let from = &state.config.email.from;
         let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
+
+        // Organizer must match the From address, or clients distrust the invitation.
+        let cal = calendar::CalendarEvent::from_event(event);
+        let organizer_email = from.email.to_string();
+        let invite = calendar::Invite {
+            organizer_name: from.name.as_deref(),
+            organizer_email: &organizer_email,
+            attendee_name: None,
+            attendee_email: address,
+            sequence: 0,
+        };
+        let ics = cal.invite_ics(&invite);
+
+        let tz = state.config.app.tz;
+        let when = event.start.and_utc().with_timezone(&tz).format("%A, %B %-d at %-I:%M %p");
+        let text = format!(
+            "{}\n\n{when}\n{}\n\nView your confirmation: {}/e/{}/rsvp/manage?reservation={}\n",
+            event.title, cal.location, state.config.app.url, event.slug, session_token,
+        );
+
+        // The calendar part must sit inside multipart/alternative to render natively.
+        let body = MultiPart::mixed()
+            .multipart(
+                MultiPart::alternative()
+                    .singlepart(SinglePart::plain(text))
+                    .singlepart(SinglePart::html(html))
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::parse("text/calendar; charset=utf-8; method=REQUEST")?)
+                            .header(ContentTransferEncoding::Base64)
+                            .body(ics.clone()),
+                    ),
+            )
+            .singlepart(
+                SinglePart::builder()
+                    .header(ContentType::parse("application/ics")?)
+                    .header(ContentDisposition::attachment("invite.ics"))
+                    .header(ContentTransferEncoding::Base64)
+                    .body(ics),
+            );
+
         let message = state
             .mailer
             .builder()
             .to(address.parse().unwrap())
             .reply_to(reply_to.clone())
             .subject(subject)
-            .header(ContentType::TEXT_HTML)
-            .body(html)
+            .multipart(body)
             .unwrap();
 
         Ok(message)
