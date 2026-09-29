@@ -1,4 +1,4 @@
-/* Unlisted sales deck: one Dance film, copy fades in place. */
+/* Unlisted sales deck: two Dance films blended, copy fades in place. */
 
 @font-face {
   font-family: "Serial B";
@@ -24,11 +24,17 @@ body:has(#deck) main {
 
 #deck .films {
   @apply pointer-events-none fixed inset-0 z-0;
+  isolation: isolate;
   filter: blur(14px);
 }
 
 #deck .film {
   @apply absolute inset-0 h-full w-full border-0;
+}
+
+#deck .film + .film {
+  mix-blend-mode: overlay;
+  opacity: 0.5;
 }
 
 #deck .scrim {
