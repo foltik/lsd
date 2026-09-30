@@ -1,0 +1,365 @@
+{% extends "layout_no_nav.html" %}
+
+{% block title %}Light & Sound Design{% endblock title %}
+
+{% block stylesheet %}
+  <style>
+    @font-face {
+      font-family: "Serial B";
+      src: url("/static/deck/SerialB-Light.woff2");
+      font-weight: 300;
+    }
+
+    body {
+      background: #080504;
+    }
+    h2, p {
+      margin: 0;
+    }
+    h2 {
+      font: inherit;
+      font-size: 0.875rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #fcf3ee;
+    }
+    p.tagline {
+      font-size: 1.2em;
+      line-height: 1.25;
+      color: #fcf3ee;
+    }
+    a {
+      color: inherit;
+      text-decoration-color: #8ec6ff;
+      text-underline-offset: 4px;
+      pointer-events: auto;
+    }
+    @media (width >= 48rem) {
+      p.tagline { font-size: 1.5em; }
+    }
+
+    #films, #scroller, #slides, video {
+      position: absolute;
+      inset: 0;
+    }
+
+    #scroller {
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      overscroll-behavior: none;
+      scrollbar-width: none;
+      outline: none;
+    }
+    .scrollstop {
+      height: 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+
+    #deck {
+      position: fixed;
+      inset: 0;
+      color: #ebe3de;
+      font: 300 clamp(1rem, 2.7svh, 1.25rem)/1.375 "Serial B", system-ui, sans-serif;
+      text-wrap: pretty;
+      text-shadow: 0 1px 12px rgb(8 5 4 / 0.8);
+    }
+    @media (width >= 48rem) {
+      #deck { font-size: clamp(1rem, 3.6svh, 1.5rem); }
+    }
+    #slides {
+      display: grid;
+      place-items: center;
+      padding: 0 1.5rem;
+      pointer-events: none;
+    }
+    .slide {
+      grid-area: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      max-width: 42rem;
+      opacity: 0;
+      visibility: hidden;
+    }
+    @media (pointer: fine) {
+      .slide { transition: opacity 0.5s, visibility 0.5s; }
+      .slide.incoming { transition-delay: 0.5s; }
+    }
+
+    #films {
+      opacity: 0;
+      filter: blur(14px) brightness(0.48);
+      transition: opacity 1.5s;
+    }
+    #films.playing {
+      opacity: 1;
+    }
+    #films video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #films video:nth-child(2) {
+      opacity: 0.5;
+      mix-blend-mode: overlay;
+    }
+  </style>
+{% endblock stylesheet %}
+
+{% block content %}
+  <div id="deck">
+    <div id="films" aria-hidden="true">
+      <video src="/static/deck/dance.mp4" preload="metadata" muted loop playsinline></video>
+      <video src="/static/deck/dance.mp4" preload="metadata" muted loop playsinline></video>
+    </div>
+    <div id="scroller" tabindex="-1" autofocus></div>
+    <article id="slides">
+      <section class="slide">
+        <h2>01 — Open</h2>
+        <p class="tagline">A studio for making worlds.</p>
+        <p>
+          Light &amp; Sound Design Studio is the container for a decade-long
+          practice of building environments, shaping atmosphere, and creating
+          experiences that make another world feel possible, tangible and within
+          reach.
+        </p>
+        <p>
+          L&amp;SD’s Luxury Service Division works to make those possibilities
+          accessible to our clients and their communities.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>02 — Lineage</h2>
+        <p>It started with a gathering.</p>
+        <p>
+          The Last Saturday Dance began in 2016. There was no venue, production
+          department or playbook. Just a room, a sound system, some lights and
+          the instinct to transform the space, creating unique worlds for a
+          community to enter with intention.
+        </p>
+        <p>
+          Over the years, the gathering moved through factories, warehouses,
+          studios, metal shops and borrowed rooms. Every time, the environment
+          had to be built. Then broken down. Then built again. That repetition
+          became a practice.
+        </p>
+        <p>
+          In 2022, we found a permanent container for it: a loft on Huron
+          Street.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>03 — The Incubator</h2>
+        <p>The loft became an incubator for the practice.</p>
+        <p>
+          Ideas get tested here at full scale. Light, sound, design,
+          fabrication, food and atmosphere come together in one
+          environment, in real time, with real people.
+        </p>
+        <p>
+          Build. Observe. Refine. Repeat. A decade of gathering has become a way
+          of working: experimental, collaborative and deeply
+          hands-on.
+        </p>
+        <p>The party was never the point. The practice was.</p>
+      </section>
+
+      <section class="slide">
+        <h2>04 — The Practice</h2>
+        <p>
+          The room is an instrument, its character shaped through light, sound
+          and design.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>Light</h2>
+        <p>
+          We design it, program it and live with it. Light changes the scale of
+          a room, directs attention and shapes how people move through it. It is
+          not decoration. It is part of the architecture of the experience.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>Sound</h2>
+        <p>
+          We built the room around deep listening. The system is part of the
+          architecture, not something added after the fact. The sound is
+          physical, immersive and considered from every position in the room.
+        </p>
+        <p>
+          Over the years, the room has held Francois K, DJ True, Jacky Sommer,
+          UMADJ, livwutang, Ron Like Hell, Enzo, Takaya Nagase, Mo Yasin, Niyah
+          West, Stonie Blue, datadata, Scott Zacharias, Toribio, 30,000AD,
+          Ayanna Heaven, Genevieve D, Mark Ernestus, Ron Trent, Keith Fullerton
+          Whitman, HxH, A Space for Sound, CCL, Objekt, SLINK, KWata, DJ
+          Marcelle and KG.
+        </p>
+        <p>
+          Artists come to contribute to the room's history, not simply to play
+          in it.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>Design</h2>
+        <p>
+          The environment is the work. Architecture, atmosphere, objects, light
+          and sound are considered together, then shaped through use. Nothing is
+          fixed. The room evolves through what happens inside it.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>05 — Fabrication</h2>
+        <p>If the environment needs to be built, we build it.</p>
+        <p>
+          For years, the practice has extended beyond the room itself into
+          custom environments, fixtures, structures and objects. The same hands
+          that build the studio build what the experience requires. Custom
+          lighting. Custom furniture. Custom structures. Built for the space,
+          the moment and the people inside it.
+        </p>
+        <p>
+          That work has taken shape for Nike, Maison Margiela, American Eagle,
+          Vogue, Harper’s Bazaar, Calvin Klein, Pyer Moss, Max Mara and others
+          across events, editorial and brand experiences.
+        </p>
+        <p>
+          At Huron, fabrication is part of the practice. The speakers, the
+          booth, the walls, the objects around you: built here, tested here,
+          refined here. If it needs to exist, we can make it.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>06 — Nourishment</h2>
+        <p>
+          Nourishment is integral to the worlds we create.
+        </p>
+        <p>
+          Chefs and cooks are part of the practice, creating food that belongs
+          to the room rather than simply arriving in it. There are no catering
+          menus. We construct food around how people gather and what engages
+          their senses.
+        </p>
+        <p>
+          The same kitchen that has fed this incubator can become part of yours,
+          thoughtfully integrated into your experience.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>07 — The Living Element</h2>
+        <p>Atmosphere takes form through natural materials.</p>
+        <p>
+          We introduce flowers, foliage and organic materials into the
+          architecture to alter the character of the space and create tension
+          between what is built and what is alive. These materials bring color,
+          texture, scale and movement into the room.
+        </p>
+        <p>
+          This work is responsive to the space and to the intentions we are
+          setting. It grows from the environment rather than sitting on top of
+          it.
+        </p>
+        <p>
+          Our floral artists work with locally sourced materials to make that
+          transformation possible, bringing their own sensibility to the room
+          and to the worlds we create.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>08 — One Practice</h2>
+        <p>
+          Creative direction, production and fabrication are part of the same
+          practice.
+        </p>
+        <p>
+          We can develop the idea, shape the environment, build what it requires
+          and produce the experience from beginning to end. One studio. One
+          team. One shared point of view.
+        </p>
+        <p>
+          The result is a world that feels considered from every angle because
+          it was made that way.
+        </p>
+      </section>
+
+      <section class="slide">
+        <h2>09 — Close</h2>
+        <p class="tagline">
+          Bring Us the Brief. We’ll build the world around it.
+        </p>
+        <p>
+          We want to work alongside you to give physical form to your vision,
+          creating experiences that are considered, immersive and enduring.
+        </p>
+        <p>
+          <a href="https://lightandsound.design">lightandsound.design</a>
+        </p>
+        <p>
+          <a href="mailto:studio@lightandsound.design">studio@lightandsound.design</a>
+        </p>
+      </section>
+    </article>
+  </div>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      films: $("films"),
+      videos: [...document.querySelectorAll("#films video")],
+      scroller: $("scroller"),
+      slides: [...document.querySelectorAll("#slides .slide")],
+    };
+
+    /* ---------- Slides ---------------------------- */
+    for (const _slide of ui.slides)
+      ui.scroller.append(Object.assign(document.createElement("div"), { className: "scrollstop" }));
+
+    function crossfade() {
+      const position = ui.scroller.scrollTop / ui.scroller.clientHeight;
+      ui.slides.forEach((slide, i) => {
+        const opacity = Math.max(0, 1 - 2 * Math.abs(position - i));
+        slide.classList.toggle("incoming", opacity > slide.style.opacity);
+        slide.style.opacity = opacity;
+        slide.style.visibility = opacity > 0 ? "visible" : "hidden";
+      });
+    }
+    ui.scroller.addEventListener("scroll", crossfade);
+    crossfade();
+
+    /* ---------- Film ---------------------------- */
+    async function playFilms() {
+      if (ui.films.classList.contains("playing"))
+        return;
+
+      // Randomize video offsets
+      const duration = ui.videos[0].duration;
+      for (const video of ui.videos)
+        video.currentTime = Math.random() * duration;
+
+      try {
+        await Promise.all(ui.videos.map((video) => video.play()));
+        ui.films.classList.add("playing");
+      } catch {
+        // Autoplay blocked; retry on next gesture
+        window.addEventListener("click", playFilms, { once: true });
+        window.addEventListener("keydown", playFilms, { once: true });
+      }
+    }
+    // Play once metadata loads
+    if (ui.videos[0].readyState >= HTMLMediaElement.HAVE_METADATA)
+      playFilms();
+    else
+      ui.videos[0].addEventListener("loadedmetadata", playFilms, { once: true });
+  </script>
+{% endblock scripts %}

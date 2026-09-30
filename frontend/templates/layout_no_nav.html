@@ -32,7 +32,9 @@
     </script>
     {% block preload %}
     {% endblock preload %}
-    <link rel="stylesheet" href="/static/main.css?version=CONTENT_HASH" />
+    {% block stylesheet %}
+      <link rel="stylesheet" href="/static/main.css?version=CONTENT_HASH" />
+    {% endblock stylesheet %}
     <link rel="icon" href="/static/favicon.ico?version=CONTENT_HASH" />
     {% block head %}
     {% endblock head %}
