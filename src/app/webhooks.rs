@@ -1,8 +1,12 @@
 use crate::prelude::*;
 
 /// Add all webhook routes to the router.
+#[rustfmt::skip]
 pub fn add_routes(router: AppRouter) -> AppRouter {
-    router.public_routes(|r| r.route("/webhooks/stripe", post(stripe::webhook)))
+    router.public_routes(|r| {
+        r.route("/webhooks/stripe", post(stripe::webhook))
+         .route("/webhooks/telnyx", post(telnyx::webhook))
+    })
 }
 
 pub mod stripe {
@@ -216,5 +220,81 @@ pub mod stripe {
         alert!("Stripe[refund.failed]: payment_intent={payment_intent} failure_reason={failure_reason}");
 
         Ok(())
+    }
+}
+
+pub mod telnyx {
+    use axum::http::HeaderMap;
+    use base64::Engine;
+    use base64::prelude::BASE64_STANDARD as BASE64;
+    use ring::signature::{ED25519, UnparsedPublicKey};
+
+    use super::*;
+    use crate::utils::telnyx::Telnyx;
+
+    const REPLY: &str = "You've reached Light and Sound Design! Visit https://lightandsound.design for info on upcoming events.";
+
+    #[derive(serde::Deserialize)]
+    struct Event {
+        data: EventData,
+    }
+    #[derive(serde::Deserialize)]
+    struct EventData {
+        event_type: String,
+        payload: serde_json::Value,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct MessageReceived {
+        from: PhoneNumber,
+        to: Vec<PhoneNumber>,
+    }
+    #[derive(Debug, serde::Deserialize)]
+    struct PhoneNumber {
+        phone_number: String,
+    }
+
+    pub async fn webhook(
+        State(state): State<SharedAppState>, headers: HeaderMap, body: String,
+    ) -> JsonResult<()> {
+        let Some(telnyx) = &state.telnyx else {
+            bail_not_found!();
+        };
+        let header = |name| headers.get(name).ok_or_else(invalid)?.to_str().map_err(|_| invalid());
+
+        let timestamp = header("telnyx-timestamp")?.parse::<i64>().map_err(|_| invalid())?;
+        let stale = (Utc::now().timestamp() - timestamp).abs() >= 5 * 60; // 5min
+        if stale {
+            bail_invalid!();
+        }
+
+        let signature = BASE64.decode(header("telnyx-signature-ed25519")?).map_err(|_| invalid())?;
+        let pubkey = BASE64.decode(&telnyx.public_key).unwrap();
+        let payload = format!("{timestamp}|{body}");
+        let valid = UnparsedPublicKey::new(&ED25519, pubkey)
+            .verify(payload.as_bytes(), &signature)
+            .is_ok();
+        if !valid {
+            crate::bail_unauthorized!();
+        }
+
+        let event: Event = serde_json::from_str(&body).map_err(|_| invalid())?;
+        match event.data.event_type.as_str() {
+            "message.received" => {
+                let payload = serde_json::from_value(event.data.payload).map_err(|_| invalid())?;
+                on_message_received(telnyx, payload).await?
+            }
+            ty => tracing::debug!("Telnyx: unhandled webhook of type={ty:?}"),
+        }
+
+        Ok(Json(()))
+    }
+
+    async fn on_message_received(telnyx: &Telnyx, msg: MessageReceived) -> Result<()> {
+        let from = &msg.from.phone_number;
+        let to = &msg.to.first().unwrap().phone_number;
+        tracing::info!("Telnyx[message.received]: from={from} to={to}");
+
+        telnyx.send_sms(to, from, REPLY).await
     }
 }

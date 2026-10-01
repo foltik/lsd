@@ -10,6 +10,7 @@ pub mod image;
 pub mod ratelimit;
 pub mod routing;
 pub mod stripe;
+pub mod telnyx;
 pub mod templates;
 pub mod tracing;
 pub mod types;

@@ -8,6 +8,7 @@ use crate::prelude::*;
 use crate::utils::cloudflare::Cloudflare;
 use crate::utils::emailer::Emailer;
 use crate::utils::stripe::Stripe;
+use crate::utils::telnyx::Telnyx;
 
 mod auth;
 mod contact;
@@ -26,6 +27,7 @@ pub struct AppState {
     pub config: Config,
     pub db: Db,
     pub stripe: Stripe,
+    pub telnyx: Option<Telnyx>,
     pub cloudflare: Cloudflare,
     pub mailer: Emailer,
 }
@@ -35,6 +37,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
         config: config.clone(),
         db: crate::db::init(&config.db).await?,
         stripe: Stripe::new(&config),
+        telnyx: config.telnyx.as_ref().map(Telnyx::new),
         cloudflare: Cloudflare::new(&config)?,
         mailer: Emailer::connect(config.email).await?,
     });
@@ -135,9 +138,9 @@ async fn redirect_secondary_hosts(req: Request, next: Next) -> Response {
     let host = host.map(|host| host.split(':').next().unwrap());
 
     // * Serve hostless requests as-is
-    // * Exempt stripe webhooks, which don't support redirects
+    // * Exempt webhooks, which don't follow redirects
     let canonical_host = host.is_none_or(|host| host == config().app.domain);
-    if canonical_host || req.uri().path() == "/webhooks/stripe" {
+    if canonical_host || req.uri().path().starts_with("/webhooks/") {
         return next.run(req).await;
     }
 
