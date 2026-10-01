@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# Runs the same checks as .github/workflows/test.yaml, so CI failures show up
+# before you push rather than after. Opt in with:
+#
+#     git config core.hooksPath scripts/hooks
+#
+# Skip it for a one-off commit with `git commit --no-verify`.
+
+PATH=~/.cargo/bin:$PATH
+
+fail() {
+    echo "$1"
+    exit 1
+}
+
+git diff --quiet ||
+    fail "You have unstaged changes. Please stage, discard, or stash them before committing."
+
+cargo sqlx prepare --check ||
+    fail "SQLx metadata is out of date. Run 'cargo sqlx prepare' and try committing again."
+
+rustup run nightly cargo fmt --all --check ||
+    fail "Formatting check failed. Run 'rustup run nightly cargo fmt --all' and try committing again."
+
+cargo clippy --all-features -- -D warnings ||
+    fail "Clippy failed. Fix the warnings and try committing again."

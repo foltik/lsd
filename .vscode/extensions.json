@@ -2,7 +2,6 @@
     "recommendations": [
         "bradlc.vscode-tailwindcss",
         "rust-lang.rust-analyzer",
-        "esbenp.prettier-vscode",
         "samuelcolvin.jinjahtml",
         "dotenv.dotenv-vscode",
         "tamasfe.even-better-toml"

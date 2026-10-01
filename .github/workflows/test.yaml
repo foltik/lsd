@@ -2,6 +2,8 @@ name: Test
 on:
   pull_request:
 
+# These jobs mirror scripts/hooks/pre-commit. Keep the two in sync.
+
 jobs:
   test:
     name: Test
@@ -16,6 +18,21 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test
 
+  sqlx:
+    name: SQLx
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: sqlite://db.sqlite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install sqlx-cli --no-default-features --features sqlite
+      - run: cargo sqlx database setup
+      - run: cargo sqlx prepare --check
+
   rustfmt:
     name: Format
     runs-on: ubuntu-22.04
@@ -25,10 +42,11 @@ jobs:
       SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Nightly, because rustfmt.toml uses unstable options.
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
-      - run: cargo fmt --check
+      - run: cargo fmt --all --check
 
   clippy:
     name: Lint
@@ -43,7 +61,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --all-features -- -D warnings
 
   coauthors:
     name: Check for AI commits
