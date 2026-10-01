@@ -35,6 +35,9 @@ webhook_key = "$STRIPE_WEBHOOK_KEY"
 api_key = "$TELNYX_API_KEY"
 public_key = "$TELNYX_PUBLIC_KEY"
 
+[ses]
+webhook_secret = "$SES_WEBHOOK_SECRET"
+
 [cloudflare]
 turnstile_site_key = "$CF_TURNSTILE_SITE_KEY"
 turnstile_secret_key = "$CF_TURNSTILE_SECRET_KEY"

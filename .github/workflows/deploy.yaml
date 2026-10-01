@@ -46,6 +46,7 @@ jobs:
           STRIPE_WEBHOOK_KEY: ${{ secrets.STRIPE_WEBHOOK_KEY }}
           TELNYX_API_KEY: ${{ secrets.TELNYX_API_KEY }}
           TELNYX_PUBLIC_KEY: ${{ secrets.TELNYX_PUBLIC_KEY }}
+          SES_WEBHOOK_SECRET: ${{ secrets.SES_WEBHOOK_SECRET }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_CONTACT_TO: ${{ secrets.EMAIL_CONTACT_TO }}
           EMAIL_NEWSLETTER_REPLY_TO: ${{ secrets.EMAIL_NEWSLETTER_REPLY_TO }}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE emails SET delivered_at = ?\n               WHERE token = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "678631d114bfd7af35559780914e4723f2d417344ca5aeea9e827eaf586efc43"
+}

@@ -285,7 +285,7 @@ mod send {
             let reply_to = state.config.email.newsletter_reply_to.as_ref().unwrap_or(from);
             let message = state
                 .mailer
-                .builder()
+                .builder(&email_template.email_token)
                 .to(address.parse().unwrap())
                 .reply_to(reply_to.clone())
                 .subject(&post.title)

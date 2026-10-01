@@ -18,6 +18,7 @@ pub struct Email {
     pub error: Option<String>,
     pub created_at: NaiveDateTime,
     pub sent_at: Option<NaiveDateTime>,
+    pub delivered_at: Option<NaiveDateTime>,
     pub opened_at: Option<NaiveDateTime>,
 }
 
@@ -386,6 +387,19 @@ impl Email {
                WHERE id = ?"#,
             error,
             id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    /// Mark an email as delivered to the recipient's mail server, looked up by its token.
+    pub async fn mark_delivered_by_token(db: &Db, token: &str, delivered_at: NaiveDateTime) -> Result<()> {
+        sqlx::query!(
+            r#"UPDATE emails SET delivered_at = ?
+               WHERE token = ?"#,
+            delivered_at,
+            token
         )
         .execute(db)
         .await?;

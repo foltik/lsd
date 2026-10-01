@@ -64,13 +64,18 @@
         "type_info": "Datetime"
       },
       {
-        "name": "opened_at",
+        "name": "delivered_at",
         "ordinal": 12,
         "type_info": "Datetime"
       },
       {
-        "name": "address",
+        "name": "opened_at",
         "ordinal": 13,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "address",
+        "ordinal": 14,
         "type_info": "Text"
       }
     ],
@@ -89,6 +94,7 @@
       true,
       true,
       false,
+      true,
       true,
       true,
       false
