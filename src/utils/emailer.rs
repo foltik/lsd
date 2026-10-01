@@ -1,10 +1,16 @@
 use lettre::message::header::{Header, HeaderName, HeaderValue};
 use lettre::message::{Mailbox, MessageBuilder};
+use lettre::transport::smtp::PoolConfig;
 use lettre::transport::smtp::authentication::Credentials;
-use lettre::{Message, SmtpTransport, Transport};
+use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
 use crate::EmailConfig;
 use crate::prelude::*;
+
+/// SMTP reply code from SES when we exceed our max send rate.
+const THROTTLED_STATUS_CODE: u16 = 454;
+const THROTTLE_RETRIES: u32 = 3;
+const THROTTLE_BACKOFF: Duration = Duration::from_secs(1);
 
 /// Email client.
 #[derive(Clone)]
@@ -12,9 +18,9 @@ pub struct Emailer {
     /// Mailbox to send email from.
     from: Mailbox,
     /// Underlying SMTPS transport.
-    transport: SmtpTransport,
-    /// Batch size for bulk email sending.
-    batch_size: usize,
+    transport: AsyncSmtpTransport<Tokio1Executor>,
+    /// Max emails per second for bulk sending.
+    ratelimit: usize,
 }
 
 impl Emailer {
@@ -22,14 +28,14 @@ impl Emailer {
         // `lettre` requires a default provider to be installed to use SMTPS.
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 
-        let mut transport = SmtpTransport::from_url(&config.smtp_addr)?;
+        let mut transport = AsyncSmtpTransport::<Tokio1Executor>::from_url(&config.smtp_addr)?
+            .pool_config(PoolConfig::new().max_size(config.ratelimit as u32));
         if let (Some(username), Some(password)) = (config.smtp_username, config.smtp_password) {
             transport = transport.credentials(Credentials::new(username, password));
         }
         let transport = transport.build();
-        let batch_size = config.ratelimit;
 
-        Ok(Self { transport, from: config.from, batch_size })
+        Ok(Self { transport, from: config.from, ratelimit: config.ratelimit })
     }
 
     pub fn builder(&self, email_token: &str) -> MessageBuilder {
@@ -39,29 +45,50 @@ impl Emailer {
     }
 
     pub async fn send(&self, message: &Message) -> Result<()> {
-        self.transport.send(message)?;
-        Ok(())
+        let mut retries = 0;
+        loop {
+            match self.transport.send(message.clone()).await {
+                Err(e)
+                    if e.status().map(u16::from) == Some(THROTTLED_STATUS_CODE)
+                        && retries < THROTTLE_RETRIES =>
+                {
+                    let backoff = THROTTLE_BACKOFF * 2u32.pow(retries);
+                    tracing::warn!("SES: throttled; retrying in {backoff:?}: {e}");
+                    tokio::time::sleep(backoff).await;
+                    retries += 1;
+                }
+                result => {
+                    result?;
+                    return Ok(());
+                }
+            }
+        }
     }
 
     pub async fn send_batch(
         &self, state: SharedAppState, messages: Vec<Message>,
     ) -> impl Stream<Item = Result<Progress>> + use<> {
-        async_stream::stream! {
-            let mut progress = Progress { sent: 0, remaining: messages.len() as u32 };
+        let interval = Duration::from_secs_f64(1.0 / self.ratelimit as f64);
+        let start = tokio::time::Instant::now();
+        let total = messages.len() as u32;
 
-            for batch in messages.chunks(state.mailer.batch_size) {
-                for message in batch {
-                    let result = state.mailer.send(message).await;
-                    progress.sent += 1;
-                    progress.remaining -= 1;
-
-                    yield result.map(|_| progress);
-
-                    tokio::time::sleep(Duration::from_millis(20)).await;
+        futures::stream::iter(messages.into_iter().enumerate())
+            .map(move |(i, message)| {
+                let state = Arc::clone(&state);
+                async move {
+                    // Pace by start time to factor out SMTP send latency
+                    tokio::time::sleep_until(start + interval * i as u32).await;
+                    state.mailer.send(&message).await
                 }
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-        }
+            })
+            // Buffer at most `ratelimit` concurrent SMTP connections,
+            // allowing for up to 1 second of latency per send.
+            .buffered(self.ratelimit)
+            .enumerate()
+            .map(move |(i, result)| {
+                let sent = i as u32 + 1;
+                result.map(|_| Progress { sent, remaining: total - sent })
+            })
     }
 }
 
