@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT e.*, u.email as address FROM emails e\n            JOIN users u ON u.id = e.user_id\n            WHERE e.post_id = ? AND e.list_id = ?\n                AND ifnull(e.sent_at, '') = (\n                    SELECT ifnull(MAX(ee.sent_at), '')\n                    FROM emails ee\n                    WHERE ee.user_id = e.user_id\n                    AND ee.post_id = e.post_id\n                    AND ee.list_id = e.list_id\n                );\n            ",
+  "query": "\n             INSERT INTO emails (token, kind, user_id, user_version, event_id, list_id)\n                 SELECT lower(hex(randomblob(8))), ?, u.id, uh.version, ?, ?\n                 FROM list_members lm\n                 JOIN users u ON u.id = lm.user_id\n                 JOIN user_history uh ON uh.user_id = u.id\n                   AND uh.version = (SELECT MAX(version) FROM user_history WHERE user_id = u.id)\n                 WHERE lm.list_id = ?\n                   AND NOT EXISTS (\n                       SELECT 1\n                       FROM emails ee\n                       WHERE ee.kind = ?\n                         AND ee.user_id = u.id\n                         AND ee.event_id = ?\n                         AND ee.error IS NULL\n                   )\n             RETURNING *, (\n                SELECT u.email FROM users u\n                WHERE u.id = emails.user_id\n             ) AS address\n             ",
   "describe": {
     "columns": [
       {
@@ -80,7 +80,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 6
     },
     "nullable": [
       false,
@@ -100,5 +100,5 @@
       false
     ]
   },
-  "hash": "0079d311c158604a615f7d20696a118a027496b922994398814e35fb827f145b"
+  "hash": "675aed27fd3582634116cd149cdd606a604d69587565f9225347be713f47f752"
 }
