@@ -21,7 +21,7 @@ prod = true
 smtp_addr = "smtp://email-smtp.us-east-1.amazonaws.com?tls=required"
 smtp_username = "$SMTP_USERNAME"
 smtp_password = "$SMTP_PASSWORD"
-ratelimit = 10
+ratelimit = 30
 from = "Light and Sound Design <$EMAIL_FROM>"
 newsletter_reply_to = "$EMAIL_NEWSLETTER_REPLY_TO"
 contact_to = "$EMAIL_CONTACT_TO"
