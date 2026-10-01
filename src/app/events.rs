@@ -620,7 +620,7 @@ mod edit {
             let reply_to = config().email.contact_to.as_ref().unwrap_or(from);
             let message = state
                 .mailer
-                .builder()
+                .builder(&email_template.email_token)
                 .to(address.parse().unwrap())
                 .reply_to(reply_to.clone())
                 .subject(event.invite_subject.as_deref().expect("missing invite_subject"))
@@ -2791,7 +2791,7 @@ pub mod email {
 
         let message = state
             .mailer
-            .builder()
+            .builder(email_token)
             .to(address.parse().unwrap())
             .reply_to(reply_to.clone())
             .subject(subject)
@@ -2853,7 +2853,7 @@ pub mod email {
         let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
         let message = state
             .mailer
-            .builder()
+            .builder(email_token)
             .to(address.parse().unwrap())
             .reply_to(reply_to.clone())
             .subject(subject)

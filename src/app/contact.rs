@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use axum::extract::ConnectInfo;
+use lettre::Message;
 use lettre::message::Mailbox;
 
 use crate::prelude::*;
@@ -62,7 +63,7 @@ async fn contact_form(
         None => None,
     };
 
-    let mut message = state.mailer.builder().to(to.unwrap_or(from)).subject(subject);
+    let mut message = Message::builder().from(from.clone()).to(to.unwrap_or(from)).subject(subject);
     if let Some(reply_to) = reply_to {
         message = message.reply_to(reply_to);
     }

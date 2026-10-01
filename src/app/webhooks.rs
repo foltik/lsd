@@ -6,6 +6,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
     router.public_routes(|r| {
         r.route("/webhooks/stripe", post(stripe::webhook))
          .route("/webhooks/telnyx", post(telnyx::webhook))
+         .route("/webhooks/ses", post(ses::webhook))
     })
 }
 
@@ -296,5 +297,202 @@ pub mod telnyx {
         tracing::info!("Telnyx[message.received]: from={from} to={to}");
 
         telnyx.send_sms(to, from, REPLY).await
+    }
+}
+
+pub mod ses {
+    use super::*;
+    use crate::db::list::List;
+
+    #[derive(serde::Deserialize)]
+    pub struct WebhookQuery {
+        secret: String,
+    }
+
+    #[derive(serde::Deserialize)]
+    #[serde(tag = "Type")]
+    enum SnsMessage {
+        SubscriptionConfirmation {
+            #[serde(rename = "SubscribeURL")]
+            subscribe_url: String,
+        },
+        UnsubscribeConfirmation {
+            #[serde(rename = "TopicArn")]
+            topic_arn: String,
+        },
+        Notification {
+            #[serde(rename = "Message")]
+            message: String,
+        },
+    }
+
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Event {
+        event_type: String,
+        mail: Mail,
+        delivery: Option<Delivery>,
+        reject: Option<Reject>,
+        bounce: Option<Bounce>,
+        complaint: Option<Complaint>,
+        delivery_delay: Option<DeliveryDelay>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Mail {
+        tags: HashMap<String, Vec<String>>,
+        destination: Vec<String>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Delivery {
+        timestamp: chrono::DateTime<Utc>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Reject {
+        reason: String,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Bounce {
+        bounce_type: String,
+        bounce_sub_type: String,
+        bounced_recipients: Vec<Recipient>,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Complaint {
+        complaint_feedback_type: Option<String>,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct DeliveryDelay {
+        delay_type: String,
+        delayed_recipients: Vec<Recipient>,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Recipient {
+        diagnostic_code: Option<String>,
+    }
+    fn recipient_diagnostics(recipients: Vec<Recipient>) -> Vec<String> {
+        recipients.into_iter().filter_map(|r| r.diagnostic_code).collect()
+    }
+
+    pub async fn webhook(
+        State(state): State<SharedAppState>, Query(query): Query<WebhookQuery>, body: String,
+    ) -> JsonResult<()> {
+        let Some(ses) = &state.config.ses else {
+            bail_not_found!();
+        };
+        if query.secret != ses.webhook_secret {
+            crate::bail_unauthorized!();
+        }
+
+        match serde_json::from_str(&body).map_err(|_| invalid())? {
+            SnsMessage::SubscriptionConfirmation { subscribe_url } => {
+                alert!("SES: Confirm subscription at {subscribe_url}")
+            }
+            SnsMessage::UnsubscribeConfirmation { topic_arn } => {
+                alert!("SES: Subscription to topic={topic_arn} was removed")
+            }
+            SnsMessage::Notification { message } => {
+                let event: Event = serde_json::from_str(&message).map_err(|_| invalid())?;
+                on_event(state, event).await?
+            }
+        }
+
+        Ok(Json(()))
+    }
+
+    async fn on_event(state: SharedAppState, event: Event) -> Result<()> {
+        let to = event.mail.destination.join(",");
+        let token = event.mail.tags.get("token").and_then(|t| t.first());
+
+        match event.event_type.as_str() {
+            "Delivery" => {
+                let delivery = event.delivery.unwrap();
+                if let Some(token) = token {
+                    Email::mark_delivered_by_token(&state.db, token, delivery.timestamp.naive_utc()).await?
+                }
+            }
+            "Reject" => {
+                let reject = event.reject.unwrap();
+                alert!("SES[Reject]: to={to} token={token:?} reason={}", reject.reason)
+            }
+            "Bounce" => {
+                let bounce = event.bounce.unwrap();
+                let detail = format!(
+                    "bounce={}/{} diagnostics={:?}",
+                    bounce.bounce_type,
+                    bounce.bounce_sub_type,
+                    recipient_diagnostics(bounce.bounced_recipients)
+                );
+                match bounce.bounce_type.as_str() {
+                    "Permanent" => on_undeliverable(&state, token, &to, &detail).await?,
+                    _ => tracing::info!("SES[Bounce]: to={to} {detail}"),
+                }
+            }
+            "Complaint" => {
+                let complaint = event.complaint.unwrap();
+                let feedback_type = complaint.complaint_feedback_type.as_deref().unwrap_or("<unknown>");
+                on_undeliverable(&state, token, &to, &format!("complaint={feedback_type}")).await?
+            }
+            "DeliveryDelay" => {
+                let delay = event.delivery_delay.unwrap();
+                alert!(
+                    "SES[DeliveryDelay]: to={to} delay={} diagnostics={:?}",
+                    delay.delay_type,
+                    recipient_diagnostics(delay.delayed_recipients)
+                )
+            }
+            ty => tracing::info!("SES: unhandled event of type={ty:?} to={to}"),
+        }
+
+        Ok(())
+    }
+
+    async fn on_undeliverable(
+        state: &SharedAppState, token: Option<&String>, to: &str, detail: &str,
+    ) -> Result<()> {
+        let email = match token {
+            Some(token) => Email::lookup_by_token(&state.db, token).await?,
+            None => None,
+        };
+        let Some(email) = email else {
+            alert!("SES[Undeliverable]: untracked email to={to}: {detail}");
+            return Ok(());
+        };
+
+        match email.kind.as_str() {
+            Email::POST => {
+                let list_id = email.list_id.unwrap();
+                List::remove_member(&state.db, list_id, email.user_id).await?;
+                alert!(
+                    "SES[Undeliverable]: removed user_id={} from list_id={list_id} via email_id={}: {detail}",
+                    email.user_id,
+                    email.id
+                );
+            }
+            Email::EVENT_INVITE | Email::EVENT_CONFIRMATION | Email::EVENT_DAYOF => {
+                let event_id = email.event_id.unwrap();
+                let event = crate::db::event::Event::lookup_by_id(&state.db, event_id).await?;
+                let slug = event.as_ref().map_or("<deleted>", |e| e.slug.as_str());
+                alert!(
+                    "SES[Undeliverable]: {} email to={} for event_id={event_id} event_slug={slug} via email_id={}: {detail}",
+                    email.kind,
+                    email.address,
+                    email.id,
+                )
+            }
+            Email::LOGIN => {
+                alert!("SES[Undeliverable]: login email to={}: {detail}", email.address)
+            }
+            kind => alert!(
+                "SES[Undeliverable]: {kind} to={} via email_id={}: {detail}",
+                email.address,
+                email.id,
+            ),
+        }
+
+        Ok(())
     }
 }

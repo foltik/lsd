@@ -104,7 +104,7 @@ async fn login_form(State(state): State<SharedAppState>, Form(form): Form<LoginF
 
         let msg = state
             .mailer
-            .builder()
+            .builder(&email_token)
             .header(ContentType::TEXT_HTML)
             .to(form.email)
             .subject(format!("Login to {domain}"))

@@ -1,3 +1,4 @@
+use lettre::message::header::{Header, HeaderName, HeaderValue};
 use lettre::message::{Mailbox, MessageBuilder};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
@@ -31,8 +32,10 @@ impl Emailer {
         Ok(Self { transport, from: config.from, batch_size })
     }
 
-    pub fn builder(&self) -> MessageBuilder {
-        Message::builder().from(self.from.clone())
+    pub fn builder(&self, email_token: &str) -> MessageBuilder {
+        Message::builder()
+            .from(self.from.clone())
+            .header(SesMessageTags(format!("token={email_token}")))
     }
 
     pub async fn send(&self, message: &Message) -> Result<()> {
@@ -66,4 +69,19 @@ impl Emailer {
 pub struct Progress {
     pub sent: u32,
     pub remaining: u32,
+}
+
+/// SES specific header which is echoed back in events and stripped before delivery.
+#[derive(Clone)]
+struct SesMessageTags(String);
+impl Header for SesMessageTags {
+    fn name() -> HeaderName {
+        HeaderName::new_from_ascii_str("X-SES-MESSAGE-TAGS")
+    }
+    fn parse(s: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self(s.to_owned()))
+    }
+    fn display(&self) -> HeaderValue {
+        HeaderValue::new(Self::name(), self.0.clone())
+    }
 }

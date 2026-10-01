@@ -38,6 +38,7 @@ pub struct Config {
     pub email: EmailConfig,
     pub stripe: StripeConfig,
     pub telnyx: Option<TelnyxConfig>,
+    pub ses: Option<SesConfig>,
     pub cloudflare: CloudflareConfig,
     pub alerts: Option<AlertsConfig>,
 }
@@ -119,6 +120,11 @@ pub struct StripeConfig {
 pub struct TelnyxConfig {
     pub api_key: String,
     pub public_key: String,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct SesConfig {
+    pub webhook_secret: String,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
