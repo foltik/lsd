@@ -555,6 +555,7 @@ mod edit {
                                   AND e.user_id = u.id
                                   AND e.event_id = ?
                                   AND e.sent_at IS NOT NULL
+                                  AND e.error IS NULL
                             )
                             THEN 1 ELSE 0 END
                         ) AS sent

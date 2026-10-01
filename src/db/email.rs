@@ -73,13 +73,14 @@ impl Email {
             r#"
             SELECT e.*, u.email as address FROM emails e
             JOIN users u ON u.id = e.user_id
-            WHERE e.post_id = ? AND e.list_id = ?
+            WHERE e.post_id = ? AND e.list_id = ? AND e.error IS NULL
                 AND ifnull(e.sent_at, '') = (
                     SELECT ifnull(MAX(ee.sent_at), '')
                     FROM emails ee
                     WHERE ee.user_id = e.user_id
                     AND ee.post_id = e.post_id
                     AND ee.list_id = e.list_id
+                    AND ee.error IS NULL
                 );
             "#,
             post_id,
@@ -104,6 +105,7 @@ impl Email {
                        WHERE ee.user_id = u.id
                          AND ee.post_id = ?
                          AND ee.list_id = lm.list_id
+                         AND ee.error IS NULL
                    )
              RETURNING *, (
                 SELECT u.email FROM users u
@@ -132,7 +134,7 @@ impl Email {
             r#"
             SELECT e.*, u.email as address FROM emails e
             JOIN users u ON u.id = e.user_id
-            WHERE e.kind = ? AND e.event_id = ?
+            WHERE e.kind = ? AND e.event_id = ? AND e.error IS NULL
                 AND e.user_id IN (SELECT lm.user_id FROM list_members lm WHERE lm.list_id = ?)
                 AND ifnull(e.sent_at, '') = (
                     SELECT ifnull(MAX(ee.sent_at), '')
@@ -140,6 +142,7 @@ impl Email {
                     WHERE ee.kind = e.kind
                     AND ee.user_id = e.user_id
                     AND ee.event_id = e.event_id
+                    AND ee.error IS NULL
                 );
             "#,
             Email::EVENT_INVITE,
@@ -165,6 +168,7 @@ impl Email {
                        WHERE ee.kind = ?
                          AND ee.user_id = u.id
                          AND ee.event_id = ?
+                         AND ee.error IS NULL
                    )
              RETURNING *, (
                 SELECT u.email FROM users u

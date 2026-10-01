@@ -213,6 +213,7 @@ mod send {
                           AND e.list_id = l.id
                           AND e.post_id = ?
                           AND e.sent_at IS NOT NULL
+                          AND e.error IS NULL
                     )
                     THEN 1 ELSE 0 END
                 ) AS sent
