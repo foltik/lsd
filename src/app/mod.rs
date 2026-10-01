@@ -14,6 +14,7 @@ mod auth;
 mod contact;
 mod coupons;
 mod emails;
+mod ethics;
 mod events;
 mod frontend;
 mod gallery;
@@ -58,6 +59,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = emails::add_routes(r);
     let r = webhooks::add_routes(r);
     let r = contact::add_routes(r);
+    let r = ethics::add_routes(r);
     let r = frontend::add_routes(r);
     let (r, state) = r.finish();
 

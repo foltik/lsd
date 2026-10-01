@@ -1,0 +1,188 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  Ethics/Accountability Committee - L&amp;SD
+{% endblock title %}
+
+{% block head %}
+  <style>
+    .tip {
+      position: relative;
+      cursor: help;
+      border-bottom: 1px dotted currentColor;
+      text-decoration: none;
+    }
+    .tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      left: 50%;
+      z-index: 10;
+      width: max-content;
+      max-width: 20rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid rgb(from var(--color-lsd-white) r g b / 0.2);
+      background: var(--color-lsd-charcoal);
+      color: var(--color-lsd-white);
+      font-size: 0.75rem;
+      white-space: normal;
+      transform: translateX(-50%);
+      visibility: hidden;
+    }
+    .tip:hover::after,
+    .tip:focus-visible::after {
+      visibility: visible;
+    }
+  </style>
+{% endblock head %}
+
+{% block content %}
+  <section class="ext/layout standard">
+    <header>
+      <h1>Ethics/Accountability Committee</h1>
+    </header>
+
+    <p class="mb-6">
+      A completely external board. It advises L&amp;SD's
+      <abbr
+        class="tip"
+        tabindex="0"
+        data-tip="&quot;Role leads&quot; and &quot;circle&quot; are Holacracy terms: they refer to anyone that holds a role at the studio (aka &quot;the circle&quot;)."
+        >role-leads</abbr
+      >
+      on ethical issues, community standards, and accountabilities at
+      large.
+    </p>
+
+    <h2 class="border-lsd-white/20 mb-3 border-b pb-2 text-xl">The Role</h2>
+    <p class="mb-3">
+      Purpose: keep L&amp;SD's events safe, maintain clear community
+      standards of conduct, and ensure that all accountabilities are being
+      met.
+    </p>
+    <ul class="mb-3 list-disc pl-5">
+      <li class="mb-2">
+        Internally: Serve as a sounding board for all role-holders on any
+        and all ethical/accountability questions or issues, and provide
+        feedback to the circle via regular meetings.
+      </li>
+      <li class="mb-2">
+        Externally: All suggestions/concerns/feedback L&amp;SD receives
+        from its anonymous feedback form are reviewed by the committee and
+        provided to the circle for discussion and deliberation.
+      </li>
+    </ul>
+    <p class="mb-6">
+      First projects will include developing the studio's disciplinary
+      guidelines, code of conduct, and mediation process.
+    </p>
+
+    <h2 class="border-lsd-white/20 mb-3 border-b pb-2 text-xl">Who can run</h2>
+    <p class="mb-6">
+      You may put your own name forward if you do not currently fill any
+      role at L&amp;SD.
+    </p>
+
+    <h2 class="border-lsd-white/20 mb-3 border-b pb-2 text-xl">How seats are filled</h2>
+    <p class="mb-3">
+      The committee will hold 7 seats, and will be elected by the
+      circle's role-leads. The secretary opens the call by email to all@
+      and a post at the studio. The call stays open.
+    </p>
+    <ol class="mb-6 list-decimal pl-5">
+      <li class="mb-2">
+        Eligible candidates nominate themselves to the committee via the
+        form below. The deadline for the first round of nominations is
+        10/15/2026, but the call will remain open thereafter on a rolling
+        basis.
+      </li>
+      <li class="mb-2">
+        Election Process: Each core member ranks up to seven names on that
+        list. Rankings are written and revealed together.
+      </li>
+      <li class="mb-2">
+        The
+        <abbr
+          class="tip"
+          tabindex="0"
+          data-tip="The facilitator is the person who leads the election process. They are not a member of the committee, but are responsible for ensuring the process is fair and transparent."
+          >facilitator</abbr
+        >
+        proposes the seven names with the most points, and breaks a tie.
+        If fewer than seven people ran, those people are the proposal and
+        the remaining seats stay empty.
+      </li>
+      <li class="mb-2">
+        The circle objects or not, one name at a time. A valid objection
+        drops that name. The next person in ranking order moves up.
+      </li>
+      <li class="mb-2">
+        Once seven members have been ranked, the secretary asks each
+        candidate to confirm their seat. A no, or no reply, drops them,
+        and the next name moves up. A yes fills the seat.
+      </li>
+    </ol>
+
+    <h2 class="border-lsd-white/20 mb-3 border-b pb-2 text-xl">Term Limits</h2>
+    <p class="mb-3">
+      A person may serve two six-month terms, then sits out a term. If you
+      are out for a period and have an alternate step in, the alternate's
+      time does not count towards your term limit.
+    </p>
+    <p class="mb-3">
+      At the end of each six-month term, the role holders will hold
+      another election. Any committee members that want to remain for a
+      second term will let the committee know before the election.
+    </p>
+    <p class="mb-6">Anyone can leave the committee at any time.</p>
+
+    <h2 class="border-lsd-white/20 mb-3 border-b pb-2 text-xl">Expectations</h2>
+    <p class="mb-3">
+      There may be urgent issues that require the committee to meet more
+      frequently. In that case, the committee will meet as needed.
+    </p>
+    <p class="mb-3">
+      The committee will otherwise meet once a month. If necessary, the
+      committee will hold a call or in-person meeting with the role-leads
+      to discuss any issues or concerns.
+    </p>
+    <p class="mb-6">
+      The committee will self-govern, and will be able to propose changes
+      to the scope of its responsibilities via L&amp;SD's governance
+      process.
+    </p>
+
+    <h2 class="border-lsd-white/20 mb-3 border-b pb-2 text-xl">Self-nominate</h2>
+
+    <form class="ext/form" method="post">
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" autocomplete="name" required />
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required />
+      </div>
+      <div class="field :important">
+        <label for="website">Website</label>
+        <input
+          type="text"
+          id="website"
+          name="website"
+          tabindex="-1"
+          autocomplete="off"
+        />
+      </div>
+      <div class="field">
+        <label for="statement">Statement</label>
+        <p class="mb-2 text-sm italic">
+          The more information you provide, the better.
+        </p>
+        <textarea id="statement" name="statement" rows="6" required></textarea>
+      </div>
+
+      <button type="submit" class="ext/button">Send</button>
+    </form>
+  </section>
+{% endblock content %}
+
