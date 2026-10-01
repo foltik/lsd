@@ -13,6 +13,7 @@ askama_web = { version = "0.13", features = ["axum-0.8"] }
 cookie = "0.18"
 lettre = { version = "0.11", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1", "tokio1-rustls-tls", "serde"] }
 rustls = "0.23"
+ring = { version = "0.17", default-features = false }
 rustls-acme = { version = "0.12", features = ["axum"] }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "chrono"] }
 tokio = { version = "1", features = ["rt-multi-thread", "fs", "net", "sync", "macros"] }
