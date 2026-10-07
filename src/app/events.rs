@@ -89,9 +89,12 @@ mod read {
         }
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-        let reserved = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let user_rsvps = []; // No need to count user limits, they'd see the Manage page link anyways
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let full = reserved.len() as i64 + manual_count >= event.capacity;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let full = limits.total_limit == 0;
         Ok(Html { session, user, event, flyer, full }.into_response())
     }
 
@@ -1370,9 +1373,12 @@ mod rsvp {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
-        let reserved = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+        let user_rsvps = []; // No need to count user limits, they'd be redirected anyways
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        if reserved.len() as i64 + manual_count >= event.capacity {
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
 
