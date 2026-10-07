@@ -438,7 +438,7 @@ pub mod ses {
             }
             "DeliveryDelay" => {
                 let delay = event.delivery_delay.unwrap();
-                alert!(
+                tracing::debug!(
                     "SES[DeliveryDelay]: to={to} delay={} diagnostics={:?}",
                     delay.delay_type,
                     recipient_diagnostics(delay.delayed_recipients)
