@@ -1482,7 +1482,8 @@ mod rsvp {
         }
 
         let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
+        let user_rsvps =
+            Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id)).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
@@ -1539,7 +1540,8 @@ mod rsvp {
 
         // Verify limits
         let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
+        let user_rsvps =
+            Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id)).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
@@ -1684,7 +1686,9 @@ mod rsvp {
         // Verify limits in case of preemption since `selection_form()` submission.
         // Once we transition to CONTRIBUTION, our rsvps spots are held.
         let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
-        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, our_session.user_id).await?;
+        let user_rsvps =
+            Rsvp::list_user_reserved_for_event(&state.db, &event, our_session.user_id, Some(our_session.id))
+                .await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {
@@ -2116,7 +2120,8 @@ mod rsvp {
         let can_add_guests = if event.registration_open() {
             let spots = Spot::list_for_event(&state.db, event.id).await?;
             let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-            let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id).await?;
+            let user_rsvps =
+                Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, None).await?;
             let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
             let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
             limits.total_limit > 0
@@ -2172,7 +2177,7 @@ mod rsvp {
         // Check capacity
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, parent.user_id).await?;
+        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, parent.user_id, None).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
         let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
         if limits.total_limit == 0 {

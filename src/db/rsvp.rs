@@ -366,10 +366,10 @@ impl Rsvp {
         .await?)
     }
 
-    /// List the user's reserved RSVPs for an event across all their sessions (for per-person limits).
-    /// Only includes rsvps from sessions at CONTRIBUTION status or later.
+    /// List the user's confirmed RSVPs for an event across all their sessions.
+    /// If currently in a session, excludes any RSVPs which have already been counted against limits.
     pub async fn list_user_reserved_for_event(
-        db: &Db, event: &Event, user_id: Option<i64>,
+        db: &Db, event: &Event, user_id: Option<i64>, current_session_id: Option<i64>,
     ) -> Result<Vec<EventRsvp>> {
         let Some(user_id) = user_id else { return Ok(vec![]) };
         Ok(sqlx::query_as!(
@@ -378,9 +378,12 @@ impl Rsvp {
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
+               AND (? IS NULL OR rs.id != ?)
                AND rs.status IN (?, ?, ?)",
             event.id,
             user_id,
+            current_session_id,
+            current_session_id,
             RsvpSession::CONTRIBUTION,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
