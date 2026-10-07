@@ -94,11 +94,11 @@ pub enum AppError {
     NotFound(Backtrace),
     Unauthorized(Backtrace),
     Invalid(Backtrace),
-    BadRequest(&'static str, Backtrace),
+    BadRequest(String, Backtrace),
 }
 
 impl AppError {
-    pub fn message(&self) -> &'static str {
+    pub fn message(&self) -> &str {
         match self {
             AppError::NotFound { .. } => "Page not found.",
             AppError::Unauthorized { .. } => "Unauthorized.",
@@ -236,7 +236,7 @@ impl IntoResponse for JsonError {
             alerts::alert(e.message().into(), e.location().file(), e.location().line());
         }
 
-        let message = match self {
+        let message = match &self {
             JsonError::App(e) => e.message(),
             JsonError::Any(_) => "Internal server error.",
         };
@@ -311,13 +311,13 @@ pub fn invalid() -> AppError {
 }
 
 #[track_caller]
-pub fn bad_request(message: &'static str) -> AppError {
-    AppError::BadRequest(message, Backtrace::new())
+pub fn bad_request(message: impl Into<String>) -> AppError {
+    AppError::BadRequest(message.into(), Backtrace::new())
 }
 #[macro_export]
 macro_rules! bail_bad_request {
-    ( $msg:expr ) => {
-        return Err(bad_request($msg).into())
+    ( $($arg:tt)* ) => {
+        return Err(bad_request(format!($($arg)*)).into())
     };
 }
 pub use bail_bad_request;
