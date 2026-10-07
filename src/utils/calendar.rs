@@ -35,14 +35,10 @@ impl Provider {
     }
 }
 
-/// An invitation, which mail clients add to the recipient's calendar natively.
-pub struct Invite<'a> {
-    pub organizer_name: Option<&'a str>,
-    pub organizer_email: &'a str,
-    pub attendee_name: Option<&'a str>,
-    pub attendee_email: &'a str,
-    /// Bumped when event details change, so clients update rather than duplicate.
-    pub sequence: i64,
+/// The sender of an emailed event. Must match the From address, or clients distrust the event.
+pub struct Organizer<'a> {
+    pub name: Option<&'a str>,
+    pub email: &'a str,
 }
 
 pub struct CalendarEvent {
@@ -71,17 +67,18 @@ impl CalendarEvent {
         }
     }
 
-    /// A standalone `METHOD:PUBLISH` file, for the download link.
+    /// A standalone file, for the download link.
     pub fn ics(&self) -> String {
         self.build(None)
     }
 
-    /// A `METHOD:REQUEST` invitation addressed to a specific attendee.
-    pub fn invite_ics(&self, invite: &Invite) -> String {
-        self.build(Some(invite))
+    /// Use `METHOD:PUBLISH` with no attendee since `METHOD:REQUEST` invitation causes cleints
+    /// to show RSVP-type buttons (like Yes / Propose a new time) instead of just "Add to Calendar".
+    pub fn email_ics(&self, organizer: &Organizer) -> String {
+        self.build(Some(organizer))
     }
 
-    fn build(&self, invite: Option<&Invite>) -> String {
+    fn build(&self, organizer: Option<&Organizer>) -> String {
         let dtstamp = Utc::now().naive_utc().format(COMPACT_TIME);
         let start = self.start.format(COMPACT_TIME);
         let end = self.end.format(COMPACT_TIME);
@@ -91,10 +88,7 @@ impl CalendarEvent {
             "VERSION:2.0".into(),
             "PRODID:-//Light and Sound Design//lsd//EN".into(),
             "CALSCALE:GREGORIAN".into(),
-            match invite {
-                Some(_) => "METHOD:REQUEST".into(),
-                None => "METHOD:PUBLISH".into(),
-            },
+            "METHOD:PUBLISH".into(),
             "BEGIN:VEVENT".into(),
             format!("UID:{}", escape(&self.uid)),
             format!("DTSTAMP:{dtstamp}"),
@@ -106,22 +100,12 @@ impl CalendarEvent {
             format!("URL:{}", self.url),
         ];
 
-        if let Some(invite) = invite {
-            let organizer_cn = match invite.organizer_name {
+        if let Some(organizer) = organizer {
+            let cn = match organizer.name {
                 Some(name) => format!(";CN={}", param(name)),
                 None => String::new(),
             };
-            let attendee_cn = match invite.attendee_name {
-                Some(name) => format!(";CN={}", param(name)),
-                None => String::new(),
-            };
-            // `RSVP=FALSE` stops clients mailing a `METHOD:REPLY` back to the organizer.
-            lines.push(format!("ORGANIZER{organizer_cn}:mailto:{}", invite.organizer_email));
-            lines.push(format!(
-                "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE{attendee_cn}:mailto:{}",
-                invite.attendee_email
-            ));
-            lines.push(format!("SEQUENCE:{}", invite.sequence));
+            lines.push(format!("ORGANIZER{cn}:mailto:{}", organizer.email));
         }
 
         lines.push("STATUS:CONFIRMED".into());

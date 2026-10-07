@@ -2750,17 +2750,10 @@ pub mod email {
         let from = &state.config.email.from;
         let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
 
-        // Organizer must match the From address, or clients distrust the invitation.
         let cal = calendar::CalendarEvent::from_event(event);
         let organizer_email = from.email.to_string();
-        let invite = calendar::Invite {
-            organizer_name: from.name.as_deref(),
-            organizer_email: &organizer_email,
-            attendee_name: None,
-            attendee_email: address,
-            sequence: 0,
-        };
-        let ics = cal.invite_ics(&invite);
+        let organizer = calendar::Organizer { name: from.name.as_deref(), email: &organizer_email };
+        let ics = cal.email_ics(&organizer);
 
         let tz = state.config.app.tz;
         let when = event.start.and_utc().with_timezone(&tz).format("%A, %B %-d at %-I:%M %p");
@@ -2777,7 +2770,7 @@ pub mod email {
                     .singlepart(SinglePart::html(html))
                     .singlepart(
                         SinglePart::builder()
-                            .header(ContentType::parse("text/calendar; charset=utf-8; method=REQUEST")?)
+                            .header(ContentType::parse("text/calendar; charset=utf-8; method=PUBLISH")?)
                             .header(ContentTransferEncoding::Base64)
                             .body(ics.clone()),
                     ),
@@ -2785,7 +2778,7 @@ pub mod email {
             .singlepart(
                 SinglePart::builder()
                     .header(ContentType::parse("application/ics")?)
-                    .header(ContentDisposition::attachment("invite.ics"))
+                    .header(ContentDisposition::attachment("event.ics"))
                     .header(ContentTransferEncoding::Base64)
                     .body(ics),
             );
