@@ -1,31 +1,37 @@
-INSERT OR IGNORE INTO users (id, email, first_name, last_name) VALUES
-    (1, 'admin@beta.lightandsound.design', 'Add', 'Min'),
-    (2, 'writer@beta.lightandsound.design', 'Wri', 'Ter'),
-    (3, 'user1@beta.lightandsound.design', 'User1', 'One'),
-    (4, 'user2@beta.lightandsound.design', 'User2', 'Two'),
-    (5, 'user3@beta.lightandsound.design', 'User3', 'Three');
+INSERT OR IGNORE INTO users
+    (id, email,                              first_name, last_name) VALUES
+    (1,  'admin@beta.lightandsound.design',  'Add',      'Min'),
+    (2,  'writer@beta.lightandsound.design', 'Wri',      'Ter'),
+    (3,  'user1@beta.lightandsound.design',  'User1',    'One'),
+    (4,  'user2@beta.lightandsound.design',  'User2',    'Two'),
+    (5,  'user3@beta.lightandsound.design',  'User3',    'Three');
 
 INSERT OR IGNORE INTO user_history (user_id, version, email, first_name, last_name, phone)
     SELECT id AS user_id, 0 AS version, email, first_name, last_name, phone
     FROM users;
 
-INSERT OR IGNORE INTO user_roles (user_id, role) VALUES
+INSERT OR IGNORE INTO user_roles
+    (user_id, role) VALUES
     (1, 'admin'),
     (1, 'writer'),
     (2, 'writer');
 
-INSERT OR IGNORE INTO session_tokens (user_id, token) VALUES
+INSERT OR IGNORE INTO session_tokens
+    (user_id, token) VALUES
     (1, '91acde7529be7cf7'),
     (2, '2e2a134702ce9c1c'),
     (3, '7bb038c99877731d'),
     (4, 'aa765c35ba99434b'),
     (5, 'd82952210bb78d53');
 
-INSERT OR IGNORE INTO lists (id, name, description) VALUES
-    (1, 'Newsletter', 'the Studio newsletter!'),
-    (2, 'Test Group 1', 'the Studio test group 1!'),
-    (3, 'Test Group 2', 'the Studio test group 2!');
-INSERT OR IGNORE INTO list_members (list_id, user_id) VALUES
+INSERT OR IGNORE INTO lists
+    (id, name,           description) VALUES
+    (1,  'Newsletter',   'The Studio newsletter!'),
+    (2,  'Test Group 1', 'The Studio test group 1!'),
+    (3,  'Test Group 2', 'The Studio test group 2!');
+
+INSERT OR IGNORE INTO list_members
+    (list_id, user_id) VALUES
     (1, 1),
     (1, 2),
     (1, 3),
@@ -36,25 +42,51 @@ INSERT OR IGNORE INTO list_members (list_id, user_id) VALUES
     (2, 5),
     (3, 1);
 
-INSERT OR IGNORE INTO events (id, token, kind, artist_share, title, slug, description_html, description_updated_at, start, end, capacity, unlisted) VALUES
-    (1, '00000000000000e1', 'internal', 70, 'An upcoming person will Present Sounds', 'upcoming-present-sounds', 'An upcoming person will present sounds.', '2024-01-01 00:00:00', '2027-07-31 23:00:00', '2027-08-01 03:00:00', 2, 0),
-    (4, '00000000000000e4', 'internal', 70, 'Another upcoming person will Present Sounds', 'upcoming-present-sounds-2', 'An upcoming person will present sounds.', '2024-01-01 00:00:00', '2027-08-31 23:00:00', '2027-09-01 03:00:00', 2, 0),
-    (3, '00000000000000e3', 'internal', 70, 'A past person will Present Sounds', 'past-present-sounds', 'A past person will present sounds.', '2024-01-01 00:00:00', '2024-08-14 23:00:00', '2024-08-15 03:00:00', 2, 0),
-    (2, '00000000000000e2', 'internal', 70, 'Another past person will Present Sounds', 'past-present-sounds-2', 'A past person will present sounds.', '2024-01-01 00:00:00', '2024-07-14 23:00:00', '2024-07-15 03:00:00', 2, 0);
-INSERT OR IGNORE INTO spots (id, name, description, qty_total, qty_per_person, kind, sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours) VALUES
-    (1, 'Free!', 'Brand new cherry red ferrarri!', 1, 1, 'free', 0, NULL, NULL, NULL, NULL, NULL),
-    (2, 'Accessibility Contribution', 'When I pay less, I know I am letting my community hold me and support me.', 2, 1, 'fixed', 1, 20, NULL, NULL, NULL, NULL),
-    (3, 'Standard Contribution', 'When I pay in the suggested amount, I know I am helping the organizers cover costs.', 10, 4, 'fixed', 2, 25, NULL, NULL, NULL, NULL),
-    (4, 'Sustainability Contribution', 'When I pay more, I know that I am helping others to access the event and doing my part to make sure that the studio can continue it''s accessibility model.', 10, 4, 'fixed', 3, 30, NULL, NULL, NULL, NULL),
-    (5, 'Work Trade', 'When I volunteer my time, I know that I am contributing a valuable resource to my community.', 2, 1, 'work', 4, NULL, NULL, NULL, NULL, 4),
-    (6, 'Standard Contribution', 'When I pay in the suggested amount, I know I am helping the organizers cover costs.', 10, 4, 'fixed', 2, 25, NULL, NULL, NULL, NULL);
-INSERT OR IGNORE INTO event_spots (event_id, spot_id) VALUES
-    (1, 1),
-    (1, 2),
-    (1, 3),
-    (1, 4),
-    (1, 5),
-    (2, 6);
+INSERT OR IGNORE INTO events
+    (id, token,              kind,       artist_share, title,                                         slug,                        url,                   description_html,                          description_updated_at, start,                 end,                   capacity, unlisted, guest_list_id, closed, spots_per_person) VALUES
+    (1,  '00000000000000e1', 'internal', 70,           'An upcoming person will Present Sounds',      'upcoming-present-sounds',   NULL,                  'An upcoming person will present sounds.', '2024-01-01 00:00:00',  '2030-07-31 23:00:00', '2030-08-01 03:00:00', 2,        0,        3,             0,      NULL),
+    (2,  '00000000000000e2', 'internal', 70,           'Another past person will Present Sounds',     'past-present-sounds-2',     NULL,                  'A past person will present sounds.',      '2024-01-01 00:00:00',  '2024-07-14 23:00:00', '2024-07-15 03:00:00', 2,        0,        NULL,          0,      NULL),
+    (3,  '00000000000000e3', 'internal', 70,           'A past person will Present Sounds',           'past-present-sounds',       NULL,                  'A past person will present sounds.',      '2024-01-01 00:00:00',  '2024-08-14 23:00:00', '2024-08-15 03:00:00', 2,        0,        NULL,          0,      NULL),
+    (4,  '00000000000000e4', 'internal', 70,           'Another upcoming person will Present Sounds', 'upcoming-present-sounds-2', NULL,                  'An upcoming person will present sounds.', '2024-01-01 00:00:00',  '2030-08-31 23:00:00', '2030-09-01 03:00:00', 20,       0,        NULL,          0,      NULL),
+    (5,  '00000000000000e5', 'external', 0,            'Someone elsewhere will Present Sounds',       'external-present-sounds',   'https://example.com', NULL,                                      NULL,                   '2030-07-17 20:00:00', NULL,                  0,        0,        NULL,          0,      NULL),
+    (6,  '00000000000000e6', 'internal', 70,           'A full Present Sounds',                       'closed-present-sounds',     NULL,                  'A closed person will present sounds.',    '2024-01-01 00:00:00',  '2030-10-31 23:00:00', '2030-11-01 03:00:00', 20,       0,        NULL,          1,      NULL),
+    (7,  '00000000000000e7', 'internal', 70,           'An unlisted person will Present Sounds',      'unlisted-present-sounds',   NULL,                  'An unlisted person will present sounds.', '2024-01-01 00:00:00',  '2030-11-30 23:00:00', '2030-12-01 03:00:00', 20,       1,        NULL,          0,      1);
+
+CREATE TEMP TABLE seed_spots
+    (event_id, id, name,                          description,                                                                                                                                                  qty_total, qty_per_person, kind,       sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours);
+INSERT INTO seed_spots VALUES
+    -- upcoming-present-sounds (1)
+    (1,        1,  'Free!',                       'Brand new cherry red ferrari!',                                                                                                                              1,         1,              'free',     0,    NULL,                  NULL,             NULL,             NULL,                   NULL),
+    (1,        2,  'Accessibility Contribution',  'When I pay less I know I am letting my community hold me and support me.',                                                                                   2,         1,              'fixed',    1,    20,                    NULL,             NULL,             NULL,                   NULL),
+    (1,        3,  'Standard Contribution',       'When I pay in the suggested amount I know I am helping the organizers cover costs.',                                                                         10,        4,              'fixed',    2,    25,                    NULL,             NULL,             NULL,                   NULL),
+    (1,        4,  'Sustainability Contribution', 'When I pay more I know that I am helping others to access the event and doing my part to make sure that the studio can continue it''s accessibility model.', 10,        4,              'fixed',    3,    30,                    NULL,             NULL,             NULL,                   NULL),
+    (1,        5,  'Work Trade',                  'When I volunteer my time I know that I am contributing a valuable resource to my community.',                                                                2,         1,              'work',     4,    NULL,                  NULL,             NULL,             NULL,                   4),
+    -- past-present-sounds-2 (2)
+    (2,        6,  'Standard Contribution',       'When I pay in the suggested amount I know I am helping the organizers cover costs.',                                                                         10,        4,              'fixed',    2,    25,                    NULL,             NULL,             NULL,                   NULL),
+    -- upcoming-present-sounds-2 (4)
+    (4,        7,  'Standard Contribution',       'When I pay in the suggested amount I know I am helping the organizers cover costs.',                                                                         15,        4,              'fixed',    0,    25,                    NULL,             NULL,             NULL,                   NULL),
+    (4,        8,  'Pay What You Can',            'Contribute what feels right for you.',                                                                                                                       5,         2,              'variable', 1,    NULL,                  10,               100,              30,                     NULL),
+    -- closed-present-sounds (6)
+    (6,        9,  'Standard Contribution',       'When I pay in the suggested amount I know I am helping the organizers cover costs.',                                                                         10,        4,              'fixed',    2,    25,                    NULL,             NULL,             NULL,                   NULL),
+    -- unlisted-present-sounds (7)
+    (7,        10, 'Standard Contribution',       'When I pay in the suggested amount I know I am helping the organizers cover costs.',                                                                         10,        4,              'fixed',    2,    25,                    NULL,             NULL,             NULL,                   NULL);
+INSERT OR IGNORE INTO spots (id, name, description, qty_total, qty_per_person, kind, sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours)
+    SELECT id, name, description, qty_total, qty_per_person, kind, sort, required_contribution, min_contribution, max_contribution, suggested_contribution, required_notice_hours FROM seed_spots;
+INSERT OR IGNORE INTO event_spots (event_id, spot_id)
+    SELECT event_id, id FROM seed_spots;
+DROP TABLE seed_spots;
+
+
+INSERT OR IGNORE INTO coupons
+    (id, creator_user_id, event_id, code,      description,                         expires_at,            max_uses, max_uses_per_user, max_uses_per_event, kind,      percent_off, dollars_off) VALUES
+    (1,  1,               NULL,     'TENOFF',  '$10 off any event',                 NULL,                  NULL,     NULL,              NULL,               'fixed',   NULL,        10),
+    (2,  1,               4,        'HALFOFF', '50% off the second upcoming event', NULL,                  20,       1,                 NULL,               'percent', 50,          NULL),
+    (3,  1,               NULL,     'COMP',    'One free spot',                     NULL,                  NULL,     1,                 NULL,               'spot',    NULL,        NULL),
+    (4,  1,               NULL,     'FRIEND',  'One free spot (admin user only)',   NULL,                  NULL,     1,                 NULL,               'spot',    NULL,        NULL),
+    (5,  1,               NULL,     'EXPIRED', 'Expired $10 off any event',         '2024-01-01 00:00:00', NULL,     NULL,              NULL,               'fixed',   NULL,        10);
+INSERT OR IGNORE INTO coupon_users
+    (coupon_id, user_id) VALUES
+    (4, 1);
 
 INSERT OR IGNORE INTO posts (id, title, slug, author, content) VALUES
     (1, '[4.16-4.30]', '41643025', 'LSD', '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent eu ultricies dui. Morbi sit amet vestibulum urna, eget elementum justo. In tincidunt mattis consequat. Etiam dapibus blandit ipsum, vel vehicula nibh pellentesque sed. Vivamus et luctus est. Ut at vulputate massa, a tincidunt odio. Nunc mattis aliquam felis, non gravida eros tristique eget.</p><p><br></p><p>Nunc odio lorem, vestibulum vel purus a, egestas auctor est. Fusce id ligula ac turpis mattis gravida. Fusce orci leo, pulvinar at iaculis et, efficitur ac dui. Nulla facilisi. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Aliquam rhoncus dignissim purus et varius. Donec facilisis ipsum a sapien accumsan porta. Suspendisse ultrices ac ipsum sit amet dictum. Morbi quis purus fringilla orci congue venenatis. Curabitur ex mauris, semper auctor enim ut, hendrerit vulputate erat. Pellentesque imperdiet, tortor id pharetra tempus, ante ipsum semper ligula, ac tincidunt lacus risus nec est. Proin vel arcu interdum, aliquam augue nec, feugiat velit. Aenean gravida vestibulum nulla ac rutrum. Vivamus nunc neque, egestas vitae nulla malesuada, fermentum egestas mauris. Mauris sollicitudin vehicula urna, id convallis risus vestibulum a. Pellentesque consequat interdum commodo.</p><p><br></p><p><a href="https://www.eventcreate.com/e/fieldtalk-will-present">4.17 | fieldtalk will Present Sounds</a></p><p><br></p><p><img src="https://eventcreate-v1.s3.us-west-1.amazonaws.com/uploads%2Fa6e72c8a-7be2-4859-9828-9d3cdd5a6653%2FE15FC999.jpg"></p><p><br></p><p>In auctor erat ut fermentum lacinia. Curabitur pulvinar dui magna, a euismod mi aliquet at. Duis non lectus eget est tincidunt vulputate. Nunc sit amet ante elit. Proin maximus odio nec hendrerit malesuada. Curabitur finibus ornare elit ac tempor. Curabitur scelerisque malesuada purus, tristique suscipit justo molestie at. In hac habitasse platea dictumst.</p><p><br></p><p><a href="https://www.eventcreate.com/e/zen-echo-vol-6">4.18 | Zen / Echo</a>&nbsp;</p><p><br></p><p><img src="https://eventcreate-v1.s3.us-west-1.amazonaws.com/uploads%2F4452a7b0-93b4-45e0-a929-a95aff3aa049%2Fzen04182025.jpg"></p><p><br></p><p>Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Nullam tincidunt est est, ac feugiat mi maximus sit amet. Sed nec convallis nunc. Duis hendrerit arcu at nisl bibendum tempor. Sed tincidunt venenatis odio, at lobortis dolor sagittis a. Integer in ultrices ipsum. In nec dui a dui gravida scelerisque malesuada vel nunc. Mauris eu tellus et arcu blandit ultrices.</p><p><br></p><p><a href="https://www.eventcreate.com/e/acellosbanquet">4.19 | A Cello''s Banquet</a></p><p><br></p><p><img src="https://eventcreate-v1.s3.us-west-1.amazonaws.com/uploads%2Ff0dd5d08-a56d-43f6-812f-26eacdfba398%2FA+Cello%27s+Banquet+%281%29.png"></p><p><br></p><p>Maecenas non elementum erat. Vivamus nibh arcu, auctor sit amet turpis sed, volutpat blandit lorem. Praesent eros nisl, varius et ligula sit amet, molestie rutrum ipsum. Integer tempus erat sit amet odio vehicula suscipit. Donec id purus ornare, interdum leo ac, sollicitudin quam. In hac habitasse platea dictumst. Duis nulla magna, dapibus id tellus vel, lobortis dignissim dui. Aenean vehicula, turpis ac scelerisque scelerisque, velit ex scelerisque ex, non gravida mauris mauris non magna. Etiam a facilisis purus, quis tincidunt lacus. Maecenas erat dui, volutpat non tempus non, gravida elementum libero. Nullam quis dapibus lacus, non faucibus odio. Aliquam in lorem metus.</p>'),
