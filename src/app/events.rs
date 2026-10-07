@@ -1615,6 +1615,24 @@ mod rsvp {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
+        // Preemptively check limits so user isn't rejected after filling out the whole form.
+        {
+            let spots = Spot::list_for_event(&state.db, event.id).await?;
+            let our_rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
+            let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
+            let user_rsvps =
+                Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id))
+                    .await?;
+            let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+            if limits.total_limit == 0 {
+                return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
+            }
+            if !validate::within_limits(&limits, &our_rsvps) {
+                return goto::error_spot_taken(&state.db, &state.stripe, &session).await;
+            }
+        }
+
         let is_adding_guests = session.parent_session_id.is_some();
         let attendees = Rsvp::list_for_attendees(&state.db, session.id).await?;
         let price = attendees.iter().map(|r| r.contribution).sum::<i64>();
