@@ -27,6 +27,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/e/{slug}/rsvp/manage", get(rsvp::manage_page)) // REMOVEME .post(rsvp::temp_delete))
                 .route("/e/{slug}/rsvp/add-guests", post(rsvp::add_guests_form))
                 .route("/e/{slug}/rsvp/edit", get(rsvp::edit_guests_page).post(rsvp::edit_guests_form))
+                .route("/e/{slug}/{link_slug}", get(rsvp::link_page).post(rsvp::link_form))
         })
         .restricted_routes(User::ADMIN, |r| {
             r.route("/events", get(read::list_page))
@@ -56,6 +57,10 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{id}/dayof/preview", get(edit::preview_dayof_page))
                 .route("/events/{id}/dayof/send", get(edit::send_dayof_page).post(edit::send_dayof_form))
                 .route("/events/{id}/description/edit", get(edit::edit_description_page).post(edit::edit_description_form))
+                .route("/events/{id}/links", get(links::list_page))
+                .route("/events/{id}/links/new", get(links::new_page))
+                .route("/events/{id}/links/{link_id}", get(links::edit_page).post(links::edit_form))
+                .route("/events/{id}/links/{link_id}/delete", post(links::delete_form))
         })
 }
 
@@ -79,6 +84,7 @@ mod read {
             event: Event,
             flyer: Option<EventFlyer>,
             full: bool,
+            open: bool,
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
@@ -93,9 +99,10 @@ mod read {
         let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
         let user_rsvps = []; // No need to count user limits, they'd see the Manage page link anyways
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, None);
         let full = limits.total_limit == 0;
-        Ok(Html { session, user, event, flyer, full }.into_response())
+        let open = event.registration_open(None);
+        Ok(Html { session, user, event, flyer, full, open }.into_response())
     }
 
     // List all events.
@@ -989,12 +996,21 @@ mod edit {
         }))
     }
 
+    #[derive(serde::Deserialize)]
+    pub struct AttendeesQuery {
+        link: Option<String>,
+    }
+
     /// View an event.
     pub async fn attendees_page(
         user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+        Query(query): Query<AttendeesQuery>,
     ) -> HtmlResult {
         let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
-        let rsvps = Rsvp::list_for_admin_attendees(&state.db, event.id).await?;
+        let mut rsvps = Rsvp::list_for_admin_attendees(&state.db, event.id).await?;
+        if let Some(link) = &query.link {
+            rsvps.retain(|r| r.link_slug.as_ref() == Some(link));
+        }
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/attendees.html")]
@@ -1005,6 +1021,8 @@ mod edit {
             refund_count: usize,
             total_contributions: i64,
             show_notes: bool,
+            show_links: bool,
+            link: Option<String>,
             rsvps: Vec<AdminAttendeesRsvp>,
         }
 
@@ -1012,6 +1030,7 @@ mod edit {
         let refund_count = rsvps.iter().filter(|r| r.is_refunded()).count();
         let total_contributions = rsvps.iter().filter(|r| !r.is_refunded()).map(|r| r.contribution).sum();
         let show_notes = rsvps.iter().any(|r| r.note.is_some());
+        let show_links = rsvps.iter().any(|r| r.link_slug.is_some());
         Ok(Html {
             user: Some(user),
             event,
@@ -1019,6 +1038,8 @@ mod edit {
             refund_count,
             total_contributions,
             show_notes,
+            show_links,
+            link: query.link,
             rsvps,
         }
         .into_response())
@@ -1328,6 +1349,128 @@ mod edit {
     }
 }
 
+// Manage event links.
+mod links {
+    use super::*;
+    use crate::db::event_link::{EventLink, EventLinkWithUses, UpdateEventLink};
+
+    #[derive(serde::Deserialize)]
+    pub struct LinkPath {
+        id: i64,
+        link_id: i64,
+    }
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/links_edit.html")]
+    struct EditHtml {
+        user: Option<User>,
+        event: Event,
+        link: EventLink,
+    }
+
+    // Display an event's links.
+    pub async fn list_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
+        let links = EventLink::list_for_event(&state.db, event.id).await?;
+
+        #[derive(Template, WebTemplate)]
+        #[template(path = "events/links.html")]
+        struct Html {
+            user: Option<User>,
+            event: Event,
+            links: Vec<EventLinkWithUses>,
+        }
+        Ok(Html { user: Some(user), event, links }.into_response())
+    }
+
+    // Display the form to create a new link.
+    pub async fn new_page(
+        user: User, State(state): State<SharedAppState>, Path(id): Path<i64>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
+        Ok(EditHtml {
+            user: Some(user),
+            link: EventLink {
+                id: 0,
+                event_id: event.id,
+                slug: "".into(),
+                password: None,
+                capacity: 0,
+                bypass_capacity: false,
+                bypass_closed: false,
+                spots_per_person: None,
+                closed: false,
+                created_at: Utc::now().naive_utc(),
+                updated_at: Utc::now().naive_utc(),
+            },
+            event,
+        }
+        .into_response())
+    }
+
+    // Display the form to edit a link.
+    pub async fn edit_page(
+        user: User, State(state): State<SharedAppState>, Path(path): Path<LinkPath>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
+        let link = EventLink::lookup_by_id(&state.db, event.id, path.link_id)
+            .await?
+            .ok_or_else(not_found)?;
+        Ok(EditHtml { user: Some(user), event, link }.into_response())
+    }
+
+    // Handle create/edit submission.
+    pub async fn edit_form(
+        State(state): State<SharedAppState>, Path(path): Path<LinkPath>,
+        Form(mut form): Form<UpdateEventLink>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
+
+        // Slug must be non-empty and alphanumeric with dashes
+        if form.slug.is_empty() || !form.slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+            bail_bad_request!("Slug can only contain letters, numbers, and dashes.");
+        }
+        let slug = &form.slug;
+
+        // Slug must be unique
+        if let Some(existing) = EventLink::lookup_by_slug(&state.db, event.id, slug).await?
+            && existing.id != path.link_id
+        {
+            bail_bad_request!("Link '{slug}' already exists.");
+        }
+
+        // Trim password
+        form.password = form.password.map(|p| p.trim().to_string()).filter(|p| !p.is_empty());
+
+        match path.link_id {
+            0 => {
+                tracing::info!("create event_id={} link={form:?}", event.id);
+                EventLink::create(&state.db, event.id, &form).await?;
+            }
+            link_id => {
+                tracing::info!("edit event_id={} link_id={link_id} link={form:?}", event.id);
+                EventLink::lookup_by_id(&state.db, event.id, link_id)
+                    .await?
+                    .ok_or_else(not_found)?;
+                EventLink::update(&state.db, link_id, &form).await?;
+            }
+        }
+
+        Ok(Redirect::to(&format!("/events/{}/links", event.id)).into_response())
+    }
+
+    // Delete a link.
+    pub async fn delete_form(State(state): State<SharedAppState>, Path(path): Path<LinkPath>) -> HtmlResult {
+        EventLink::lookup_by_id(&state.db, path.id, path.link_id)
+            .await?
+            .ok_or_else(not_found)?;
+        EventLink::delete(&state.db, path.link_id).await?;
+        Ok(Redirect::to(&format!("/events/{}/links", path.id)).into_response())
+    }
+}
+
 mod rsvp {
     use std::cmp::Reverse;
     use std::collections::HashSet;
@@ -1335,6 +1478,7 @@ mod rsvp {
     use super::*;
     use crate::app::events::rsvp::parse::ParsedAttendee;
     use crate::db::coupon::{Coupon, CouponCheck};
+    use crate::db::event_link::EventLink;
     use crate::db::list::List;
     use crate::db::manual_rsvp::ManualRsvp;
     use crate::db::rsvp::{AttendeeRsvp, ContributionRsvp, CreateRsvp, EventRsvp, Rsvp};
@@ -1357,6 +1501,20 @@ mod rsvp {
         message: String,
     }
 
+    // Check if clicking the RSVP button (or a custom link) should resume an existing session instead of replacing it.
+    fn should_resume_session(link: Option<&EventLink>, session: &RsvpSession) -> bool {
+        // Always resume Add Guests sessions, since the parent session must already be confirmed.
+        if session.is_adding_guests() {
+            return true;
+        }
+        // Resume any other reserved (in CONTRIBUTION) or confirmed sessions.
+        if !session.is_draft() {
+            return true;
+        }
+        // Otherwise, resume any session already started from this link or the RSVP button.
+        session.link_id == link.map(|link| link.id)
+    }
+
     /// Create an RSVP session after a user clicks the RSVP button for an event.
     pub async fn rsvp_form(
         session: Option<RsvpSession>, user: Option<User>, State(state): State<SharedAppState>,
@@ -1364,12 +1522,14 @@ mod rsvp {
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
 
-        // If a session already exists, send them to the correct page.
-        if let Some(session) = session {
+        // If already in a session, check if we should resume it instead of starting a new one.
+        if let Some(session) = session.clone()
+            && should_resume_session(None, &session)
+        {
             return goto::by_status(&state.db, &event, session).await;
         }
 
-        if !event.registration_open() {
+        if !event.registration_open(None) {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -1377,9 +1537,14 @@ mod rsvp {
         let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
         let user_rsvps = []; // No need to count user limits, they'd be redirected anyways
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, None);
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+        }
+
+        // Delete any existing session.
+        if let Some(session) = session {
+            session.delete(&state.db, &state.stripe).await?;
         }
 
         match event.guest_list_id {
@@ -1400,7 +1565,7 @@ mod rsvp {
         }
 
         let _guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
-        if !event.registration_open() {
+        if !event.registration_open(None) {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -1430,7 +1595,7 @@ mod rsvp {
         }
 
         let guest_list_id = event.guest_list_id.ok_or_else(invalid)?;
-        if !event.registration_open() {
+        if !event.registration_open(None) {
             return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
         }
 
@@ -1468,12 +1633,104 @@ mod rsvp {
         }
     }
 
+    // Handle clicking an event link.
+    pub async fn link_page(
+        session: Option<RsvpSession>, user: Option<User>, State(state): State<SharedAppState>,
+        Path((slug, link_slug)): Path<(String, String)>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let link = EventLink::lookup_by_slug(&state.db, event.id, &link_slug)
+            .await?
+            .ok_or_else(not_found)?;
+
+        // If already in a session, check if we should resume it instead of starting a new one.
+        if let Some(session) = session.clone()
+            && should_resume_session(Some(&link), &session)
+        {
+            return goto::by_status(&state.db, &event, session).await;
+        }
+
+        if link.password.is_some() {
+            #[derive(Template, WebTemplate)]
+            #[template(path = "events/rsvp_link_password.html")]
+            struct Html {
+                user: Option<User>,
+                event: Event,
+                link: EventLink,
+            }
+            Ok(Html { user, event, link }.into_response())
+        } else {
+            link_create_session(&state, &event, &link, session, &user).await
+        }
+    }
+
+    // Handle submission of the link password form.
+    #[derive(serde::Deserialize)]
+    pub struct LinkPasswordForm {
+        password: String,
+    }
+    pub async fn link_form(
+        session: Option<RsvpSession>, user: Option<User>, State(state): State<SharedAppState>,
+        Path((slug, link_slug)): Path<(String, String)>, Form(form): Form<LinkPasswordForm>,
+    ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let link = EventLink::lookup_by_slug(&state.db, event.id, &link_slug)
+            .await?
+            .ok_or_else(not_found)?;
+
+        // If already in a session, check if we should resume it instead of starting a new one.
+        if let Some(session) = session.clone()
+            && should_resume_session(Some(&link), &session)
+        {
+            return goto::by_status(&state.db, &event, session).await;
+        }
+
+        if link.password.as_deref() == Some(form.password.trim()) {
+            link_create_session(&state, &event, &link, session, &user).await
+        } else {
+            goto::error_wrong_password()
+        }
+    }
+
+    // Create a new session associated with the given link.
+    async fn link_create_session(
+        state: &SharedAppState, event: &Event, link: &EventLink, session: Option<RsvpSession>,
+        user: &Option<User>,
+    ) -> HtmlResult {
+        // Check event/link registration closure.
+        if !event.registration_open(Some(link)) {
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
+        }
+
+        // Check event/link capacity.
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, event).await?;
+        let user_rsvps = []; // No need to count user limits, they'd be redirected anyways
+        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, Some(link));
+        if limits.total_limit == 0 {
+            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+        }
+
+        // Replace existing session with a new one.
+        if let Some(session) = session {
+            session.delete(&state.db, &state.stripe).await?;
+        }
+        let session = RsvpSession::create(&state.db, event.id, user, Some(link.id)).await?;
+
+        let cookie = session.cookie(&format!("/e/{}", event.slug), Some(link));
+        let header = (header::SET_COOKIE, cookie);
+        Ok(([header], Redirect::to(&format!("/e/{}/rsvp/selection", event.slug))).into_response())
+    }
+
     // Display the "Choose a contribution" page
     pub async fn selection_page(
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1491,7 +1748,7 @@ mod rsvp {
         let user_rsvps =
             Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id)).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
         }
@@ -1509,6 +1766,7 @@ mod rsvp {
         #[template(path = "events/rsvp_selection.html")]
         struct SelectionHtml {
             event: Event,
+            link: Option<EventLink>,
             spots: Vec<Spot>,
             our_qtys: HashMap<i64, usize>,
             our_contributions: HashMap<i64, i64>,
@@ -1516,10 +1774,17 @@ mod rsvp {
             stats: VariableSpotStats,
             parent_token: Option<String>,
         }
-        Ok(
-            SelectionHtml { event, spots, our_qtys, our_contributions, limits, stats, parent_token }
-                .into_response(),
-        )
+        Ok(SelectionHtml {
+            event,
+            link,
+            spots,
+            our_qtys,
+            our_contributions,
+            limits,
+            stats,
+            parent_token,
+        }
+        .into_response())
     }
 
     // Handle submission of the "Choose a contribution" form
@@ -1532,7 +1797,8 @@ mod rsvp {
         Form(form): Form<SelectionForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1549,7 +1815,7 @@ mod rsvp {
         let user_rsvps =
             Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id)).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
         }
@@ -1611,7 +1877,8 @@ mod rsvp {
 
         let user = session.user(&state.db).await?;
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1624,7 +1891,7 @@ mod rsvp {
                 Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id))
                     .await?;
             let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
             if limits.total_limit == 0 {
                 return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
             }
@@ -1633,7 +1900,7 @@ mod rsvp {
             }
         }
 
-        let is_adding_guests = session.parent_session_id.is_some();
+        let is_adding_guests = session.is_adding_guests();
         let attendees = Rsvp::list_for_attendees(&state.db, session.id).await?;
         let price = attendees.iter().map(|r| r.contribution).sum::<i64>();
         let mode = AttendeesMode::Create;
@@ -1655,7 +1922,8 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = our_session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(our_session)).await;
         }
 
@@ -1663,7 +1931,7 @@ mod rsvp {
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let our_rsvps = Rsvp::list_for_session(&state.db, our_session.id).await?;
 
-        let is_adding_guests = our_session.parent_session_id.is_some();
+        let is_adding_guests = our_session.is_adding_guests();
         // On public events in the Create flow, the primary attendee fields are editable so a
         // logged-in user can buy a ticket for someone else. Private events are locked to yourself.
         let lock_primary = event.guest_list_id.is_some();
@@ -1714,7 +1982,7 @@ mod rsvp {
             Rsvp::list_user_reserved_for_event(&state.db, &event, our_session.user_id, Some(our_session.id))
                 .await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &Some(our_session)).await;
         }
@@ -1778,7 +2046,8 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1854,7 +2123,8 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
 
@@ -1942,7 +2212,8 @@ mod rsvp {
         Form(form): Form<ApplyCouponForm>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
         if session.status != RsvpSession::CONTRIBUTION {
@@ -2026,7 +2297,8 @@ mod rsvp {
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
+        let link = session.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
         if session.status != RsvpSession::CONTRIBUTION {
@@ -2141,13 +2413,14 @@ mod rsvp {
         };
 
         // Check if user can add more guests
-        let can_add_guests = if event.registration_open() {
+        let link = session.link(&state.db).await?;
+        let can_add_guests = if event.registration_open(link.as_ref()) {
             let spots = Spot::list_for_event(&state.db, event.id).await?;
             let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
             let user_rsvps =
                 Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, None).await?;
             let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
             limits.total_limit > 0
         } else {
             false
@@ -2185,9 +2458,6 @@ mod rsvp {
         State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-        if !event.registration_open() {
-            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
-        }
 
         // Lookup parent session and validate it's confirmed
         let parent = RsvpSession::lookup_by_token(&state.db, &query.reservation)
@@ -2198,12 +2468,17 @@ mod rsvp {
             _ => bail_invalid!(),
         }
 
+        let link = parent.link(&state.db).await?;
+        if !event.registration_open(link.as_ref()) {
+            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
+        }
+
         // Check capacity
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
         let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, parent.user_id, None).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count);
+        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
@@ -2361,9 +2636,9 @@ mod rsvp {
             match session {
                 Some(_) => Ok(redirect.into_response()),
                 None => {
-                    let session = RsvpSession::create(db, event.id, user).await?;
+                    let session = RsvpSession::create(db, event.id, user, None).await?;
 
-                    let cookie = session.cookie(&format!("/e/{}", event.slug));
+                    let cookie = session.cookie(&format!("/e/{}", event.slug), None);
                     let header = (header::SET_COOKIE, cookie);
 
                     Ok(([header], redirect).into_response())
@@ -2381,6 +2656,10 @@ mod rsvp {
         }
         pub fn error_not_on_guestlist() -> HtmlResult {
             let error = ErrorHtml { user: None, message: "Sorry, you're not on the list.".into() };
+            Ok(error.into_response())
+        }
+        pub fn error_wrong_password() -> HtmlResult {
+            let error = ErrorHtml { user: None, message: "Incorrect password.".into() };
             Ok(error.into_response())
         }
         pub async fn error_at_capacity(db: &Db, stripe: &Stripe, session: &Option<RsvpSession>) -> HtmlResult {
@@ -2615,7 +2894,7 @@ mod rsvp {
                 }
 
                 for _ in 0..rsvp.qty {
-                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution, discount: 0 })
+                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution, discount: 0, link_id: None })
                 }
             }
 
@@ -2923,9 +3202,7 @@ pub mod email {
 }
 
 pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
-    /// Middleware layer to resolve an `RsvpSession` from cookies and insert it into the request.
-    /// Prefers `rsvp_child_session` over `rsvp_session` so the add-guests flow takes priority.
-    /// Cleans up stale child cookies (session expired/deleted) by appending a Max-Age=0 Set-Cookie.
+    /// Resolve cookies and populate an `RsvpSession` on each request for use through an extractor.
     pub async fn rsvp_session_middleware(
         State(state): State<SharedAppState>, cookies: CookieJar, mut request: Request, next: Next,
     ) -> HtmlResult {
@@ -2933,7 +3210,7 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
         let is_rsvp_path = path.contains("/rsvp");
         let mut stale_child_cookie = false;
 
-        // Try child session first (add-guests flow takes priority)
+        // Try child session first
         let mut resolved = false;
         if let Some(token) = cookies.get("rsvp_child_session") {
             match RsvpSession::lookup_by_token(&state.db, token.value()).await? {
@@ -2947,8 +3224,9 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
 
         // Fall back to main session
         if !resolved
-            && let Some(token) = cookies.get("rsvp_session")
-            && let Some(session) = RsvpSession::lookup_by_token(&state.db, token.value()).await?
+            && let Some(cookie) = cookies.get("rsvp_session")
+            && let (token, _link_slug) = RsvpSession::parse_cookie(cookie.value())
+            && let Some(session) = RsvpSession::lookup_by_token(&state.db, token).await?
         {
             request.extensions_mut().insert(session);
         }
@@ -2961,7 +3239,7 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
                 .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
         }
 
-        // Clean up stale child cookie (path must match the path it was set on)
+        // Clean up stale child cookie
         if stale_child_cookie && let Some(slug) = path.strip_prefix("/e/").and_then(|s| s.split('/').next()) {
             let clear = Cookie::build(("rsvp_child_session", ""))
                 .max_age(cookie::time::Duration::ZERO)
@@ -3027,7 +3305,16 @@ impl axum::extract::FromRequestParts<SharedAppState> for RsvpSession {
                 }
                 _ => unreachable!(),
             },
-            None => Err(Redirect::to(&format!("/e/{slug}"))),
+            None => {
+                let cookies = CookieJar::from_headers(&parts.headers);
+                match cookies
+                    .get("rsvp_session")
+                    .map(|cookie| RsvpSession::parse_cookie(cookie.value()))
+                {
+                    Some((_, Some(link_slug))) => Err(Redirect::to(&format!("/e/{slug}/{link_slug}"))),
+                    Some((_, None)) | None => Err(Redirect::to(&format!("/e/{slug}"))),
+                }
+            }
         }
     }
 }

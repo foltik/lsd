@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                 l.id,\n                 l.slug,\n                 l.password,\n                 l.capacity,\n                 l.bypass_capacity,\n                 l.bypass_closed,\n                 l.spots_per_person,\n                 l.closed,\n                 SUM(CASE WHEN s.status IN ('contribution', 'payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) AS \"uses!: i64\",\n                 SUM(CASE WHEN s.status IN ('payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) AS \"rsvp_count!: i64\"\n               FROM event_links l\n               LEFT JOIN (rsvps r JOIN rsvp_sessions s ON s.id = r.session_id) ON s.link_id = l.id\n               WHERE l.event_id = ?\n               GROUP BY l.id\n               ORDER BY l.created_at",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "slug",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "password",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "bypass_capacity",
+        "ordinal": 4,
+        "type_info": "Bool"
+      },
+      {
+        "name": "bypass_closed",
+        "ordinal": 5,
+        "type_info": "Bool"
+      },
+      {
+        "name": "spots_per_person",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "closed",
+        "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
+        "name": "uses!: i64",
+        "ordinal": 8,
+        "type_info": "Null"
+      },
+      {
+        "name": "rsvp_count!: i64",
+        "ordinal": 9,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "e9a9f3f85f55d13a4a64a8461be04b24159283eed0af43ea1f3d0de62f9fc86c"
+}

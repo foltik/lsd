@@ -4,6 +4,7 @@ use rand::Rng;
 use rand::rngs::OsRng;
 
 use crate::db::event_flyer::EventFlyer;
+use crate::db::event_link::EventLink;
 use crate::db::rsvp::EventRsvp;
 use crate::db::spot::Spot;
 use crate::prelude::*;
@@ -374,6 +375,10 @@ impl Event {
         sqlx::query!("DELETE FROM event_spots WHERE event_id = ?", id)
             .execute(db)
             .await?;
+        // Delete event links
+        sqlx::query!("DELETE FROM event_links WHERE event_id = ?", id)
+            .execute(db)
+            .await?;
         // Delete event flyer
         EventFlyer::delete(db, id, slug).await?;
         // Finally delete the event itself
@@ -421,9 +426,13 @@ impl Event {
         Utc::now() >= cutoff
     }
 
-    /// Whether to allow starting the RSVP process
-    pub fn registration_open(&self) -> bool {
-        !self.closed && !self.is_over()
+    /// Whether to allow RSVPs for an event.
+    pub fn registration_open(&self, link: Option<&EventLink>) -> bool {
+        match link {
+            Some(link) if link.closed => false,
+            Some(link) if link.bypass_closed => !self.is_over(),
+            Some(_) | None => !self.closed && !self.is_over(),
+        }
     }
 
     /// Artist's share of `total` dollars per `artist_share` percent, fractional dollars round to the artist.
@@ -515,12 +524,25 @@ impl Event {
     /// `all_rsvps` = all reserved RSVPs counted toward capacity (may or may not include current session).
     /// `user_rsvps` = this user's reserved RSVPs across all their sessions (for per-person limits).
     /// `manual_count` = all manually added RSVPs counted toward capacity
+    /// `link` = the session's entry link, if any
     pub fn compute_limits(
         &self, spots: &[Spot], all_rsvps: &[EventRsvp], user_rsvps: &[EventRsvp], manual_count: i64,
+        link: Option<&EventLink>,
     ) -> EventLimits {
         // Overall event limits
         let capacity_limit = (self.capacity - all_rsvps.len() as i64 - manual_count).max(0);
-        let per_person_limit = self.spots_per_person.unwrap_or(i64::MAX);
+        let capacity_limit = match link {
+            Some(link) => {
+                let used = all_rsvps.iter().filter(|r| r.link_id == Some(link.id)).count() as i64;
+                let link_limit = (link.capacity - used).max(0);
+                if link.bypass_capacity { link_limit } else { capacity_limit.min(link_limit) }
+            }
+            None => capacity_limit,
+        };
+        let per_person_limit = link
+            .and_then(|link| link.spots_per_person)
+            .or(self.spots_per_person)
+            .unwrap_or(i64::MAX);
         let this_person_limit = per_person_limit - user_rsvps.len() as i64;
         let limit = capacity_limit.min(this_person_limit);
 

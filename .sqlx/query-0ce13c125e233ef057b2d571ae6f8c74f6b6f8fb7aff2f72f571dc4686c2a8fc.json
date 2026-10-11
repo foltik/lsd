@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM event_links WHERE event_id = ? AND slug = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "event_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "password",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "bypass_capacity",
+        "ordinal": 5,
+        "type_info": "Bool"
+      },
+      {
+        "name": "bypass_closed",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "spots_per_person",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "closed",
+        "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0ce13c125e233ef057b2d571ae6f8c74f6b6f8fb7aff2f72f571dc4686c2a8fc"
+}

@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% block title %}Links - {{ event.slug }} - L&SD{% endblock %}
+
+{% block content %}
+  <section id="events/links" class="ext/layout">
+    <header>
+      <div class="info">
+        <h1>{{ event.title }}</h1>
+        <time datetime="{{ event.start.date() }}">
+          {{ event.start | format_datetime("%a %b %d, %Y") }}
+        </time>
+      </div>
+      <a class="ext/button :green" href="/events/{{ event.id }}/links/new">New Link</a>
+    </header>
+    <div class="ext/table">
+      <table>
+        <thead>
+          <tr>
+            <th>Link</th>
+            <th>Password</th>
+            <th>Attendees</th>
+            <th>Max spots</th>
+            <th>Bypass capacity</th>
+            <th>Bypass closure</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for link in links %}
+            <tr {% if link.closed || !link.bypass_closed && event.closed %}class="closed"{% endif %}>
+              <td class="slug">
+                <a href="/e/{{ event.slug }}/{{ link.slug }}">/{{ link.slug }}</a>
+              </td>
+              <td>{{ link.password | unwrap_or_empty }}</td>
+              <td class="attendees"><a href="/events/{{ event.id }}/attendees?link={{ link.slug }}">{{ link.uses }}/{{ link.capacity }}</a></td>
+              <td>{{ link.spots_per_person | unwrap_or_empty }}</td>
+              <td>{% if link.bypass_capacity %}Yes{% endif %}</td>
+              <td>{% if link.bypass_closed %}Yes{% endif %}</td>
+              <td class="actions">
+                <a title="Edit link" href="/events/{{ event.id }}/links/{{ link.id }}">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.41l-2.34-2.34a1.003 1.003 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                    />
+                  </svg>
+                </a>
+                <form
+                  class="delete"
+                  method="POST"
+                  action="/events/{{ event.id }}/links/{{ link.id }}/delete"
+                  data-slug="{{ link.slug }}"
+                  data-rsvp-count="{{ link.rsvp_count }}"
+                >
+                  <button title="Delete link" type="submit">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 48 48"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M20 10.5v.5h8v-.5a4 4 0 1 0-8 0Zm-2.5.5v-.5a6.5 6.5 0 1 1 13 0v.5h8.75a1.25 1.25 0 1 1 0 2.5h-2.077l-2.027 23.315A6.25 6.25 0 0 1 28.914 42H19.086a6.25 6.25 0 0 1-6.232-5.685L10.827 13H8.75a1.25 1.25 0 1 1 0-2.5h8.75Zm3.75 8.25a1.25 1.25 0 1 0-2.5 0v16a1.25 1.25 0 1 0 2.5 0v-16Zm7.5-1.25a1.25 1.25 0 0 0-1.25 1.25v16a1.25 1.25 0 1 0 2.5 0v-16a1.25 1.25 0 0 0-1.25-1.25Z"
+                      />
+                    </svg>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    for (const form of document.querySelectorAll("form.delete")) {
+      form.addEventListener("submit", (e) => {
+        const { slug, rsvpCount } = form.dataset;
+        let message = `Permanently delete link ${slug}? Anyone visiting it will get a not found page.`;
+        if (rsvpCount > 0) {
+          message = `Link ${slug} has ${rsvpCount} confirmed RSVPs. \n\nReally permanently delete this link and all of its RSVPs?`;
+        }
+        if (!confirm(message)) e.preventDefault();
+      });
+    }
+  </script>
+{% endblock %}

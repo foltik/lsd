@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM rsvps WHERE session_id IN (SELECT id FROM rsvp_sessions WHERE link_id = ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "4a57d3459b8740fc0047a106ca6ab304f00803ee5c4d4b7d53ede5d2fa07bc20"
+}

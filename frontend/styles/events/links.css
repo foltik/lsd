@@ -1,0 +1,38 @@
+#events\/links {
+  header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .info {
+    @apply flex flex-col;
+    time {
+      @apply text-lsd-gray text-xs;
+    }
+  }
+
+  table {
+    @apply text-sm;
+    border-spacing: 2rem 0;
+  }
+
+  th {
+    @apply pb-1;
+  }
+
+  tr.closed {
+    @apply opacity-50;
+  }
+
+  td {
+    @apply py-1;
+  }
+  td.slug {
+    @apply font-bold;
+  }
+  td.attendees a {
+    @apply decoration-lsd-blue hover:text-lsd-blue underline;
+  }
+  td.actions {
+    @apply flex items-center gap-4;
+  }
+}

@@ -10,6 +10,7 @@ pub mod coupon;
 pub mod email;
 pub mod event;
 pub mod event_flyer;
+pub mod event_link;
 pub mod list;
 pub mod manual_rsvp;
 pub mod notification;
