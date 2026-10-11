@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO rsvp_sessions\n               (event_id, token, status, user_id, user_version, parent_session_id)\n               VALUES (?, ?, ?, ?, ?, ?)\n               RETURNING *",
+  "query": "INSERT INTO rsvp_sessions\n               (event_id, token, status, user_id, user_version, link_id)\n               VALUES (?, ?, ?, ?, ?, ?)\n               RETURNING *",
   "describe": {
     "columns": [
       {
@@ -44,38 +44,43 @@
         "type_info": "Integer"
       },
       {
-        "name": "stripe_checkout_session_id",
+        "name": "link_id",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "stripe_client_secret",
+        "name": "stripe_checkout_session_id",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "stripe_payment_intent_id",
+        "name": "stripe_client_secret",
         "ordinal": 10,
         "type_info": "Text"
       },
       {
-        "name": "stripe_charge_id",
+        "name": "stripe_payment_intent_id",
         "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "stripe_charge_id",
+        "ordinal": 12,
         "type_info": "Integer"
       },
       {
         "name": "stripe_refund_id",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       },
       {
         "name": "created_at",
-        "ordinal": 13,
+        "ordinal": 14,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 14,
+        "ordinal": 15,
         "type_info": "Datetime"
       }
     ],
@@ -96,9 +101,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "8ad04fb6a4301ca8d5b613604a8261243e25005b244f89fafcd5d30bce1632f6"
+  "hash": "f575aaf8d3d33c0b0d6dca64598fff81a0b9540e766c1a611dfbb1cfce86daf1"
 }

@@ -10,6 +10,13 @@
     }
   }
 
+  .filter {
+    @apply border-lsd-yellow/30 bg-lsd-yellow/20 mb-4 flex items-center justify-between rounded-sm border px-4 py-2 text-sm;
+    a {
+      @apply underline;
+    }
+  }
+
   table.attendees {
     @apply text-xs;
   }

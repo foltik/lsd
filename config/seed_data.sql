@@ -77,6 +77,12 @@ INSERT OR IGNORE INTO event_spots (event_id, spot_id)
 DROP TABLE seed_spots;
 
 
+INSERT OR IGNORE INTO event_links
+    (id, event_id, slug,                 password, capacity, bypass_capacity, bypass_closed, spots_per_person, closed) VALUES
+    (1,  1,        'djs',                'djs',    5,        1,               1,             2,                0),
+    (2,  1,        'friends-and-family', NULL,     10,       0,               1,             NULL,             0),
+    (3,  1,        'trial',              NULL,     5,        0,               0,             1,                0);
+
 INSERT OR IGNORE INTO coupons
     (id, creator_user_id, event_id, code,      description,                         expires_at,            max_uses, max_uses_per_user, max_uses_per_event, kind,      percent_off, dollars_off) VALUES
     (1,  1,               NULL,     'TENOFF',  '$10 off any event',                 NULL,                  NULL,     NULL,              NULL,               'fixed',   NULL,        10),

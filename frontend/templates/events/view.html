@@ -18,7 +18,7 @@
 
 {% block content %}
   {% let in_session = session.is_some() && (session.as_ref().unwrap().status == RsvpSession::PAYMENT_PENDING || session.as_ref().unwrap().status == RsvpSession::PAYMENT_CONFIRMED) %}
-  {% let closed = !in_session && !event.registration_open() %}
+  {% let closed = !in_session && !open %}
   <section id="events/view">
     {% if let Some(flyer) = flyer %}
       <div
@@ -85,7 +85,7 @@
           <span>Manage my reservation</span>
           <span>&rarr;</span>
         </a>
-      {% else if event.registration_open() && !full %}
+      {% else if open && !full %}
         <a class="rsvp" href="/e/{{ event.slug }}/rsvp">
           <span>Attend & Contribute</span>
           <span>&rarr;</span>

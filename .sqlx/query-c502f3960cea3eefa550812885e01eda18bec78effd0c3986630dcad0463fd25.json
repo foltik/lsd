@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO event_links (event_id, slug, password, capacity, bypass_capacity, bypass_closed, spots_per_person, closed)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "c502f3960cea3eefa550812885e01eda18bec78effd0c3986630dcad0463fd25"
+}

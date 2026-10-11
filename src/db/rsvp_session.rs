@@ -2,6 +2,7 @@ use rand::Rng;
 use rand::rngs::OsRng;
 
 use crate::db::event::Event;
+use crate::db::event_link::EventLink;
 use crate::db::rsvp::ContributionRsvp;
 use crate::prelude::*;
 use crate::utils::stripe::{self, Stripe};
@@ -17,6 +18,7 @@ pub struct RsvpSession {
     pub user_version: Option<i64>,
     pub parent_session_id: Option<i64>,
     pub coupon_id: Option<i64>,
+    pub link_id: Option<i64>,
 
     pub stripe_checkout_session_id: Option<String>,
     pub stripe_client_secret: Option<String>,
@@ -40,6 +42,22 @@ impl RsvpSession {
     pub const EXPIRY_TIME_SQL: &str = "-31 minutes";
     pub const STRIPE_EXPIRY_MINUTES: i64 = 30;
 
+    pub fn is_draft(&self) -> bool {
+        match self.status.as_str() {
+            Self::SELECTION | Self::ATTENDEES => true,
+            Self::CONTRIBUTION
+            | Self::PAYMENT_PENDING
+            | Self::PAYMENT_CONFIRMED
+            | Self::REFUND_PENDING
+            | Self::REFUND_CONFIRMED => false,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn is_adding_guests(&self) -> bool {
+        self.parent_session_id.is_some()
+    }
+
     /// Returns true if the stripe client secret is expired (older than 14 minutes).
     pub fn is_stripe_expired(&self) -> bool {
         let now = Utc::now().naive_utc();
@@ -47,11 +65,16 @@ impl RsvpSession {
         age.num_minutes() >= Self::STRIPE_EXPIRY_MINUTES
     }
 
-    pub fn cookie(&self, path: &str) -> String {
-        Cookie::build(("rsvp_session", &self.token))
+    // Create an `rsvp_session` cookie with value `<token>`, or `<token>:<link.slug>` if started via a link.
+    pub fn cookie(&self, path: &str, link: Option<&EventLink>) -> String {
+        let value = match link {
+            Some(link) => format!("{}:{}", self.token, link.slug),
+            None => self.token.clone(),
+        };
+        Cookie::build(("rsvp_session", value))
             .secure(config().acme.is_some())
             .http_only(true)
-            .same_site(cookie::SameSite::Strict)
+            .same_site(cookie::SameSite::Lax)
             .domain(&config().app.domain)
             .path(path)
             .to_string()
@@ -61,10 +84,18 @@ impl RsvpSession {
         Cookie::build(("rsvp_child_session", &self.token))
             .secure(config().acme.is_some())
             .http_only(true)
-            .same_site(cookie::SameSite::Strict)
+            .same_site(cookie::SameSite::Lax)
             .domain(&config().app.domain)
             .path(path)
             .to_string()
+    }
+
+    // Split an `rsvp_session` cookie value into its token and optional link slug.
+    pub fn parse_cookie(value: &str) -> (&str, Option<&str>) {
+        match value.split_once(':') {
+            Some((token, link_slug)) => (token, Some(link_slug)),
+            None => (value, None),
+        }
     }
 
     pub async fn user(&self, db: &Db) -> Result<Option<User>> {
@@ -123,7 +154,7 @@ impl RsvpSession {
         .await?)
     }
 
-    pub async fn create(db: &Db, event_id: i64, user: &Option<User>) -> Result<Self> {
+    pub async fn create(db: &Db, event_id: i64, user: &Option<User>, link_id: Option<i64>) -> Result<Self> {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());
         let user = user.as_ref();
         let user_id = user.map(|u| u.id);
@@ -133,20 +164,21 @@ impl RsvpSession {
         let session = sqlx::query_as!(
             Self,
             r#"INSERT INTO rsvp_sessions
-               (event_id, token, status, user_id, user_version)
-               VALUES (?, ?, ?, ?, ?)
+               (event_id, token, status, user_id, user_version, link_id)
+               VALUES (?, ?, ?, ?, ?, ?)
                RETURNING *"#,
             event_id,
             token,
             Self::SELECTION,
             user_id,
             user_version,
+            link_id,
         )
         .fetch_one(db)
         .await?;
 
         tracing::info!(
-            "Created RSVP session with session_id={} event_id={event_id} user_id={user_id:?} user_email={user_email:?}",
+            "Created RSVP session with session_id={} event_id={event_id} user_id={user_id:?} user_email={user_email:?} link_id={link_id:?}",
             session.id
         );
         Ok(session)
@@ -157,8 +189,8 @@ impl RsvpSession {
         let session = sqlx::query_as!(
             Self,
             r#"INSERT INTO rsvp_sessions
-               (event_id, token, status, user_id, user_version, parent_session_id)
-               VALUES (?, ?, ?, ?, ?, ?)
+               (event_id, token, status, user_id, user_version, parent_session_id, link_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
                RETURNING *"#,
             parent.event_id,
             token,
@@ -166,6 +198,7 @@ impl RsvpSession {
             parent.user_id,
             parent.user_version,
             parent.id,
+            parent.link_id,
         )
         .fetch_one(db)
         .await?;
@@ -351,6 +384,14 @@ impl RsvpSession {
         .await?;
         self.coupon_id = coupon_id;
         Ok(())
+    }
+
+    /// The link this session was initiated through.
+    pub async fn link(&self, db: &Db) -> Result<Option<EventLink>> {
+        Ok(match self.link_id {
+            Some(id) => EventLink::lookup_by_id(db, self.event_id, id).await?,
+            None => None,
+        })
     }
 
     pub async fn set_stripe_checkout_session(

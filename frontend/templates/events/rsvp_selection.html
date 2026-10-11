@@ -15,9 +15,11 @@
         <span>&larr;</span>
       </a>
     {% when None %}
-      <a id="back" href="/e/{{ event.slug }}">
-        <span>&larr;</span>
-      </a>
+      {% if event.guest_list_id.is_none() && link.is_none() %}
+        <a id="back" href="/e/{{ event.slug }}">
+          <span>&larr;</span>
+        </a>
+      {% endif %}
   {% endmatch %}
 {% endblock back %}
 

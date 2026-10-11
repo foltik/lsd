@@ -21,6 +21,12 @@
         <button id="download" class="ext/button">Download CSV</button>
       </div>
     </header>
+    {% if let Some(link) = link %}
+      <div class="filter">
+        <span>Showing only RSVPs through <strong>/{{ link }}</strong></span>
+        <a href="/events/{{ event.id }}/attendees">Show all</a>
+      </div>
+    {% endif %}
     <div class="ext/table">
       <table class="attendees">
       <thead>
@@ -33,6 +39,7 @@
           <th class="status">Status</th>
           <th class="created">Created</th>
           <th class="reservation">Reservation #</th>
+          {% if show_links %}<th class="link">Link</th>{% endif %}
           <th class="actions"></th>
         </tr>
       </thead>
@@ -65,6 +72,7 @@
               </time>
             </td>
             <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
+            {% if show_links %}<td class="link">{{ rsvp.link_slug | unwrap_or_empty }}</td>{% endif %}
             <td class="actions">
               <a
                 class="edit"
@@ -138,6 +146,7 @@
         "Name", "Email", "Guest of",
         {% if show_notes %}"Note",{% endif %}
         "Spot", "Status", "Created", "Reservation #",
+        {% if show_links %}"Link",{% endif %}
       ];
       const rows = ui.rows()
         .filter((row) => row.dataset.refunded !== "true")
@@ -151,6 +160,7 @@
             row.querySelector(".status").textContent.trim(),
             row.querySelector(".created time").textContent.trim(),
             row.querySelector(".reservation").textContent.trim(),
+            {% if show_links %}row.querySelector(".link").textContent.trim(),{% endif %}
           ];
           return cells;
         });
@@ -274,6 +284,7 @@
       note: byValue(".note"),
       status: byValue(".status"),
       reservation: byValue(".reservation"),
+      link: byValue(".link"),
       spot: (a, b) => a.dataset.contribution - b.dataset.contribution,
       created: (a, b) =>
         a.querySelector(".created time").getAttribute("datetime")
@@ -288,6 +299,7 @@
       guestof: (row) => isEmpty(row, "guestof"),
       note: (row) => isEmpty(row, "note"),
       reservation: (row) => isEmpty(row, "reservation"),
+      link: (row) => isEmpty(row, "link"),
       spot: (row) => row.dataset.isManual === "true",
       status: (row) => isEmpty(row, "status"),
     };

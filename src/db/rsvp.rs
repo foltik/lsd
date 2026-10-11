@@ -56,6 +56,7 @@ pub struct EventRsvp {
     pub spot_id: i64,
     pub contribution: i64,
     pub discount: i64,
+    pub link_id: Option<i64>,
 }
 
 pub struct UserRsvp {
@@ -97,6 +98,7 @@ pub struct AdminAttendeesRsvp {
     pub status: String,
     pub note: Option<String>,
     pub manual_id: i64,
+    pub link_slug: Option<String>,
 }
 
 pub struct AttendeeEdit {
@@ -157,12 +159,14 @@ impl Rsvp {
                 rs.token AS session_token,
                 rs.status AS "status!",
                 r.note AS "note?: String",
-                0 AS "manual_id!: i64"
+                0 AS "manual_id!: i64",
+                el.slug AS "link_slug?: String"
             FROM rsvps r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
             JOIN spots sp ON sp.id = r.spot_id
             JOIN users u  ON u.id  = r.user_id
             JOIN users hu ON hu.id = rs.user_id
+            LEFT JOIN event_links el ON el.id = rs.link_id
             WHERE rs.event_id = ?
               AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
 
@@ -185,7 +189,8 @@ impl Rsvp {
                 NULL AS session_token,
                 '' AS "status!",
                 mr.note,
-                mr.id AS manual_id
+                mr.id AS manual_id,
+                NULL AS link_slug
             FROM manual_rsvps mr
             LEFT JOIN users u ON u.id = mr.user_id
             JOIN users cu ON cu.id = mr.creator_user_id
@@ -203,8 +208,9 @@ impl Rsvp {
     pub async fn list_for_session(db: &Db, session_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            r#"SELECT id as rsvp_id, spot_id, contribution, discount
+            r#"SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
                FROM rsvps r
+               JOIN rsvp_sessions rs ON rs.id = r.session_id
                WHERE r.session_id = ?
             "#,
             session_id
@@ -329,7 +335,7 @@ impl Rsvp {
     pub async fn list_family_rsvps(db: &Db, event: &Event, user_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
@@ -350,7 +356,7 @@ impl Rsvp {
     ) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ?
@@ -374,7 +380,7 @@ impl Rsvp {
         let Some(user_id) = user_id else { return Ok(vec![]) };
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
@@ -396,7 +402,7 @@ impl Rsvp {
     pub async fn list_all_reserved_for_event(db: &Db, event: &Event) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ?

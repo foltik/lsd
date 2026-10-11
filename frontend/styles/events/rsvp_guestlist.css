@@ -3,7 +3,10 @@
     @apply text-xl;
   }
 
-  .actions {
-    @apply flex flex-row items-center justify-between;
+  .entry {
+    @apply flex flex-row gap-2;
+    button {
+      @apply shrink-0;
+    }
   }
 }
