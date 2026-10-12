@@ -80,16 +80,6 @@ impl RsvpSession {
             .to_string()
     }
 
-    pub fn child_cookie(&self, path: &str) -> String {
-        Cookie::build(("rsvp_child_session", &self.token))
-            .secure(config().acme.is_some())
-            .http_only(true)
-            .same_site(cookie::SameSite::Lax)
-            .domain(&config().app.domain)
-            .path(path)
-            .to_string()
-    }
-
     // Split an `rsvp_session` cookie value into its token and optional link slug.
     pub fn parse_cookie(value: &str) -> (&str, Option<&str>) {
         match value.split_once(':') {
@@ -122,7 +112,7 @@ impl RsvpSession {
             .await?)
     }
 
-    pub async fn lookup_draft_child(db: &Db, parent_id: i64) -> Result<Option<Self>> {
+    pub async fn lookup_unconfirmed_child(db: &Db, parent_id: i64) -> Result<Option<Self>> {
         Ok(sqlx::query_as!(
             Self,
             r#"SELECT * FROM rsvp_sessions

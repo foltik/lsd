@@ -2135,22 +2135,14 @@ mod rsvp {
             _ => bail_invalid!(),
         }
 
-        // For child sessions: clear child cookie and redirect to child manage
-        // (manage_page handles child → parent resolution and status transition)
-        if session.parent_session_id.is_some() {
-            let clear = Cookie::build(("rsvp_child_session", ""))
-                .max_age(cookie::time::Duration::ZERO)
-                .domain(&config().app.domain)
-                .path(format!("/e/{slug}"))
-                .to_string();
-            let redirect = Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token));
-            return Ok(([(header::SET_COOKIE, clear)], redirect).into_response());
+        // Send confirmation email to primary user (except for Add Guests, where they've already gotten one).
+        // TODO(jack): We'd should send emails to guests here too when we add guest confirmation emails.
+        if !session.is_adding_guests() {
+            let user_id = session.user_id.ok_or_else(invalid)?;
+            let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
+            email::ensure_sent_confirmation_email(&state, &event, &user, &session.token, "contribution")
+                .await?;
         }
-
-        // Send confirmation email
-        let user_id = session.user_id.ok_or_else(invalid)?;
-        let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
-        email::ensure_sent_confirmation_email(&state, &event, &user, &session.token, "contribution").await?;
 
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token)).into_response())
     }
@@ -2438,18 +2430,10 @@ mod rsvp {
             discount: Option<DiscountLine>,
             can_add_guests: bool,
         }
-        let mut response = ManageHtml { user, session, event, flyer, rsvps, price, discount, can_add_guests }
-            .into_response();
-
-        // Always clear stale child cookie on manage page
-        let clear = Cookie::build(("rsvp_child_session", ""))
-            .max_age(cookie::time::Duration::ZERO)
-            .domain(&config().app.domain)
-            .path(format!("/e/{slug}"))
-            .to_string();
-        response.headers_mut().append(header::SET_COOKIE, clear.parse().unwrap());
-
-        Ok(response)
+        Ok(
+            ManageHtml { user, session, event, flyer, rsvps, price, discount, can_add_guests }
+                .into_response(),
+        )
     }
 
     /// Handle "Add guests" form submission from the manage page.
@@ -2458,41 +2442,45 @@ mod rsvp {
         State(state): State<SharedAppState>, Query(query): Query<SessionQuery>, Path(slug): Path<String>,
     ) -> HtmlResult {
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
-
-        // Lookup parent session and validate it's confirmed
-        let parent = RsvpSession::lookup_by_token(&state.db, &query.reservation)
+        let parent_session = RsvpSession::lookup_by_token(&state.db, &query.reservation)
             .await?
             .ok_or_else(not_found)?;
-        match parent.status.as_str() {
+        let link = parent_session.link(&state.db).await?;
+
+        // Lookup parent session and validate parent session is confirmed
+        match parent_session.status.as_str() {
             RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
             _ => bail_invalid!(),
         }
 
-        let link = parent.link(&state.db).await?;
-        if !event.registration_open(link.as_ref()) {
-            return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
-        }
+        let child_session = match RsvpSession::lookup_unconfirmed_child(&state.db, parent_session.id).await? {
+            // Resume any existing unconfirmed "Add Guests" session.
+            Some(child_session) => child_session,
+            // Otherwise start a new one, subject to limits.
+            None => {
+                if !event.registration_open(link.as_ref()) {
+                    return goto::error_registration_closed(&state.db, &state.stripe, &None).await;
+                }
 
-        // Check capacity
-        let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-        let user_rsvps = Rsvp::list_user_reserved_for_event(&state.db, &event, parent.user_id, None).await?;
-        let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
-        if limits.total_limit == 0 {
-            return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
-        }
+                let spots = Spot::list_for_event(&state.db, event.id).await?;
+                let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
+                let user_rsvps =
+                    Rsvp::list_user_reserved_for_event(&state.db, &event, parent_session.user_id, None)
+                        .await?;
+                let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
+                let limits =
+                    event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+                if limits.total_limit == 0 {
+                    return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
+                }
 
-        // Delete any existing draft child
-        if let Some(draft_child) = RsvpSession::lookup_draft_child(&state.db, parent.id).await? {
-            draft_child.delete(&state.db, &state.stripe).await?;
-        }
-        // And create a new one
-        let child = RsvpSession::create_child(&state.db, &parent).await?;
+                RsvpSession::create_child(&state.db, &parent_session).await?
+            }
+        };
 
-        let cookie = child.child_cookie(&format!("/e/{slug}"));
-        let redirect_to = format!("/e/{slug}/rsvp/selection");
-        Ok(([(header::SET_COOKIE, cookie)], Redirect::to(&redirect_to)).into_response())
+        let cookie = parent_session.cookie(&format!("/e/{slug}"), link.as_ref());
+        let redirect = goto::by_status(&state.db, &event, child_session).await?;
+        Ok(([(header::SET_COOKIE, cookie)], redirect).into_response())
     }
 
     // Show the "Manage your RSVP" page.
@@ -3202,56 +3190,39 @@ pub mod email {
 }
 
 pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
-    /// Resolve cookies and populate an `RsvpSession` on each request for use through an extractor.
-    pub async fn rsvp_session_middleware(
+    return router
+        .layer(axum::middleware::from_fn(rsvp_disable_bfcache))
+        .layer(axum::middleware::from_fn_with_state(state, rsvp_parse_session_cookie));
+
+    /// Resolve the `rsvp_session` cookie and populate an `RsvpSession` for use through an extractor.
+    pub async fn rsvp_parse_session_cookie(
         State(state): State<SharedAppState>, cookies: CookieJar, mut request: Request, next: Next,
     ) -> HtmlResult {
-        let path = request.uri().path().to_owned();
-        let is_rsvp_path = path.contains("/rsvp");
-        let mut stale_child_cookie = false;
-
-        // Try child session first
-        let mut resolved = false;
-        if let Some(token) = cookies.get("rsvp_child_session") {
-            match RsvpSession::lookup_by_token(&state.db, token.value()).await? {
-                Some(session) => {
-                    request.extensions_mut().insert(session);
-                    resolved = true;
-                }
-                None => stale_child_cookie = true,
-            }
-        }
-
-        // Fall back to main session
-        if !resolved
-            && let Some(cookie) = cookies.get("rsvp_session")
-            && let (token, _link_slug) = RsvpSession::parse_cookie(cookie.value())
-            && let Some(session) = RsvpSession::lookup_by_token(&state.db, token).await?
+        // Lookup an RsvpSession via token stored in the cookie.
+        if let Some(cookie) = cookies.get("rsvp_session")
+            && let (token, _link) = RsvpSession::parse_cookie(cookie.value())
+            && let Some(mut session) = RsvpSession::lookup_by_token(&state.db, token).await?
         {
+            // If session has an active child "Add Guests" session, replace it with that.
+            if let Some(child_session) = RsvpSession::lookup_unconfirmed_child(&state.db, session.id).await? {
+                session = child_session;
+            };
             request.extensions_mut().insert(session);
         }
 
-        let mut res = next.run(request).await;
+        Ok(next.run(request).await)
+    }
 
+    /// Prevent browsers from storing stateful RSVP pages in the back-forward cache.
+    pub async fn rsvp_disable_bfcache(request: Request, next: Next) -> HtmlResult {
+        let is_rsvp_path = request.uri().path().contains("/rsvp");
+        let mut res = next.run(request).await;
         if is_rsvp_path {
-            // Prevent browser from storing these stateful pages in the back-forward cache
             res.headers_mut()
                 .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
         }
-
-        // Clean up stale child cookie
-        if stale_child_cookie && let Some(slug) = path.strip_prefix("/e/").and_then(|s| s.split('/').next()) {
-            let clear = Cookie::build(("rsvp_child_session", ""))
-                .max_age(cookie::time::Duration::ZERO)
-                .domain(&config().app.domain)
-                .path(format!("/e/{slug}"))
-                .to_string();
-            res.headers_mut().append(header::SET_COOKIE, clear.parse().unwrap());
-        }
-
         Ok(res)
     }
-    router.layer(axum::middleware::from_fn_with_state(state, rsvp_session_middleware))
 }
 
 /// Enable extracting an `Option<RsvpSession>` in an events handler matching /e/{slug}.
