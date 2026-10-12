@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id\n             FROM rsvps r\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             WHERE rs.event_id = ?\n               AND rs.status IN (?, ?, ?)",
+  "query": "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id\n             FROM rsvps r\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             WHERE rs.event_id = ? AND rs.user_id = ?\n               AND (? IS NULL OR rs.id != ?)\n               AND rs.status IN (?, ?, ?, ?, ?)",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       }
     ],
     "parameters": {
-      "Right": 4
+      "Right": 9
     },
     "nullable": [
       false,
@@ -40,5 +40,5 @@
       true
     ]
   },
-  "hash": "22d214a45d064ed49fa2f4ce570b65a2afa9838583225951b678f8c839c7086f"
+  "hash": "91f6ba9c4dabe4fe41def18b60e65261d1fe4d89e5ec75760db6e7ff5f8986aa"
 }

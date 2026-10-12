@@ -41,10 +41,10 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
                 .route("/events/{id}/flyer", get(read::flyer_by_id))
                 .route("/events/{id}/attendees", get(edit::attendees_page))
                 .route("/events/{id}/attendees/add", get(edit::add_attendee_page).post(edit::add_attendee_form))
-                .route("/events/{id}/attendees/{user_id}", delete(edit::delete_attendee))
-                .route("/events/{id}/attendees/{user_id}/refund", post(edit::refund_attendee))
-                .route("/events/{id}/attendees/{user_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
-                .route("/events/{id}/attendees/{user_id}/edit", get(edit::edit_attendee_page).post(edit::edit_attendee_form))
+                .route("/events/{id}/attendees/{rsvp_id}", delete(edit::soft_delete_attendee))
+                .route("/events/{id}/attendees/{rsvp_id}/refund", post(edit::refund_attendee))
+                .route("/events/{id}/attendees/{rsvp_id}/checkin", post(edit::set_checkin).delete(edit::clear_checkin))
+                .route("/events/{id}/attendees/{rsvp_id}/edit", get(edit::edit_attendee_page).post(edit::edit_attendee_form))
                 .route("/events/{id}/attendees/manual/{manual_id}", delete(edit::delete_manual_attendee))
                 .route("/events/{id}/attendees/manual/{manual_id}/checkin", post(edit::set_manual_checkin).delete(edit::clear_manual_checkin))
                 .route("/events/{id}/attendees/manual/{manual_id}/edit", get(edit::edit_manual_attendee_page).post(edit::edit_manual_attendee_form))
@@ -866,7 +866,7 @@ mod edit {
                 FROM rsvps r
                 JOIN rsvp_sessions rs ON rs.id = r.session_id
                 WHERE rs.event_id = ?
-                  AND rs.status IN ('payment_pending', 'payment_confirmed')
+                  AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
                 UNION
                 SELECT m.user_id
                 FROM manual_rsvps m
@@ -1026,7 +1026,7 @@ mod edit {
             rsvps: Vec<AdminAttendeesRsvp>,
         }
 
-        let rsvp_count = rsvps.iter().filter(|r| !r.is_refunded()).count();
+        let rsvp_count = rsvps.iter().filter(|r| !r.is_deleted).count();
         let refund_count = rsvps.iter().filter(|r| r.is_refunded()).count();
         let total_contributions = rsvps.iter().filter(|r| !r.is_refunded()).map(|r| r.contribution).sum();
         let show_notes = rsvps.iter().any(|r| r.note.is_some());
@@ -1062,30 +1062,27 @@ mod edit {
     #[derive(serde::Deserialize)]
     pub struct AttendeePath {
         id: i64,
-        user_id: i64,
+        rsvp_id: i64,
     }
 
     pub async fn set_checkin(
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
-        Rsvp::set_checkin_at_for_event(&state.db, event.id, path.user_id).await?;
+        Rsvp::set_checkin_at(&state.db, path.rsvp_id).await?;
         Ok(Json(()))
     }
 
     pub async fn clear_checkin(
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
-        Rsvp::clear_checkin_at_for_event(&state.db, event.id, path.user_id).await?;
+        Rsvp::clear_checkin_at(&state.db, path.rsvp_id).await?;
         Ok(Json(()))
     }
 
-    pub async fn delete_attendee(
+    pub async fn soft_delete_attendee(
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
-        Rsvp::delete_for_event(&state.db, event.id, path.user_id).await?;
+        Rsvp::soft_delete(&state.db, path.rsvp_id).await?;
         Ok(Json(()))
     }
 
@@ -1119,22 +1116,25 @@ mod edit {
     pub async fn refund_attendee(
         State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> JsonResult<()> {
-        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
-        let sessions = RsvpSession::list_for_user(&state.db, path.user_id, event.id).await?;
-        if sessions.is_empty() {
-            bail_not_found!();
+        let rsvp = Rsvp::lookup_by_id(&state.db, path.rsvp_id).await?.ok_or_else(not_found)?;
+        let session = RsvpSession::lookup_by_id(&state.db, rsvp.session_id).await?.unwrap();
+
+        // Refund all the owner's RSVP sessions, including from "Add Guests" flows.
+        let all_sessions =
+            RsvpSession::list_for_user(&state.db, session.user_id.unwrap(), session.event_id).await?;
+        let paid_sessions = all_sessions
+            .iter()
+            .filter(|s| s.status == RsvpSession::PAYMENT_CONFIRMED && s.stripe_payment_intent_id.is_some())
+            .collect::<Vec<_>>();
+        if paid_sessions.is_empty() {
+            bail_invalid!();
         }
 
-        for session in &sessions {
-            if let Some(payment_intent_id) = &session.stripe_payment_intent_id {
-                let refund_id = state.stripe.refund(payment_intent_id).await?;
-                session.set_refund_id(&state.db, &refund_id).await?;
-                session.set_status(&state.db, RsvpSession::REFUND_PENDING).await?;
-            } else {
-                session.set_status(&state.db, RsvpSession::REFUND_CONFIRMED).await?;
-            }
+        for session in paid_sessions {
+            let refund_id = state.stripe.refund(session.stripe_payment_intent_id.as_ref().unwrap()).await?;
+            session.set_refund_id(&state.db, &refund_id).await?;
+            session.set_status(&state.db, RsvpSession::REFUND_PENDING).await?;
         }
-
         Ok(Json(()))
     }
 
@@ -1168,9 +1168,7 @@ mod edit {
         user: User, State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
     ) -> HtmlResult {
         let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
-        let data = Rsvp::lookup_for_edit(&state.db, event.id, path.user_id)
-            .await?
-            .ok_or_else(not_found)?;
+        let data = Rsvp::lookup_for_edit(&state.db, path.rsvp_id).await?.ok_or_else(not_found)?;
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/attendees_add.html")]
@@ -1183,7 +1181,7 @@ mod edit {
             user: Some(user),
             event,
             attendee: Some(AttendeeForm {
-                id: path.user_id,
+                id: path.rsvp_id,
                 first_name: data.first_name.unwrap_or_default(),
                 last_name: data.last_name.unwrap_or_default(),
                 email: data.email,
@@ -1257,8 +1255,8 @@ mod edit {
 
         // Check if already has an RSVP (manual or regular) for this event
         if let Some(existing) = User::lookup_by_email(&state.db, &form.email).await?
-            && (ManualRsvp::exists(&state.db, event.id, existing.id).await?
-                || Rsvp::exists_for_event(&state.db, event.id, existing.id).await?)
+            && (ManualRsvp::user_committed_for_event(&state.db, event.id, existing.id).await?
+                || Rsvp::user_committed_for_event(&state.db, event.id, existing.id).await?)
         {
             return Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response());
         }
@@ -1292,8 +1290,10 @@ mod edit {
         _admin: User, State(state): State<SharedAppState>, Path(path): Path<AttendeePath>,
         Form(form): Form<EditAttendeeForm>,
     ) -> HtmlResult {
-        let event = Event::lookup_by_id(&state.db, path.id).await?.ok_or_else(not_found)?;
-        let attendee = User::lookup_by_id(&state.db, path.user_id).await?.ok_or_else(not_found)?;
+        let rsvp = Rsvp::lookup_by_id(&state.db, path.rsvp_id).await?.ok_or_else(not_found)?;
+        let attendee = User::lookup_by_id(&state.db, rsvp.user_id.unwrap())
+            .await?
+            .ok_or_else(not_found)?;
 
         // Email is read-only, so reuse the existing email and phone.
         attendee
@@ -1309,7 +1309,7 @@ mod edit {
             .await?;
 
         let note = form.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
-        Rsvp::update_note(&state.db, event.id, path.user_id, note.as_deref()).await?;
+        Rsvp::update_note(&state.db, rsvp.id, note.as_deref()).await?;
 
         Ok(Redirect::to(&format!("/events/{}/attendees", path.id)).into_response())
     }
@@ -1489,6 +1489,14 @@ mod rsvp {
     #[derive(Template, WebTemplate)]
     #[template(path = "error_simple.html")]
     struct ErrorHtml {
+        user: Option<User>,
+        message: String,
+    }
+
+    /// Renders message as raw HTML, so never interpolate user input into it.
+    #[derive(Template, WebTemplate)]
+    #[template(path = "error_simple_safe.html")]
+    struct ErrorHtmlSafe {
         user: Option<User>,
         message: String,
     }
@@ -2341,10 +2349,10 @@ mod rsvp {
                             .swap_status(&state.db, RsvpSession::CONTRIBUTION, RsvpSession::PAYMENT_PENDING)
                             .await?
                     }
-                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
-                    RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
-                        return goto::error_rsvp_refunded();
-                    }
+                    RsvpSession::PAYMENT_PENDING
+                    | RsvpSession::PAYMENT_CONFIRMED
+                    | RsvpSession::REFUND_PENDING
+                    | RsvpSession::REFUND_CONFIRMED => {}
                     _ => unreachable!(),
                 }
                 // Then resolve to parent session, and proceed as normal
@@ -2375,11 +2383,17 @@ mod rsvp {
                     .swap_status(&state.db, RsvpSession::CONTRIBUTION, RsvpSession::PAYMENT_PENDING)
                     .await?
             }
-            RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
-            RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED => {
-                return goto::error_rsvp_refunded();
-            }
+            RsvpSession::PAYMENT_PENDING
+            | RsvpSession::PAYMENT_CONFIRMED
+            | RsvpSession::REFUND_PENDING
+            | RsvpSession::REFUND_CONFIRMED => {}
             _ => unreachable!(),
+        }
+
+        // If user's RSVP is deleted, they lose access to the manage page.
+        // Checked *after* transition, which may have just committed the session.
+        if !Rsvp::user_committed_for_event(&state.db, event.id, user_id).await? {
+            return goto::error_rsvp_deleted(&session);
         }
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
@@ -2449,7 +2463,10 @@ mod rsvp {
 
         // Lookup parent session and validate parent session is confirmed
         match parent_session.status.as_str() {
-            RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED => {}
+            RsvpSession::PAYMENT_PENDING
+            | RsvpSession::PAYMENT_CONFIRMED
+            | RsvpSession::REFUND_PENDING
+            | RsvpSession::REFUND_CONFIRMED => {}
             _ => bail_invalid!(),
         }
 
@@ -2688,18 +2705,14 @@ mod rsvp {
                 Conflict::Guest { email, status } => match status.as_str() {
                     RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
                         format!("{email} is currently in the process of RSVPing for this event."),
-                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED | RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
                         format!("{email} has already RSVPed for this event."),
-                    RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
-                        format!("{email} has already received a refund for this event."),
                     _ => unreachable!(),
                 },
                 // Their own committed session. Pre-payment drafts were taken over, so they never reach here.
                 Conflict::Primary { is_own_session: true, status, .. } => match status.as_str() {
-                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                    RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED | RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
                         "You're already confirmed for this event! Manage your RSVP via the link sent to your email.".to_string(),
-                    RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
-                        "You have already received a refund for this event.".to_string(),
                     _ => unreachable!(),
                 },
                 // They are listed as a guest on someone else's reservation.
@@ -2707,12 +2720,10 @@ mod rsvp {
                     let who = owner_name.as_deref().unwrap_or("another attendee");
                     let contact = config().email.contact_to.as_ref().unwrap_or(&config().email.from);
                     match status.as_str() {
-                        RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED =>
+                        RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED | RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
                             format!("You've already been RSVPed to this event by {who}! You'll receive a confirmation email with more details on the day of the event."),
                         RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
                             format!("{who} is currently RSVPing with you listed as a guest. Please check with them, otherwise contact {contact}."),
-                        RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
-                            format!("{who} has already RSVPed with you listed as a guest and has received a refund. Please contact {contact}."),
                         _ => unreachable!(),
                     }
                 }
@@ -2735,10 +2746,12 @@ mod rsvp {
             };
             Ok(error.into_response())
         }
-        pub fn error_rsvp_refunded() -> HtmlResult {
-            let error = ErrorHtml {
+        pub fn error_rsvp_deleted(session: &RsvpSession) -> HtmlResult {
+            let contact = &config().email.contact_to.as_ref().unwrap_or(&config().email.from).email;
+            let contact_link = format!(r#"<a href="mailto:{contact}?subject=Help%20with%20reservation%20{}">contact us</a>"#, session.token);
+            let error = ErrorHtmlSafe {
                 user: None,
-                message: "Your reservation has been refunded.".into()
+                message: format!("Your reservation has been cancelled. If you believe this is an error, please {contact_link}."),
             };
             Ok(error.into_response())
         }

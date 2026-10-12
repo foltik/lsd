@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.id AS rsvp_id, r.user_id, s.name AS spot_name,\n                    u.first_name, u.last_name, u.email, u.phone, r.contribution\n             FROM rsvps r\n             JOIN spots s ON s.id = r.spot_id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             LEFT JOIN users u ON u.id = r.user_id\n             WHERE rs.event_id = ? AND rs.user_id = ?\n               AND rs.status IN (?, ?)\n             ORDER BY r.created_at",
+  "query": "SELECT r.id AS rsvp_id, r.user_id, s.name AS spot_name,\n                    u.first_name, u.last_name, u.email, u.phone, r.contribution\n             FROM rsvps r\n             JOIN spots s ON s.id = r.spot_id\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             LEFT JOIN users u ON u.id = r.user_id\n             WHERE rs.event_id = ? AND rs.user_id = ?\n               AND rs.status IN (?, ?, ?, ?)\n             ORDER BY r.created_at",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       }
     ],
     "parameters": {
-      "Right": 4
+      "Right": 6
     },
     "nullable": [
       false,
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "fe154fdc6fa3fbb807b7b69d466728697892c95303df4d4712203c4800125099"
+  "hash": "2f75e7d03e7b7ce96aecfb5a566ce45d7c61366ef807da2b34ba2b4f8a71f254"
 }

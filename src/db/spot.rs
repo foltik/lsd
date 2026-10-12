@@ -6,7 +6,7 @@ use crate::prelude::*;
 /// RSVP counts per spot split by status.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SpotCounts {
-    /// Confirmed RSVPs (payment_pending or payment_confirmed)
+    /// Confirmed RSVPs (payment_pending, payment_confirmed, or refunded)
     pub rsvp_count: i64,
     /// In-progress checkouts (selection, attendees, contribution)
     pub cart_count: i64,
@@ -93,7 +93,7 @@ impl Spot {
 
     /// Get RSVP counts per spot for an event.
     /// Returns (rsvp_count, cart_count) where:
-    /// - rsvp_count: confirmed RSVPs (payment_pending or payment_confirmed)
+    /// - rsvp_count: confirmed RSVPs (payment_pending, payment_confirmed, or refunded)
     /// - cart_count: in-progress checkouts (selection, attendees, contribution)
     pub async fn rsvp_counts_for_event(
         db: &Db, event_id: i64,
@@ -101,7 +101,7 @@ impl Spot {
         let rows = sqlx::query!(
             r#"SELECT
                  r.spot_id,
-                 SUM(CASE WHEN rs.status IN ('payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) as "rsvp_count!: i64",
+                 SUM(CASE WHEN rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed') THEN 1 ELSE 0 END) as "rsvp_count!: i64",
                  SUM(CASE WHEN rs.status IN ('selection', 'attendees', 'contribution') THEN 1 ELSE 0 END) as "cart_count!: i64"
                FROM rsvps r
                JOIN rsvp_sessions rs ON rs.id = r.session_id
@@ -129,11 +129,12 @@ impl Spot {
                FROM spots s
                JOIN event_spots es ON es.spot_id = s.id
                LEFT JOIN (
-                 SELECT r.spot_id, COUNT(*) AS rsvp_count, SUM(r.contribution) AS contributions
+                 SELECT r.spot_id, COUNT(*) AS rsvp_count,
+                   SUM(CASE WHEN rs.status IN ('payment_pending', 'payment_confirmed') THEN r.contribution ELSE 0 END) AS contributions
                  FROM rsvps r
                  JOIN rsvp_sessions rs ON rs.id = r.session_id
                  WHERE rs.event_id = ?
-                   AND rs.status IN ('payment_pending', 'payment_confirmed')
+                   AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
                  GROUP BY r.spot_id
                ) c ON c.spot_id = s.id
                WHERE es.event_id = ?

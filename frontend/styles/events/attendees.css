@@ -29,7 +29,7 @@
     @apply whitespace-normal min-w-[150px] max-w-max;
   }
 
-  tr[data-refunded="true"] {
+  tr[data-deleted="true"] {
     td.name, td.email, td.guestof, td.spot {
       @apply line-through;
     }

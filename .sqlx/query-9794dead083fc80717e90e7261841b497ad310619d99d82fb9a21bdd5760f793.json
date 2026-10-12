@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                 l.id,\n                 l.slug,\n                 l.password,\n                 l.capacity,\n                 l.bypass_capacity,\n                 l.bypass_closed,\n                 l.spots_per_person,\n                 l.closed,\n                 SUM(CASE WHEN s.status IN ('contribution', 'payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) AS \"uses!: i64\",\n                 SUM(CASE WHEN s.status IN ('payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) AS \"rsvp_count!: i64\"\n               FROM event_links l\n               LEFT JOIN (rsvps r JOIN rsvp_sessions s ON s.id = r.session_id) ON s.link_id = l.id\n               WHERE l.event_id = ?\n               GROUP BY l.id\n               ORDER BY l.created_at",
+  "query": "SELECT\n                 l.id,\n                 l.slug,\n                 l.password,\n                 l.capacity,\n                 l.bypass_capacity,\n                 l.bypass_closed,\n                 l.spots_per_person,\n                 l.closed,\n                 SUM(CASE WHEN s.status IN ('contribution', 'payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed') THEN 1 ELSE 0 END) AS \"uses!: i64\",\n                 SUM(CASE WHEN s.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed') THEN 1 ELSE 0 END) AS \"rsvp_count!: i64\"\n               FROM event_links l\n               LEFT JOIN (rsvps r JOIN rsvp_sessions s ON s.id = r.session_id) ON s.link_id = l.id\n               WHERE l.event_id = ?\n               GROUP BY l.id\n               ORDER BY l.created_at",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       null
     ]
   },
-  "hash": "e9a9f3f85f55d13a4a64a8461be04b24159283eed0af43ea1f3d0de62f9fc86c"
+  "hash": "9794dead083fc80717e90e7261841b497ad310619d99d82fb9a21bdd5760f793"
 }

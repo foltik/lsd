@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT u.first_name, u.last_name, u.email AS \"email?\", r.note\n               FROM rsvps r\n               JOIN rsvp_sessions rs ON rs.id = r.session_id\n               JOIN users u ON u.id = r.user_id\n               WHERE rs.event_id = ? AND r.user_id = ?\n                 AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')\n               LIMIT 1",
+  "query": "SELECT u.first_name, u.last_name, u.email AS \"email?\", r.note\n               FROM rsvps r\n               JOIN users u ON u.id = r.user_id\n               WHERE r.id = ?",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       true,
@@ -34,5 +34,5 @@
       true
     ]
   },
-  "hash": "7aa4d8a8aa7c927cd5c20038d56e3c34ad3a72a420278dd15f4b762b0f0b391e"
+  "hash": "ba04c3bdd11daae1a04e5e5719a1abda5ed152f87444bd6d156e6cf3117e912d"
 }

@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block content %}
-  {% let in_session = session.is_some() && (session.as_ref().unwrap().status == RsvpSession::PAYMENT_PENDING || session.as_ref().unwrap().status == RsvpSession::PAYMENT_CONFIRMED) %}
+  {% let in_session = session.is_some() && session.as_ref().unwrap().is_committed() %}
   {% let closed = !in_session && !open %}
   <section id="events/view">
     {% if let Some(flyer) = flyer %}

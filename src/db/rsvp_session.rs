@@ -54,6 +54,17 @@ impl RsvpSession {
         }
     }
 
+    pub fn is_committed(&self) -> bool {
+        match self.status.as_str() {
+            Self::SELECTION | Self::ATTENDEES | Self::CONTRIBUTION => false,
+            Self::PAYMENT_PENDING
+            | Self::PAYMENT_CONFIRMED
+            | Self::REFUND_PENDING
+            | Self::REFUND_CONFIRMED => true,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn is_adding_guests(&self) -> bool {
         self.parent_session_id.is_some()
     }
@@ -134,11 +145,13 @@ impl RsvpSession {
             Self,
             r#"SELECT * FROM rsvp_sessions
                WHERE user_id = ? AND event_id = ?
-                 AND status IN (?, ?)"#,
+                 AND status IN (?, ?, ?, ?)"#,
             user_id,
             event_id,
             Self::PAYMENT_PENDING,
             Self::PAYMENT_CONFIRMED,
+            Self::REFUND_PENDING,
+            Self::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)

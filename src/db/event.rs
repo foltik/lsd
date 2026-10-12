@@ -125,10 +125,10 @@ impl Event {
                  SELECT
                    rs.event_id,
                    COUNT(r.id) AS session_rsvp_count,
-                   SUM(r.contribution) AS session_contributions
+                   SUM(CASE WHEN rs.status IN ('payment_pending', 'payment_confirmed') THEN r.contribution ELSE 0 END) AS session_contributions
                  FROM rsvp_sessions rs
                  JOIN rsvps r ON r.session_id = rs.id
-                 WHERE rs.status IN ('payment_pending', 'payment_confirmed')
+                 WHERE rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
                  GROUP BY rs.event_id
                ) sr ON sr.event_id = e.id
                LEFT JOIN (

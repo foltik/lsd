@@ -86,8 +86,8 @@ impl EventLink {
                  l.bypass_closed,
                  l.spots_per_person,
                  l.closed,
-                 SUM(CASE WHEN s.status IN ('contribution', 'payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) AS "uses!: i64",
-                 SUM(CASE WHEN s.status IN ('payment_pending', 'payment_confirmed') THEN 1 ELSE 0 END) AS "rsvp_count!: i64"
+                 SUM(CASE WHEN s.status IN ('contribution', 'payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed') THEN 1 ELSE 0 END) AS "uses!: i64",
+                 SUM(CASE WHEN s.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed') THEN 1 ELSE 0 END) AS "rsvp_count!: i64"
                FROM event_links l
                LEFT JOIN (rsvps r JOIN rsvp_sessions s ON s.id = r.session_id) ON s.link_id = l.id
                WHERE l.event_id = ?

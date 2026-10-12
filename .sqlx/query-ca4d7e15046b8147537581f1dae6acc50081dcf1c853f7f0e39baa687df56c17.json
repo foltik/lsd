@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM rsvp_sessions\n               WHERE user_id = ? AND event_id = ?\n                 AND status IN (?, ?)",
+  "query": "SELECT * FROM rsvp_sessions\n               WHERE user_id = ? AND event_id = ?\n                 AND status IN (?, ?, ?, ?)",
   "describe": {
     "columns": [
       {
@@ -85,7 +85,7 @@
       }
     ],
     "parameters": {
-      "Right": 4
+      "Right": 6
     },
     "nullable": [
       false,
@@ -106,5 +106,5 @@
       false
     ]
   },
-  "hash": "a7e807c5eccd6b6a64513cd9edcec0c4233a6cf5871f63a4bdacceab369bc303"
+  "hash": "ca4d7e15046b8147537581f1dae6acc50081dcf1c853f7f0e39baa687df56c17"
 }

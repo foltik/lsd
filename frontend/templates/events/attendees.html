@@ -46,12 +46,12 @@
       <tbody>
         {% for rsvp in rsvps %}
           <tr
-            data-user-id="{{ rsvp.user_id }}"
+            data-rsvp-id="{{ rsvp.rsvp_id }}"
             data-manual-id="{{ rsvp.manual_id }}"
             data-is-manual="{{ rsvp.is_manual }}"
             data-session-id="{{ rsvp.session_id }}"
             data-contribution="{{ rsvp.contribution }}"
-            data-refunded="{{ rsvp.is_refunded() }}"
+            data-deleted="{{ rsvp.is_deleted }}"
           >
             <td class="name">{{ rsvp.first_name }} {{ rsvp.last_name }}</td>
             <td class="email">{{ rsvp.email | unwrap_or_empty }}</td>
@@ -74,10 +74,11 @@
             <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
             {% if show_links %}<td class="link">{{ rsvp.link_slug | unwrap_or_empty }}</td>{% endif %}
             <td class="actions">
+              {% if !rsvp.is_deleted %}
               <a
                 class="edit"
                 title="Edit attendee"
-                href="/events/{{ event.id }}/attendees/{% if rsvp.is_manual %}manual/{{ rsvp.manual_id }}{% else %}{{ rsvp.user_id }}{% endif %}/edit"
+                href="/events/{{ event.id }}/attendees/{% if rsvp.is_manual %}manual/{{ rsvp.manual_id }}{% else %}{{ rsvp.rsvp_id }}{% endif %}/edit"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -91,7 +92,6 @@
                   />
                 </svg>
               </a>
-              {% if !rsvp.is_refunded() %}
               <button class="delete" title="Delete attendee">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -105,8 +105,7 @@
                   />
                 </svg>
               </button>
-              {% endif %}
-              {% if !rsvp.is_manual && !rsvp.is_refunded() %}
+              {% if rsvp.is_refundable() %}
                 <button class="refund" title="Refund purchase">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -120,6 +119,7 @@
                     />
                   </svg>
                 </button>
+              {% endif %}
               {% endif %}
             </td>
           </tr>
@@ -149,7 +149,7 @@
         {% if show_links %}"Link",{% endif %}
       ];
       const rows = ui.rows()
-        .filter((row) => row.dataset.refunded !== "true")
+        .filter((row) => row.dataset.deleted !== "true")
         .map((row) => {
           const cells = [
             row.querySelector(".name").textContent.trim(),
@@ -187,18 +187,17 @@
       if (!btn) return;
 
       const row = btn.closest("tr");
-      const userId = row.dataset.userId;
       const attendeeUrl = row.dataset.isManual === "true"
         ? `/events/${eventId}/attendees/manual/${row.dataset.manualId}`
-        : `/events/${eventId}/attendees/${userId}`;
+        : `/events/${eventId}/attendees/${row.dataset.rsvpId}`;
 
       // Refund
       if (btn.classList.contains("refund")) {
-        const name = row.querySelector(".name").textContent.trim();
-        if (!confirm(`Are you sure you want to refund all RSVPs by ${name}?\n\nThis will issue full Stripe refunds for all associated reservations.`)) return;
+        const owner = row.querySelector(".guestof").textContent.trim() || row.querySelector(".name").textContent.trim();
+        if (!confirm(`Are you sure you want to refund all RSVPs by ${owner}?\n\nThis will issue full Stripe refunds for all associated reservations.`)) return;
         try {
           const resp = await fetch(
-            `/events/${eventId}/attendees/${userId}/refund`,
+            `${attendeeUrl}/refund`,
             { method: "POST" },
           );
           if (!resp.ok) {
@@ -214,7 +213,7 @@
 
       // Delete
       if (btn.classList.contains("delete")) {
-        if (!confirm("Are you sure you want to permanently delete this RSVP?\n\nThis action cannot be undone, and will not notify the attendee.")) return;
+        if (!confirm("Are you sure you want to delete this RSVP?\n\nThis will not notify the attendee.")) return;
         try {
           const resp = await fetch(
             attendeeUrl,
@@ -303,7 +302,7 @@
       spot: (row) => row.dataset.isManual === "true",
       status: (row) => isEmpty(row, "status"),
     };
-    const pinLast = (row) => row.dataset.refunded === "true";
+    const pinLast = (row) => row.dataset.deleted === "true";
 
     // Add .sortable for headers with comparators
     const headers = [...ui.table.querySelectorAll("thead th")]
