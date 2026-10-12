@@ -38,10 +38,15 @@ pub fn add_middleware(router: AxumRouter, state: SharedAppState) -> AxumRouter {
     pub async fn session_middleware(
         State(state): State<SharedAppState>, mut cookies: CookieJar, mut request: Request, next: Next,
     ) -> HtmlResult {
-        if let Some(token) = cookies.get("session") {
-            match User::lookup_by_session_token(&state.db, token.value()).await? {
+        if let Some(token) = cookies.get("session").map(|c| c.value().to_string()) {
+            match User::lookup_by_session_token(&state.db, &token).await? {
                 Some(user) => {
                     request.extensions_mut().insert(user);
+                    match request.uri().path() {
+                        // When visiting homepage or dashboard, reset cookie to bump the expiration date.
+                        "/" | "/dashboard" => cookies = cookies.add(session_cookie(&state.config, token)),
+                        _ => {}
+                    }
                 }
                 None => cookies = cookies.remove("session"),
             }
@@ -169,18 +174,18 @@ async fn login_link(
     };
     LoginToken::delete_by_token(&state.db, token).await?;
     let token = SessionToken::create(&state.db, &user).await?;
-    let cookie = session_cookie(&state.config, token);
+    let cookie = session_cookie(&state.config, token).to_string();
 
     let headers = [(header::SET_COOKIE, cookie)];
     Ok((headers, query.redirect()).into_response())
 }
 
-fn session_cookie(config: &Config, token: String) -> String {
+fn session_cookie(config: &Config, token: String) -> Cookie<'static> {
     Cookie::build(("session", token))
         .secure(config.acme.is_some())
         .http_only(true)
         .same_site(cookie::SameSite::Lax)
-        .domain(&config.app.domain)
+        .domain(config.app.domain.clone())
         .max_age(cookie::time::Duration::days(config.app.session_expiry_days as i64))
-        .to_string()
+        .build()
 }
