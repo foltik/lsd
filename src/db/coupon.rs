@@ -138,11 +138,11 @@ impl Coupon {
                       WHEN c.kind = 'spot' THEN (
                         SELECT COUNT(*) FROM rsvps r
                         JOIN rsvp_sessions s ON s.id = r.session_id
-                        WHERE s.coupon_id = c.id AND r.discount > 0
+                        WHERE s.coupon_id = c.id AND r.discount > 0 AND s.status NOT IN ('refund_pending', 'refund_confirmed')
                       )
                       ELSE (
                           SELECT COUNT(*) FROM rsvp_sessions s
-                          WHERE s.coupon_id = c.id
+                          WHERE s.coupon_id = c.id AND s.status NOT IN ('refund_pending', 'refund_confirmed')
                       )
                  END) AS "uses!: i64",
 
@@ -280,7 +280,8 @@ impl Coupon {
                          COALESCE(SUM(s.user_id = ?2), 0) AS "by_user!: i64"
                        FROM rsvps r
                        JOIN rsvp_sessions s ON s.id = r.session_id
-                       WHERE s.coupon_id = ?1 AND r.discount > 0 AND s.id != ?3"#,
+                       WHERE s.coupon_id = ?1 AND r.discount > 0 AND s.id != ?3
+                         AND s.status NOT IN ('refund_pending', 'refund_confirmed')"#,
                     self.id,
                     user_id,
                     exclude_session_id,
@@ -295,7 +296,8 @@ impl Coupon {
                          COUNT(*) AS "total!: i64",
                          COALESCE(SUM(s.user_id = ?), 0) AS "by_user!: i64"
                        FROM rsvp_sessions s
-                       WHERE s.coupon_id = ?1 AND s.id != ?3"#,
+                       WHERE s.coupon_id = ?1 AND s.id != ?3
+                         AND s.status NOT IN ('refund_pending', 'refund_confirmed')"#,
                     self.id,
                     user_id,
                     exclude_session_id,
@@ -381,11 +383,11 @@ impl Coupon {
                             THEN (
                                 SELECT COUNT(*) FROM rsvps r
                                 JOIN rsvp_sessions s ON s.id = r.session_id
-                                WHERE s.coupon_id = c.id AND r.discount > 0
+                                WHERE s.coupon_id = c.id AND r.discount > 0 AND s.status NOT IN ('refund_pending', 'refund_confirmed')
                              )
                              ELSE (
                                 SELECT COUNT(*) FROM rsvp_sessions s
-                                WHERE s.coupon_id = c.id
+                                WHERE s.coupon_id = c.id AND s.status NOT IN ('refund_pending', 'refund_confirmed')
                              )
                         END)
                     )

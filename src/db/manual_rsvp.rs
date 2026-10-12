@@ -53,7 +53,7 @@ impl ManualRsvp {
         Ok(row.count)
     }
 
-    pub async fn exists(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
+    pub async fn user_committed_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
         let row = sqlx::query!(
             "SELECT id FROM manual_rsvps WHERE event_id = ? AND user_id = ?",
             event_id,

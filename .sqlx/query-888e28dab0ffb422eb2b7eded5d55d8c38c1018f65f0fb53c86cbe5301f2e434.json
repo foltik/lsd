@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                         COUNT(*) AS \"total!: i64\",\n                         COALESCE(SUM(s.user_id = ?2), 0) AS \"by_user!: i64\"\n                       FROM rsvps r\n                       JOIN rsvp_sessions s ON s.id = r.session_id\n                       WHERE s.coupon_id = ?1 AND r.discount > 0 AND s.id != ?3\n                         AND s.status NOT IN ('refund_pending', 'refund_confirmed')",
+  "describe": {
+    "columns": [
+      {
+        "name": "total!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "by_user!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "888e28dab0ffb422eb2b7eded5d55d8c38c1018f65f0fb53c86cbe5301f2e434"
+}

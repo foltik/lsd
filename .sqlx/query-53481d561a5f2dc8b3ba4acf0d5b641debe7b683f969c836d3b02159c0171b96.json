@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO deleted_rsvps SELECT *, CURRENT_TIMESTAMP FROM rsvps WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "53481d561a5f2dc8b3ba4acf0d5b641debe7b683f969c836d3b02159c0171b96"
+}

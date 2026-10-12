@@ -16,6 +16,7 @@ pub struct Rsvp {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub checkin_at: Option<NaiveDateTime>,
+    pub note: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -81,7 +82,7 @@ struct UserRsvpRow {
 }
 
 pub struct AdminAttendeesRsvp {
-    pub user_id: i64,
+    pub rsvp_id: i64,
     pub first_name: String,
     pub last_name: String,
     pub email: Option<String>,
@@ -99,6 +100,7 @@ pub struct AdminAttendeesRsvp {
     pub note: Option<String>,
     pub manual_id: i64,
     pub link_slug: Option<String>,
+    pub is_deleted: bool,
 }
 
 pub struct AttendeeEdit {
@@ -109,6 +111,10 @@ pub struct AttendeeEdit {
 }
 
 impl AdminAttendeesRsvp {
+    pub fn is_refundable(&self) -> bool {
+        self.status == RsvpSession::PAYMENT_CONFIRMED && self.contribution > 0
+    }
+
     pub fn is_refunded(&self) -> bool {
         matches!(
             self.status.as_str(),
@@ -139,7 +145,7 @@ impl Rsvp {
             AdminAttendeesRsvp,
             r#"
             SELECT
-                u.id AS user_id,
+                r.id AS "rsvp_id!",
                 u.first_name as "first_name!",
                 u.last_name as "last_name!",
                 u.email AS "email?: String",
@@ -150,18 +156,22 @@ impl Rsvp {
                 END AS guest_of,
 
                 sp.name AS spot_name,
-                r.contribution,
+                r.contribution AS "contribution!",
 
                 FALSE AS "is_manual!: bool",
-                r.created_at,
+                r.created_at AS "created_at!",
 
                 rs.id AS "session_id!: i64",
                 rs.token AS session_token,
                 rs.status AS "status!",
                 r.note AS "note?: String",
                 0 AS "manual_id!: i64",
-                el.slug AS "link_slug?: String"
-            FROM rsvps r
+                el.slug AS "link_slug?: String",
+                r.deleted_at IS NOT NULL AS "is_deleted!: bool"
+            FROM (
+                SELECT *, NULL AS deleted_at FROM rsvps
+                UNION ALL SELECT * FROM deleted_rsvps
+            ) r
             JOIN rsvp_sessions rs ON rs.id = r.session_id
             JOIN spots sp ON sp.id = r.spot_id
             JOIN users u  ON u.id  = r.user_id
@@ -173,7 +183,7 @@ impl Rsvp {
             UNION ALL
 
             SELECT
-                0 AS user_id,
+                0 AS rsvp_id,
                 COALESCE(u.first_name, mr.first_name),
                 COALESCE(u.last_name, mr.last_name),
                 u.email,
@@ -190,7 +200,8 @@ impl Rsvp {
                 '' AS "status!",
                 mr.note,
                 mr.id AS manual_id,
-                NULL AS link_slug
+                NULL AS link_slug,
+                FALSE AS is_deleted
             FROM manual_rsvps mr
             LEFT JOIN users u ON u.id = mr.user_id
             JOIN users cu ON cu.id = mr.creator_user_id
@@ -269,7 +280,7 @@ impl Rsvp {
             JOIN user_history h ON h.user_id = u.id
             LEFT JOIN user_roles r ON r.user_id = u.id
             WHERE rs.event_id = ? AND rs.user_id = ?
-              AND rs.status IN (?, ?)
+              AND rs.status IN (?, ?, ?, ?)
             GROUP BY u.id
             ORDER BY MIN(rv.created_at)
             "#,
@@ -277,6 +288,8 @@ impl Rsvp {
             user_id,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?;
@@ -294,12 +307,14 @@ impl Rsvp {
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              LEFT JOIN users u ON u.id = r.user_id
              WHERE rs.event_id = ? AND rs.user_id = ?
-               AND rs.status IN (?, ?)
+               AND rs.status IN (?, ?, ?, ?)
              ORDER BY r.created_at"#,
             event.id,
             user_id,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -320,12 +335,14 @@ impl Rsvp {
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              JOIN users u ON u.id = r.user_id
              WHERE rs.event_id = ? AND rs.user_id = ?
-               AND rs.status IN (?, ?)
+               AND rs.status IN (?, ?, ?, ?)
              ORDER BY r.created_at"#,
             event.id,
             user_id,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -339,11 +356,13 @@ impl Rsvp {
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
-               AND rs.status IN (?, ?)",
+               AND rs.status IN (?, ?, ?, ?)",
             event.id,
             user_id,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -361,12 +380,14 @@ impl Rsvp {
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ?
                AND rs.id != ?
-               AND rs.status IN (?, ?, ?)",
+               AND rs.status IN (?, ?, ?, ?, ?)",
             event.id,
             session.id,
             RsvpSession::CONTRIBUTION,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -385,7 +406,7 @@ impl Rsvp {
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
                AND (? IS NULL OR rs.id != ?)
-               AND rs.status IN (?, ?, ?)",
+               AND rs.status IN (?, ?, ?, ?, ?)",
             event.id,
             user_id,
             current_session_id,
@@ -393,6 +414,8 @@ impl Rsvp {
             RsvpSession::CONTRIBUTION,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -406,11 +429,13 @@ impl Rsvp {
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ?
-               AND rs.status IN (?, ?, ?)",
+               AND rs.status IN (?, ?, ?, ?, ?)",
             event.id,
             RsvpSession::CONTRIBUTION,
             RsvpSession::PAYMENT_PENDING,
             RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?)
@@ -518,46 +543,43 @@ impl Rsvp {
         Ok(())
     }
 
-    /// Set check-in for an attendee by event and user ID.
-    /// Works for confirmed RSVPs (payment_pending or payment_confirmed).
-    pub async fn set_checkin_at_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<NaiveDateTime> {
+    pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<Rsvp>> {
+        Ok(sqlx::query_as!(Rsvp, "SELECT * FROM rsvps WHERE id = ?", id)
+            .fetch_optional(db)
+            .await?)
+    }
+
+    /// Move an RSVP to deleted_rsvps.
+    pub async fn soft_delete(db: &Db, id: i64) -> Result<()> {
+        sqlx::query!(
+            "INSERT INTO deleted_rsvps SELECT *, CURRENT_TIMESTAMP FROM rsvps WHERE id = ?",
+            id
+        )
+        .execute(db)
+        .await?;
+        sqlx::query!("DELETE FROM rsvps WHERE id = ?", id).execute(db).await?;
+        Ok(())
+    }
+
+    pub async fn set_checkin_at(db: &Db, id: i64) -> Result<NaiveDateTime> {
         let row = sqlx::query!(
-            r#"UPDATE rsvps SET checkin_at = CURRENT_TIMESTAMP
-               WHERE id = (
-                   SELECT r.id FROM rsvps r
-                   JOIN rsvp_sessions rs ON rs.id = r.session_id
-                   WHERE rs.event_id = ? AND r.user_id = ?
-                     AND rs.status IN ('payment_pending', 'payment_confirmed')
-               )
-               RETURNING checkin_at AS 'checkin_at!'"#,
-            event_id,
-            user_id
+            "UPDATE rsvps SET checkin_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING checkin_at AS 'checkin_at!'",
+            id,
         )
         .fetch_one(db)
         .await?;
         Ok(row.checkin_at)
     }
 
-    /// Clear check-in for an attendee by event and user ID.
-    pub async fn clear_checkin_at_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<()> {
-        sqlx::query!(
-            r#"UPDATE rsvps SET checkin_at = NULL
-               WHERE id = (
-                   SELECT r.id FROM rsvps r
-                   JOIN rsvp_sessions rs ON rs.id = r.session_id
-                   WHERE rs.event_id = ? AND r.user_id = ?
-                     AND rs.status IN ('payment_pending', 'payment_confirmed')
-               )"#,
-            event_id,
-            user_id
-        )
-        .execute(db)
-        .await?;
+    pub async fn clear_checkin_at(db: &Db, id: i64) -> Result<()> {
+        sqlx::query!("UPDATE rsvps SET checkin_at = NULL WHERE id = ?", id)
+            .execute(db)
+            .await?;
         Ok(())
     }
 
-    /// Check if a user has an RSVP for an event.
-    pub async fn exists_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
+    /// Check if a user has a confirmed RSVP for an event.
+    pub async fn user_committed_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<bool> {
         let row = sqlx::query!(
             r#"SELECT EXISTS(
                    SELECT 1 FROM rsvps r
@@ -573,56 +595,25 @@ impl Rsvp {
         Ok(row.exists)
     }
 
-    /// Delete an RSVP by event and user ID.
-    pub async fn delete_for_event(db: &Db, event_id: i64, user_id: i64) -> Result<()> {
+    pub async fn update_note(db: &Db, id: i64, note: Option<&str>) -> Result<()> {
         sqlx::query!(
-            r#"DELETE FROM rsvps
-               WHERE id = (
-                   SELECT r.id FROM rsvps r
-                   JOIN rsvp_sessions rs ON rs.id = r.session_id
-                   WHERE rs.event_id = ? AND r.user_id = ?
-                     AND rs.status IN ('payment_pending', 'payment_confirmed')
-               )"#,
-            event_id,
-            user_id
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-
-    /// Set or clear the note on a user's regular RSVP for an event.
-    pub async fn update_note(db: &Db, event_id: i64, user_id: i64, note: Option<&str>) -> Result<()> {
-        sqlx::query!(
-            r#"UPDATE rsvps SET note = ?, updated_at = CURRENT_TIMESTAMP
-               WHERE id IN (
-                   SELECT r.id FROM rsvps r
-                   JOIN rsvp_sessions rs ON rs.id = r.session_id
-                   WHERE rs.event_id = ? AND r.user_id = ?
-                     AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
-               )"#,
+            "UPDATE rsvps SET note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             note,
-            event_id,
-            user_id
+            id,
         )
         .execute(db)
         .await?;
         Ok(())
     }
 
-    /// Look up name, email, and note for a user's regular RSVP to prefill the edit form.
-    pub async fn lookup_for_edit(db: &Db, event_id: i64, user_id: i64) -> Result<Option<AttendeeEdit>> {
+    pub async fn lookup_for_edit(db: &Db, id: i64) -> Result<Option<AttendeeEdit>> {
         Ok(sqlx::query_as!(
             AttendeeEdit,
             r#"SELECT u.first_name, u.last_name, u.email AS "email?", r.note
                FROM rsvps r
-               JOIN rsvp_sessions rs ON rs.id = r.session_id
                JOIN users u ON u.id = r.user_id
-               WHERE rs.event_id = ? AND r.user_id = ?
-                 AND rs.status IN ('payment_pending', 'payment_confirmed', 'refund_pending', 'refund_confirmed')
-               LIMIT 1"#,
-            event_id,
-            user_id
+               WHERE r.id = ?"#,
+            id,
         )
         .fetch_optional(db)
         .await?)
