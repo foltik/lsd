@@ -745,12 +745,14 @@ mod edit {
             event: Event,
             token: String,
             flyer: Option<EventFlyer>,
+            is_guest: bool,
         }
         Ok(PreviewConfirmationHtml {
             email_token: String::new(),
             event: event.clone(),
             token: "xxxxxxxx".into(),
             flyer,
+            is_guest: false,
         }
         .into_response())
     }
@@ -1921,8 +1923,8 @@ mod rsvp {
         attendees: String,
     }
     pub async fn attendees_form(
-        mut our_session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
-        Form(form): Form<AttendeesForm>,
+        mut our_session: RsvpSession, auth_user: Option<User>, State(state): State<SharedAppState>,
+        Path(slug): Path<String>, Form(form): Form<AttendeesForm>,
     ) -> HtmlResult {
         // CONTRIBUTION may arrive by navigating backwards
         if our_session.status != RsvpSession::ATTENDEES && our_session.status != RsvpSession::CONTRIBUTION {
@@ -2002,7 +2004,10 @@ mod rsvp {
         if let Some(primary_attendee) = &primary_attendee {
             let primary_user =
                 User::upsert_for_rsvp(&state.db, &primary_attendee.user, our_session.created_at).await?;
-            if our_session.user_id.is_none() {
+            // if an anonymous user navigates back to change the "Is me" attendee,
+            // correct the session so the purchaser confirmation goes to the right user
+            let is_anonymous_change = auth_user.is_none() && our_session.user_id != Some(primary_user.id);
+            if our_session.user_id.is_none() || is_anonymous_change {
                 // For an anonymous user, tie the RsvpSession to the "Is me" primary attendee.
                 our_session.set_user(&state.db, &primary_user).await?;
             } else {
@@ -2143,14 +2148,8 @@ mod rsvp {
             _ => bail_invalid!(),
         }
 
-        // Send confirmation email to primary user (except for Add Guests, where they've already gotten one).
-        // TODO(jack): We'd should send emails to guests here too when we add guest confirmation emails.
-        if !session.is_adding_guests() {
-            let user_id = session.user_id.ok_or_else(invalid)?;
-            let user = User::lookup_by_id(&state.db, user_id).await?.ok_or_else(invalid)?;
-            email::ensure_sent_confirmation_email(&state, &event, &user, &session.token, "contribution")
-                .await?;
-        }
+        // Send confirmation emails to the purchaser and any attendees who haven't gotten one yet.
+        email::ensure_sent_confirmation_emails(&state, &event, &session, "contribution").await?;
 
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token)).into_response())
     }
@@ -2366,9 +2365,9 @@ mod rsvp {
         let Some(user_id) = session.user_id else {
             bail_invalid!()
         };
-        let Some(session_user) = User::lookup_by_id(&state.db, user_id).await? else {
+        if User::lookup_by_id(&state.db, user_id).await?.is_none() {
             bail_invalid!()
-        };
+        }
 
         // Transition state
         match session.status.as_str() {
@@ -2398,8 +2397,7 @@ mod rsvp {
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
 
-        email::ensure_sent_confirmation_email(&state, &event, &session_user, &session.token, "manage")
-            .await?;
+        email::ensure_sent_confirmation_emails(&state, &event, &session, "manage").await?;
         if event.dayof_sent_at.is_some() {
             for user in Rsvp::list_family_users(&state.db, &event, user_id).await? {
                 email::ensure_sent_dayof_email(&state, &event, &user, "manage").await?;
@@ -2721,7 +2719,7 @@ mod rsvp {
                     let contact = config().email.contact_to.as_ref().unwrap_or(&config().email.from);
                     match status.as_str() {
                         RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED | RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
-                            format!("You've already been RSVPed to this event by {who}! You'll receive a confirmation email with more details on the day of the event."),
+                            format!("You've already been RSVPed to this event by {who}! Check your email for your confirmation."),
                         RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
                             format!("{who} is currently RSVPing with you listed as a guest. Please check with them, otherwise contact {contact}."),
                         _ => unreachable!(),
@@ -2926,6 +2924,8 @@ mod rsvp {
             InvalidName { first_name: String, last_name: String },
             #[error("invalid phone number: {phone}")]
             InvalidPhone { phone: String },
+            #[error("invalid email: {email}")]
+            InvalidEmail { email: String },
             #[error("duplicate email: {email}")]
             DuplicateEmail { email: String },
             #[error("duplicate phone: {phone}")]
@@ -2970,6 +2970,9 @@ mod rsvp {
                 }
 
                 // Validate email/phone and check for duplicates
+                if email.parse::<lettre::Address>().is_err() {
+                    return Err(Error::InvalidEmail { email });
+                }
                 if !seen_emails.insert(email.clone()) {
                     return Err(Error::DuplicateEmail { email });
                 }
@@ -3036,11 +3039,12 @@ pub mod email {
     use lettre::message::{MultiPart, SinglePart};
 
     use super::*;
+    use crate::db::rsvp::Rsvp;
     use crate::utils::calendar;
 
     pub fn format_confirmation_email(
         state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str,
-        session_token: &str, email_token: &str,
+        session_token: &str, email_token: &str, is_guest: bool,
     ) -> Result<Message> {
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/event_confirmation.html")]
@@ -3049,8 +3053,10 @@ pub mod email {
             event: &'a Event,
             token: &'a str,
             flyer: &'a Option<EventFlyer>,
+            is_guest: bool,
         }
-        let html = ConfirmationEmailHtml { email_token, event, token: session_token, flyer }.render()?;
+        let html =
+            ConfirmationEmailHtml { email_token, event, token: session_token, flyer, is_guest }.render()?;
 
         let subject = event
             .confirmation_subject
@@ -3066,10 +3072,14 @@ pub mod email {
 
         let tz = state.config.app.tz;
         let when = event.start.and_utc().with_timezone(&tz).format("%A, %B %-d at %-I:%M %p");
-        let text = format!(
-            "{}\n\n{when}\n{}\n\nView your confirmation: {}/e/{}/rsvp/manage?reservation={}\n",
-            event.title, cal.location, state.config.app.url, event.slug, session_token,
-        );
+        let mut text = format!("{}\n\n{when}\n{}\n", event.title, cal.location);
+        if !is_guest {
+            write!(
+                text,
+                "\nView your confirmation: {}/e/{}/rsvp/manage?reservation={}\n",
+                state.config.app.url, event.slug, session_token,
+            )?;
+        }
 
         // The calendar part must sit inside multipart/alternative to render natively.
         let body = MultiPart::mixed()
@@ -3095,7 +3105,7 @@ pub mod email {
         let message = state
             .mailer
             .builder(email_token)
-            .to(address.parse().unwrap())
+            .to(address.parse()?)
             .reply_to(reply_to.clone())
             .subject(subject)
             .multipart(body)
@@ -3104,35 +3114,93 @@ pub mod email {
         Ok(message)
     }
 
-    /// Ensure a confirmation email is sent to a user, if not already.
-    pub async fn ensure_sent_confirmation_email(
-        state: &SharedAppState, event: &Event, user: &User, session_token: &str, trigger: &str,
+    /// Ensure confirmation emails are sent to the purchaser and all attendees of a reservation, if not already.
+    pub async fn ensure_sent_confirmation_emails(
+        state: &SharedAppState, event: &Event, session: &RsvpSession, trigger: &str,
     ) -> Result<()> {
-        let Some(email) = Email::try_create_confirmation(&state.db, event.id, user.id).await? else {
-            return Ok(()); // Already sent a confirmation email
+        if event.is_over() {
+            return Ok(());
+        }
+
+        // "child" sessions/added guests belong to the parent's reservation.
+        let parent;
+        let session = match session.parent_session_id {
+            Some(parent_id) => {
+                parent = RsvpSession::lookup_by_id(&state.db, parent_id)
+                    .await?
+                    .expect("invalid parent_session_id");
+                &parent
+            }
+            None => session,
+        };
+        let Some(purchaser_id) = session.user_id else {
+            bail!("confirmation for session_id={} without user_id", session.id);
+        };
+        let Some(purchaser) = User::lookup_by_id(&state.db, purchaser_id).await? else {
+            bail!("confirmation for session_id={} with unknown user_id={purchaser_id}", session.id);
         };
 
-        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-        let message =
-            format_confirmation_email(state, event, &flyer, &user.email, session_token, &email.token)?;
+        // include purchaser separately from attendees since they might not themselves be attending
+        let attendees = Rsvp::list_family_users(&state.db, event, purchaser_id).await?;
+        let recipients = std::iter::once((purchaser, false))
+            .chain(attendees.into_iter().filter(|u| u.id != purchaser_id).map(|u| (u, true)));
 
-        match state.mailer.send(&message).await {
-            Ok(_) => {
-                Email::mark_sent(&state.db, email.id).await?;
-                tracing::info!(
-                    "Confirmation for event_id={} sent to email={:?} trigger={trigger}",
-                    event.id,
-                    user.email
-                );
+        let flyer = EventFlyer::lookup(&state.db, event.id).await?;
+        let mut messages = vec![];
+        let mut sent_to = vec![];
+        for (user, is_guest) in recipients {
+            let Some(email) = Email::try_create_confirmation(&state.db, event.id, user.id).await? else {
+                // we've already sent a confirmation email
+                continue;
+            };
+
+            match format_confirmation_email(
+                state,
+                event,
+                &flyer,
+                &user.email,
+                &session.token,
+                &email.token,
+                is_guest,
+            ) {
+                Ok(message) => {
+                    messages.push(message);
+                    sent_to.push((email.id, user.email));
+                }
+                Err(e) => {
+                    let e = e.message();
+                    Email::mark_error(&state.db, email.id, e).await?;
+                    alert!(
+                        "Error formatting confirmation for event_id={} to email={:?} trigger={trigger}: {e}",
+                        event.id,
+                        user.email
+                    );
+                }
             }
-            Err(e) => {
-                let e = e.message();
-                Email::mark_error(&state.db, email.id, e).await?;
-                alert!(
-                    "Error sending confirmation for event_id={} to email={:?} trigger={trigger}: {e}",
-                    event.id,
-                    user.email
-                );
+        }
+        if messages.is_empty() {
+            return Ok(());
+        }
+
+        let results = state.mailer.send_batch(Arc::clone(state), messages).await;
+        let mut results = Box::pin(results.zip(futures::stream::iter(sent_to)));
+        while let Some((result, (email_id, address))) = results.next().await {
+            match result {
+                Ok(_) => {
+                    Email::mark_sent(&state.db, email_id).await?;
+                    tracing::info!(
+                        "Confirmation for event_id={} sent to email={address:?} trigger={trigger}",
+                        event.id,
+                    );
+                }
+                Err(e) => {
+                    let e = e.message();
+                    Email::mark_error(&state.db, email_id, e).await?;
+                    alert!(
+                        "Error sending confirmation for event_id={} to email={address:?} trigger={trigger}: {e}",
+                        event.id,
+                    );
+                }
             }
         }
 
