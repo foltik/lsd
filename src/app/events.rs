@@ -2390,9 +2390,9 @@ mod rsvp {
             _ => unreachable!(),
         }
 
-        // If user's RSVP is deleted, they lose access to the manage page.
+        // If every RSVP in the reservation is deleted, they lose access to the manage page.
         // Checked *after* transition, which may have just committed the session.
-        if !Rsvp::user_committed_for_event(&state.db, event.id, user_id).await? {
+        if Rsvp::list_family_rsvps(&state.db, &event, user_id).await?.is_empty() {
             return goto::error_rsvp_deleted(&session);
         }
 
