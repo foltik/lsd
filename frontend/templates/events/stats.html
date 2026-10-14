@@ -9,7 +9,7 @@
       <p class="date">{{ event.start | format_datetime("%a %b %d, %Y") }}</p>
     </header>
     <div class="card total">
-      <h2 class="name">Total RSVPs</h2>
+      <h2 class="name">Total RSVPs (Averaging ${{ "{:.2}"|format(average_contribution) }})</h2>
       <div class="split">
         <span class="count">{{ attendees }} of {{ event.capacity }}</span>
         <span class="remaining">{{ remaining }} left</span>
