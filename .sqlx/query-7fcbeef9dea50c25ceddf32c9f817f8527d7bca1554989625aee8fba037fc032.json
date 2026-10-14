@@ -27,6 +27,11 @@
         "name": "updated_at",
         "ordinal": 4,
         "type_info": "Datetime"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
       }
     ],
     "parameters": {
@@ -37,7 +42,8 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "7fcbeef9dea50c25ceddf32c9f817f8527d7bca1554989625aee8fba037fc032"

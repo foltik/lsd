@@ -276,7 +276,7 @@ mod edit {
 
     /// Display the form to create a new event.
     pub async fn new_page(user: User, State(state): State<SharedAppState>) -> HtmlResult {
-        let lists = List::list_with_counts(&state.db).await?;
+        let lists = List::list_with_counts(&state.db, None).await?;
         Ok(EditHtml {
             user: Some(user),
             event: Event {
@@ -331,7 +331,7 @@ mod edit {
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let rsvp_counts = Spot::rsvp_counts_for_event(&state.db, event.id).await?;
         let flyer_version = EventFlyer::version_for_event(&state.db, event.id).await?;
-        let lists = List::list_with_counts(&state.db).await?;
+        let lists = List::list_with_counts(&state.db, event.guest_list_id).await?;
         Ok(EditHtml { user: Some(user), event, spots, rsvp_counts, flyer_version, lists }.into_response())
     }
 
@@ -584,7 +584,7 @@ mod edit {
             ),
         };
         let lists = match event.guest_list_id {
-            None => List::list_with_counts(&state.db).await?,
+            None => List::list_with_counts(&state.db, None).await?,
             Some(_) => vec![],
         };
 

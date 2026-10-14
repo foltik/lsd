@@ -220,6 +220,7 @@ mod send {
             FROM lists l
             LEFT JOIN list_members lm ON lm.list_id = l.id
             LEFT JOIN users u ON u.id = lm.user_id
+            WHERE l.deleted_at IS NULL
             GROUP BY l.id;
             "#,
             post.id,

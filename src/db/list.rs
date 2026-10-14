@@ -8,6 +8,7 @@ pub struct List {
     pub description: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 #[derive(serde::Deserialize)]
@@ -25,24 +26,29 @@ pub struct ListWithCount {
     pub description: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub deleted_at: Option<NaiveDateTime>,
     pub count: i64,
 }
 
 impl List {
-    /// List all lists.
+    /// List all non-deleted lists.
     pub async fn list(db: &Db) -> Result<Vec<List>> {
-        let lists = sqlx::query_as!(Self, "SELECT * FROM lists").fetch_all(db).await?;
+        let lists = sqlx::query_as!(Self, "SELECT * FROM lists WHERE deleted_at IS NULL")
+            .fetch_all(db)
+            .await?;
         Ok(lists)
     }
 
-    /// List all lists, and count the number of members in each list via list_members join.
-    pub async fn list_with_counts(db: &Db) -> Result<Vec<ListWithCount>> {
+    /// List all non-deleted lists plus `selected_id` even if deleted, with member counts.
+    pub async fn list_with_counts(db: &Db, selected_id: Option<i64>) -> Result<Vec<ListWithCount>> {
         let lists = sqlx::query_as!(
             ListWithCount,
             "SELECT l.*, COUNT(m.list_id) AS count
              FROM lists l
              LEFT JOIN list_members m ON l.id = m.list_id
-             GROUP BY l.id"
+             WHERE l.deleted_at IS NULL OR l.id = ?
+             GROUP BY l.id",
+            selected_id
         )
         .fetch_all(db)
         .await?;
@@ -78,7 +84,15 @@ impl List {
         Ok(())
     }
 
-    /// Lookup a list by id, if one exists.
+    /// Soft delete a list, keeping it resolvable by id for existing references.
+    pub async fn soft_delete(db: &Db, id: i64) -> Result<()> {
+        sqlx::query!("UPDATE lists SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", id)
+            .execute(db)
+            .await?;
+        Ok(())
+    }
+
+    /// Lookup a list by id, if one exists, including deleted lists.
     pub async fn lookup_by_id(db: &Db, id: i64) -> Result<Option<List>> {
         let list = sqlx::query_as!(
             Self,

@@ -29,6 +29,15 @@
               />
             </svg>
           </a>
+          <form
+            action="/lists/{{ list.id }}/delete"
+            method="post"
+            onsubmit="return confirm('Delete this list?')"
+          >
+            <button type="submit" class="ext/button :icon :red">
+              <span>Delete</span>
+            </button>
+          </form>
         </div>
       </div>
     {% endfor %}

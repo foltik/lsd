@@ -17,6 +17,7 @@ pub fn add_routes(router: AppRouter) -> AppRouter {
         r.route("/lists", get(list_lists_page))
          .route("/lists/new", get(create_list_page))
          .route("/lists/{id}", get(edit_list_page).post(edit_list_form))
+         .route("/lists/{id}/delete", post(delete_list_form))
          .route("/lists/{id}/{user_id}", delete(remove_list_member))
     })
 }
@@ -59,6 +60,7 @@ async fn create_list_page(user: User) -> HtmlResult {
         description: "".into(),
         created_at: Utc::now().naive_utc(),
         updated_at: Utc::now().naive_utc(),
+        deleted_at: None,
     };
 
     Ok(ListEditHtml { user: Some(user), list, members: vec![] }.into_response())
@@ -111,6 +113,12 @@ async fn edit_list_form(
     }
 
     Ok(Redirect::to(&format!("/lists/{id}")).into_response())
+}
+
+/// Handle delete submission.
+async fn delete_list_form(State(state): State<SharedAppState>, Path(id): Path<i64>) -> HtmlResult {
+    List::soft_delete(&state.db, id).await?;
+    Ok(Redirect::to("/lists").into_response())
 }
 
 async fn remove_list_member(
