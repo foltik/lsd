@@ -30,7 +30,7 @@
           {% for link in links %}
             <tr {% if link.closed || !link.bypass_closed && event.closed %}class="closed"{% endif %}>
               <td class="slug">
-                <a href="/e/{{ event.slug }}/{{ link.slug }}">/{{ link.slug }}</a>
+                <button class="copy" title="Copy link" type="button" data-path="/e/{{ event.slug }}/{{ link.slug }}">/{{ link.slug }}</button>
               </td>
               <td class="description">{{ link.description }}</td>
               <td>{{ link.password | unwrap_or_empty }}</td>
@@ -82,6 +82,29 @@
   </section>
 
   <script>
+    for (const button of document.querySelectorAll("button.copy")) {
+      button.addEventListener("click", async (e) => {
+        // Copy to clipboard
+        await navigator.clipboard.writeText(location.origin + button.dataset.path);
+
+        // Flash button
+        button.classList.add("flash");
+        for (const animation of button.getAnimations())
+          animation.currentTime = 0;
+
+        // Spawn toast with random dispersion at click location
+        const toast = document.createElement("span");
+        toast.className = "copy-toast";
+        toast.textContent = "Copied!";
+        toast.style.left = `${e.clientX}px`;
+        toast.style.top = `${button.getBoundingClientRect().top}px`;
+        toast.style.setProperty("--spread", Math.random() * 2 - 1);
+        document.body.append(toast);
+        toast.addEventListener("animationend", () => toast.remove());
+      });
+      button.addEventListener("animationend", () => button.classList.remove("flash"));
+    }
+
     for (const form of document.querySelectorAll("form.delete")) {
       form.addEventListener("submit", (e) => {
         const { slug, rsvpCount } = form.dataset;
