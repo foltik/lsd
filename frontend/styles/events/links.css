@@ -29,6 +29,9 @@
   td.slug {
     @apply font-bold;
   }
+  td.description {
+    @apply max-w-md whitespace-normal;
+  }
   td.attendees a {
     @apply decoration-lsd-blue hover:text-lsd-blue underline;
   }

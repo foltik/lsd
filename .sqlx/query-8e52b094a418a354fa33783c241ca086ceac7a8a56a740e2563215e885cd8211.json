@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE event_links\n               SET slug = ?,\n                   description = ?,\n                   password = ?,\n                   capacity = ?,\n                   bypass_capacity = ?,\n                   bypass_closed = ?,\n                   spots_per_person = ?,\n                   closed = ?,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "8e52b094a418a354fa33783c241ca086ceac7a8a56a740e2563215e885cd8211"
+}
