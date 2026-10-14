@@ -62,6 +62,12 @@
         <label for="note">Note (optional)</label>
         <input type="text" name="note" value="{% if let Some(a) = attendee %}{{ a.note }}{% endif %}" />
       </div>
+      {% if attendee.is_none() %}
+      <div class="field">
+        <label for="send_confirmation">Send confirmation email</label>
+        <input id="send_confirmation" name="send_confirmation" type="checkbox" value="true" checked />
+      </div>
+      {% endif %}
       <div class="actions">
         <a href="/events/{{ event.id }}/attendees" class="ext/button"
           >&larr; Back</a

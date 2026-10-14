@@ -743,16 +743,14 @@ mod edit {
         struct PreviewConfirmationHtml {
             email_token: String,
             event: Event,
-            token: String,
+            token: Option<String>,
             flyer: Option<EventFlyer>,
-            is_guest: bool,
         }
         Ok(PreviewConfirmationHtml {
             email_token: String::new(),
             event: event.clone(),
-            token: "xxxxxxxx".into(),
+            token: Some("xxxxxxxx".into()),
             flyer,
-            is_guest: false,
         }
         .into_response())
     }
@@ -1231,6 +1229,8 @@ mod edit {
         last_name: String,
         email: String,
         note: Option<String>,
+        #[serde(default)]
+        send_confirmation: bool,
     }
 
     /// Handle add attendee form submission.
@@ -1276,6 +1276,10 @@ mod edit {
 
         // Create manual RSVP
         ManualRsvp::create(&state.db, event.id, Some(user.id), None, None, admin.id, note.as_deref()).await?;
+
+        if form.send_confirmation {
+            email::ensure_sent_manual_confirmation_email(&state, &event, user, "manual").await?;
+        }
 
         Ok(Redirect::to(&format!("/events/{id}/attendees")).into_response())
     }
@@ -2975,18 +2979,17 @@ pub mod email {
 
     pub fn format_confirmation_email(
         state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str,
-        session_token: &str, email_token: &str, is_guest: bool,
+        session_token: Option<&str>, email_token: &str,
     ) -> Message {
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/event_confirmation.html")]
         struct ConfirmationEmailHtml<'a> {
             email_token: &'a str,
             event: &'a Event,
-            token: &'a str,
+            token: Option<&'a str>,
             flyer: &'a Option<EventFlyer>,
-            is_guest: bool,
         }
-        let html = ConfirmationEmailHtml { email_token, event, token: session_token, flyer, is_guest }
+        let html = ConfirmationEmailHtml { email_token, event, token: session_token, flyer }
             .render()
             .unwrap();
 
@@ -3034,32 +3037,43 @@ pub mod email {
     pub async fn ensure_sent_confirmation_emails(
         state: &SharedAppState, event: &Event, session: &RsvpSession, trigger: &str,
     ) -> Result<()> {
+        let primary_id = session.user_id.unwrap();
+        let attendees = Rsvp::list_family_users(&state.db, event, primary_id).await?;
+
+        // Only the primary attendee gets the manage link.
+        let recipients = attendees.into_iter().map(|user| {
+            let session_token = (user.id == primary_id).then_some(session.token.as_str());
+            (user, session_token)
+        });
+        send_confirmation_emails(state, event, recipients, trigger).await
+    }
+
+    /// Ensure a confirmation email is sent to a manually added attendee, if not already.
+    pub async fn ensure_sent_manual_confirmation_email(
+        state: &SharedAppState, event: &Event, user: User, trigger: &str,
+    ) -> Result<()> {
+        send_confirmation_emails(state, event, [(user, None)], trigger).await
+    }
+
+    async fn send_confirmation_emails<'a>(
+        state: &SharedAppState, event: &Event, recipients: impl IntoIterator<Item = (User, Option<&'a str>)>,
+        trigger: &str,
+    ) -> Result<()> {
         if event.is_over() {
             return Ok(());
         }
 
-        let primary_id = session.user_id.unwrap();
-        let attendees = Rsvp::list_family_users(&state.db, event, primary_id).await?;
-
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
         let mut messages = vec![];
         let mut sent_to = vec![];
-        for user in attendees {
-            let is_guest = user.id != primary_id;
+        for (user, session_token) in recipients {
             let Some(email) = Email::try_create_confirmation(&state.db, event.id, user.id).await? else {
                 // we've already sent a confirmation email
                 continue;
             };
 
-            let message = format_confirmation_email(
-                state,
-                event,
-                &flyer,
-                &user.email,
-                &session.token,
-                &email.token,
-                is_guest,
-            );
+            let message =
+                format_confirmation_email(state, event, &flyer, &user.email, session_token, &email.token);
             messages.push(message);
             sent_to.push((email.id, user.email));
         }

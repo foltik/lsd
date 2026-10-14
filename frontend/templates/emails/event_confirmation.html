@@ -33,9 +33,9 @@
     {% if let Some(confirmation_html) = event.confirmation_html %}
       {{ confirmation_html | safe }}
     {% else %}
-      <p>{% if !is_guest %}Thank you for your contribution. {% endif %}We look forward to seeing you!</p>
+      <p>{% if token.is_some() %}Thank you for your contribution. {% endif %}We look forward to seeing you!</p>
     {% endif %}
-    {% if !is_guest %}
+    {% if let Some(token) = token %}
       <div class="center">
         <a
           class="manage"
