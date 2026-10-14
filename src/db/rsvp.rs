@@ -57,28 +57,21 @@ pub struct EventRsvp {
     pub spot_id: i64,
     pub contribution: i64,
     pub discount: i64,
-    pub link_id: Option<i64>,
 }
 
-pub struct UserRsvp {
+pub struct HeldRsvp {
+    pub session_id: i64,
     pub status: String,
-    pub email: String,
-    /// The user_id of the attendee whose email this is.
-    pub attendee_user_id: i64,
+    pub spot_id: i64,
+    pub contribution: i64,
+    pub link_id: Option<i64>,
     /// The user_id who owns the session this attendee is reserved under.
     pub owner_user_id: Option<i64>,
     pub owner_first_name: Option<String>,
     pub owner_last_name: Option<String>,
-}
-
-struct UserRsvpRow {
-    session_id: i64,
-    status: String,
-    email: String,
-    attendee_user_id: i64,
-    owner_user_id: Option<i64>,
-    owner_first_name: Option<String>,
-    owner_last_name: Option<String>,
+    /// The user_id of the attendee whose email this is.
+    pub attendee_user_id: Option<i64>,
+    pub email: Option<String>,
 }
 
 pub struct AdminAttendeesRsvp {
@@ -219,9 +212,8 @@ impl Rsvp {
     pub async fn list_for_session(db: &Db, session_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            r#"SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
+            r#"SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
                FROM rsvps r
-               JOIN rsvp_sessions rs ON rs.id = r.session_id
                WHERE r.session_id = ?
             "#,
             session_id
@@ -352,7 +344,7 @@ impl Rsvp {
     pub async fn list_family_rsvps(db: &Db, event: &Event, user_id: i64) -> Result<Vec<EventRsvp>> {
         Ok(sqlx::query_as!(
             EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
+            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount
              FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
              WHERE rs.event_id = ? AND rs.user_id = ?
@@ -368,110 +360,35 @@ impl Rsvp {
         .await?)
     }
 
-    /// List reserved spots for an event, excluding a specific session.
-    /// Only includes rsvps from sessions at CONTRIBUTION status or later.
-    pub async fn list_reserved_for_event(
-        db: &Db, event: &Event, session: &RsvpSession,
-    ) -> Result<Vec<EventRsvp>> {
-        Ok(sqlx::query_as!(
-            EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
-             FROM rsvps r
-             JOIN rsvp_sessions rs ON rs.id = r.session_id
-             WHERE rs.event_id = ?
-               AND rs.id != ?
-               AND rs.status IN (?, ?, ?, ?, ?)",
-            event.id,
-            session.id,
-            RsvpSession::CONTRIBUTION,
-            RsvpSession::PAYMENT_PENDING,
-            RsvpSession::PAYMENT_CONFIRMED,
-            RsvpSession::REFUND_PENDING,
-            RsvpSession::REFUND_CONFIRMED,
-        )
-        .fetch_all(db)
-        .await?)
-    }
-
-    /// List the user's confirmed RSVPs for an event across all their sessions.
-    /// If currently in a session, excludes any RSVPs which have already been counted against limits.
-    pub async fn list_user_reserved_for_event(
-        db: &Db, event: &Event, user_id: Option<i64>, current_session_id: Option<i64>,
-    ) -> Result<Vec<EventRsvp>> {
-        let Some(user_id) = user_id else { return Ok(vec![]) };
-        Ok(sqlx::query_as!(
-            EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
-             FROM rsvps r
-             JOIN rsvp_sessions rs ON rs.id = r.session_id
-             WHERE rs.event_id = ? AND rs.user_id = ?
-               AND (? IS NULL OR rs.id != ?)
-               AND rs.status IN (?, ?, ?, ?, ?)",
-            event.id,
-            user_id,
-            current_session_id,
-            current_session_id,
-            RsvpSession::CONTRIBUTION,
-            RsvpSession::PAYMENT_PENDING,
-            RsvpSession::PAYMENT_CONFIRMED,
-            RsvpSession::REFUND_PENDING,
-            RsvpSession::REFUND_CONFIRMED,
-        )
-        .fetch_all(db)
-        .await?)
-    }
-
-    /// List all reserved spots for an event (no exclusion).
-    pub async fn list_all_reserved_for_event(db: &Db, event: &Event) -> Result<Vec<EventRsvp>> {
-        Ok(sqlx::query_as!(
-            EventRsvp,
-            "SELECT r.id as rsvp_id, r.spot_id, r.contribution, r.discount, rs.link_id
-             FROM rsvps r
-             JOIN rsvp_sessions rs ON rs.id = r.session_id
-             WHERE rs.event_id = ?
-               AND rs.status IN (?, ?, ?, ?, ?)",
-            event.id,
-            RsvpSession::CONTRIBUTION,
-            RsvpSession::PAYMENT_PENDING,
-            RsvpSession::PAYMENT_CONFIRMED,
-            RsvpSession::REFUND_PENDING,
-            RsvpSession::REFUND_CONFIRMED,
-        )
-        .fetch_all(db)
-        .await?)
-    }
-
-    pub async fn list_reserved_users_for_event(
+    /// List RSVPs holding a spot for an event, excluding the given sessions.
+    pub async fn list_held_for_event(
         db: &Db, event: &Event, exclude_session_ids: &[i64],
-    ) -> Result<Vec<UserRsvp>> {
-        let rows = sqlx::query_as!(
-            UserRsvpRow,
-            r#"SELECT rs.id AS session_id, rs.status, u.email,
-                      u.id AS attendee_user_id,
+    ) -> Result<Vec<HeldRsvp>> {
+        let mut rows = sqlx::query_as!(
+            HeldRsvp,
+            r#"SELECT rs.id AS session_id, rs.status, r.spot_id, r.contribution, rs.link_id,
                       rs.user_id AS owner_user_id,
                       owner.first_name AS owner_first_name,
-                      owner.last_name AS owner_last_name
-             FROM users u
-             JOIN rsvps r ON r.user_id = u.id
+                      owner.last_name AS owner_last_name,
+                      r.user_id AS attendee_user_id,
+                      u.email AS "email?"
+             FROM rsvps r
              JOIN rsvp_sessions rs ON rs.id = r.session_id
+             LEFT JOIN users u ON u.id = r.user_id
              LEFT JOIN users owner ON owner.id = rs.user_id
-             WHERE rs.event_id = ?"#,
+             WHERE rs.event_id = ?
+               AND rs.status IN (?, ?, ?, ?, ?)"#,
             event.id,
+            RsvpSession::CONTRIBUTION,
+            RsvpSession::PAYMENT_PENDING,
+            RsvpSession::PAYMENT_CONFIRMED,
+            RsvpSession::REFUND_PENDING,
+            RsvpSession::REFUND_CONFIRMED,
         )
         .fetch_all(db)
         .await?;
-        Ok(rows
-            .into_iter()
-            .filter(|r| !exclude_session_ids.contains(&r.session_id))
-            .map(|r| UserRsvp {
-                status: r.status,
-                email: r.email,
-                attendee_user_id: r.attendee_user_id,
-                owner_user_id: r.owner_user_id,
-                owner_first_name: r.owner_first_name,
-                owner_last_name: r.owner_last_name,
-            })
-            .collect())
+        rows.retain(|r| !exclude_session_ids.contains(&r.session_id));
+        Ok(rows)
     }
 
     pub async fn create(db: &Db, rsvp: CreateRsvp) -> Result<i64> {

@@ -5,7 +5,7 @@ use rand::rngs::OsRng;
 
 use crate::db::event_flyer::EventFlyer;
 use crate::db::event_link::EventLink;
-use crate::db::rsvp::EventRsvp;
+use crate::db::rsvp::HeldRsvp;
 use crate::db::spot::Spot;
 use crate::prelude::*;
 
@@ -521,19 +521,24 @@ impl Event {
 
 impl Event {
     /// Calculate number of spots available of each type for this event.
-    /// `all_rsvps` = all reserved RSVPs counted toward capacity (may or may not include current session).
-    /// `user_rsvps` = this user's reserved RSVPs across all their sessions (for per-person limits).
+    /// `held_rsvps` = all held RSVPs counted toward capacity (may or may not include current session).
+    /// `user_id` = the user whose held RSVPs count toward per-person limits, if any.
     /// `manual_count` = all manually added RSVPs counted toward capacity
     /// `link` = the session's entry link, if any
     pub fn compute_limits(
-        &self, spots: &[Spot], all_rsvps: &[EventRsvp], user_rsvps: &[EventRsvp], manual_count: i64,
+        &self, spots: &[Spot], held_rsvps: &[HeldRsvp], user_id: Option<i64>, manual_count: i64,
         link: Option<&EventLink>,
     ) -> EventLimits {
+        let user_rsvps: Vec<&HeldRsvp> = held_rsvps
+            .iter()
+            .filter(|r| user_id.is_some() && r.owner_user_id == user_id)
+            .collect();
+
         // Overall event limits
-        let capacity_limit = (self.capacity - all_rsvps.len() as i64 - manual_count).max(0);
+        let capacity_limit = (self.capacity - held_rsvps.len() as i64 - manual_count).max(0);
         let capacity_limit = match link {
             Some(link) => {
-                let used = all_rsvps.iter().filter(|r| r.link_id == Some(link.id)).count() as i64;
+                let used = held_rsvps.iter().filter(|r| r.link_id == Some(link.id)).count() as i64;
                 let link_limit = (link.capacity - used).max(0);
                 if link.bypass_capacity { link_limit } else { capacity_limit.min(link_limit) }
             }
@@ -548,7 +553,7 @@ impl Event {
 
         // Count rsvps per spot
         let mut spot_num_rsvps: HashMap<i64, i64> = Default::default();
-        for rsvp in all_rsvps {
+        for rsvp in held_rsvps {
             *spot_num_rsvps.entry(rsvp.spot_id).or_default() += 1;
         }
 

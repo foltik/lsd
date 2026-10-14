@@ -96,10 +96,10 @@ mod read {
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-        let user_rsvps = []; // No need to count user limits, they'd see the Manage page link anyways
+        let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[]).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, None);
+        // No need to count user limits, they'd see the Manage page link anyways
+        let limits = event.compute_limits(&spots, &held_rsvps, None, manual_count, None);
         let full = limits.total_limit == 0;
         let open = event.registration_open(None);
         Ok(Html { session, user, event, flyer, full, open }.into_response())
@@ -1544,10 +1544,10 @@ mod rsvp {
         }
 
         let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-        let user_rsvps = []; // No need to count user limits, they'd be redirected anyways
+        let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[]).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, None);
+        // No need to count user limits, they'd be redirected anyways
+        let limits = event.compute_limits(&spots, &held_rsvps, None, manual_count, None);
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
@@ -1629,9 +1629,9 @@ mod rsvp {
                     user.email
                 );
 
-                // Check for conflicts (no guests, so only a primary conflict is possible).
-                let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &[]).await?;
-                if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &[])
+                // Check for conflicts, possibly taking over another session.
+                let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[]).await?;
+                if let Some(conflict) = validate::no_conflicts(&held_rsvps, Some(&primary_user), &[])
                     && let Some(resp) = resolve_conflict(&state, &event, None, conflict).await?
                 {
                     return Ok(resp);
@@ -1714,10 +1714,10 @@ mod rsvp {
 
         // Check event/link capacity.
         let spots = Spot::list_for_event(&state.db, event.id).await?;
-        let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, event).await?;
-        let user_rsvps = []; // No need to count user limits, they'd be redirected anyways
+        let held_rsvps = Rsvp::list_held_for_event(&state.db, event, &[]).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, Some(link));
+        // No need to count user limits, they'd be redirected anyways
+        let limits = event.compute_limits(&spots, &held_rsvps, None, manual_count, Some(link));
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
         }
@@ -1754,15 +1754,13 @@ mod rsvp {
             our_contributions.insert(rsvp.spot_id, rsvp.contribution);
         }
 
-        let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-        let user_rsvps =
-            Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id)).await?;
+        let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[session.id]).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+        let limits = event.compute_limits(&spots, &held_rsvps, session.user_id, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
         }
-        let stats = Spot::stats(&spots, &all_rsvps);
+        let stats = Spot::stats(&spots, &held_rsvps);
 
         let parent_token = match session.parent_session_id {
             Some(parent_id) => {
@@ -1821,11 +1819,9 @@ mod rsvp {
         })?;
 
         // Verify limits
-        let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-        let user_rsvps =
-            Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id)).await?;
+        let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[session.id]).await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+        let limits = event.compute_limits(&spots, &held_rsvps, session.user_id, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
         }
@@ -1896,12 +1892,10 @@ mod rsvp {
         {
             let spots = Spot::list_for_event(&state.db, event.id).await?;
             let our_rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
-            let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &session).await?;
-            let user_rsvps =
-                Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, Some(session.id))
-                    .await?;
+            let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[session.id]).await?;
             let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+            let limits =
+                event.compute_limits(&spots, &held_rsvps, session.user_id, manual_count, link.as_ref());
             if limits.total_limit == 0 {
                 return goto::error_at_capacity(&state.db, &state.stripe, &Some(session)).await;
             }
@@ -1923,8 +1917,8 @@ mod rsvp {
         attendees: String,
     }
     pub async fn attendees_form(
-        mut our_session: RsvpSession, auth_user: Option<User>, State(state): State<SharedAppState>,
-        Path(slug): Path<String>, Form(form): Form<AttendeesForm>,
+        mut our_session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
+        Form(form): Form<AttendeesForm>,
     ) -> HtmlResult {
         // CONTRIBUTION may arrive by navigating backwards
         if our_session.status != RsvpSession::ATTENDEES && our_session.status != RsvpSession::CONTRIBUTION {
@@ -1932,67 +1926,41 @@ mod rsvp {
         }
 
         let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
+        let spots = Spot::list_for_event(&state.db, event.id).await?;
         let link = our_session.link(&state.db).await?;
+
         if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(our_session)).await;
         }
 
-        let user = our_session.user(&state.db).await?;
-        let spots = Spot::list_for_event(&state.db, event.id).await?;
+        // Parse and validate attendees form
+        let session_user = our_session.user(&state.db).await?;
         let our_rsvps = Rsvp::list_for_session(&state.db, our_session.id).await?;
-
         let is_adding_guests = our_session.is_adding_guests();
-        // On public events in the Create flow, the primary attendee fields are editable so a
-        // logged-in user can buy a ticket for someone else. Private events are locked to yourself.
         let lock_primary = event.guest_list_id.is_some();
-
-        // Parse and validate form
         let (primary_attendee, guest_attendees) =
-            parse::attendees_form(&user, &our_rsvps, &form.attendees, is_adding_guests, lock_primary)
+            parse::attendees_form(&session_user, &our_rsvps, &form.attendees, is_adding_guests, lock_primary)
                 .await
                 .map_err(|e| {
                     alert!("attendees_form(): session={} form={form:?}: {e}", our_session.token);
                     invalid()
                 })?;
 
-        // Check for conflicts
-        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &[our_session.id]).await?;
-        if is_adding_guests {
-            // First check new guests' emails/phones don't overlap with existing family attendees
-            let user_id = our_session.user_id.unwrap();
-            let family_attendees = Rsvp::list_family_attendees(&state.db, &event, user_id).await?;
-            if let Some(value) = validate::no_family_overlaps(&family_attendees, &guest_attendees) {
-                return goto::error_guest_contact_overlap(&value);
-            }
-
-            // Only check guests; the parent user is already reserved. The empty dummy primary
-            // can't match, so any conflict here is a guest collision.
-            let dummy_primary =
-                CreateUser { first_name: None, last_name: None, email: String::new(), phone: None };
-            let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
-            if let Some(conflict) = validate::no_conflicts(&other_users, &dummy_primary, &guest_users)
-                && let Some(resp) = resolve_conflict(&state, &event, Some(our_session.id), conflict).await?
-            {
+        // Check for conflicts, possibly taking over another session.
+        let mut held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[our_session.id]).await?;
+        let primary_user = primary_attendee.as_ref().map(|a| &a.user);
+        if let Some(conflict) = validate::no_conflicts(&held_rsvps, primary_user, &guest_attendees) {
+            if let Some(resp) = resolve_conflict(&state, &event, Some(our_session.id), conflict).await? {
                 return Ok(resp);
             }
-        } else {
-            let primary_user = primary_attendee.as_ref().unwrap().user.clone();
-            let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
-            if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users)
-                && let Some(resp) = resolve_conflict(&state, &event, Some(our_session.id), conflict).await?
-            {
-                return Ok(resp);
-            }
+            // Reload held RSVPs since resolving a conflict may have deleted a stale CONTRIBUTION session holding spots.
+            held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[our_session.id]).await?;
         }
 
         // Verify limits in case of preemption since `selection_form()` submission.
-        // Once we transition to CONTRIBUTION, our rsvps spots are held.
-        let all_rsvps = Rsvp::list_reserved_for_event(&state.db, &event, &our_session).await?;
-        let user_rsvps =
-            Rsvp::list_user_reserved_for_event(&state.db, &event, our_session.user_id, Some(our_session.id))
-                .await?;
         let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-        let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+        let limits =
+            event.compute_limits(&spots, &held_rsvps, our_session.user_id, manual_count, link.as_ref());
         if limits.total_limit == 0 {
             return goto::error_at_capacity(&state.db, &state.stripe, &Some(our_session)).await;
         }
@@ -2000,23 +1968,16 @@ mod rsvp {
             return goto::error_spot_taken(&state.db, &state.stripe, &our_session).await;
         }
 
-        // Create and store primary user on RsvpSession and Rsvp
+        // Create and store users on the primary Rsvp
         if let Some(primary_attendee) = &primary_attendee {
             let primary_user =
                 User::upsert_for_rsvp(&state.db, &primary_attendee.user, our_session.created_at).await?;
-            // if an anonymous user navigates back to change the "Is me" attendee,
-            // correct the session so the purchaser confirmation goes to the right user
-            let is_anonymous_change = auth_user.is_none() && our_session.user_id != Some(primary_user.id);
-            if our_session.user_id.is_none() || is_anonymous_change {
-                // For an anonymous user, tie the RsvpSession to the "Is me" primary attendee.
-                our_session.set_user(&state.db, &primary_user).await?;
-            } else {
-                // For an already logged in user who may be buying a ticket for someone else,
-                // keep the original user which would have been set at creation time.
-            }
             Rsvp::set_user(&state.db, primary_attendee.rsvp_id, &primary_user).await?;
-        }
 
+            // Store the primary attendee on the RsvpSession.
+            // If you're logged in and RSVP for someone else, oh well, they now control the reservation.
+            our_session.set_user(&state.db, &primary_user).await?;
+        }
         // Create and store users on guest Rsvps
         for ParsedAttendee { rsvp_id, user } in guest_attendees {
             let user = User::upsert_for_rsvp(&state.db, &user, our_session.created_at).await?;
@@ -2148,7 +2109,7 @@ mod rsvp {
             _ => bail_invalid!(),
         }
 
-        // Send confirmation emails to the purchaser and any attendees who haven't gotten one yet.
+        // Send confirmation emails to any attendees who haven't gotten one yet.
         email::ensure_sent_confirmation_emails(&state, &event, &session, "contribution").await?;
 
         Ok(Redirect::to(&format!("/e/{slug}/rsvp/manage?reservation={}", session.token)).into_response())
@@ -2365,9 +2326,6 @@ mod rsvp {
         let Some(user_id) = session.user_id else {
             bail_invalid!()
         };
-        if User::lookup_by_id(&state.db, user_id).await?.is_none() {
-            bail_invalid!()
-        }
 
         // Transition state
         match session.status.as_str() {
@@ -2405,7 +2363,6 @@ mod rsvp {
         }
 
         // Aggregate RSVPs from parent + all confirmed children
-        let user_id = session.user_id.unwrap();
         let rsvps = Rsvp::list_family_contributions(&state.db, &event, user_id).await?;
         let price = rsvps.iter().map(|r| r.contribution).sum::<i64>();
         let discount = match session.coupon_id {
@@ -2420,11 +2377,10 @@ mod rsvp {
         let link = session.link(&state.db).await?;
         let can_add_guests = if event.registration_open(link.as_ref()) {
             let spots = Spot::list_for_event(&state.db, event.id).await?;
-            let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-            let user_rsvps =
-                Rsvp::list_user_reserved_for_event(&state.db, &event, session.user_id, None).await?;
+            let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[]).await?;
             let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-            let limits = event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+            let limits =
+                event.compute_limits(&spots, &held_rsvps, session.user_id, manual_count, link.as_ref());
             limits.total_limit > 0
         } else {
             false
@@ -2478,13 +2434,15 @@ mod rsvp {
                 }
 
                 let spots = Spot::list_for_event(&state.db, event.id).await?;
-                let all_rsvps = Rsvp::list_all_reserved_for_event(&state.db, &event).await?;
-                let user_rsvps =
-                    Rsvp::list_user_reserved_for_event(&state.db, &event, parent_session.user_id, None)
-                        .await?;
+                let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &[]).await?;
                 let manual_count = ManualRsvp::count_for_event(&state.db, event.id).await?;
-                let limits =
-                    event.compute_limits(&spots, &all_rsvps, &user_rsvps, manual_count, link.as_ref());
+                let limits = event.compute_limits(
+                    &spots,
+                    &held_rsvps,
+                    parent_session.user_id,
+                    manual_count,
+                    link.as_ref(),
+                );
                 if limits.total_limit == 0 {
                     return goto::error_at_capacity(&state.db, &state.stripe, &None).await;
                 }
@@ -2559,13 +2517,12 @@ mod rsvp {
                     invalid()
                 })?;
 
-        // Check for conflicts
-        let primary_user = primary_attendee.unwrap().user.clone();
-        let guest_users = guest_attendees.iter().map(|a| a.user.clone()).collect::<Vec<_>>();
+        // Check for conflicts, possibly taking over another session.
+        let primary_user = &primary_attendee.as_ref().unwrap().user;
         let family_sessions = RsvpSession::list_for_user(&state.db, user_id, event.id).await?;
         let family_ids: Vec<i64> = family_sessions.iter().map(|s| s.id).collect();
-        let other_users = Rsvp::list_reserved_users_for_event(&state.db, &event, &family_ids).await?;
-        if let Some(conflict) = validate::no_conflicts(&other_users, &primary_user, &guest_users)
+        let held_rsvps = Rsvp::list_held_for_event(&state.db, &event, &family_ids).await?;
+        if let Some(conflict) = validate::no_conflicts(&held_rsvps, Some(primary_user), &guest_attendees)
             && let Some(resp) = resolve_conflict(&state, &event, None, conflict).await?
         {
             return Ok(resp);
@@ -2597,10 +2554,7 @@ mod rsvp {
             "RSVP primary conflict event_id={} email={email:?} status={status:?} is_own_session={is_own_session}",
             event.id,
         );
-        let pre_payment = matches!(
-            status.as_str(),
-            RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION
-        );
+        let pre_payment = status == RsvpSession::CONTRIBUTION;
         if is_own_session && pre_payment {
             RsvpSession::delete_drafts_for_email(&state.db, &state.stripe, event, email, exclude_session_id)
                 .await?;
@@ -2701,7 +2655,8 @@ mod rsvp {
             let message = match conflict {
                 // A guest the user is adding is already reserved.
                 Conflict::Guest { email, status } => match status.as_str() {
-                    RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
+                    RsvpSession::SELECTION | RsvpSession::ATTENDEES => unreachable!("spots are only reserved and can conflict in CONTRIBUTION and later"),
+                    RsvpSession::CONTRIBUTION =>
                         format!("{email} is currently in the process of RSVPing for this event."),
                     RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED | RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
                         format!("{email} has already RSVPed for this event."),
@@ -2720,7 +2675,8 @@ mod rsvp {
                     match status.as_str() {
                         RsvpSession::PAYMENT_PENDING | RsvpSession::PAYMENT_CONFIRMED | RsvpSession::REFUND_PENDING | RsvpSession::REFUND_CONFIRMED =>
                             format!("You've already been RSVPed to this event by {who}! Check your email for your confirmation."),
-                        RsvpSession::SELECTION | RsvpSession::ATTENDEES | RsvpSession::CONTRIBUTION =>
+                        RsvpSession::SELECTION | RsvpSession::ATTENDEES => unreachable!("spots are only reserved and can conflict in CONTRIBUTION and later"),
+                        RsvpSession::CONTRIBUTION =>
                             format!("{who} is currently RSVPing with you listed as a guest. Please check with them, otherwise contact {contact}."),
                         _ => unreachable!(),
                     }
@@ -2729,12 +2685,6 @@ mod rsvp {
             Ok(ErrorHtml {
                 message,
                 user: None,
-            }.into_response())
-        }
-        pub fn error_guest_contact_overlap(value: &str) -> HtmlResult {
-            Ok(ErrorHtml {
-                user: None,
-                message: format!("{value} is already in use by another guest in your reservation."),
             }.into_response())
         }
         pub fn error_rsvp_not_found() -> HtmlResult {
@@ -2757,7 +2707,7 @@ mod rsvp {
 
     mod validate {
         use super::*;
-        use crate::db::rsvp::{AttendeeRsvp, UserRsvp};
+        use crate::db::rsvp::HeldRsvp;
 
         /// Returns true if rsvps satisfy total and per-spot limits.
         pub fn within_limits(limits: &EventLimits, rsvps: &[EventRsvp]) -> bool {
@@ -2795,48 +2745,29 @@ mod rsvp {
         }
         #[rustfmt::skip]
         pub fn no_conflicts(
-            other_users: &[UserRsvp], primary: &CreateUser, guests: &[CreateUser],
+            held_rsvps: &[HeldRsvp], primary: Option<&CreateUser>, guests: &[parse::ParsedAttendee],
         ) -> Option<Conflict> {
-            for other_user in other_users {
-                if primary.email == other_user.email {
-                    let is_own_session = other_user.owner_user_id == Some(other_user.attendee_user_id);
-                    let owner_name = match (&other_user.owner_first_name, &other_user.owner_last_name) {
+            for rsvp in held_rsvps {
+                let Some(email) = &rsvp.email else { continue };
+                if primary.is_some_and(|u| &u.email == email) {
+                    let is_own_session = rsvp.owner_user_id == rsvp.attendee_user_id;
+                    let owner_name = match (&rsvp.owner_first_name, &rsvp.owner_last_name) {
                         (Some(f), Some(l)) => Some(format!("{f} {l}")),
                         (Some(f), None) => Some(f.clone()),
                         _ => None,
                     };
                     return Some(Conflict::Primary {
-                        email: other_user.email.clone(),
-                        status: other_user.status.clone(),
+                        email: email.clone(),
+                        status: rsvp.status.clone(),
                         is_own_session,
                         owner_name,
                     })
                 }
 
                 for guest in guests {
-                    if guest.email == other_user.email {
-                        return Some(Conflict::Guest { email: other_user.email.clone(), status: other_user.status.clone() });
+                    if &guest.user.email == email {
+                        return Some(Conflict::Guest { email: email.clone(), status: rsvp.status.clone() });
                     }
-                }
-            }
-            None
-        }
-
-        /// Check that new guests don't duplicate email/phone of existing family attendees.
-        /// Returns the conflicting value (email or phone) if found.
-        pub fn no_family_overlaps(
-            existing: &[AttendeeRsvp], new_guests: &[parse::ParsedAttendee],
-        ) -> Option<String> {
-            let emails: HashSet<&str> = existing.iter().filter_map(|a| a.email.as_deref()).collect();
-            let phones: HashSet<&str> = existing.iter().filter_map(|a| a.phone.as_deref()).collect();
-            for guest in new_guests {
-                if emails.contains(guest.user.email.as_str()) {
-                    return Some(guest.user.email.clone());
-                }
-                if let Some(ref phone) = guest.user.phone
-                    && phones.contains(phone.as_str())
-                {
-                    return Some(phone.clone());
                 }
             }
             None
@@ -2893,7 +2824,7 @@ mod rsvp {
                 }
 
                 for _ in 0..rsvp.qty {
-                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution, discount: 0, link_id: None })
+                    parsed.push(EventRsvp { rsvp_id: 0, spot_id, contribution, discount: 0 })
                 }
             }
 
@@ -3114,7 +3045,7 @@ pub mod email {
         Ok(message)
     }
 
-    /// Ensure confirmation emails are sent to the purchaser and all attendees of a reservation, if not already.
+    /// Ensure confirmation emails are sent to all attendees of a reservation, if not already.
     pub async fn ensure_sent_confirmation_emails(
         state: &SharedAppState, event: &Event, session: &RsvpSession, trigger: &str,
     ) -> Result<()> {
@@ -3122,33 +3053,14 @@ pub mod email {
             return Ok(());
         }
 
-        // "child" sessions/added guests belong to the parent's reservation.
-        let parent;
-        let session = match session.parent_session_id {
-            Some(parent_id) => {
-                parent = RsvpSession::lookup_by_id(&state.db, parent_id)
-                    .await?
-                    .expect("invalid parent_session_id");
-                &parent
-            }
-            None => session,
-        };
-        let Some(purchaser_id) = session.user_id else {
-            bail!("confirmation for session_id={} without user_id", session.id);
-        };
-        let Some(purchaser) = User::lookup_by_id(&state.db, purchaser_id).await? else {
-            bail!("confirmation for session_id={} with unknown user_id={purchaser_id}", session.id);
-        };
-
-        // include purchaser separately from attendees since they might not themselves be attending
-        let attendees = Rsvp::list_family_users(&state.db, event, purchaser_id).await?;
-        let recipients = std::iter::once((purchaser, false))
-            .chain(attendees.into_iter().filter(|u| u.id != purchaser_id).map(|u| (u, true)));
+        let primary_id = session.user_id.unwrap();
+        let attendees = Rsvp::list_family_users(&state.db, event, primary_id).await?;
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
         let mut messages = vec![];
         let mut sent_to = vec![];
-        for (user, is_guest) in recipients {
+        for user in attendees {
+            let is_guest = user.id != primary_id;
             let Some(email) = Email::try_create_confirmation(&state.db, event.id, user.id).await? else {
                 // we've already sent a confirmation email
                 continue;
@@ -3177,9 +3089,6 @@ pub mod email {
                     );
                 }
             }
-        }
-        if messages.is_empty() {
-            return Ok(());
         }
 
         let results = state.mailer.send_batch(Arc::clone(state), messages).await;
