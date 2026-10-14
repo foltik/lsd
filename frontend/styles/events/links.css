@@ -26,8 +26,9 @@
   td {
     @apply py-1;
   }
-  td.slug {
-    @apply font-bold;
+  td.slug button {
+    @apply decoration-lsd-blue hover:text-lsd-blue touch-manipulation underline select-none;
+    text-box: trim-both cap alphabetic; /* shrink box to just letters */
   }
   td.description {
     @apply max-w-md whitespace-normal;
@@ -37,5 +38,29 @@
   }
   td.actions {
     @apply flex items-center gap-4;
+  }
+  button.copy {
+    @apply cursor-pointer will-change-transform;
+    &.flash {
+      animation: copy-flash 0.4s ease-out;
+    }
+  }
+}
+
+.copy-toast {
+  @apply text-lsd-blue pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full text-xs font-bold whitespace-nowrap;
+  text-box: trim-both cap alphabetic; /* shrink box to just letters */
+  animation: copy-toast 0.8s ease-out forwards;
+}
+@keyframes copy-flash {
+  from {
+    color: var(--color-lsd-blue);
+    transform: scale(1.25);
+  }
+}
+@keyframes copy-toast {
+  to {
+    transform: translate(calc(sin(var(--spread) * 20deg) * 1.5rem), calc(cos(var(--spread) * 20deg) * -1.5rem));
+    opacity: 0;
   }
 }
