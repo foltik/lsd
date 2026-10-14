@@ -1880,13 +1880,13 @@ mod rsvp {
     pub async fn attendees_page(
         session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         // CONTRIBUTION may arrive by navigating backwards
         if session.status != RsvpSession::ATTENDEES && session.status != RsvpSession::CONTRIBUTION {
-            bail_invalid!();
+            return goto::by_status(&state.db, &event, session).await;
         }
 
         let user = session.user(&state.db).await?;
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let link = session.link(&state.db).await?;
         if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
@@ -1924,12 +1924,12 @@ mod rsvp {
         mut our_session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
         Form(form): Form<AttendeesForm>,
     ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         // CONTRIBUTION may arrive by navigating backwards
         if our_session.status != RsvpSession::ATTENDEES && our_session.status != RsvpSession::CONTRIBUTION {
-            bail_invalid!();
+            return goto::by_status(&state.db, &event, our_session).await;
         }
 
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let spots = Spot::list_for_event(&state.db, event.id).await?;
         let link = our_session.link(&state.db).await?;
 
@@ -2019,11 +2019,11 @@ mod rsvp {
     pub async fn contribution_page(
         mut session: RsvpSession, State(state): State<SharedAppState>, Path(slug): Path<String>,
     ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if session.status != RsvpSession::CONTRIBUTION {
-            bail_invalid!();
+            return goto::by_status(&state.db, &event, session).await;
         }
 
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let link = session.link(&state.db).await?;
         if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
@@ -2096,11 +2096,11 @@ mod rsvp {
     pub async fn contribution_form(
         State(state): State<SharedAppState>, session: RsvpSession, Path(slug): Path<String>,
     ) -> HtmlResult {
+        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         if session.status != RsvpSession::CONTRIBUTION {
-            bail_invalid!();
+            return goto::by_status(&state.db, &event, session).await;
         }
 
-        let event = Event::lookup_by_slug(&state.db, &slug).await?.ok_or_else(not_found)?;
         let link = session.link(&state.db).await?;
         if !event.registration_open(link.as_ref()) {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
@@ -2181,7 +2181,7 @@ mod rsvp {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
         if session.status != RsvpSession::CONTRIBUTION {
-            bail_invalid!();
+            return goto::by_status(&state.db, &event, session).await;
         }
 
         let mut rsvps = Rsvp::list_for_session(&state.db, session.id).await?;
@@ -2266,7 +2266,7 @@ mod rsvp {
             return goto::error_registration_closed(&state.db, &state.stripe, &Some(session)).await;
         }
         if session.status != RsvpSession::CONTRIBUTION {
-            bail_invalid!();
+            return goto::by_status(&state.db, &event, session).await;
         }
 
         tracing::info!("Removing coupon_id={:?} from session_id={}", session.coupon_id, session.id);
