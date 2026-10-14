@@ -19,43 +19,48 @@
         "type_info": "Text"
       },
       {
-        "name": "password",
+        "name": "description",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "capacity",
+        "name": "password",
         "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "capacity",
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "bypass_capacity",
-        "ordinal": 5,
-        "type_info": "Bool"
-      },
-      {
-        "name": "bypass_closed",
         "ordinal": 6,
         "type_info": "Bool"
       },
       {
-        "name": "spots_per_person",
+        "name": "bypass_closed",
         "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
+        "name": "spots_per_person",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "closed",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Bool"
       },
       {
         "name": "created_at",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Datetime"
       }
     ],
@@ -63,6 +68,7 @@
       "Right": 2
     },
     "nullable": [
+      false,
       false,
       false,
       false,

@@ -17,6 +17,7 @@
         <thead>
           <tr>
             <th>Link</th>
+            <th>Description</th>
             <th>Password</th>
             <th>Attendees</th>
             <th>Max spots</th>
@@ -31,6 +32,7 @@
               <td class="slug">
                 <a href="/e/{{ event.slug }}/{{ link.slug }}">/{{ link.slug }}</a>
               </td>
+              <td class="description">{{ link.description }}</td>
               <td>{{ link.password | unwrap_or_empty }}</td>
               <td class="attendees"><a href="/events/{{ event.id }}/attendees?link={{ link.slug }}">{{ link.uses }}/{{ link.capacity }}</a></td>
               <td>{{ link.spots_per_person | unwrap_or_empty }}</td>

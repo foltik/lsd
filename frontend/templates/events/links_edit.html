@@ -20,6 +20,10 @@
         />
       </div>
       <div class="field">
+        <label for="description">Description (optional)</label>
+        <input type="text" id="description" name="description" value="{{ link.description }}" />
+      </div>
+      <div class="field">
         <label for="password">Password (optional)</label>
         <input type="text" id="password" name="password" value="{{ link.password | unwrap_or_empty }}" />
       </div>

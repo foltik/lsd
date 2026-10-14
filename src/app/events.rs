@@ -1408,6 +1408,7 @@ mod links {
                 id: 0,
                 event_id: event.id,
                 slug: "".into(),
+                description: "".into(),
                 password: None,
                 capacity: 0,
                 bypass_capacity: false,

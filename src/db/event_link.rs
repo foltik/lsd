@@ -5,6 +5,7 @@ pub struct EventLink {
     pub id: i64,
     pub event_id: i64,
     pub slug: String,
+    pub description: String,
     pub password: Option<String>,
     pub capacity: i64,
     pub bypass_capacity: bool,
@@ -19,6 +20,7 @@ pub struct EventLink {
 #[derive(Debug, serde::Deserialize)]
 pub struct UpdateEventLink {
     pub slug: String,
+    pub description: String,
     pub password: Option<String>,
     pub capacity: i64,
     #[serde(default)]
@@ -43,6 +45,7 @@ fn empty_as_none<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<
 pub struct EventLinkWithUses {
     pub id: i64,
     pub slug: String,
+    pub description: String,
     pub password: Option<String>,
     pub capacity: i64,
     pub bypass_capacity: bool,
@@ -80,6 +83,7 @@ impl EventLink {
             r#"SELECT
                  l.id,
                  l.slug,
+                 l.description,
                  l.password,
                  l.capacity,
                  l.bypass_capacity,
@@ -101,10 +105,11 @@ impl EventLink {
 
     pub async fn create(db: &Db, event_id: i64, link: &UpdateEventLink) -> Result<()> {
         sqlx::query!(
-            "INSERT INTO event_links (event_id, slug, password, capacity, bypass_capacity, bypass_closed, spots_per_person, closed)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO event_links (event_id, slug, description, password, capacity, bypass_capacity, bypass_closed, spots_per_person, closed)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             event_id,
             link.slug,
+            link.description,
             link.password,
             link.capacity,
             link.bypass_capacity,
@@ -121,6 +126,7 @@ impl EventLink {
         sqlx::query!(
             "UPDATE event_links
                SET slug = ?,
+                   description = ?,
                    password = ?,
                    capacity = ?,
                    bypass_capacity = ?,
@@ -130,6 +136,7 @@ impl EventLink {
                    updated_at = CURRENT_TIMESTAMP
                WHERE id = ?",
             link.slug,
+            link.description,
             link.password,
             link.capacity,
             link.bypass_capacity,
