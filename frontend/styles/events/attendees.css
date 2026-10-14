@@ -25,6 +25,10 @@
     @apply cursor-pointer select-none;
   }
 
+  td.link a {
+    @apply decoration-lsd-blue hover:text-lsd-blue underline;
+  }
+
   td.note {
     @apply whitespace-normal min-w-[150px] max-w-max;
   }
