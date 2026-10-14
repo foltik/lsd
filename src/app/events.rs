@@ -194,6 +194,10 @@ mod read {
         let total_contributions: i64 = spots.iter().map(|s| s.contributions).sum();
         let artist_total = event.artist_share(total_contributions);
         let studio_total = total_contributions - artist_total;
+        let average_contribution = match attendees {
+            0 => 0.0,
+            attendees => total_contributions as f64 / attendees as f64,
+        };
 
         #[derive(Template, WebTemplate)]
         #[template(path = "events/stats.html")]
@@ -208,6 +212,7 @@ mod read {
             total_contributions: i64,
             artist_total: i64,
             studio_total: i64,
+            average_contribution: f64,
         }
         Ok(StatsHtml {
             user,
@@ -220,6 +225,7 @@ mod read {
             total_contributions,
             artist_total,
             studio_total,
+            average_contribution,
         }
         .into_response())
     }
