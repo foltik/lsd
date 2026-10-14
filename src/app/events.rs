@@ -3001,29 +3001,15 @@ pub mod email {
         let organizer = calendar::Organizer { name: from.name.as_deref(), email: &organizer_email };
         let ics = cal.email_ics(&organizer);
 
-        let tz = state.config.app.tz;
-        let when = event.start.and_utc().with_timezone(&tz).format("%A, %B %-d at %-I:%M %p");
-        let mut text = format!("{}\n\n{when}\n{}\n", event.title, cal.location);
-        if !is_guest {
-            write!(
-                text,
-                "\nView your confirmation: {}/e/{}/rsvp/manage?reservation={}\n",
-                state.config.app.url, event.slug, session_token,
-            )?;
-        }
-
         // The calendar part must sit inside multipart/alternative to render natively.
         let body = MultiPart::mixed()
             .multipart(
-                MultiPart::alternative()
-                    .singlepart(SinglePart::plain(text))
-                    .singlepart(SinglePart::html(html))
-                    .singlepart(
-                        SinglePart::builder()
-                            .header(ContentType::parse("text/calendar; charset=utf-8; method=PUBLISH")?)
-                            .header(ContentTransferEncoding::Base64)
-                            .body(ics.clone()),
-                    ),
+                MultiPart::alternative().singlepart(SinglePart::html(html)).singlepart(
+                    SinglePart::builder()
+                        .header(ContentType::parse("text/calendar; charset=utf-8; method=PUBLISH")?)
+                        .header(ContentTransferEncoding::Base64)
+                        .body(ics.clone()),
+                ),
             )
             .singlepart(
                 SinglePart::builder()
