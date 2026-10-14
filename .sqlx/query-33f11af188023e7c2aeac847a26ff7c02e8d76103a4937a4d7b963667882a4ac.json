@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT rs.id AS session_id, rs.status, r.spot_id, r.contribution, rs.link_id,\n                      rs.user_id AS owner_user_id,\n                      owner.first_name AS owner_first_name,\n                      owner.last_name AS owner_last_name,\n                      r.user_id AS attendee_user_id,\n                      u.email AS \"email?\"\n             FROM rsvps r\n             JOIN rsvp_sessions rs ON rs.id = r.session_id\n             LEFT JOIN users u ON u.id = r.user_id\n             LEFT JOIN users owner ON owner.id = rs.user_id\n             WHERE rs.event_id = ?\n               AND rs.status IN (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [
+      {
+        "name": "session_id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "status",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "spot_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "contribution",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "link_id",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "owner_user_id",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "owner_first_name",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "owner_last_name",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "attendee_user_id",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "email?",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "33f11af188023e7c2aeac847a26ff7c02e8d76103a4937a4d7b963667882a4ac"
+}

@@ -1,6 +1,6 @@
 use sqlx::QueryBuilder;
 
-use crate::db::rsvp::EventRsvp;
+use crate::db::rsvp::HeldRsvp;
 use crate::prelude::*;
 
 /// RSVP counts per spot split by status.
@@ -329,7 +329,7 @@ pub struct SpotStat {
 
 impl Spot {
     /// Compute contribution statistics for VARIABLE spots given a list of rsvps.
-    pub fn stats(spots: &[Spot], rsvps: &[EventRsvp]) -> VariableSpotStats {
+    pub fn stats(spots: &[Spot], rsvps: &[HeldRsvp]) -> VariableSpotStats {
         let mut contributions: HashMap<i64, Vec<i64>> = HashMap::default();
         for rsvp in rsvps {
             contributions.entry(rsvp.spot_id).or_default().push(rsvp.contribution);

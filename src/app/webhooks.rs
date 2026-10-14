@@ -118,12 +118,12 @@ pub mod stripe {
             );
             return Ok(());
         };
-        let Some(user) = User::lookup_by_id(&state.db, user_id).await? else {
+        if User::lookup_by_id(&state.db, user_id).await?.is_none() {
             alert!(
                 "Stripe: Got rsvp_session={session_id} with unknown user_id={user_id} while handling checkout_session_completed webhook: {payload:?}"
             );
             return Ok(());
-        };
+        }
         let Some(event) = Event::lookup_by_id(&state.db, session.event_id).await? else {
             alert!(
                 "Stripe: Got rsvp_session={session_id} with nonexistant event_id={} while handling checkout_session_completed webhook: {payload:?}",
@@ -142,12 +142,8 @@ pub mod stripe {
                 session.set_status(&state.db, RsvpSession::PAYMENT_CONFIRMED).await?;
                 session.set_payment_intent_id(&state.db, &payload.payment_intent).await?;
 
-                crate::app::events::email::ensure_sent_confirmation_email(
-                    &state,
-                    &event,
-                    &user,
-                    &session.token,
-                    "webhook",
+                crate::app::events::email::ensure_sent_confirmation_emails(
+                    &state, &event, &session, "webhook",
                 )
                 .await?;
             }
