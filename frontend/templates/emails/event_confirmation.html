@@ -30,13 +30,10 @@
         </td>
       </tr>
     </table>
-    {% if !is_guest %}
-      <p>Thank you for your contribution.</p>
-    {% endif %}
     {% if let Some(confirmation_html) = event.confirmation_html %}
       {{ confirmation_html | safe }}
     {% else %}
-      <p>We look forward to seeing you!</p>
+      <p>{% if !is_guest %}Thank you for your contribution. {% endif %}We look forward to seeing you!</p>
     {% endif %}
     {% if !is_guest %}
       <div class="center">
