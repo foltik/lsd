@@ -909,7 +909,7 @@ mod edit {
             if sent_at.is_some() {
                 continue;
             }
-            messages.push(email::format_dayof_email(&state, &event, &flyer, &address, &token)?);
+            messages.push(email::format_dayof_email(&state, &event, &flyer, &address, &token));
             email_ids.push(id);
         }
 
@@ -2976,7 +2976,7 @@ pub mod email {
     pub fn format_confirmation_email(
         state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str,
         session_token: &str, email_token: &str, is_guest: bool,
-    ) -> Result<Message> {
+    ) -> Message {
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/event_confirmation.html")]
         struct ConfirmationEmailHtml<'a> {
@@ -2986,8 +2986,9 @@ pub mod email {
             flyer: &'a Option<EventFlyer>,
             is_guest: bool,
         }
-        let html =
-            ConfirmationEmailHtml { email_token, event, token: session_token, flyer, is_guest }.render()?;
+        let html = ConfirmationEmailHtml { email_token, event, token: session_token, flyer, is_guest }
+            .render()
+            .unwrap();
 
         let subject = event
             .confirmation_subject
@@ -3006,29 +3007,27 @@ pub mod email {
             .multipart(
                 MultiPart::alternative().singlepart(SinglePart::html(html)).singlepart(
                     SinglePart::builder()
-                        .header(ContentType::parse("text/calendar; charset=utf-8; method=PUBLISH")?)
+                        .header(ContentType::parse("text/calendar; charset=utf-8; method=PUBLISH").unwrap())
                         .header(ContentTransferEncoding::Base64)
                         .body(ics.clone()),
                 ),
             )
             .singlepart(
                 SinglePart::builder()
-                    .header(ContentType::parse("application/ics")?)
+                    .header(ContentType::parse("application/ics").unwrap())
                     .header(ContentDisposition::attachment("event.ics"))
                     .header(ContentTransferEncoding::Base64)
                     .body(ics),
             );
 
-        let message = state
+        state
             .mailer
             .builder(email_token)
-            .to(address.parse()?)
+            .to(address.parse().unwrap())
             .reply_to(reply_to.clone())
             .subject(subject)
             .multipart(body)
-            .unwrap();
-
-        Ok(message)
+            .unwrap()
     }
 
     /// Ensure confirmation emails are sent to all attendees of a reservation, if not already.
@@ -3052,7 +3051,7 @@ pub mod email {
                 continue;
             };
 
-            match format_confirmation_email(
+            let message = format_confirmation_email(
                 state,
                 event,
                 &flyer,
@@ -3060,21 +3059,9 @@ pub mod email {
                 &session.token,
                 &email.token,
                 is_guest,
-            ) {
-                Ok(message) => {
-                    messages.push(message);
-                    sent_to.push((email.id, user.email));
-                }
-                Err(e) => {
-                    let e = e.message();
-                    Email::mark_error(&state.db, email.id, e).await?;
-                    alert!(
-                        "Error formatting confirmation for event_id={} to email={:?} trigger={trigger}: {e}",
-                        event.id,
-                        user.email
-                    );
-                }
-            }
+            );
+            messages.push(message);
+            sent_to.push((email.id, user.email));
         }
 
         let results = state.mailer.send_batch(Arc::clone(state), messages).await;
@@ -3104,7 +3091,7 @@ pub mod email {
 
     pub fn format_dayof_email(
         state: &SharedAppState, event: &Event, flyer: &Option<EventFlyer>, address: &str, email_token: &str,
-    ) -> Result<Message> {
+    ) -> Message {
         #[derive(Template, WebTemplate)]
         #[template(path = "emails/event_dayof.html")]
         struct DayofEmailHtml<'a> {
@@ -3112,12 +3099,13 @@ pub mod email {
             event: &'a Event,
             flyer: &'a Option<EventFlyer>,
         }
-        let html = DayofEmailHtml { email_token, event, flyer }.render()?;
+        let html = DayofEmailHtml { email_token, event, flyer }.render().unwrap();
 
         let subject = event.dayof_subject.as_deref().expect("missing dayof_subject");
         let from = &state.config.email.from;
         let reply_to = state.config.email.contact_to.as_ref().unwrap_or(from);
-        let message = state
+
+        state
             .mailer
             .builder(email_token)
             .to(address.parse().unwrap())
@@ -3125,9 +3113,7 @@ pub mod email {
             .subject(subject)
             .header(ContentType::TEXT_HTML)
             .body(html)
-            .unwrap();
-
-        Ok(message)
+            .unwrap()
     }
 
     /// Ensure a dayof email is sent to a user, if not already.
@@ -3139,7 +3125,7 @@ pub mod email {
         };
 
         let flyer = EventFlyer::lookup(&state.db, event.id).await?;
-        let message = format_dayof_email(state, event, &flyer, &user.email, &email.token)?;
+        let message = format_dayof_email(state, event, &flyer, &user.email, &email.token);
 
         match state.mailer.send(&message).await {
             Ok(_) => {
