@@ -72,7 +72,13 @@
               </time>
             </td>
             <td class="reservation">{{ rsvp.session_token|unwrap_or_empty }}</td>
-            {% if show_links %}<td class="link">{{ rsvp.link_slug | unwrap_or_empty }}</td>{% endif %}
+            {% if show_links %}
+              <td class="link">
+                {% if let Some(link_slug) = rsvp.link_slug %}
+                  <a href="/events/{{ event.id }}/attendees?link={{ link_slug }}">{{ link_slug }}</a>
+                {% endif %}
+              </td>
+            {% endif %}
             <td class="actions">
               {% if !rsvp.is_deleted %}
               <a
