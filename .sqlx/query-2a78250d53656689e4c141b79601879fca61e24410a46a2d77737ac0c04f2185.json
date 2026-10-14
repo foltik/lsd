@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT l.*, COUNT(m.list_id) AS count\n             FROM lists l\n             LEFT JOIN list_members m ON l.id = m.list_id\n             GROUP BY l.id",
+  "query": "SELECT l.*, COUNT(m.list_id) AS count\n             FROM lists l\n             LEFT JOIN list_members m ON l.id = m.list_id\n             WHERE l.deleted_at IS NULL OR l.id = ?\n             GROUP BY l.id",
   "describe": {
     "columns": [
       {
@@ -29,13 +29,18 @@
         "type_info": "Datetime"
       },
       {
-        "name": "count",
+        "name": "deleted_at",
         "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "count",
+        "ordinal": 6,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -43,8 +48,9 @@
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "50e1f7b588284eb400ad205e7610d44f7fec238df32b4aaae914da312a1ad3c4"
+  "hash": "2a78250d53656689e4c141b79601879fca61e24410a46a2d77737ac0c04f2185"
 }

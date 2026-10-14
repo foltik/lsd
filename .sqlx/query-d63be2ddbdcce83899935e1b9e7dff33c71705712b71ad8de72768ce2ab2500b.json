@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM lists",
+  "query": "SELECT * FROM lists WHERE deleted_at IS NULL",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "name": "updated_at",
         "ordinal": 4,
         "type_info": "Datetime"
+      },
+      {
+        "name": "deleted_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
       }
     ],
     "parameters": {
@@ -37,8 +42,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "ce644c8de2b423f5e8c9079ea7eb3175f5dea2d8b7c407b17a306e5166aab3e4"
+  "hash": "d63be2ddbdcce83899935e1b9e7dff33c71705712b71ad8de72768ce2ab2500b"
 }
