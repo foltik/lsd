@@ -118,6 +118,7 @@
             {% if !all %}<svg width="16" height="16"><use href="#icon-link" /></svg>{% endif %}
             <span>Links</span>
           </a>
+          {% endif %}
           <form
             action="/events/{{ event.id }}/duplicate"
             method="post"
@@ -128,7 +129,6 @@
               <span>Duplicate</span>
             </button>
           </form>
-          {% endif %}
           <form
             action="/events/{{ event.id }}/delete"
             method="post"
