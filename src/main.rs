@@ -61,7 +61,17 @@ async fn main() -> Result<()> {
     // HTTP/3 sidesteps make_service, so utils::h3 injects ConnectInfo itself
     let router_h3 = router.clone();
     let app = router.into_make_service_with_connect_info::<SocketAddr>();
-    tracing::info!("Live at {}", &config.app.url);
+
+    // Log once the HTTPS server is accepting connections
+    let handle = axum_server::Handle::new();
+    tokio::spawn({
+        let handle = handle.clone();
+        let url = config.app.url.clone();
+        async move {
+            handle.listening().await;
+            tracing::info!("Live at {url}");
+        }
+    });
 
     // Spawn periodic jobs
     jobs::init(state, config.clone()).await;
@@ -101,7 +111,11 @@ async fn main() -> Result<()> {
                 }
             });
 
-            axum_server::bind(config.net.https_addr).acceptor(acceptor).serve(app).await?;
+            axum_server::bind(config.net.https_addr)
+                .acceptor(acceptor)
+                .handle(handle)
+                .serve(app)
+                .await?;
         }
         // Otherwise, use the bundled self-signed TLS cert
         None => {
@@ -109,7 +123,10 @@ async fn main() -> Result<()> {
             let key = include_bytes!("../config/selfsigned.key");
             let rustls = RustlsConfig::from_pem(cert.into(), key.into()).await?;
             utils::h3::spawn(config.net.https_addr, (*rustls.get_inner()).clone(), router_h3);
-            axum_server::bind_rustls(config.net.https_addr, rustls).serve(app).await?;
+            axum_server::bind_rustls(config.net.https_addr, rustls)
+                .handle(handle)
+                .serve(app)
+                .await?;
         }
     }
 
