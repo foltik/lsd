@@ -67,7 +67,7 @@
           {% endif %}
         </p>
         <form class="entry" method="POST" action="/e/{{ event.slug }}/rsvp/code/remove">
-          <input class="ext/input" type="text" value="{{ coupon.code }}" disabled />
+          <input class="ext/input" type="text" value="{{ coupon.code }}" aria-label="Code" disabled />
           <button class="ext/button :red" type="submit">Undo</button>
         </form>
       </div>
@@ -80,11 +80,12 @@
           <input
             id="coupon-code"
             class="ext/input"
+            aria-label="Code"
             type="text"
             autocomplete="off"
             oninput="this.value = this.value.toUpperCase()"
           />
-          <input id="coupon-qty" class="ext/input" type="number" min="1" value="1" />
+          <input id="coupon-qty" class="ext/input" type="number" min="1" value="1" aria-label="Quantity" />
           <button id="coupon-button" class="ext/button">Check</button>
         </div>
         <p id="coupon-error" hidden></p>

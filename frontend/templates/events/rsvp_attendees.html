@@ -32,7 +32,7 @@
     </header>
     <form id="form" class="ext/form">
       {% for attendee in attendees %}
-        <div class="attendee" data-rsvp-id="{{ attendee.rsvp_id }}">
+        <div class="attendee" data-rsvp-id="{{ attendee.rsvp_id }}" role="group" aria-label="Guest #{{ loop.index }}">
           <div class="header">
             <p class="index">Guest #{{ loop.index }}</p>
             {% if is_adding_guests %}

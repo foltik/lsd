@@ -58,7 +58,7 @@
       </div>
     </header>
     {% for event in events %}
-      <div class="event">
+      <div class="event" role="group" aria-label="{{ event.title }}">
         <h2 class="title">
           {% if event.is_external() %}
             <a href="{{ event.url.as_ref().unwrap() }}">{{ event.title }}</a>

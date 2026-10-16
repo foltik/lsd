@@ -20,9 +20,10 @@
           />
         </svg>
       </a>
-      <a class="contact" href="/contact">?</a>
+      <a class="contact" href="/contact" aria-label="Contact">?</a>
       {% if user | has_staff_role %}
         <a
+          aria-label="Admin"
           {% if user | has_role("admin") %}
             href="/dashboard"
           {% else if user | has_role("writer") %}

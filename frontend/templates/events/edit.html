@@ -242,7 +242,7 @@
       }
 
       return `
-    <div class="spot" data-id="${t.id ?? ""}" data-has-inflight-rsvps="${hasInflightRsvps}">
+    <div class="spot" data-id="${t.id ?? ""}" data-has-inflight-rsvps="${hasInflightRsvps}" role="group">
       <div class="spot-row">
         <input name="id"   value="${t.id ?? ""}" type="hidden" data-type="number">
         <input name="name" value="${t.name ?? ""}" placeholder="Name" required>
@@ -303,6 +303,8 @@
 
     function render() {
       ui.spots().forEach((s, i, arr) => {
+        s.ariaLabel = s.querySelector('[name="name"]').value || "New spot";
+
         // Disable up/down buttons for first/last spots
         s.querySelector('[data-action="up"]').disabled = i == 0;
         s.querySelector('[data-action="down"]').disabled = i == arr.length - 1;
@@ -349,8 +351,8 @@
       render();
     });
     ui.list.addEventListener("change", (e) => {
-      // Re-render when the `kind` dropdown changes
-      if (e.target.name == "kind") render();
+      // Re-render when a spot's kind or name changes
+      if (e.target.name == "kind" || e.target.name == "name") render();
     });
 
     /* ---------- Flyer preview handler ------------------------------------------ */

@@ -20,10 +20,11 @@
         .value {
           @apply w-8 text-center select-none;
         }
-        svg {
-          @apply cursor-pointer touch-manipulation select-none;
+        /* Plain icons, without the .ext/form button chrome */
+        button {
+          @apply cursor-pointer touch-manipulation border-0 bg-transparent p-0 select-none hover:bg-transparent;
           transition: color 0.05s linear;
-          &.disabled {
+          &:disabled {
             @apply cursor-default;
             color: var(--color-lsd-charcoal);
           }

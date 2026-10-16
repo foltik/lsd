@@ -53,6 +53,7 @@
                 <button
                   class="remove"
                   type="button"
+                  aria-label="Remove {{ member.email }}"
                   onclick="fetch(`/lists/{{ list.id }}/{{ member.id }}`,
                 {method: 'DELETE'}
               ).then(res => res.ok && document.querySelector(`#member-{{ loop.index }}`).remove())"
