@@ -37,8 +37,8 @@
 
     .number {
       @apply flex items-center;
-      label {
-        @apply my-0 mr-1 ml-0 text-lg;
+      span {
+        @apply mr-1 text-lg;
       }
       input {
         @apply mr-2 h-[30px];

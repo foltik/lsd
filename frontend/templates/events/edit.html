@@ -21,7 +21,7 @@
 
       <div class="field">
         <label for="title">Title</label>
-        <input type="text" name="title" value="{{ event.title }}" required />
+        <input type="text" id="title" name="title" value="{{ event.title }}" required />
       </div>
 
       <div class="field">
@@ -52,6 +52,7 @@
         <label for="date">Date</label>
         <input
           type="date"
+          id="date"
           name="date"
           value="{{ event.start | format_datetime("%Y-%m-%d") }}"
           required
@@ -62,6 +63,7 @@
         <label for="start">Start</label>
         <input
           type="time"
+          id="start"
           name="start"
           value="{{ event.start | format_datetime("%H:%M") }}"
           required
@@ -72,6 +74,7 @@
         <label for="end">End (Optional)</label>
         <input
           type="time"
+          id="end"
           name="end"
           value="{{ event.end | format_optional_datetime("%H:%M") }}"
         />
@@ -101,6 +104,7 @@
         <div class="field">
           <label for="unlisted">Unlisted</label>
           <input
+            id="unlisted"
             name="unlisted"
             type="checkbox"
             {% if event.unlisted %}checked{% endif %}
@@ -110,6 +114,7 @@
         <div class="field">
           <label for="closed">Close registration</label>
           <input
+            id="closed"
             name="closed"
             type="checkbox"
             {% if event.closed %}checked{% endif %}
@@ -139,6 +144,7 @@
         <div class="field">
           <label for="capacity">Capacity</label>
           <input
+            id="capacity"
             name="capacity"
             type="number"
             value="{{ event.capacity }}"
@@ -149,6 +155,7 @@
         <div class="field">
           <label for="spots_per_person">Max spots per person</label>
           <input
+            id="spots_per_person"
             name="spots_per_person"
             type="number"
             value="{% if let Some(n) = event.spots_per_person %}{{ n }}{% endif %}"
@@ -161,6 +168,7 @@
         <div class="field">
           <label for="artist_share">Artist contribution share (%)</label>
           <input
+            id="artist_share"
             name="artist_share"
             type="number"
             value="{{ event.artist_share }}"
@@ -244,16 +252,16 @@
         <button type="button" class="ext/button :red"  data-action="remove">✕</button>
       </div>
       <div class="spot-row">
-        <div class="field-group">
-          <label>Qty available</label>
+        <label class="field-group">
+          <span>Qty available</span>
           <input name="qty_total"       value="${t.qty_total ?? ""}"      type="number" required>
-        </div>
-        <div class="field-group">
-          <label>Qty per person</label>
+        </label>
+        <label class="field-group">
+          <span>Qty per person</span>
           <input name="qty_per_person"  value="${t.qty_per_person ?? ""}" type="number" required>
-        </div>
-        <div class="field-group">
-          <label>Kind</label>
+        </label>
+        <label class="field-group">
+          <span>Kind</span>
           <select name="kind" required>
             ${Object.entries(KINDS)
               .map(
@@ -262,29 +270,29 @@
               )
               .join("")}
           </select>
-        </div>
+        </label>
       </div>
       <div class="spot-row">
-        <div class="field-group">
-          <label>Required ($)</label>
+        <label class="field-group">
+          <span>Required ($)</span>
           <input name="required_contribution" type="number" value="${t.required_contribution ?? ""}">
-        </div>
-        <div class="field-group">
-          <label>Min ($)</label>
+        </label>
+        <label class="field-group">
+          <span>Min ($)</span>
           <input name="min_contribution" type="number" value="${t.min_contribution ?? ""}">
-        </div>
-        <div class="field-group">
-          <label>Max ($)</label>
+        </label>
+        <label class="field-group">
+          <span>Max ($)</span>
           <input name="max_contribution" type="number" value="${t.max_contribution ?? ""}">
-        </div>
-        <div class="field-group">
-          <label>Suggested ($)</label>
+        </label>
+        <label class="field-group">
+          <span>Suggested ($)</span>
           <input name="suggested_contribution" type="number" value="${t.suggested_contribution ?? ""}">
-        </div>
-        <div class="field-group">
-          <label>Notice Required (hrs)</label>
+        </label>
+        <label class="field-group">
+          <span>Notice Required (hrs)</span>
           <input name="required_notice_hours" type="number" value="${t.required_notice_hours ?? ""}">
-        </div>
+        </label>
       </div>
       <div class="spot-row">
         <textarea name="description" placeholder="Description" required>${t.description ?? ""}</textarea>

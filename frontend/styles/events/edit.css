@@ -38,7 +38,7 @@
       .field-group {
         @apply flex grow flex-col gap-1;
 
-        label {
+        span {
           @apply text-lsd-gray text-sm;
         }
 

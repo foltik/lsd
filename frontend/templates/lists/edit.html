@@ -22,12 +22,13 @@
       </div>
       <div class="field">
         <label for="description">Description</label>
-        <input type="text" name="description" value="{{ list.description }}" />
+        <input type="text" id="description" name="description" value="{{ list.description }}" />
       </div>
       <div class="field">
         <label for="emails">Add members</label>
         <textarea
           class="add-members"
+          id="emails"
           name="emails"
           placeholder="Enter email addresses, one per line..."
         ></textarea>
@@ -35,7 +36,7 @@
       <button class="ext/button :green" type="submit">Save</button>
       {% if list.id != 0 %}
         <div class="members">
-          <label>Members</label>
+          <h2>Members</h2>
           <ul>
             {% for member in members %}
               <li id="member-{{ loop.index }}">

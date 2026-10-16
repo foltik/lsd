@@ -60,7 +60,7 @@
       </div>
       <div class="field">
         <label for="note">Note (optional)</label>
-        <input type="text" name="note" value="{% if let Some(a) = attendee %}{{ a.note }}{% endif %}" />
+        <input type="text" id="note" name="note" value="{% if let Some(a) = attendee %}{{ a.note }}{% endif %}" />
       </div>
       {% if attendee.is_none() %}
       <div class="field">
