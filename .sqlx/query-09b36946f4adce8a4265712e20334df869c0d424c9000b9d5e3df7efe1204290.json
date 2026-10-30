@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO clicker_stats (time, count, voltage, time_awake, time_doze, time_asleep, rssi, backlog, connects,\n                                        disconnects, errors, error_resets, last_error, boot, firmware)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 15
+    },
+    "nullable": []
+  },
+  "hash": "09b36946f4adce8a4265712e20334df869c0d424c9000b9d5e3df7efe1204290"
+}

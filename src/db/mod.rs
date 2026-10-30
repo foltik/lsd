@@ -6,6 +6,7 @@ use crate::utils::config::DbConfig;
 
 pub type Db = SqlitePool;
 
+pub mod clicker;
 pub mod coupon;
 pub mod email;
 pub mod event;

@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use chrono_tz::Tz;
+use hmac::{Hmac, Mac};
 use lettre::message::Mailbox;
+use sha2::Sha256;
 
 use crate::prelude::*;
 
@@ -41,6 +43,7 @@ pub struct Config {
     pub ses: Option<SesConfig>,
     pub cloudflare: CloudflareConfig,
     pub alerts: Option<AlertsConfig>,
+    pub clicker: Option<ClickerConfig>,
 }
 
 /// Webapp configuration.
@@ -142,4 +145,19 @@ pub struct AlertsConfig {
 pub struct AlertsTelegramConfig {
     pub api_key: String,
     pub chat_id: String,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct ClickerConfig {
+    /// UDP listen address.
+    pub addr: SocketAddr,
+    /// 32 byte hex HMAC-SHA256 key.
+    #[serde(deserialize_with = "hmac_sha256_hex", rename = "key")]
+    pub hmac: Hmac<Sha256>,
+}
+
+fn hmac_sha256_hex<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Hmac<Sha256>, D::Error> {
+    let s = <String as serde::Deserialize>::deserialize(d)?;
+    let key = hex::decode(s).map_err(serde::de::Error::custom)?;
+    Hmac::new_from_slice(&key).map_err(serde::de::Error::custom)
 }

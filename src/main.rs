@@ -73,6 +73,10 @@ async fn main() -> Result<()> {
         }
     });
 
+    if let Some(clicker) = config.clicker.clone() {
+        app::clicker::serve(clicker, state.db.clone());
+    }
+
     // Spawn periodic jobs
     jobs::init(state, config.clone()).await;
 

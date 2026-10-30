@@ -45,3 +45,7 @@ turnstile_secret_key = "$CF_TURNSTILE_SECRET_KEY"
 [alerts.telegram]
 api_key = "$TELEGRAM_API_KEY"
 chat_id = "$TELEGRAM_CHAT_ID"
+
+[clicker]
+addr = "[::]:4434"
+key = "$CLICKER_KEY"
