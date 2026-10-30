@@ -1,0 +1,104 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT time, count, voltage, time_awake, time_doze, time_asleep, rssi, backlog, connects, disconnects,\n                    errors, error_resets, last_error, boot, firmware\n             FROM clicker_stats ORDER BY time",
+  "describe": {
+    "columns": [
+      {
+        "name": "time",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "count",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "voltage",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_awake",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_doze",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_asleep",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rssi",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "backlog",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "connects",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "disconnects",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "errors",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "error_resets",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_error",
+        "ordinal": 12,
+        "type_info": "Integer"
+      },
+      {
+        "name": "boot",
+        "ordinal": 13,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "firmware",
+        "ordinal": 14,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d1ca5c52d31c722cba648eab5b3038c4b6ea44cde171dc08b4448d1b9e9289f6"
+}

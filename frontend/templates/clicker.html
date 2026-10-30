@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}Clicker - L&SD{% endblock %}
+
+{% block content %}
+  <section id="clicker" class="ext/layout">
+    <div class="ext/table">
+      <table>
+        <tr>
+          <th>Time</th><th>Count</th><th>Backlog</th><th>dBm</th><th>mV</th><th>Awake</th><th>Doze</th><th>Sleep</th>
+          <th>Connects</th><th>Disconnects</th>
+          {% if errors %}<th>Errors</th><th>Resets</th><th>Error Code</th>{% endif %}
+          <th>Boot</th><th>Firmware</th>
+        </tr>
+        {% for r in rows %}
+          <tr>
+            <td>{{ r.time }}</td><td>{{ r.count }}</td><td>{{ r.backlog }}</td><td>{{ r.rssi }}</td><td>{{ r.voltage }}</td>
+            <td>{{ r.time_awake }}</td><td>{{ r.time_doze }}</td><td>{{ r.time_asleep }}</td>
+            <td>{{ r.connects }}</td><td>{{ r.disconnects }}</td>
+            {% if errors %}<td>{{ r.errors }}</td><td>{{ r.error_resets }}</td><td>{{ r.last_error }}</td>{% endif %}
+            <td>{{ r.boot }}</td><td>{{ r.firmware }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </section>
+{% endblock %}

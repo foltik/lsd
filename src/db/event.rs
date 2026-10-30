@@ -195,6 +195,16 @@ impl Event {
         .await?)
     }
 
+    /// The current active event, by most recent start time with 6hrs margin.
+    pub async fn current(db: &Db) -> Result<Option<Event>> {
+        Ok(sqlx::query_as!(
+            Self,
+            "SELECT * FROM events WHERE start <= datetime('now', '+6 hours') ORDER BY start DESC LIMIT 1"
+        )
+        .fetch_optional(db)
+        .await?)
+    }
+
     // Create a new event.
     pub async fn create(db: &Db, event: &UpdateEvent, flyer: &Option<DynamicImage>) -> Result<i64> {
         let token = format!("{:08x}", OsRng.r#gen::<u64>());

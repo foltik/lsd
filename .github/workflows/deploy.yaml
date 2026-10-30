@@ -54,6 +54,7 @@ jobs:
           CF_TURNSTILE_SECRET_KEY: ${{ secrets.CF_TURNSTILE_SECRET_KEY }}
           TELEGRAM_API_KEY: ${{ secrets.TELEGRAM_API_KEY }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CLICKER_KEY: ${{ secrets.CLICKER_KEY }}
 
       - name: Generate content hashes
         run: |

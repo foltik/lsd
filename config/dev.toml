@@ -32,3 +32,7 @@ webhook_secret = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 # Test keys (see https://developers.cloudflare.com/turnstile/troubleshooting/testing)
 turnstile_site_key = "1x00000000000000000000BB"
 turnstile_secret_key = "1x0000000000000000000000000000000AA"
+
+[clicker]
+addr = "[::]:4434"
+key = "0000000000000000000000000000000000000000000000000000000000000000"

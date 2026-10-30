@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO clicker_deltas (id, time, delta) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "86a652373f70dac1ebbe253c6f1ec6314020856cf759db3590773429ea9866aa"
+}

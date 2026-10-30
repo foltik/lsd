@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT CAST(COALESCE(SUM(delta), 0) AS INT) AS \"count!: i64\" FROM clicker_deltas d\n               WHERE (SELECT id FROM events WHERE start <= datetime(d.time, '+6 hours') ORDER BY start DESC LIMIT 1) = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "97f32c22bb5494f81aa6e77b8f015bf745b23c6cde95fbc971ab009cfb0bd197"
+}

@@ -11,6 +11,7 @@ use crate::utils::stripe::Stripe;
 use crate::utils::telnyx::Telnyx;
 
 mod auth;
+pub mod clicker;
 mod contact;
 mod coupons;
 mod emails;
@@ -55,6 +56,7 @@ pub async fn build(config: Config) -> Result<(Router<()>, SharedAppState)> {
     let r = events::add_routes(r);
     let r = lists::add_routes(r);
     let r = coupons::add_routes(r);
+    let r = clicker::add_routes(r);
     let r = emails::add_routes(r);
     let r = webhooks::add_routes(r);
     let r = contact::add_routes(r);
