@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM events WHERE start <= datetime('now', '+6 hours') ORDER BY start DESC LIMIT 1",
+  "query": "SELECT * FROM events WHERE start <= datetime('now', '+6 hours')\n               AND datetime(COALESCE(end, start), '+24 hours') >= datetime('now') ORDER BY start DESC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -184,5 +184,5 @@
       false
     ]
   },
-  "hash": "1b6f35247cc7c8100c5330ae0445febb92e92f69ebb524ac7256a18d6c949e89"
+  "hash": "5f9d1e321671ef4e20629a6ae630ce05373f5544954cb1dcd4c117dd46dcdf3d"
 }

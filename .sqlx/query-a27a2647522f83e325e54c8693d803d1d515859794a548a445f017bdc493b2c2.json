@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO clicker_stats (time, boot, ticks, voltage, rssi, time_awake, time_doze, time_asleep, firmware)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "a27a2647522f83e325e54c8693d803d1d515859794a548a445f017bdc493b2c2"
+}

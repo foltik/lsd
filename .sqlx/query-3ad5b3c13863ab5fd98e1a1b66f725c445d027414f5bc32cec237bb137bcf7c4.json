@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT time, boot, ticks, voltage, rssi, time_awake, time_doze, time_asleep, firmware\n             FROM clicker_stats ORDER BY time",
+  "describe": {
+    "columns": [
+      {
+        "name": "time",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "boot",
+        "ordinal": 1,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "ticks",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "voltage",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "rssi",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_awake",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_doze",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_asleep",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "firmware",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3ad5b3c13863ab5fd98e1a1b66f725c445d027414f5bc32cec237bb137bcf7c4"
+}

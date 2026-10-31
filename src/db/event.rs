@@ -199,7 +199,8 @@ impl Event {
     pub async fn current(db: &Db) -> Result<Option<Event>> {
         Ok(sqlx::query_as!(
             Self,
-            "SELECT * FROM events WHERE start <= datetime('now', '+6 hours') ORDER BY start DESC LIMIT 1"
+            r#"SELECT * FROM events WHERE start <= datetime('now', '+6 hours')
+               AND datetime(COALESCE(end, start), '+24 hours') >= datetime('now') ORDER BY start DESC LIMIT 1"#
         )
         .fetch_optional(db)
         .await?)

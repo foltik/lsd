@@ -21,18 +21,17 @@ struct ClickerPacketHeader {
     ticks_per_second: u32,
     firmware: [u8; 4],
     boot_ticks: u64,
-    count: u32,
-    voltage: u16,
+}
+
+#[repr(C, packed)]
+#[derive(Clone, Copy)]
+struct ClickerPacketSample {
+    ticks: u64,
     time_awake: u32,
     time_doze: u32,
     time_asleep: u32,
+    voltage: u16,
     rssi: i8,
-    backlog: u16,
-    connects: u16,
-    disconnects: u16,
-    error_resets: u16,
-    errors: u16,
-    last_error: u8,
 }
 
 #[repr(C, packed)]
@@ -82,7 +81,7 @@ fn read<T: Copy>(bytes: &[u8]) -> T {
 async fn handle(
     db: &Db, hmac: &Hmac<Sha256>, packet: &[u8], boot: &mut Option<(u64, NaiveDateTime)>,
 ) -> Result<Vec<u8>> {
-    if packet.len() < HMAC_LEN + size_of::<ClickerPacketHeader>() {
+    if packet.len() < HMAC_LEN + size_of::<ClickerPacketHeader>() + 1 {
         bail!("packet too short");
     }
     let payload_len = packet.len() - HMAC_LEN;
@@ -92,30 +91,12 @@ async fn handle(
         bail!("bad tag");
     }
 
-    let Some(event) = Event::current(db).await? else {
-        bail!("no current event");
-    };
-
     let h: ClickerPacketHeader = read(payload);
     let ticks_per_second = h.ticks_per_second.max(1) as u64;
     let ago = |ticks: u64| {
         chrono::Duration::milliseconds((h.ticks.saturating_sub(ticks) * 1000 / ticks_per_second) as i64)
     };
     let now = Utc::now();
-
-    for bytes in payload[size_of::<ClickerPacketHeader>()..]
-        .as_chunks::<{ size_of::<ClickerPacketEntry>() }>()
-        .0
-    {
-        let entry: ClickerPacketEntry = read(bytes);
-        let delta = ClickerDelta {
-            id: entry.id as i64,
-            time: (now - ago(entry.rtc_ticks())).naive_utc(),
-            delta: entry.delta(),
-        };
-        ClickerDelta::create(db, &delta).await?;
-    }
-    let count = ClickerDelta::current_event_count(db, event.id).await?.max(0) as u32;
 
     let boot_time = match *boot {
         Some((ticks, at)) if ticks == h.boot_ticks => at,
@@ -125,35 +106,52 @@ async fn handle(
             at
         }
     };
-    ClickerStats::create(
-        db,
-        &ClickerStats {
-            time: now.naive_utc(),
-            count: h.count as i64,
-            voltage: h.voltage as i64,
-            time_awake: h.time_awake as i64,
-            time_doze: h.time_doze as i64,
-            time_asleep: h.time_asleep as i64,
-            rssi: h.rssi as i64,
-            backlog: h.backlog as i64,
-            connects: h.connects as i64,
-            disconnects: h.disconnects as i64,
-            errors: h.errors as i64,
-            error_resets: h.error_resets as i64,
-            last_error: h.last_error as i64,
+
+    let body = &payload[size_of::<ClickerPacketHeader>()..];
+    let samples_len = body[0] as usize * size_of::<ClickerPacketSample>();
+    let Some((samples, entries)) = body[1..].split_at_checked(samples_len) else {
+        bail!("samples truncated");
+    };
+
+    for bytes in samples.as_chunks::<{ size_of::<ClickerPacketSample>() }>().0 {
+        let sample: ClickerPacketSample = read(bytes);
+        let stats = ClickerStats {
+            time: (now - ago(sample.ticks)).naive_utc(),
             boot: boot_time,
+            ticks: sample.ticks as i64,
+            voltage: sample.voltage as i64,
+            rssi: sample.rssi as i64,
+            time_awake: sample.time_awake as i64,
+            time_doze: sample.time_doze as i64,
+            time_asleep: sample.time_asleep as i64,
             firmware: hex::encode(h.firmware),
-        },
-    )
-    .await?;
+        };
+        ClickerStats::create(db, &stats).await?;
+    }
+
+    for bytes in entries.as_chunks::<{ size_of::<ClickerPacketEntry>() }>().0 {
+        let entry: ClickerPacketEntry = read(bytes);
+        let delta = ClickerDelta {
+            id: entry.id as i64,
+            time: (now - ago(entry.rtc_ticks())).naive_utc(),
+            delta: entry.delta(),
+        };
+        ClickerDelta::create(db, &delta).await?;
+    }
+    let event = Event::current(db).await?;
+    let count = match &event {
+        Some(event) => ClickerDelta::current_event_count(db, event.id).await?.max(0) as u32,
+        None => 0,
+    };
+    let title = event.as_ref().map_or("No Event", |e| e.title.as_str());
 
     let time = now.with_timezone(&config().app.tz).num_seconds_from_midnight();
 
-    let mut reply = Vec::with_capacity(16 + event.title.len() + HMAC_LEN);
+    let mut reply = Vec::with_capacity(16 + title.len() + HMAC_LEN);
     reply.extend(h.ticks.to_le_bytes());
     reply.extend(time.to_le_bytes());
     reply.extend(count.to_le_bytes());
-    reply.extend(event.title.as_bytes());
+    reply.extend(title.as_bytes());
 
     let tag = hmac.clone().chain_update(&reply).finalize().into_bytes();
     reply.extend(&tag[..HMAC_LEN]);
@@ -163,18 +161,11 @@ async fn handle(
 
 struct Row {
     time: String,
-    count: i64,
-    backlog: i64,
     rssi: i64,
     voltage: i64,
     time_awake: String,
     time_doze: String,
     time_asleep: String,
-    connects: i64,
-    disconnects: i64,
-    errors: i64,
-    error_resets: i64,
-    last_error: i64,
     boot: String,
     firmware: String,
 }
@@ -187,21 +178,13 @@ async fn page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlRe
     let tz = state.config.app.tz;
     let day_ago = (Utc::now() - chrono::Duration::hours(24)).naive_utc();
 
-    // Compute rolling stats
-    let mut base = [0i64; 7];
-    let mut prev = [0i64; 7];
+    // State times restart at power on, so carry them across
+    let mut base = [0i64; 3];
+    let mut prev = [0i64; 3];
     let mut rows = Vec::new();
     for s in ClickerStats::all(&state.db).await? {
-        let now = [
-            s.time_awake,
-            s.time_doze,
-            s.time_asleep,
-            s.connects,
-            s.disconnects,
-            s.errors,
-            s.error_resets,
-        ];
-        if now[..3].iter().sum::<i64>() < prev[..3].iter().sum::<i64>() {
+        let now = [s.time_awake, s.time_doze, s.time_asleep];
+        if now.iter().sum::<i64>() < prev.iter().sum::<i64>() {
             for (b, p) in base.iter_mut().zip(prev) {
                 *b += p;
             }
@@ -212,42 +195,25 @@ async fn page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlRe
             continue;
         }
 
-        let [
-            time_awake,
-            time_doze,
-            time_asleep,
-            connects,
-            disconnects,
-            errors,
-            error_resets,
-        ] = core::array::from_fn(|i| base[i] + now[i]);
+        let [time_awake, time_doze, time_asleep] = core::array::from_fn(|i| base[i] + now[i]);
         rows.push(Row {
             time: tz.from_utc_datetime(&s.time).format("%-I:%M:%S %p").to_string(),
-            count: s.count,
-            backlog: s.backlog,
             rssi: s.rssi,
             voltage: s.voltage,
             time_awake: hhmm(time_awake),
             time_doze: hhmm(time_doze),
             time_asleep: hhmm(time_asleep),
-            connects,
-            disconnects,
-            errors,
-            error_resets,
-            last_error: s.last_error,
             boot: tz.from_utc_datetime(&s.boot).format("%-m/%-d %-I:%M:%S %p").to_string(),
             firmware: s.firmware,
         });
     }
     rows.reverse();
-    let errors = rows.iter().any(|r| r.errors > 0 || r.error_resets > 0);
 
     #[derive(Template, WebTemplate)]
     #[template(path = "clicker.html")]
     struct Html {
         user: Option<User>,
         rows: Vec<Row>,
-        errors: bool,
     }
-    Ok(Html { user, rows, errors }.into_response())
+    Ok(Html { user, rows }.into_response())
 }
