@@ -18,7 +18,7 @@
   .holding  { --trend: var(--color-neutral-400); }
   .emptying { --trend: var(--color-rose-400); }
   .filling, .holding, .emptying {
-    --shade: color-mix(in oklab, var(--trend) 35%, transparent);
+    --shade: color-mix(in oklab, var(--trend) 35%, var(--color-lsd-black));
   }
 
   .legend {
@@ -33,7 +33,7 @@
   }
 
   #plot {
-    @apply border-lsd-gray relative mb-7 h-64 touch-pan-y border-b border-l select-none;
+    @apply border-lsd-gray relative mb-7 h-64 touch-none border-b border-l select-none;
     -webkit-touch-callout: none;
 
     svg {
@@ -41,7 +41,6 @@
     }
     rect {
       fill: var(--shade);
-      shape-rendering: crispEdges;
     }
     path {
       @apply fill-none;
@@ -91,7 +90,7 @@
     #ticks {
       @apply text-lsd-gray absolute inset-x-0 top-full mt-1 text-[10px];
       span {
-        @apply absolute -translate-x-1/2;
+        @apply absolute -translate-x-1/2 whitespace-nowrap;
       }
     }
   }

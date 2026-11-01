@@ -127,7 +127,7 @@
         if (trend === "holding" && from + HOUR > elapsed)
           continue;
 
-        hours += `<rect class="${trend}" x="${x(from)}" y="0" width="${x(from + HOUR) - x(from)}" height="1" />`;
+        hours = `<rect class="${trend}" x="0" y="0" width="${x(from + HOUR)}" height="1" />` + hours;
       }
       $("hours").innerHTML = hours;
 
