@@ -1,4 +1,4 @@
-use chrono::{TimeZone, Timelike};
+use chrono::{Datelike, TimeZone, Timelike};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use tokio::net::UdpSocket;
@@ -9,7 +9,9 @@ use crate::prelude::*;
 use crate::utils::config::ClickerConfig;
 
 pub fn add_routes(router: AppRouter) -> AppRouter {
-    router.restricted_routes(User::ADMIN, |r| r.route("/clicker", get(page)))
+    router.restricted_routes(User::ADMIN, |r| {
+        r.route("/clicker", get(page)).route("/events/{id}/clicker", get(event_page))
+    })
 }
 
 const HMAC_LEN: usize = 16;
@@ -140,7 +142,7 @@ async fn handle(
     }
     let event = Event::current(db).await?;
     let count = match &event {
-        Some(event) => ClickerDelta::current_event_count(db, event.id).await?.max(0) as u32,
+        Some(event) => ClickerDelta::count_for_current_event(db, event.id).await?.max(0) as u32,
         None => 0,
     };
     let title = event.as_ref().map_or("No Event", |e| e.title.as_str());
@@ -178,7 +180,6 @@ async fn page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlRe
     let tz = state.config.app.tz;
     let day_ago = (Utc::now() - chrono::Duration::hours(24)).naive_utc();
 
-    // State times restart at power on, so carry them across
     let mut base = [0i64; 3];
     let mut prev = [0i64; 3];
     let mut rows = Vec::new();
@@ -216,4 +217,77 @@ async fn page(user: Option<User>, State(state): State<SharedAppState>) -> HtmlRe
         rows: Vec<Row>,
     }
     Ok(Html { user, rows }.into_response())
+}
+
+async fn event_page(
+    user: Option<User>, State(state): State<SharedAppState>, Path(id): Path<i64>,
+) -> HtmlResult {
+    struct ClickerCount {
+        ms: i64,
+        count: i64,
+    }
+    async fn counts_for_event(db: &Db, event: &Event) -> Result<Vec<ClickerCount>> {
+        let mut count = 0;
+        Ok(ClickerDelta::for_event(db, event.id)
+            .await?
+            .into_iter()
+            .map(|d| {
+                count += d.delta;
+                ClickerCount { ms: (d.time - event.start).num_milliseconds(), count }
+            })
+            .collect())
+    }
+
+    let curr_event = Event::lookup_by_id(&state.db, id).await?.ok_or_else(not_found)?;
+    let curr_counts = counts_for_event(&state.db, &curr_event).await?;
+
+    // Find a previous event with clocks at the same weekday and time
+    let prev_event = {
+        let tz = state.config.app.tz;
+        let weekday_and_time_of = |e: &Event| {
+            let start = tz.from_utc_datetime(&e.start);
+            (
+                start.weekday(),
+                start.time(),
+                e.end.map(|end| tz.from_utc_datetime(&end).time()),
+            )
+        };
+
+        ClickerDelta::past_events_with_clicks(&state.db, curr_event.start)
+            .await?
+            .into_iter()
+            .find(|e| weekday_and_time_of(e) == weekday_and_time_of(&curr_event))
+    };
+    let prev_counts = match &prev_event {
+        Some(e) => counts_for_event(&state.db, e).await?,
+        None => vec![],
+    };
+
+    const DEFAULT_DURATION: chrono::Duration = chrono::Duration::hours(12);
+    let start = curr_event.start;
+    let end = curr_event.end.unwrap_or(start + DEFAULT_DURATION);
+
+    #[derive(Template, WebTemplate)]
+    #[template(path = "events/clicker.html")]
+    struct Html {
+        user: Option<User>,
+        curr_event: Event,
+        prev_event: Option<Event>,
+        curr_counts: Vec<ClickerCount>,
+        prev_counts: Vec<ClickerCount>,
+        start_ms: i64,
+        duration_ms: i64,
+        elapsed_ms: i64,
+    }
+    Ok(Html {
+        user,
+        start_ms: start.and_utc().timestamp_millis(),
+        duration_ms: (end - start).num_milliseconds(),
+        elapsed_ms: (Utc::now().naive_utc() - start).num_milliseconds(),
+        curr_counts,
+        prev_counts,
+        prev_event,
+        curr_event,
+    }
+    .into_response())
 }

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT CAST(COALESCE(SUM(d.delta), 0) AS INT) AS \"count!: i64\" FROM clicker_deltas d, events e\n               WHERE e.id = ?\n               AND d.time BETWEEN datetime(e.start, '-6 hours') AND datetime(COALESCE(e.end, e.start), '+24 hours')\n               AND NOT EXISTS (\n                   SELECT 1 FROM events o\n                   WHERE (o.start > e.start OR (o.start = e.start AND o.id < e.id))\n                   AND o.start <= datetime(d.time, '+6 hours')\n                   AND datetime(COALESCE(o.end, o.start), '+24 hours') >= d.time\n               )",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "62d73180d34e3c64887db456243ff0bfa0e44e92757416f7b763102118ec1995"
+}

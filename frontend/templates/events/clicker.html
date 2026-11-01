@@ -1,0 +1,192 @@
+{% extends "layout.html" %}
+
+{% block title %}Clicker - {{ curr_event.slug }} - L&SD{% endblock title %}
+
+{% block content %}
+  <section id="events/clicker">
+    <header>
+      <h1>{{ curr_event.title }}</h1>
+      <p class="date">
+        {{ curr_event.start | format_datetime("%a %b %d, %Y") }}
+        {% if let Some(e) = prev_event %}(vs. {{ e.start | format_datetime("%m/%d") }}){% endif %}
+      </p>
+    </header>
+    <p id="status" hidden><span id="inside"></span> guests (<span id="ins"></span> in, <span id="outs"></span> out) as of <span id="asof"></span></p>
+    <div class="legend">
+      <span class="filling">Filling</span><span class="holding">Holding</span><span class="emptying">Emptying</span>
+    </div>
+    <figure id="plot">
+      <svg viewBox="0 0 1 1" preserveAspectRatio="none">
+        <g id="hours"></g>
+        <line id="capacity" x1="0" x2="1" vector-effect="non-scaling-stroke" />
+        <path id="prev" vector-effect="non-scaling-stroke" />
+        <path id="curr" vector-effect="non-scaling-stroke" />
+      </svg>
+      <span id="capacity-label"></span>
+      <div id="ping" class="dot" hidden></div>
+      <div id="cursor" class="dot" hidden><div id="tip"></div></div>
+      <div id="ticks"></div>
+    </figure>
+    <script id="data" type="application/json">
+      {
+        "eventStart": {{ start_ms }},
+        "eventEnd": {{ duration_ms }},
+        "elapsed": {{ elapsed_ms }},
+        "capacity": {{ curr_event.capacity }},
+        "prevDate": "{% if let Some(e) = prev_event %}{{ e.start | format_datetime("%m/%d") }}{% endif %}",
+        "curr": [
+          {% for p in curr_counts %}
+            {% if !loop.first %},{% endif %}
+            {
+              "t": {{ p.ms }},
+              "count": {{ p.count }}
+            }
+            {% endfor %}
+        ],
+        "prev": [
+          {% for p in prev_counts %}
+            {% if !loop.first %},{% endif %}
+            {
+              "t": {{ p.ms }},
+              "count": {{ p.count }}
+            }
+          {% endfor %}
+        ]
+      }
+    </script>
+  </section>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    const $ = id => document.getElementById(id);
+    const HOUR = 60 * 60 * 1000;
+
+    const render = () => {
+      const { eventStart, eventEnd, elapsed, capacity, prevDate, curr, prev } = JSON.parse($("data").textContent);
+
+      // Axes
+      const start = eventStart;
+      const end = Math.max(...curr.map(p => p.t), ...prev.map(p => p.t));
+      const duration = Math.max(eventEnd, Math.ceil((start + end) / HOUR) * HOUR - start);
+      const max = 1.05 * Math.max(1, capacity, ...curr.map(p => p.count), ...prev.map(p => p.count));
+      const x = t => Math.min(Math.max(t / duration, 0), 1);
+      const y = count => 1 - (count / max);
+
+      // Formatting
+      const formatTime = t => new Date(start + t)
+        .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+        .replace(/\s?([AP])M/i, (_, m) => m.toLowerCase());
+      const formatHour = t => {
+        const h = new Date(t).getHours();
+        return `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
+      };
+
+      // Lines
+      const step = (points, end) => {
+        let d = `M0,${y(0)}`;
+        for (const p of points) d += `H${x(p.t)}V${y(p.count)}`;
+        return d + `H${x(end)}`;
+      };
+      $("curr").setAttribute("d", step(curr, elapsed));
+      $("prev").setAttribute("d", step(prev, duration));
+      // Capacity line
+      $("capacity").setAttribute("y1", y(capacity));
+      $("capacity").setAttribute("y2", y(capacity));
+      $("capacity-label").style.top = `${y(capacity) * 100}%`;
+      $("capacity-label").innerText = capacity;
+
+      // Ticks
+      let ticks = "";
+      for (let t = Math.ceil(start / HOUR) * HOUR - start; t <= duration; t += HOUR) {
+        ticks += `<span style="left: ${x(t) * 100}%">${formatHour(start + t)}</span>`;
+      }
+      $("ticks").innerHTML = ticks;
+
+      const countAt = (points, t) => points.findLast(p => p.t <= t)?.count ?? 0;
+      const positionForCount = (el, t, count) => {
+        el.style.left = `${x(t) * 100}%`;
+        el.style.top = `${y(count) * 100}%`;
+        el.hidden = false;
+      };
+
+      // Shading
+      let hours = "";
+      for (let from = Math.floor(start / HOUR) * HOUR - start; from <= elapsed && from <= duration; from += HOUR) {
+        const clicks = curr.filter(p => p.t >= from && p.t < from + HOUR).length;
+        const net = countAt(curr, from + HOUR) - countAt(curr, from);
+
+        // If clicks were +/- at random, stddev = sqrt(n).
+        // Consider filling/emptying to be a net change of +/- two sigma.
+        const noise = 2 * Math.sqrt(clicks);
+        const trend = 
+            net >  noise ? "filling"
+          : net < -noise ? "emptying"
+          : "holding";
+
+        if (trend === "holding" && from + HOUR > elapsed)
+          continue;
+
+        hours += `<rect class="${trend}" x="${x(from)}" y="0" width="${x(from + HOUR) - x(from)}" height="1" />`;
+      }
+      $("hours").innerHTML = hours;
+
+      // Live counts
+      const live = elapsed >= 0 && elapsed <= duration;
+      if (live) {
+        const count = countAt(curr, elapsed);
+        const outs = (curr.length - count) / 2;
+        $("inside").innerText = count;
+        $("ins").innerText = curr.length - outs;
+        $("outs").innerText = outs;
+        $("asof").innerText = formatTime(elapsed);
+        $("status").hidden = false;
+        positionForCount($("ping"), elapsed, count);
+      }
+
+      const inspect = e => {
+        const box = $("plot").getBoundingClientRect();
+        const px = e.clientX - box.left;
+        const t = (px / box.width) * duration;
+        const future = t > elapsed;
+
+        // Cursor
+        positionForCount($("cursor"), t, countAt(future ? prev : curr, t));
+        $("cursor").classList.toggle("future", future);
+
+        // Tooltip
+        $("tip").innerHTML = `<b>${formatTime(t)}</b>
+          <span>Today: ${future ? "??" : countAt(curr, t)}</span>
+          <span class="prev">${prevDate}: ${countAt(prev, t)}</span>`;
+        $("tip").classList.toggle("flip", px + $("tip").offsetWidth > box.width);
+      };
+      $("plot").addEventListener("pointerdown", inspect);
+      $("plot").addEventListener("pointermove", inspect);
+      $("plot").addEventListener("pointerleave", () => ($("cursor").hidden = true));
+      $("plot").addEventListener("contextmenu", e => e.preventDefault());
+
+      return live;
+    };
+    let live = render();
+
+    // Refresh every minute during event
+    const REFRESH = 60 * 1000;
+    let loaded = Date.now();
+    const refresh = async () => {
+      try {
+        const response = await fetch(location.href);
+        if (!response.ok) throw response;
+
+        const page = new DOMParser().parseFromString(await response.text(), "text/html");
+        $("events/clicker").innerHTML = page.getElementById("events/clicker").innerHTML;
+        live = render();
+        loaded = Date.now();
+      } catch {}
+      if (live) setTimeout(refresh, REFRESH);
+    };
+    if (live) setTimeout(refresh, REFRESH);
+    document.addEventListener("visibilitychange", () => {
+      if (live && !document.hidden && Date.now() - loaded > REFRESH) refresh();
+    });
+  </script>
+{% endblock scripts %}

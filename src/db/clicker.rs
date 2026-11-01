@@ -1,3 +1,4 @@
+use crate::db::event::Event;
 use crate::prelude::*;
 
 pub struct ClickerDelta {
@@ -22,14 +23,53 @@ impl ClickerDelta {
         Ok(())
     }
 
-    pub async fn current_event_count(db: &Db, event_id: i64) -> Result<i64> {
+    pub async fn count_for_current_event(db: &Db, event_id: i64) -> Result<i64> {
         Ok(sqlx::query_scalar!(
-            r#"SELECT CAST(COALESCE(SUM(delta), 0) AS INT) AS "count!: i64" FROM clicker_deltas d
-               WHERE (SELECT id FROM events WHERE start <= datetime(d.time, '+6 hours')
-                         AND datetime(COALESCE(end, start), '+24 hours') >= d.time ORDER BY start DESC LIMIT 1) = ?"#,
+            r#"SELECT CAST(COALESCE(SUM(d.delta), 0) AS INT) AS "count!: i64" FROM clicker_deltas d, events e
+               WHERE e.id = ?
+               AND d.time BETWEEN datetime(e.start, '-6 hours') AND datetime(COALESCE(e.end, e.start), '+24 hours')
+               AND NOT EXISTS (
+                   SELECT 1 FROM events o
+                   WHERE (o.start > e.start OR (o.start = e.start AND o.id < e.id))
+                   AND o.start <= datetime(d.time, '+6 hours')
+                   AND datetime(COALESCE(o.end, o.start), '+24 hours') >= d.time
+               )"#,
             event_id
         )
         .fetch_one(db)
+        .await?)
+    }
+
+    pub async fn for_event(db: &Db, event_id: i64) -> Result<Vec<ClickerDelta>> {
+        Ok(sqlx::query_as!(
+            ClickerDelta,
+            r#"SELECT d.id, d.time, d.delta FROM clicker_deltas d, events e
+               WHERE e.id = ? AND d.time BETWEEN datetime(e.start, '-6 hours') AND datetime(COALESCE(e.end, e.start), '+24 hours')
+               AND NOT EXISTS (
+                   SELECT 1 FROM events o
+                   WHERE (o.start > e.start OR (o.start = e.start AND o.id < e.id))
+                   AND o.start <= datetime(d.time, '+6 hours')
+                   AND datetime(COALESCE(o.end, o.start), '+24 hours') >= d.time
+               )
+               ORDER BY d.time"#,
+            event_id
+        )
+        .fetch_all(db)
+        .await?)
+    }
+
+    pub async fn past_events_with_clicks(db: &Db, start: NaiveDateTime) -> Result<Vec<Event>> {
+        Ok(sqlx::query_as!(
+            Event,
+            r#"SELECT * FROM events e WHERE start < ?
+               AND EXISTS (
+                   SELECT 1 FROM clicker_deltas d
+                   WHERE d.time BETWEEN datetime(e.start, '-6 hours') AND datetime(COALESCE(e.end, e.start), '+24 hours')
+               )
+               ORDER BY start DESC, id"#,
+            start
+        )
+        .fetch_all(db)
         .await?)
     }
 }

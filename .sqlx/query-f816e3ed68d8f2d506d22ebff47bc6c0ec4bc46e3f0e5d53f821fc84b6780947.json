@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT d.id, d.time, d.delta FROM clicker_deltas d, events e\n               WHERE e.id = ? AND d.time BETWEEN datetime(e.start, '-6 hours') AND datetime(COALESCE(e.end, e.start), '+24 hours')\n               AND NOT EXISTS (\n                   SELECT 1 FROM events o\n                   WHERE (o.start > e.start OR (o.start = e.start AND o.id < e.id))\n                   AND o.start <= datetime(d.time, '+6 hours')\n                   AND datetime(COALESCE(o.end, o.start), '+24 hours') >= d.time\n               )\n               ORDER BY d.time",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time",
+        "ordinal": 1,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "delta",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f816e3ed68d8f2d506d22ebff47bc6c0ec4bc46e3f0e5d53f821fc84b6780947"
+}

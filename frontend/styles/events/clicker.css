@@ -1,0 +1,98 @@
+#events\/clicker {
+  @apply mx-auto w-full max-w-3xl p-6;
+
+  header {
+    @apply mb-3;
+    h1 {
+      @apply text-lg;
+    }
+    .date {
+      @apply text-lsd-gray text-sm;
+    }
+  }
+  #status, .legend {
+    @apply mb-1;
+  }
+
+  .filling  { --trend: var(--color-emerald-400); }
+  .holding  { --trend: var(--color-neutral-400); }
+  .emptying { --trend: var(--color-rose-400); }
+  .filling, .holding, .emptying {
+    --shade: color-mix(in oklab, var(--trend) 35%, transparent);
+  }
+
+  .legend {
+    @apply text-lsd-gray flex gap-4 text-xs;
+    span {
+      @apply inline-flex items-center gap-1.5;
+    }
+    span::before {
+      @apply border-lsd-gray size-2.5 rounded-sm border content-[''];
+      background: var(--shade);
+    }
+  }
+
+  #plot {
+    @apply border-lsd-gray relative mb-7 h-64 touch-pan-y border-b border-l select-none;
+    -webkit-touch-callout: none;
+
+    svg {
+      @apply block size-full overflow-visible;
+    }
+    rect {
+      fill: var(--shade);
+      shape-rendering: crispEdges;
+    }
+    path {
+      @apply fill-none;
+      stroke-width: 1.5;
+      stroke-linejoin: round;
+    }
+
+    #curr {
+      @apply stroke-lsd-white;
+    }
+    #prev {
+      @apply stroke-neutral-600;
+      stroke-width: 1;
+    }
+
+    #capacity {
+      @apply stroke-lsd-red;
+      stroke-dasharray: 6 4;
+    }
+    #capacity-label {
+      @apply text-lsd-red absolute left-1 mt-0.5 text-xs;
+    }
+
+    .dot {
+      @apply bg-lsd-white absolute size-1.5 -translate-1/2 rounded-full;
+    }
+    #ping::before {
+      @apply bg-lsd-white absolute inset-0 animate-ping rounded-full content-[''];
+    }
+    #cursor.future {
+      @apply bg-lsd-gray;
+      #tip {
+        @apply text-lsd-gray;
+      }
+    }
+
+    #tip {
+      @apply bg-lsd-charcoal absolute bottom-full left-full m-1 flex flex-col rounded px-2 py-1 text-xs whitespace-nowrap;
+      &.flip {
+        @apply right-full left-auto;
+      }
+      .prev {
+        @apply text-lsd-gray;
+      }
+    }
+
+    #ticks {
+      @apply text-lsd-gray absolute inset-x-0 top-full mt-1 text-[10px];
+      span {
+        @apply absolute -translate-x-1/2;
+      }
+    }
+  }
+}
