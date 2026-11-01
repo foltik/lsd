@@ -20,6 +20,7 @@
 @import "./events/edit.css";
 @import "./events/list.css";
 @import "./events/view.css";
+@import "./events/clicker.css";
 @import "./events/attendees.css";
 @import "./events/attendees_add.css";
 @import "./events/links.css";
